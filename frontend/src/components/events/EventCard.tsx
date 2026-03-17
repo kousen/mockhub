@@ -3,6 +3,7 @@ import { Calendar, MapPin, Ticket } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FavoriteButton } from '@/components/events/FavoriteButton';
 import { formatCurrency, formatShortDate } from '@/lib/formatters';
 import type { EventSummary } from '@/types/event';
 
@@ -36,7 +37,10 @@ export function EventCard({ event }: EventCardProps) {
   const eventUrl = `/events/${event.slug}`;
 
   return (
-    <Card className="transition-shadow hover:shadow-lg">
+    <Card className="relative transition-shadow hover:shadow-lg">
+      <div className="absolute right-3 top-3 z-10">
+        <FavoriteButton eventId={event.id} />
+      </div>
       <CardHeader>
         <Link to={eventUrl} className="block">
           <div

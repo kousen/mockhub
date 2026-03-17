@@ -14,4 +14,8 @@ export const ROUTES = {
   ORDERS: '/orders',
   FAVORITES: '/favorites',
   ADMIN: '/admin',
+  ADMIN_DASHBOARD: '/admin',
+  ADMIN_EVENTS: '/admin/events',
+  ADMIN_EVENTS_NEW: '/admin/events/new',
+  ADMIN_USERS: '/admin/users',
 } as const;

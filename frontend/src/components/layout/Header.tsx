@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
-import { Menu, LogOut, User, Ticket, ShoppingCart } from 'lucide-react';
+import { Menu, LogOut, User, Ticket, ShoppingCart, Heart } from 'lucide-react';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -49,20 +50,23 @@ export function Header() {
         {/* Desktop Auth Section */}
         <div className="hidden items-center gap-3 md:flex">
           {isAuthenticated && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-              onClick={openDrawer}
-              aria-label="Open cart"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {itemCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                  {itemCount > 99 ? '99+' : itemCount}
-                </span>
-              )}
-            </Button>
+            <>
+              <NotificationBell />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+                onClick={openDrawer}
+                aria-label="Open cart"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {itemCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
+              </Button>
+            </>
           )}
           {isAuthenticated && user ? (
             <DropdownMenu>
