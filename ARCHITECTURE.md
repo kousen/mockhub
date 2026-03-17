@@ -1802,6 +1802,26 @@ The Docker PostgreSQL image is `pgvector/pgvector:pg17` (PostgreSQL 17 with the 
 |---|---|
 | `net.datafaker:datafaker` | Realistic fake data for seed generation and tests |
 
+#### Linting and Formatting
+
+**Backend (Gradle plugins):**
+
+| Tool | Purpose |
+|---|---|
+| `com.diffplug.spotless` (Gradle plugin) | Code formatting enforcement (Google Java Format) |
+| `checkstyle` (Gradle plugin) | Style rule checking (120 char line length, import ordering) |
+
+**Frontend (npm devDependencies):**
+
+| Tool | Purpose |
+|---|---|
+| `eslint` | TypeScript/React linting |
+| `@eslint/js` + `typescript-eslint` | ESLint v9 flat config with TypeScript support |
+| `eslint-plugin-react-hooks` | React hooks rules |
+| `eslint-plugin-react-refresh` | Fast refresh compatibility |
+| `prettier` | Code formatting (2-space indent, single quotes, trailing commas) |
+| `eslint-config-prettier` | Disables ESLint rules that conflict with Prettier |
+
 #### Testing
 
 | Dependency | Purpose |
@@ -1810,6 +1830,19 @@ The Docker PostgreSQL image is `pgvector/pgvector:pg17` (PostgreSQL 17 with the 
 | `spring-security-test` | Security context testing helpers |
 | `org.testcontainers:postgresql` | Real PostgreSQL in integration tests |
 | `org.testcontainers:junit-jupiter` | Testcontainers JUnit 5 integration |
+
+**Frontend testing (npm devDependencies):**
+
+| Tool | Purpose |
+|---|---|
+| `vitest` | Unit/component test runner |
+| `@testing-library/react` | React component testing utilities |
+| `@testing-library/jest-dom` | Custom DOM matchers |
+| `msw` | Mock Service Worker for API mocking |
+| `@playwright/test` | E2E test framework |
+| `@axe-core/playwright` | Accessibility checks during E2E runs |
+
+**Playwright browser targets:** Chromium, Firefox, WebKit, Mobile Android (Chromium + mobile viewport), Mobile iOS (WebKit + mobile viewport).
 
 ### 4.11 Spring AI Integration
 
@@ -2075,6 +2108,19 @@ Located in `frontend/e2e/`:
 - `event-browsing.spec.ts`: Search, filter, paginate, view detail
 - `cart-checkout.spec.ts`: Add to cart, modify cart, checkout with mock payment
 - `admin.spec.ts`: Create event, manage users, view dashboard
+- `accessibility.spec.ts`: axe-core accessibility checks on key pages
+
+**Browser targets (all configured in `playwright.config.ts`):**
+
+| Project | Engine | Viewport | Notes |
+|---|---|---|---|
+| chromium | Chromium | Desktop (1280x720) | Chrome/Edge |
+| firefox | Firefox | Desktop (1280x720) | |
+| webkit | WebKit | Desktop (1280x720) | Safari |
+| Mobile Android | Chromium | 360x640 | Android Chrome user agent |
+| Mobile iOS | WebKit | 375x812 | iPhone Safari user agent |
+
+**Accessibility testing:** Every E2E spec includes `@axe-core/playwright` checks. The `accessibility.spec.ts` file runs dedicated axe scans on all key pages (home, event list, event detail, cart, checkout, admin dashboard) across all 5 browser targets.
 
 Run against full docker-compose stack (real backend + database).
 
@@ -2086,7 +2132,8 @@ Run against full docker-compose stack (real backend + database).
 | Controller | MockMvc | ~40 tests | <15s |
 | Integration | Testcontainers | ~15 tests | <60s |
 | Component (FE) | Vitest + RTL | ~60 tests | <20s |
-| E2E | Playwright | ~10 scenarios | <120s |
+| E2E | Playwright (5 browsers) | ~10 scenarios x 5 | <300s |
+| Accessibility | axe-core + Playwright | ~6 pages x 5 browsers | included in E2E |
 
 ---
 
