@@ -1882,7 +1882,7 @@ spring:
       api-key: ${ANTHROPIC_API_KEY}
       chat:
         options:
-          model: claude-sonnet-4-5-20250514
+          model: claude-sonnet-4-6
 
 # In application-ai-openai.yml
 spring:
