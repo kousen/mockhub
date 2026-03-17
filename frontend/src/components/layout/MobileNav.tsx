@@ -1,8 +1,9 @@
-import { Link } from 'react-router';
-import { LogOut, ShoppingCart, Ticket, User } from 'lucide-react';
+import { Link, useLocation } from 'react-router';
+import { Bell, Heart, LogOut, Settings, ShoppingCart, Ticket, User } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useCartStore } from '@/stores/cart-store';
@@ -16,11 +17,27 @@ export function MobileNav() {
   const closeMobileNav = useUiStore((state) => state.closeMobileNav);
   const itemCount = useCartStore((state) => state.itemCount);
   const logout = useLogout();
+  const location = useLocation();
+
+  const isAdmin = user?.roles?.includes('ROLE_ADMIN') ?? false;
 
   const handleLogout = () => {
     closeMobileNav();
     logout();
   };
+
+  const isActive = (path: string) => {
+    if (path === ROUTES.HOME) return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
+  const navLinkClass = (path: string) =>
+    cn(
+      'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+      isActive(path)
+        ? 'bg-primary/10 text-primary'
+        : 'text-foreground hover:bg-accent',
+    );
 
   return (
     <Sheet open={mobileNavOpen} onOpenChange={closeMobileNav}>
@@ -35,8 +52,9 @@ export function MobileNav() {
           <Link
             to={ROUTES.EVENTS}
             onClick={closeMobileNav}
-            className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
+            className={navLinkClass(ROUTES.EVENTS)}
           >
+            <Ticket className="h-4 w-4" />
             Events
           </Link>
 
@@ -53,7 +71,7 @@ export function MobileNav() {
               <Link
                 to={ROUTES.CART}
                 onClick={closeMobileNav}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
+                className={navLinkClass(ROUTES.CART)}
               >
                 <ShoppingCart className="h-4 w-4" />
                 Cart
@@ -66,7 +84,7 @@ export function MobileNav() {
               <Link
                 to={ROUTES.ORDERS}
                 onClick={closeMobileNav}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
+                className={navLinkClass(ROUTES.ORDERS)}
               >
                 <User className="h-4 w-4" />
                 My Orders
@@ -74,11 +92,32 @@ export function MobileNav() {
               <Link
                 to={ROUTES.FAVORITES}
                 onClick={closeMobileNav}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
+                className={navLinkClass(ROUTES.FAVORITES)}
               >
-                <Ticket className="h-4 w-4" />
+                <Heart className="h-4 w-4" />
                 Favorites
               </Link>
+              <Link
+                to="/notifications"
+                onClick={closeMobileNav}
+                className={navLinkClass('/notifications')}
+              >
+                <Bell className="h-4 w-4" />
+                Notifications
+              </Link>
+              {isAdmin && (
+                <>
+                  <Separator className="my-2" />
+                  <Link
+                    to={ROUTES.ADMIN}
+                    onClick={closeMobileNav}
+                    className={navLinkClass(ROUTES.ADMIN)}
+                  >
+                    <Settings className="h-4 w-4" />
+                    Admin Dashboard
+                  </Link>
+                </>
+              )}
               <Separator className="my-2" />
               <button
                 onClick={handleLogout}

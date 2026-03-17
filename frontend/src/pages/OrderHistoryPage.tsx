@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
 import { Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderCard } from '@/components/orders/OrderCard';
+import { EmptyState } from '@/components/common/EmptyState';
 import { useOrders } from '@/hooks/use-orders';
 import { ROUTES } from '@/lib/constants';
 
@@ -21,7 +21,17 @@ export function OrderHistoryPage() {
         <Skeleton className="mb-6 h-8 w-48" />
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={index} className="h-20 w-full" />
+            <div key={index} className="rounded-lg border p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-48" />
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -34,16 +44,12 @@ export function OrderHistoryPage() {
   if (orders.length === 0 && page === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex min-h-[calc(100vh-16rem)] flex-col items-center justify-center gap-4 text-center">
-          <Package className="h-16 w-16 text-muted-foreground/30" />
-          <h1 className="text-2xl font-bold">No Orders Yet</h1>
-          <p className="text-muted-foreground">
-            When you purchase tickets, your orders will appear here.
-          </p>
-          <Button asChild>
-            <Link to={ROUTES.EVENTS}>Browse Events</Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={Package}
+          title="No orders yet"
+          description="When you purchase tickets, your orders will appear here."
+          action={{ label: 'Browse Events', href: ROUTES.EVENTS }}
+        />
       </div>
     );
   }

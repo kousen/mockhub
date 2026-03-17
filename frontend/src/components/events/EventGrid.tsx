@@ -1,5 +1,8 @@
+import { Search } from 'lucide-react';
 import { EventCard } from './EventCard';
+import { EmptyState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ROUTES } from '@/lib/constants';
 import type { EventSummary } from '@/types/event';
 
 interface EventGridProps {
@@ -44,12 +47,12 @@ export function EventGrid({ events, isLoading }: EventGridProps) {
 
   if (events.length === 0) {
     return (
-      <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-        <p className="text-lg font-medium text-muted-foreground">No events found</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Try adjusting your search or filter criteria.
-        </p>
-      </div>
+      <EmptyState
+        icon={Search}
+        title="No events found"
+        description="Try adjusting your search or filter criteria."
+        action={{ label: 'View All Events', href: ROUTES.EVENTS }}
+      />
     );
   }
 

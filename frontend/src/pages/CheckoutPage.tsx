@@ -2,17 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { ShoppingCart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderReview } from '@/components/checkout/OrderReview';
 import { MockPaymentForm } from '@/components/checkout/MockPaymentForm';
 import { StripePaymentForm } from '@/components/checkout/StripePaymentForm';
+import { EmptyState } from '@/components/common/EmptyState';
 import { useCart } from '@/hooks/use-cart';
 import { useCheckout } from '@/hooks/use-orders';
 import { ROUTES } from '@/lib/constants';
 import type { CheckoutRequest } from '@/types/order';
-import { Link } from 'react-router';
 
 const SERVICE_FEE_RATE = 0.1;
 
@@ -63,14 +62,12 @@ export function CheckoutPage() {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex min-h-[calc(100vh-16rem)] flex-col items-center justify-center gap-4 text-center">
-          <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />
-          <h1 className="text-2xl font-bold">Nothing to Checkout</h1>
-          <p className="text-muted-foreground">Add tickets to your cart first.</p>
-          <Button asChild>
-            <Link to={ROUTES.EVENTS}>Browse Events</Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={ShoppingCart}
+          title="Nothing to checkout"
+          description="Add tickets to your cart first."
+          action={{ label: 'Browse Events', href: ROUTES.EVENTS }}
+        />
       </div>
     );
   }

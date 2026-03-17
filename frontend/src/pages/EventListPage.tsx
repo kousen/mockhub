@@ -189,7 +189,7 @@ export function EventListPage() {
         {/* Event Grid + Sort + Pagination */}
         <div className="min-w-0 flex-1">
           {/* Sort Bar */}
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
               {data?.totalElements !== undefined
                 ? `${data.totalElements} event${data.totalElements !== 1 ? 's' : ''} found`
@@ -198,12 +198,12 @@ export function EventListPage() {
                   : ''}
             </p>
             <div className="flex items-center gap-2">
-              <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+              <ArrowUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Select
                 value={filters.sort ?? 'date'}
                 onValueChange={handleSortChange}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>

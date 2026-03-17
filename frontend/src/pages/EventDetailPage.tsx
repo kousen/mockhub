@@ -67,13 +67,22 @@ export function EventDetailPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Hero / Image Area */}
-      <div className="relative mb-6 flex h-48 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary/20 via-primary/10 to-background sm:h-64">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <Ticket className="h-12 w-12 text-primary/50" />
-          <span className="max-w-md text-lg font-medium text-muted-foreground/70">
-            {event.name}
-          </span>
-        </div>
+      <div className="relative mb-6 flex h-48 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary/20 via-primary/10 to-background sm:h-64 md:h-80">
+        {event.primaryImageUrl ? (
+          <img
+            src={event.primaryImageUrl}
+            alt={event.name}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Ticket className="h-12 w-12 text-primary/50" />
+            <span className="max-w-md text-lg font-medium text-muted-foreground/70">
+              {event.name}
+            </span>
+          </div>
+        )}
         <FavoriteButton className="absolute right-4 top-4" />
       </div>
 

@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Menu, LogOut, User, Ticket, ShoppingCart, Heart } from 'lucide-react';
+import { Menu, LogOut, User, Ticket, ShoppingCart, Heart, Settings } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Button } from '@/components/ui/button';
 import {
@@ -97,10 +97,21 @@ export function Header() {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to={ROUTES.FAVORITES}>
-                    <Ticket className="mr-2 h-4 w-4" />
+                    <Heart className="mr-2 h-4 w-4" />
                     Favorites
                   </Link>
                 </DropdownMenuItem>
+                {user.roles?.includes('ROLE_ADMIN') && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to={ROUTES.ADMIN}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Admin Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout}>
                   <LogOut className="mr-2 h-4 w-4" />

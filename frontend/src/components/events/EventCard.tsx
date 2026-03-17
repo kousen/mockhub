@@ -4,7 +4,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FavoriteButton } from '@/components/events/FavoriteButton';
-import { formatCurrency, formatShortDate } from '@/lib/formatters';
+import { PriceDisplay } from '@/components/common/PriceDisplay';
+import { formatShortDate } from '@/lib/formatters';
 import type { EventSummary } from '@/types/event';
 
 interface EventCardProps {
@@ -50,6 +51,7 @@ export function EventCard({ event }: EventCardProps) {
               <img
                 src={event.primaryImageUrl}
                 alt={event.name}
+                loading="lazy"
                 className="h-full w-full rounded-md object-cover"
               />
             ) : (
@@ -64,7 +66,7 @@ export function EventCard({ event }: EventCardProps) {
         </Link>
         <div className="flex items-start justify-between gap-2">
           <Link to={eventUrl}>
-            <CardTitle className="text-lg leading-tight hover:text-primary">
+            <CardTitle className="line-clamp-2 text-lg leading-tight hover:text-primary">
               {event.name}
             </CardTitle>
           </Link>
@@ -91,9 +93,7 @@ export function EventCard({ event }: EventCardProps) {
       <CardFooter className="flex items-center justify-between">
         <div className="flex flex-col">
           {event.minPrice !== null ? (
-            <span className="text-sm font-semibold">
-              From {formatCurrency(event.minPrice)}
-            </span>
+            <PriceDisplay price={event.minPrice} prefix="From" className="text-sm" />
           ) : (
             <span className="text-sm text-muted-foreground">No listings</span>
           )}

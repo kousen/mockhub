@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CartItem } from '@/components/cart/CartItem';
 import { CartSummary } from '@/components/cart/CartSummary';
+import { EmptyState } from '@/components/common/EmptyState';
 import { useCart, useRemoveFromCart, useClearCart } from '@/hooks/use-cart';
 import { ROUTES } from '@/lib/constants';
 
@@ -41,16 +42,12 @@ export function CartPage() {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex min-h-[calc(100vh-16rem)] flex-col items-center justify-center gap-4 text-center">
-          <ShoppingCart className="h-16 w-16 text-muted-foreground/30" />
-          <h1 className="text-2xl font-bold">Your Cart is Empty</h1>
-          <p className="text-muted-foreground">
-            Find tickets for your favorite events and add them here.
-          </p>
-          <Button asChild>
-            <Link to={ROUTES.EVENTS}>Browse Events</Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={ShoppingCart}
+          title="Your cart is empty"
+          description="Find tickets for your favorite events and add them here."
+          action={{ label: 'Browse Events', href: ROUTES.EVENTS }}
+        />
       </div>
     );
   }
