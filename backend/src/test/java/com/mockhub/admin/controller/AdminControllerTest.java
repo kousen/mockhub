@@ -41,10 +41,10 @@ class AdminControllerTest {
     private UserDetailsServiceImpl userDetailsService;
 
     @Test
-    @DisplayName("GET /api/v1/admin/dashboard - unauthenticated - returns 403")
-    void getDashboardStats_unauthenticated_returns403() throws Exception {
+    @DisplayName("GET /api/v1/admin/dashboard - unauthenticated - returns 401")
+    void getDashboardStats_unauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/admin/dashboard"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -87,9 +87,9 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/admin/orders - unauthenticated - returns 403")
-    void listOrders_unauthenticated_returns403() throws Exception {
+    @DisplayName("GET /api/v1/admin/orders - unauthenticated - returns 401")
+    void listOrders_unauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/admin/orders"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

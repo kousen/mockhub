@@ -77,27 +77,27 @@ class CartControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/cart - unauthenticated - returns 403")
-    void getCart_unauthenticated_returns403() throws Exception {
+    @DisplayName("GET /api/v1/cart - unauthenticated - returns 401")
+    void getCart_unauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/cart"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("POST /api/v1/cart/items - unauthenticated - returns 403")
-    void addToCart_unauthenticated_returns403() throws Exception {
+    @DisplayName("POST /api/v1/cart/items - unauthenticated - returns 401")
+    void addToCart_unauthenticated_returns401() throws Exception {
         mockMvc.perform(post("/api/v1/cart/items")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"listingId": 1}
                                 """))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/cart - unauthenticated - returns 403")
-    void clearCart_unauthenticated_returns403() throws Exception {
+    @DisplayName("DELETE /api/v1/cart - unauthenticated - returns 401")
+    void clearCart_unauthenticated_returns401() throws Exception {
         mockMvc.perform(delete("/api/v1/cart"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

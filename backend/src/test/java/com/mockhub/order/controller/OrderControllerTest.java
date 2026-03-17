@@ -40,27 +40,27 @@ class OrderControllerTest {
     private UserDetailsServiceImpl userDetailsService;
 
     @Test
-    @DisplayName("POST /api/v1/orders/checkout - unauthenticated - returns 403")
-    void checkout_unauthenticated_returns403() throws Exception {
+    @DisplayName("POST /api/v1/orders/checkout - unauthenticated - returns 401")
+    void checkout_unauthenticated_returns401() throws Exception {
         mockMvc.perform(post("/api/v1/orders/checkout")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"paymentMethod": "mock"}
                                 """))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("GET /api/v1/orders - unauthenticated - returns 403")
-    void listOrders_unauthenticated_returns403() throws Exception {
+    @DisplayName("GET /api/v1/orders - unauthenticated - returns 401")
+    void listOrders_unauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/orders"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("GET /api/v1/orders/{orderNumber} - unauthenticated - returns 403")
-    void getOrder_unauthenticated_returns403() throws Exception {
+    @DisplayName("GET /api/v1/orders/{orderNumber} - unauthenticated - returns 401")
+    void getOrder_unauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/orders/MH-20260317-0001"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

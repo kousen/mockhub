@@ -22,5 +22,3 @@ logging:
   level:
     com.mockhub: DEBUG
     org.testcontainers: INFO
-    org.flywaydb: DEBUG
-    org.springframework.boot.autoconfigure.flyway: DEBUG
