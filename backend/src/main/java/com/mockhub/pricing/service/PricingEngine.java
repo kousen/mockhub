@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mockhub.cart.repository.CartItemRepository;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.pricing.entity.PriceHistory;
@@ -29,20 +30,22 @@ public class PricingEngine {
     private final EventRepository eventRepository;
     private final PriceHistoryRepository priceHistoryRepository;
     private final ListingService listingService;
+    private final CartItemRepository cartItemRepository;
 
     public PricingEngine(EventRepository eventRepository,
                          PriceHistoryRepository priceHistoryRepository,
-                         ListingService listingService) {
+                         ListingService listingService,
+                         CartItemRepository cartItemRepository) {
         this.eventRepository = eventRepository;
         this.priceHistoryRepository = priceHistoryRepository;
         this.listingService = listingService;
+        this.cartItemRepository = cartItemRepository;
     }
 
     public BigDecimal computeMultiplier(Event event) {
         BigDecimal supplyFactor = computeSupplyFactor(event);
         BigDecimal timeFactor = computeTimeFactor(event);
-        // TODO: Integrate demand factor from cart_items count in Wave 3
-        BigDecimal demandFactor = BigDecimal.ONE;
+        BigDecimal demandFactor = computeDemandFactor();
 
         BigDecimal rawMultiplier = supplyFactor.multiply(timeFactor).multiply(demandFactor);
         return clamp(rawMultiplier, MIN_MULTIPLIER, MAX_MULTIPLIER)
@@ -147,6 +150,25 @@ public class PricingEngine {
     private long computeDaysToEvent(Event event) {
         Duration duration = Duration.between(Instant.now(), event.getEventDate());
         return duration.toDays();
+    }
+
+    /**
+     * Demand factor based on recent cart activity (items added in the last 24 hours).
+     * Higher cart activity signals stronger demand and drives prices up slightly.
+     */
+    private BigDecimal computeDemandFactor() {
+        Instant cutoff = Instant.now().minus(Duration.ofHours(24));
+        long recentCartItems = cartItemRepository.countByAddedAtAfter(cutoff);
+
+        if (recentCartItems >= 100) {
+            return new BigDecimal("1.3");
+        } else if (recentCartItems >= 50) {
+            return new BigDecimal("1.15");
+        } else if (recentCartItems >= 20) {
+            return new BigDecimal("1.05");
+        } else {
+            return BigDecimal.ONE;
+        }
     }
 
     private BigDecimal clamp(BigDecimal value, BigDecimal min, BigDecimal max) {
