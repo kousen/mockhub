@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Menu, LogOut, User, Ticket } from 'lucide-react';
+import { Menu, LogOut, User, Ticket, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
+import { useCartStore } from '@/stores/cart-store';
 import { useLogout } from '@/hooks/use-auth';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 
@@ -22,6 +23,8 @@ export function Header() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const toggleMobileNav = useUiStore((state) => state.toggleMobileNav);
+  const itemCount = useCartStore((state) => state.itemCount);
+  const openDrawer = useCartStore((state) => state.openDrawer);
   const logout = useLogout();
 
   return (
@@ -45,6 +48,22 @@ export function Header() {
 
         {/* Desktop Auth Section */}
         <div className="hidden items-center gap-3 md:flex">
+          {isAuthenticated && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative"
+              onClick={openDrawer}
+              aria-label="Open cart"
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {itemCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                  {itemCount > 99 ? '99+' : itemCount}
+                </span>
+              )}
+            </Button>
+          )}
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

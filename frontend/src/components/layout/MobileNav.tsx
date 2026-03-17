@@ -1,10 +1,11 @@
 import { Link } from 'react-router';
-import { LogOut, Ticket, User } from 'lucide-react';
+import { LogOut, ShoppingCart, Ticket, User } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
+import { useCartStore } from '@/stores/cart-store';
 import { useLogout } from '@/hooks/use-auth';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 
@@ -13,6 +14,7 @@ export function MobileNav() {
   const user = useAuthStore((state) => state.user);
   const mobileNavOpen = useUiStore((state) => state.mobileNavOpen);
   const closeMobileNav = useUiStore((state) => state.closeMobileNav);
+  const itemCount = useCartStore((state) => state.itemCount);
   const logout = useLogout();
 
   const handleLogout = () => {
@@ -48,6 +50,19 @@ export function MobileNav() {
                 </p>
                 <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
+              <Link
+                to={ROUTES.CART}
+                onClick={closeMobileNav}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-accent"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Cart
+                {itemCount > 0 && (
+                  <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                    {itemCount}
+                  </span>
+                )}
+              </Link>
               <Link
                 to={ROUTES.ORDERS}
                 onClick={closeMobileNav}

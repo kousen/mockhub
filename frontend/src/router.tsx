@@ -8,6 +8,10 @@ import { RegisterPage } from '@/pages/RegisterPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { EventListPage } from '@/pages/EventListPage';
 import { EventDetailPage } from '@/pages/EventDetailPage';
+import { CartPage } from '@/pages/CartPage';
+import { CheckoutPage } from '@/pages/CheckoutPage';
+import { OrderHistoryPage } from '@/pages/OrderHistoryPage';
+import { OrderConfirmationPage } from '@/pages/OrderConfirmationPage';
 
 /**
  * Placeholder component for routes that will be built in future waves.
@@ -38,17 +42,12 @@ export const router = createBrowserRouter([
       {
         Component: ProtectedRoute,
         children: [
+          { path: 'cart', Component: CartPage },
+          { path: 'checkout', Component: CheckoutPage },
+          { path: 'orders', Component: OrderHistoryPage },
           {
-            path: 'cart',
-            Component: () => <PlaceholderPage title="Shopping Cart" />,
-          },
-          {
-            path: 'checkout',
-            Component: () => <PlaceholderPage title="Checkout" />,
-          },
-          {
-            path: 'orders',
-            Component: () => <PlaceholderPage title="My Orders" />,
+            path: 'orders/:orderNumber/confirmation',
+            Component: OrderConfirmationPage,
           },
           {
             path: 'favorites',

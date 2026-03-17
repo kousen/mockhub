@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ArrowUpDown, ShoppingCart } from 'lucide-react';
+import { ArrowUpDown, Loader2, ShoppingCart } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -12,6 +13,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PriceTag } from './PriceTag';
+import { useAddToCart } from '@/hooks/use-cart';
+import { useAuthStore } from '@/stores/auth-store';
+import { useCartStore } from '@/stores/cart-store';
 import type { Listing } from '@/types/ticket';
 
 interface TicketListViewProps {
@@ -25,11 +29,33 @@ type SortDirection = 'asc' | 'desc';
 /**
  * Table view of available ticket listings for an event.
  * Supports sorting by price and section. "Add to Cart" buttons
- * are visible but disabled until Wave 3.
+ * allow authenticated users to add tickets to their cart.
  */
 export function TicketListView({ listings, isLoading }: TicketListViewProps) {
   const [sortField, setSortField] = useState<SortField>('price');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [addingListingId, setAddingListingId] = useState<number | null>(null);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const openDrawer = useCartStore((state) => state.openDrawer);
+  const addToCart = useAddToCart();
+
+  const handleAddToCart = (listingId: number) => {
+    setAddingListingId(listingId);
+    addToCart.mutate(
+      { listingId },
+      {
+        onSuccess: () => {
+          toast.success('Added to cart!');
+          openDrawer();
+          setAddingListingId(null);
+        },
+        onError: () => {
+          toast.error('Failed to add to cart. Please try again.');
+          setAddingListingId(null);
+        },
+      },
+    );
+  };
 
   const sortedListings = useMemo(() => {
     const sorted = [...listings];
@@ -126,8 +152,17 @@ export function TicketListView({ listings, isLoading }: TicketListViewProps) {
                 />
               </TableCell>
               <TableCell className="text-right">
-                <Button size="sm" disabled title="Coming soon">
-                  <ShoppingCart className="mr-1 h-3 w-3" />
+                <Button
+                  size="sm"
+                  disabled={!isAuthenticated || addingListingId === listing.id}
+                  title={isAuthenticated ? 'Add to cart' : 'Log in to add to cart'}
+                  onClick={() => handleAddToCart(listing.id)}
+                >
+                  {addingListingId === listing.id ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : (
+                    <ShoppingCart className="mr-1 h-3 w-3" />
+                  )}
                   Add to Cart
                 </Button>
               </TableCell>
