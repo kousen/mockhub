@@ -29,8 +29,14 @@ import com.mockhub.venue.dto.SectionDto;
 import com.mockhub.venue.dto.SectionAvailabilityDto;
 import com.mockhub.ticket.service.TicketService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api/v1/events")
+@Tag(name = "Events", description = "Browse, search, and manage events")
 public class EventController {
 
     private final EventService eventService;
@@ -49,43 +55,65 @@ public class EventController {
     }
 
     @GetMapping
+    @Operation(summary = "List events", description = "Search and filter events with pagination")
+    @ApiResponse(responseCode = "200", description = "Events returned successfully")
     public ResponseEntity<PagedResponse<EventSummaryDto>> listEvents(
             @ModelAttribute EventSearchRequest request) {
         return ResponseEntity.ok(eventService.listEvents(request));
     }
 
     @GetMapping("/featured")
+    @Operation(summary = "List featured events", description = "Return all currently featured events")
+    @ApiResponse(responseCode = "200", description = "Featured events returned")
     public ResponseEntity<List<EventSummaryDto>> listFeatured() {
         return ResponseEntity.ok(eventService.listFeatured());
     }
 
     @GetMapping("/{slug}")
-    public ResponseEntity<EventDto> getEvent(@PathVariable String slug) {
+    @Operation(summary = "Get event by slug", description = "Return full details for a single event")
+    @ApiResponse(responseCode = "200", description = "Event returned")
+    @ApiResponse(responseCode = "404", description = "Event not found")
+    public ResponseEntity<EventDto> getEvent(
+            @Parameter(description = "Event URL slug", example = "taylor-swift-eras-tour-1")
+            @PathVariable String slug) {
         return ResponseEntity.ok(eventService.getBySlug(slug));
     }
 
     @GetMapping("/{slug}/listings")
+    @Operation(summary = "Get event listings", description = "Return all active ticket listings for an event")
+    @ApiResponse(responseCode = "200", description = "Listings returned")
+    @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<List<ListingDto>> getEventListings(@PathVariable String slug) {
         return ResponseEntity.ok(listingService.getActiveListingsByEventSlug(slug));
     }
 
     @GetMapping("/{slug}/price-history")
+    @Operation(summary = "Get price history", description = "Return historical price data for an event")
+    @ApiResponse(responseCode = "200", description = "Price history returned")
     public ResponseEntity<List<PriceHistoryDto>> getPriceHistory(@PathVariable String slug) {
         return ResponseEntity.ok(priceHistoryService.getByEventSlug(slug));
     }
 
     @GetMapping("/{slug}/sections")
+    @Operation(summary = "Get section availability", description = "Return seat availability by section for an event")
+    @ApiResponse(responseCode = "200", description = "Section availability returned")
     public ResponseEntity<List<SectionAvailabilityDto>> getEventSections(@PathVariable String slug) {
         return ResponseEntity.ok(ticketService.getSectionAvailability(slug));
     }
 
     @PostMapping
+    @Operation(summary = "Create event", description = "Create a new event (admin only)")
+    @ApiResponse(responseCode = "201", description = "Event created")
+    @ApiResponse(responseCode = "400", description = "Invalid request")
     public ResponseEntity<EventDto> createEvent(@Valid @RequestBody EventCreateRequest request) {
         EventDto created = eventService.createEvent(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Update event", description = "Update an existing event (admin only)")
+    @ApiResponse(responseCode = "200", description = "Event updated")
+    @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<EventDto> updateEvent(@PathVariable Long id,
                                                  @Valid @RequestBody EventCreateRequest request) {
         return ResponseEntity.ok(eventService.updateEvent(id, request));

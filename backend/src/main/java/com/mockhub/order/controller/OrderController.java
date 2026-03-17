@@ -23,8 +23,14 @@ import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.service.OrderService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api/v1/orders")
+@Tag(name = "Orders", description = "Order creation and management")
 public class OrderController {
 
     private final OrderService orderService;
@@ -37,6 +43,9 @@ public class OrderController {
     }
 
     @PostMapping("/checkout")
+    @Operation(summary = "Checkout", description = "Convert the current cart into an order")
+    @ApiResponse(responseCode = "201", description = "Order created")
+    @ApiResponse(responseCode = "400", description = "Cart is empty or invalid")
     public ResponseEntity<OrderDto> checkout(
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody CheckoutRequest request) {
@@ -46,6 +55,8 @@ public class OrderController {
     }
 
     @GetMapping
+    @Operation(summary = "List orders", description = "Return the current user's order history with pagination")
+    @ApiResponse(responseCode = "200", description = "Orders returned")
     public ResponseEntity<PagedResponse<OrderSummaryDto>> listOrders(
             @AuthenticationPrincipal SecurityUser securityUser,
             @RequestParam(defaultValue = "0") int page,
@@ -55,6 +66,9 @@ public class OrderController {
     }
 
     @GetMapping("/{orderNumber}")
+    @Operation(summary = "Get order by number", description = "Return full details for a specific order")
+    @ApiResponse(responseCode = "200", description = "Order returned")
+    @ApiResponse(responseCode = "404", description = "Order not found")
     public ResponseEntity<OrderDto> getOrder(
             @AuthenticationPrincipal SecurityUser securityUser,
             @PathVariable String orderNumber) {

@@ -27,8 +27,13 @@ import com.mockhub.auth.dto.UserDto;
 import com.mockhub.auth.security.SecurityUser;
 import com.mockhub.auth.service.AuthService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Authentication", description = "User registration, login, and token management")
 public class AuthController {
 
     private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
@@ -43,12 +48,18 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Register a new user", description = "Create a new user account and return an access token")
+    @ApiResponse(responseCode = "201", description = "User registered successfully")
+    @ApiResponse(responseCode = "409", description = "Email already in use")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         AuthResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Log in", description = "Authenticate with email and password, returns access token and sets refresh cookie")
+    @ApiResponse(responseCode = "200", description = "Login successful")
+    @ApiResponse(responseCode = "401", description = "Invalid credentials")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
 
@@ -66,6 +77,9 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
+    @Operation(summary = "Refresh access token", description = "Exchange a refresh token cookie for a new access token")
+    @ApiResponse(responseCode = "200", description = "Token refreshed successfully")
+    @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
     public ResponseEntity<AuthResponse> refresh(
             @CookieValue(name = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
@@ -77,12 +91,18 @@ public class AuthController {
     }
 
     @GetMapping("/me")
+    @Operation(summary = "Get current user", description = "Return the profile of the currently authenticated user")
+    @ApiResponse(responseCode = "200", description = "User profile returned")
+    @ApiResponse(responseCode = "401", description = "Not authenticated")
     public ResponseEntity<UserDto> me(@AuthenticationPrincipal SecurityUser securityUser) {
         UserDto userDto = authService.getCurrentUser(securityUser.getEmail());
         return ResponseEntity.ok(userDto);
     }
 
     @PutMapping("/me")
+    @Operation(summary = "Update current user", description = "Update the profile of the currently authenticated user")
+    @ApiResponse(responseCode = "200", description = "User profile updated")
+    @ApiResponse(responseCode = "401", description = "Not authenticated")
     public ResponseEntity<UserDto> updateMe(
             @AuthenticationPrincipal SecurityUser securityUser,
             @RequestBody UserDto updateRequest) {
