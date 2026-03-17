@@ -6,9 +6,7 @@ test.describe('Accessibility checks', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .analyze();
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
 
     const criticalViolations = results.violations.filter(
       (v) => v.impact === 'critical' || v.impact === 'serious',
@@ -21,9 +19,7 @@ test.describe('Accessibility checks', () => {
     await page.goto('/login');
     await page.waitForLoadState('networkidle');
 
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .analyze();
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
 
     const criticalViolations = results.violations.filter(
       (v) => v.impact === 'critical' || v.impact === 'serious',
@@ -36,9 +32,7 @@ test.describe('Accessibility checks', () => {
     await page.goto('/events');
     await page.waitForLoadState('networkidle');
 
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .analyze();
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
 
     const criticalViolations = results.violations.filter(
       (v) => v.impact === 'critical' || v.impact === 'serious',
@@ -51,9 +45,7 @@ test.describe('Accessibility checks', () => {
     await page.goto('/register');
     await page.waitForLoadState('networkidle');
 
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .analyze();
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
 
     const criticalViolations = results.violations.filter(
       (v) => v.impact === 'critical' || v.impact === 'serious',

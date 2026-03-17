@@ -1,10 +1,6 @@
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { NotificationItem } from './NotificationItem';
 import {
@@ -29,12 +25,7 @@ export function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-          aria-label="Notifications"
-        >
+        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
@@ -72,9 +63,7 @@ export function NotificationBell() {
             </div>
           ) : (
             <div className="flex items-center justify-center py-8">
-              <p className="text-sm text-muted-foreground">
-                No notifications yet
-              </p>
+              <p className="text-sm text-muted-foreground">No notifications yet</p>
             </div>
           )}
         </div>

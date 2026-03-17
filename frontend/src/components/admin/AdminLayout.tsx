@@ -1,12 +1,6 @@
 import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
-import {
-  LayoutDashboard,
-  CalendarDays,
-  Users,
-  Menu,
-  X,
-} from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/lib/constants';
@@ -67,16 +61,8 @@ export function AdminLayout() {
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Mobile sidebar toggle */}
       <div className="mb-4 md:hidden">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          {sidebarOpen ? (
-            <X className="mr-2 h-4 w-4" />
-          ) : (
-            <Menu className="mr-2 h-4 w-4" />
-          )}
+        <Button variant="outline" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          {sidebarOpen ? <X className="mr-2 h-4 w-4" /> : <Menu className="mr-2 h-4 w-4" />}
           Menu
         </Button>
       </div>

@@ -1,17 +1,9 @@
 import apiClient from './client';
 import type { PageResponse } from '@/types/common';
-import type {
-  EventSummary,
-  EventDetail,
-  EventSearchParams,
-  Category,
-  Tag,
-} from '@/types/event';
+import type { EventSummary, EventDetail, EventSearchParams, Category, Tag } from '@/types/event';
 import type { Listing, PriceHistory, SectionAvailability } from '@/types/ticket';
 
-export async function getEvents(
-  params: EventSearchParams,
-): Promise<PageResponse<EventSummary>> {
+export async function getEvents(params: EventSearchParams): Promise<PageResponse<EventSummary>> {
   const response = await apiClient.get<PageResponse<EventSummary>>('/events', { params });
   return response.data;
 }

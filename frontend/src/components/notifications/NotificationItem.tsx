@@ -1,11 +1,4 @@
-import {
-  Bell,
-  DollarSign,
-  Calendar,
-  Package,
-  Tag,
-  Info,
-} from 'lucide-react';
+import { Bell, DollarSign, Calendar, Package, Tag, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/formatters';
 import type { Notification, NotificationType } from '@/types/notification';
@@ -35,10 +28,7 @@ const typeColors: Record<NotificationType, string> = {
  * A single notification row with icon, title, message, timestamp,
  * and read/unread styling. Clicking marks it as read.
  */
-export function NotificationItem({
-  notification,
-  onMarkAsRead,
-}: NotificationItemProps) {
+export function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
   const Icon = typeIcons[notification.type] ?? Bell;
   const iconColor = typeColors[notification.type] ?? 'text-muted-foreground';
 
@@ -74,9 +64,7 @@ export function NotificationItem({
             <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
           )}
         </div>
-        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-          {notification.message}
-        </p>
+        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{notification.message}</p>
         <p className="mt-1 text-xs text-muted-foreground/70">
           {formatRelativeTime(notification.createdAt)}
         </p>

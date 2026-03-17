@@ -45,8 +45,8 @@ export function HomePage() {
               <span className="text-primary"> Live Experience</span>
             </h1>
             <p className="mt-4 text-lg text-muted-foreground sm:text-xl">
-              MockHub is a secondary ticket marketplace where fans buy and sell tickets to
-              concerts, festivals, and live events. Discover amazing shows at fair prices.
+              MockHub is a secondary ticket marketplace where fans buy and sell tickets to concerts,
+              festivals, and live events. Discover amazing shows at fair prices.
             </p>
             <div className="mx-auto mt-8 max-w-xl">
               <EventSearch
@@ -70,9 +70,7 @@ export function HomePage() {
       <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Featured Events
-            </h2>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Featured Events</h2>
             <Button variant="ghost" asChild>
               <Link to={ROUTES.EVENTS}>
                 View all
@@ -89,8 +87,7 @@ export function HomePage() {
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
           <h3 className="text-lg font-semibold">Looking for something specific?</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Browse our full catalog of events with advanced filtering, sorting, and
-            search.
+            Browse our full catalog of events with advanced filtering, sorting, and search.
           </p>
           <Button className="mt-4" asChild>
             <Link to={ROUTES.EVENTS}>
@@ -106,9 +103,9 @@ export function HomePage() {
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
           <h3 className="text-lg font-semibold">Built for Learning</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            MockHub is a teaching platform designed for undergraduate AI students. It
-            demonstrates modern web development patterns including React 19, TypeScript,
-            Spring Boot, and AI integration with real-world architecture decisions.
+            MockHub is a teaching platform designed for undergraduate AI students. It demonstrates
+            modern web development patterns including React 19, TypeScript, Spring Boot, and AI
+            integration with real-world architecture decisions.
           </p>
         </div>
       </section>

@@ -74,9 +74,7 @@ export function EventCard({ event }: EventCardProps) {
             {event.categoryName}
           </Badge>
         </div>
-        {event.artistName && (
-          <p className="text-sm text-muted-foreground">{event.artistName}</p>
-        )}
+        {event.artistName && <p className="text-sm text-muted-foreground">{event.artistName}</p>}
       </CardHeader>
       <CardContent className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

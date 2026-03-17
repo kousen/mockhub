@@ -157,10 +157,7 @@ export const handlers = [
   }),
 
   http.post(`${API_BASE}/cart/items`, () => {
-    return HttpResponse.json(
-      { ...mockCart, itemCount: 1, subtotal: 75.0 },
-      { status: 201 },
-    );
+    return HttpResponse.json({ ...mockCart, itemCount: 1, subtotal: 75.0 }, { status: 201 });
   }),
 
   http.delete(`${API_BASE}/cart/items/:id`, () => {

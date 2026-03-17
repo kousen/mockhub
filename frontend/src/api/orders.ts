@@ -7,10 +7,7 @@ export async function checkout(data: CheckoutRequest): Promise<Order> {
   return response.data;
 }
 
-export async function getOrders(
-  page?: number,
-  size?: number,
-): Promise<PageResponse<OrderSummary>> {
+export async function getOrders(page?: number, size?: number): Promise<PageResponse<OrderSummary>> {
   const response = await apiClient.get<PageResponse<OrderSummary>>('/orders', {
     params: { page, size },
   });

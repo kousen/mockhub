@@ -62,8 +62,7 @@ export function useUpdateEvent(eventId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: UpdateEventRequest) =>
-      adminApi.updateEvent(eventId, data),
+    mutationFn: (data: UpdateEventRequest) => adminApi.updateEvent(eventId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'events'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
@@ -141,8 +140,7 @@ export function useGenerateTickets() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: GenerateTicketsRequest) =>
-      adminApi.generateTickets(data),
+    mutationFn: (data: GenerateTicketsRequest) => adminApi.generateTickets(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'events'] });
     },

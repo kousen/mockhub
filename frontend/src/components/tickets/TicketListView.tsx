@@ -146,10 +146,7 @@ export function TicketListView({ listings, isLoading }: TicketListViewProps) {
                 </Badge>
               </TableCell>
               <TableCell>
-                <PriceTag
-                  computedPrice={listing.computedPrice}
-                  listedPrice={listing.listedPrice}
-                />
+                <PriceTag computedPrice={listing.computedPrice} listedPrice={listing.listedPrice} />
               </TableCell>
               <TableCell className="text-right">
                 <Button

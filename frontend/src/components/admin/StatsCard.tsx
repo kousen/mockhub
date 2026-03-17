@@ -24,12 +24,7 @@ export function StatsCard({ label, value, icon: Icon, trend }: StatsCardProps) {
           <p className="text-sm text-muted-foreground">{label}</p>
           <p className="text-2xl font-bold">{value}</p>
           {trend !== undefined && trend !== null && (
-            <p
-              className={cn(
-                'mt-1 text-xs',
-                trend >= 0 ? 'text-green-600' : 'text-red-600',
-              )}
-            >
+            <p className={cn('mt-1 text-xs', trend >= 0 ? 'text-green-600' : 'text-red-600')}>
               {trend >= 0 ? '+' : ''}
               {trend.toFixed(1)}% from last period
             </p>

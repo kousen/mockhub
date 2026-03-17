@@ -12,11 +12,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  useAdminEvent,
-  useCreateEvent,
-  useUpdateEvent,
-} from '@/hooks/use-admin';
+import { useAdminEvent, useCreateEvent, useUpdateEvent } from '@/hooks/use-admin';
 import { useCategories } from '@/hooks/use-events';
 import { ROUTES } from '@/lib/constants';
 import type { CreateEventRequest, UpdateEventRequest } from '@/types/admin';
@@ -53,8 +49,7 @@ export function AdminEventFormPage() {
   const isEditing = Boolean(id);
   const eventId = id ? parseInt(id, 10) : 0;
 
-  const { data: existingEvent, isLoading: eventLoading } =
-    useAdminEvent(eventId);
+  const { data: existingEvent, isLoading: eventLoading } = useAdminEvent(eventId);
   const { data: categories, isLoading: categoriesLoading } = useCategories();
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent(eventId);
@@ -67,9 +62,7 @@ export function AdminEventFormPage() {
         venueId: existingEvent.venue.id.toString(),
         categoryId: existingEvent.category.id.toString(),
         eventDate: existingEvent.eventDate.slice(0, 16),
-        doorsOpenAt: existingEvent.doorsOpenAt
-          ? existingEvent.doorsOpenAt.slice(0, 16)
-          : '',
+        doorsOpenAt: existingEvent.doorsOpenAt ? existingEvent.doorsOpenAt.slice(0, 16) : '',
         basePrice: existingEvent.basePrice.toString(),
         description: existingEvent.description ?? '',
       };
@@ -125,9 +118,7 @@ export function AdminEventFormPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">
-        {isEditing ? 'Edit Event' : 'Create Event'}
-      </h1>
+      <h1 className="text-2xl font-bold">{isEditing ? 'Edit Event' : 'Create Event'}</h1>
 
       <Card>
         <CardHeader>
@@ -238,17 +229,9 @@ export function AdminEventFormPage() {
 
             <div className="flex gap-3">
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? 'Saving...'
-                  : isEditing
-                    ? 'Update Event'
-                    : 'Create Event'}
+                {isSubmitting ? 'Saving...' : isEditing ? 'Update Event' : 'Create Event'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate(ROUTES.ADMIN_EVENTS)}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate(ROUTES.ADMIN_EVENTS)}>
                 Cancel
               </Button>
             </div>

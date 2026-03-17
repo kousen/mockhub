@@ -49,9 +49,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
         <span className="text-muted-foreground">Price: </span>
         <span className="font-semibold">{formatCurrency(data.price)}</span>
       </p>
-      <p className="text-xs text-muted-foreground">
-        Multiplier: {data.multiplier.toFixed(2)}x
-      </p>
+      <p className="text-xs text-muted-foreground">Multiplier: {data.multiplier.toFixed(2)}x</p>
       <p className="text-xs text-muted-foreground">
         Supply: {(data.supplyRatio * 100).toFixed(0)}%
       </p>
@@ -83,9 +81,7 @@ export function PriceHistoryChart({ data, isLoading }: PriceHistoryChartProps) {
   }
 
   const chartData: ChartDataPoint[] = data
-    .sort(
-      (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
-    )
+    .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())
     .map((entry) => ({
       date: formatShortDate(entry.recordedAt),
       price: entry.price,
@@ -103,11 +99,7 @@ export function PriceHistoryChart({ data, isLoading }: PriceHistoryChartProps) {
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-          <XAxis
-            dataKey="date"
-            tick={{ fontSize: 12 }}
-            className="fill-muted-foreground"
-          />
+          <XAxis dataKey="date" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
           <YAxis
             domain={[minPrice, maxPrice]}
             tickFormatter={(value: number) => `$${value}`}

@@ -19,9 +19,7 @@ export function PriceDisplay({ price, originalPrice, prefix, className }: PriceD
 
   return (
     <div className={cn('flex items-center gap-1.5', className)}>
-      {prefix && (
-        <span className="text-xs text-muted-foreground">{prefix}</span>
-      )}
+      {prefix && <span className="text-xs text-muted-foreground">{prefix}</span>}
       <span
         className={cn(
           'font-semibold',

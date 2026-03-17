@@ -91,11 +91,7 @@ export function CartPage() {
         </div>
         <div>
           <CartSummary subtotal={cart.subtotal} itemCount={cart.itemCount} />
-          <Button
-            variant="link"
-            className="mt-3 w-full text-sm"
-            asChild
-          >
+          <Button variant="link" className="mt-3 w-full text-sm" asChild>
             <Link to={ROUTES.EVENTS}>Continue Shopping</Link>
           </Button>
         </div>

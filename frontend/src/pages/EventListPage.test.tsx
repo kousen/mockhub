@@ -29,9 +29,7 @@ vi.mock('@/hooks/use-events', () => ({
     isLoading: false,
   }),
   useCategories: () => ({
-    data: [
-      { id: 1, name: 'Concert', slug: 'concert', icon: 'music', sortOrder: 1 },
-    ],
+    data: [{ id: 1, name: 'Concert', slug: 'concert', icon: 'music', sortOrder: 1 }],
     isLoading: false,
   }),
   useTags: () => ({

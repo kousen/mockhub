@@ -83,7 +83,8 @@ export function useRemoveFromCart() {
           ...previousCart,
           items: previousCart.items.filter((item) => item.id !== itemId),
           itemCount: Math.max(0, previousCart.itemCount - 1),
-          subtotal: previousCart.subtotal -
+          subtotal:
+            previousCart.subtotal -
             (previousCart.items.find((item) => item.id === itemId)?.currentPrice ?? 0),
         };
         queryClient.setQueryData(['cart'], optimisticCart);

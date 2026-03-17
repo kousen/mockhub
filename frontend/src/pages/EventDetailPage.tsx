@@ -43,8 +43,7 @@ export function EventDetailPage() {
 
   const { data: event, isLoading: eventLoading } = useEvent(eventSlug);
   const { data: listings, isLoading: listingsLoading } = useEventListings(eventSlug);
-  const { data: priceHistory, isLoading: priceHistoryLoading } =
-    useEventPriceHistory(eventSlug);
+  const { data: priceHistory, isLoading: priceHistoryLoading } = useEventPriceHistory(eventSlug);
   const { data: sections, isLoading: sectionsLoading } = useEventSections(eventSlug);
 
   if (eventLoading) {

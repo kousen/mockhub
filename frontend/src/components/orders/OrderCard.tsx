@@ -9,9 +9,7 @@ interface OrderCardProps {
   order: OrderSummary;
 }
 
-function getStatusVariant(
-  status: string,
-): 'default' | 'secondary' | 'destructive' | 'outline' {
+function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (status.toUpperCase()) {
     case 'CONFIRMED':
       return 'default';

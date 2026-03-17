@@ -44,9 +44,7 @@ export function CategoryNav({ activeCategory, onCategoryChange }: CategoryNavPro
           variant={activeCategory === category.slug ? 'default' : 'outline'}
           className="shrink-0 cursor-pointer"
           onClick={() =>
-            onCategoryChange(
-              activeCategory === category.slug ? undefined : category.slug,
-            )
+            onCategoryChange(activeCategory === category.slug ? undefined : category.slug)
           }
         >
           {category.name}

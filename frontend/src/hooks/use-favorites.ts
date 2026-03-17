@@ -44,20 +44,13 @@ export function useAddFavorite() {
       await queryClient.cancelQueries({
         queryKey: ['favorites', 'check', eventId],
       });
-      const previousValue = queryClient.getQueryData<boolean>([
-        'favorites',
-        'check',
-        eventId,
-      ]);
+      const previousValue = queryClient.getQueryData<boolean>(['favorites', 'check', eventId]);
       queryClient.setQueryData(['favorites', 'check', eventId], true);
       return { previousValue, eventId };
     },
     onError: (_error, _variables, context) => {
       if (context) {
-        queryClient.setQueryData(
-          ['favorites', 'check', context.eventId],
-          context.previousValue,
-        );
+        queryClient.setQueryData(['favorites', 'check', context.eventId], context.previousValue);
       }
     },
     onSettled: () => {
@@ -79,17 +72,11 @@ export function useRemoveFavorite() {
       await queryClient.cancelQueries({
         queryKey: ['favorites', 'check', eventId],
       });
-      const previousValue = queryClient.getQueryData<boolean>([
-        'favorites',
-        'check',
-        eventId,
-      ]);
+      const previousValue = queryClient.getQueryData<boolean>(['favorites', 'check', eventId]);
       queryClient.setQueryData(['favorites', 'check', eventId], false);
 
       // Optimistically remove from favorites list
-      const previousFavorites = queryClient.getQueryData<Favorite[]>([
-        'favorites',
-      ]);
+      const previousFavorites = queryClient.getQueryData<Favorite[]>(['favorites']);
       if (previousFavorites) {
         queryClient.setQueryData(
           ['favorites'],
@@ -101,10 +88,7 @@ export function useRemoveFavorite() {
     },
     onError: (_error, _variables, context) => {
       if (context) {
-        queryClient.setQueryData(
-          ['favorites', 'check', context.eventId],
-          context.previousValue,
-        );
+        queryClient.setQueryData(['favorites', 'check', context.eventId], context.previousValue);
         if (context.previousFavorites) {
           queryClient.setQueryData(['favorites'], context.previousFavorites);
         }

@@ -2,11 +2,7 @@ import { Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
-import {
-  useCheckFavorite,
-  useAddFavorite,
-  useRemoveFavorite,
-} from '@/hooks/use-favorites';
+import { useCheckFavorite, useAddFavorite, useRemoveFavorite } from '@/hooks/use-favorites';
 
 interface FavoriteButtonProps {
   eventId?: number;

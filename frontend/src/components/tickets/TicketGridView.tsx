@@ -80,13 +80,10 @@ export function TicketGridView({ sections, isLoading, onSectionClick }: TicketGr
                     <div className="text-right text-sm">
                       {section.minPrice !== null && section.maxPrice !== null ? (
                         section.minPrice === section.maxPrice ? (
-                          <span className="font-medium">
-                            {formatCurrency(section.minPrice)}
-                          </span>
+                          <span className="font-medium">{formatCurrency(section.minPrice)}</span>
                         ) : (
                           <span className="font-medium">
-                            {formatCurrency(section.minPrice)} -{' '}
-                            {formatCurrency(section.maxPrice)}
+                            {formatCurrency(section.minPrice)} - {formatCurrency(section.maxPrice)}
                           </span>
                         )
                       ) : (

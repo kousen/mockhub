@@ -90,9 +90,7 @@ export function OrderConfirmationPage() {
       <Separator className="my-6" />
 
       {/* Items */}
-      <h2 className="mb-3 text-lg font-semibold">
-        Tickets ({order.items.length})
-      </h2>
+      <h2 className="mb-3 text-lg font-semibold">Tickets ({order.items.length})</h2>
       <div className="space-y-2">
         {order.items.map((item) => (
           <OrderItemRow key={item.id} item={item} />

@@ -16,8 +16,6 @@ export async function removeFavorite(eventId: number): Promise<void> {
 }
 
 export async function checkFavorite(eventId: number): Promise<boolean> {
-  const response = await apiClient.get<{ favorited: boolean }>(
-    `/favorites/check/${eventId}`,
-  );
+  const response = await apiClient.get<{ favorited: boolean }>(`/favorites/check/${eventId}`);
   return response.data.favorited;
 }

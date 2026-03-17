@@ -18,11 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  useAdminUsers,
-  useUpdateUserRoles,
-  useUpdateUserStatus,
-} from '@/hooks/use-admin';
+import { useAdminUsers, useUpdateUserRoles, useUpdateUserStatus } from '@/hooks/use-admin';
 import { formatShortDate } from '@/lib/formatters';
 
 const roleOptions = ['ROLE_USER', 'ROLE_ADMIN'];
@@ -44,9 +40,7 @@ export function AdminUsersPage() {
   };
 
   const handleRoleChange = (userId: number, role: string) => {
-    const roles = role === 'ROLE_ADMIN'
-      ? ['ROLE_USER', 'ROLE_ADMIN']
-      : ['ROLE_USER'];
+    const roles = role === 'ROLE_ADMIN' ? ['ROLE_USER', 'ROLE_ADMIN'] : ['ROLE_USER'];
     updateRoles.mutate({ userId, roles });
   };
 
@@ -70,12 +64,24 @@ export function AdminUsersPage() {
             <TableBody>
               {Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-10" /></TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-8" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-8 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-10" />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -103,9 +109,7 @@ export function AdminUsersPage() {
                         <p className="font-medium">
                           {user.firstName} {user.lastName}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {user.email}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -113,9 +117,7 @@ export function AdminUsersPage() {
                         {user.roles.map((role) => (
                           <Badge
                             key={role}
-                            variant={
-                              role === 'ROLE_ADMIN' ? 'default' : 'secondary'
-                            }
+                            variant={role === 'ROLE_ADMIN' ? 'default' : 'secondary'}
                             className="text-xs"
                           >
                             {role.replace('ROLE_', '')}
@@ -123,19 +125,13 @@ export function AdminUsersPage() {
                         ))}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">
-                      {user.orderCount}
-                    </TableCell>
+                    <TableCell className="text-sm">{user.orderCount}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatShortDate(user.createdAt)}
                     </TableCell>
                     <TableCell>
                       <Select
-                        value={
-                          user.roles.includes('ROLE_ADMIN')
-                            ? 'ROLE_ADMIN'
-                            : 'ROLE_USER'
-                        }
+                        value={user.roles.includes('ROLE_ADMIN') ? 'ROLE_ADMIN' : 'ROLE_USER'}
                         onValueChange={(val) => handleRoleChange(user.id, val)}
                       >
                         <SelectTrigger className="w-28">
@@ -153,9 +149,7 @@ export function AdminUsersPage() {
                     <TableCell>
                       <Switch
                         checked={user.enabled}
-                        onCheckedChange={(checked) =>
-                          handleStatusToggle(user.id, checked)
-                        }
+                        onCheckedChange={(checked) => handleStatusToggle(user.id, checked)}
                         aria-label={`${user.enabled ? 'Disable' : 'Enable'} ${user.firstName} ${user.lastName}`}
                       />
                     </TableCell>
@@ -191,9 +185,7 @@ export function AdminUsersPage() {
           )}
         </>
       ) : (
-        <p className="py-8 text-center text-muted-foreground">
-          No users found.
-        </p>
+        <p className="py-8 text-center text-muted-foreground">No users found.</p>
       )}
     </div>
   );

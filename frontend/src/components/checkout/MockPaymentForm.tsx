@@ -26,12 +26,7 @@ export function MockPaymentForm({ total, onSubmit, isProcessing }: MockPaymentFo
         <p className="text-xs text-muted-foreground">Amount to pay</p>
         <p className="text-2xl font-bold">{formatCurrency(total)}</p>
       </div>
-      <Button
-        className="w-full"
-        size="lg"
-        onClick={onSubmit}
-        disabled={isProcessing}
-      >
+      <Button className="w-full" size="lg" onClick={onSubmit} disabled={isProcessing}>
         {isProcessing ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -34,9 +34,7 @@ export function MobileNav() {
   const navLinkClass = (path: string) =>
     cn(
       'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-      isActive(path)
-        ? 'bg-primary/10 text-primary'
-        : 'text-foreground hover:bg-accent',
+      isActive(path) ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent',
     );
 
   return (
@@ -49,11 +47,7 @@ export function MobileNav() {
           </SheetTitle>
         </SheetHeader>
         <nav className="mt-6 flex flex-col gap-2">
-          <Link
-            to={ROUTES.EVENTS}
-            onClick={closeMobileNav}
-            className={navLinkClass(ROUTES.EVENTS)}
-          >
+          <Link to={ROUTES.EVENTS} onClick={closeMobileNav} className={navLinkClass(ROUTES.EVENTS)}>
             <Ticket className="h-4 w-4" />
             Events
           </Link>
@@ -68,11 +62,7 @@ export function MobileNav() {
                 </p>
                 <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
-              <Link
-                to={ROUTES.CART}
-                onClick={closeMobileNav}
-                className={navLinkClass(ROUTES.CART)}
-              >
+              <Link to={ROUTES.CART} onClick={closeMobileNav} className={navLinkClass(ROUTES.CART)}>
                 <ShoppingCart className="h-4 w-4" />
                 Cart
                 {itemCount > 0 && (

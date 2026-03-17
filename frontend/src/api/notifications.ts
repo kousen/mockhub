@@ -6,17 +6,14 @@ export async function getNotifications(
   page?: number,
   size?: number,
 ): Promise<PageResponse<Notification>> {
-  const response = await apiClient.get<PageResponse<Notification>>(
-    '/notifications',
-    { params: { page, size } },
-  );
+  const response = await apiClient.get<PageResponse<Notification>>('/notifications', {
+    params: { page, size },
+  });
   return response.data;
 }
 
 export async function getUnreadCount(): Promise<number> {
-  const response = await apiClient.get<UnreadCountResponse>(
-    '/notifications/unread-count',
-  );
+  const response = await apiClient.get<UnreadCountResponse>('/notifications/unread-count');
   return response.data.count;
 }
 

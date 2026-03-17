@@ -175,10 +175,7 @@ export function EventListPage() {
 
       {/* Category Navigation */}
       <div className="mb-6">
-        <CategoryNav
-          activeCategory={filters.category}
-          onCategoryChange={handleCategoryChange}
-        />
+        <CategoryNav activeCategory={filters.category} onCategoryChange={handleCategoryChange} />
       </div>
 
       {/* Main Content: Filters + Grid */}
@@ -199,10 +196,7 @@ export function EventListPage() {
             </p>
             <div className="flex items-center gap-2">
               <ArrowUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <Select
-                value={filters.sort ?? 'date'}
-                onValueChange={handleSortChange}
-              >
+              <Select value={filters.sort ?? 'date'} onValueChange={handleSortChange}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -228,7 +222,9 @@ export function EventListPage() {
                   <PaginationItem>
                     <PaginationPrevious
                       onClick={() => handlePageChange(Math.max(0, currentPage - 1))}
-                      className={currentPage === 0 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      className={
+                        currentPage === 0 ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                      }
                     />
                   </PaginationItem>
                   {pageNumbers.map((pageNum) => (
@@ -244,10 +240,12 @@ export function EventListPage() {
                   ))}
                   <PaginationItem>
                     <PaginationNext
-                      onClick={() =>
-                        handlePageChange(Math.min(totalPages - 1, currentPage + 1))
+                      onClick={() => handlePageChange(Math.min(totalPages - 1, currentPage + 1))}
+                      className={
+                        currentPage >= totalPages - 1
+                          ? 'pointer-events-none opacity-50'
+                          : 'cursor-pointer'
                       }
-                      className={currentPage >= totalPages - 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                     />
                   </PaginationItem>
                 </PaginationContent>

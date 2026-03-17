@@ -81,18 +81,13 @@ export function SeatSelector({
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between text-xs">
-                <Badge
-                  variant={isAvailable ? 'secondary' : 'outline'}
-                  className="text-xs"
-                >
+                <Badge variant={isAvailable ? 'secondary' : 'outline'} className="text-xs">
                   {section.availableCount} ticket{section.availableCount !== 1 ? 's' : ''}
                 </Badge>
                 {section.minPrice !== null ? (
                   <span className="font-medium text-sm">
                     {formatCurrency(section.minPrice)}
-                    {section.maxPrice !== null && section.maxPrice !== section.minPrice
-                      ? `+`
-                      : ''}
+                    {section.maxPrice !== null && section.maxPrice !== section.minPrice ? `+` : ''}
                   </span>
                 ) : (
                   <span className="text-muted-foreground">-</span>

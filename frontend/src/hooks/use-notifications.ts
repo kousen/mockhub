@@ -42,20 +42,13 @@ export function useMarkAsRead() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (notificationId: number) =>
-      notificationsApi.markAsRead(notificationId),
+    mutationFn: (notificationId: number) => notificationsApi.markAsRead(notificationId),
     onMutate: async (notificationId) => {
       await queryClient.cancelQueries({ queryKey: ['notifications'] });
 
-      const previousCount = queryClient.getQueryData<number>([
-        'notifications',
-        'unread-count',
-      ]);
+      const previousCount = queryClient.getQueryData<number>(['notifications', 'unread-count']);
       if (previousCount !== undefined && previousCount > 0) {
-        queryClient.setQueryData(
-          ['notifications', 'unread-count'],
-          previousCount - 1,
-        );
+        queryClient.setQueryData(['notifications', 'unread-count'], previousCount - 1);
       }
 
       // Update the notification in any cached page
@@ -65,9 +58,7 @@ export function useMarkAsRead() {
           if (!old || !('content' in old)) return old;
           return {
             ...old,
-            content: old.content.map((n) =>
-              n.id === notificationId ? { ...n, isRead: true } : n,
-            ),
+            content: old.content.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n)),
           };
         },
       );
@@ -76,10 +67,7 @@ export function useMarkAsRead() {
     },
     onError: (_error, _variables, context) => {
       if (context?.previousCount !== undefined) {
-        queryClient.setQueryData(
-          ['notifications', 'unread-count'],
-          context.previousCount,
-        );
+        queryClient.setQueryData(['notifications', 'unread-count'], context.previousCount);
       }
     },
     onSettled: () => {
@@ -100,10 +88,7 @@ export function useMarkAllAsRead() {
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['notifications'] });
 
-      const previousCount = queryClient.getQueryData<number>([
-        'notifications',
-        'unread-count',
-      ]);
+      const previousCount = queryClient.getQueryData<number>(['notifications', 'unread-count']);
       queryClient.setQueryData(['notifications', 'unread-count'], 0);
 
       queryClient.setQueriesData<PageResponse<Notification>>(
@@ -121,10 +106,7 @@ export function useMarkAllAsRead() {
     },
     onError: (_error, _variables, context) => {
       if (context?.previousCount !== undefined) {
-        queryClient.setQueryData(
-          ['notifications', 'unread-count'],
-          context.previousCount,
-        );
+        queryClient.setQueryData(['notifications', 'unread-count'], context.previousCount);
       }
     },
     onSettled: () => {

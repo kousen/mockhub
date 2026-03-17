@@ -16,19 +16,10 @@ export function OrderReview({ cart }: OrderReviewProps) {
       <h2 className="text-lg font-semibold">Review Your Order</h2>
       <div className="space-y-2">
         {cart.items.map((item) => (
-          <CartItem
-            key={item.id}
-            item={item}
-            onRemove={() => {}}
-            readOnly
-          />
+          <CartItem key={item.id} item={item} onRemove={() => {}} readOnly />
         ))}
       </div>
-      <CartSummary
-        subtotal={cart.subtotal}
-        itemCount={cart.itemCount}
-        showCheckoutButton={false}
-      />
+      <CartSummary subtotal={cart.subtotal} itemCount={cart.itemCount} showCheckoutButton={false} />
     </div>
   );
 }
