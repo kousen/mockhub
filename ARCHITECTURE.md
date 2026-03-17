@@ -22,6 +22,7 @@ mockhub/
 │   │   │   │   │   ├── JacksonConfig.java
 │   │   │   │   │   ├── OpenApiConfig.java
 │   │   │   │   │   ├── StripeConfig.java
+│   │   │   │   │   ├── AiConfig.java
 │   │   │   │   │   └── StorageConfig.java
 │   │   │   │   ├── auth/
 │   │   │   │   │   ├── controller/AuthController.java
@@ -150,6 +151,17 @@ mockhub/
 │   │   │   │   │   ├── controller/SearchController.java
 │   │   │   │   │   ├── dto/SearchResultDto.java
 │   │   │   │   │   └── service/SearchService.java
+│   │   │   │   ├── ai/
+│   │   │   │   │   ├── controller/AiController.java         # Stub endpoints (501)
+│   │   │   │   │   ├── dto/
+│   │   │   │   │   │   ├── ChatRequest.java
+│   │   │   │   │   │   ├── ChatResponse.java
+│   │   │   │   │   │   ├── RecommendationDto.java
+│   │   │   │   │   │   └── PricePredictionDto.java
+│   │   │   │   │   └── service/
+│   │   │   │   │       ├── AiChatService.java               # Stub for student implementation
+│   │   │   │   │       ├── RecommendationService.java       # Stub for student implementation
+│   │   │   │   │       └── EmbeddingService.java            # Vector store integration
 │   │   │   │   ├── seed/
 │   │   │   │   │   ├── DataSeeder.java
 │   │   │   │   │   ├── VenueSeeder.java
@@ -175,6 +187,7 @@ mockhub/
 │   │   │       ├── application-docker.yml
 │   │   │       ├── application-test.yml
 │   │   │       ├── db/migration/               # Flyway migrations
+│   │   │       │   ├── V0__enable_pgvector.sql
 │   │   │       │   ├── V1__create_users.sql
 │   │   │       │   ├── V2__create_venues_seats.sql
 │   │   │       │   ├── V3__create_events.sql
@@ -187,7 +200,8 @@ mockhub/
 │   │   │       │   ├── V10__create_search_indexes.sql
 │   │   │       │   ├── V11__create_transaction_logs.sql
 │   │   │       │   ├── V12__create_conversations.sql
-│   │   │       │   └── V13__create_user_preferences.sql
+│   │   │       │   ├── V13__create_user_preferences.sql
+│   │   │       │   └── V14__create_embeddings.sql
 │   │   │       └── seed/
 │   │   │           ├── venues.json
 │   │   │           ├── events.json
@@ -1365,7 +1379,7 @@ public class SecurityConfig {
 - Access token: 15-minute expiry, stored in memory on frontend (not localStorage for security teaching)
 - Refresh token: 7-day expiry, stored in HttpOnly cookie
 - Token includes: userId, email, roles, expiry
-- Library: `io.jsonwebtoken:jjwt-api:0.12.6`
+- Library: `io.jsonwebtoken:jjwt-api` (latest 0.12.x)
 
 #### Authentication Flow
 
@@ -1710,6 +1724,158 @@ record EventSummaryDto(Long id, String name, String slug,
     BigDecimal minPrice, int availableTickets, String primaryImageUrl) {}
 ```
 
+### 4.10 Dependencies
+
+**Build tool:** Gradle 9.4.0 (Kotlin DSL)
+
+**Platform:** Java 25, Spring Boot 4, Spring AI 2.0.0-M3
+
+Note: Spring AI 2.0.0-M3 is a milestone release. The Gradle build must include the Spring Milestones repository (`https://repo.spring.io/milestone`).
+
+#### Core Spring Boot Starters
+
+| Dependency | Purpose |
+|---|---|
+| `spring-boot-starter-web` | REST controllers, Jackson JSON |
+| `spring-boot-starter-data-jpa` | JPA/Hibernate, Spring Data repositories |
+| `spring-boot-starter-security` | Authentication, authorization |
+| `spring-boot-starter-validation` | Jakarta Bean Validation (`@NotBlank`, `@Positive`, etc.) |
+| `spring-boot-starter-cache` | `@Cacheable` with ConcurrentMap (Redis-swappable later) |
+| `spring-boot-starter-actuator` | Health checks, metrics, info endpoints |
+
+#### Spring AI
+
+| Dependency | Purpose |
+|---|---|
+| `spring-ai-anthropic-spring-boot-starter` | Claude model integration |
+| `spring-ai-openai-spring-boot-starter` | OpenAI model integration |
+| `spring-ai-ollama-spring-boot-starter` | Local model alternative (no API key needed) |
+| `spring-ai-pgvector-store-spring-boot-starter` | Vector embeddings stored in PostgreSQL via pgvector |
+
+Spring AI provider selection is controlled via Spring profiles:
+- `ai-anthropic` — uses Anthropic Claude (requires `ANTHROPIC_API_KEY`)
+- `ai-openai` — uses OpenAI (requires `OPENAI_API_KEY`)
+- `ai-ollama` — uses local Ollama instance (no key, requires Ollama running)
+
+**AiConfig.java** configures the `ChatClient`, `EmbeddingModel`, and `VectorStore` beans. The `VectorStore` uses PGVector backed by the same PostgreSQL instance as the rest of the app.
+
+#### Database
+
+| Dependency | Purpose |
+|---|---|
+| `org.postgresql:postgresql` | PostgreSQL JDBC driver |
+| `com.h2database:h2` | H2 for dev profile (runtimeOnly) |
+| `org.flywaydb:flyway-core` | Database migrations |
+| `org.flywaydb:flyway-database-postgresql` | PostgreSQL-specific Flyway support |
+
+The Docker PostgreSQL image is `pgvector/pgvector:pg17` (PostgreSQL 17 with the pgvector extension preinstalled). Migration `V0__enable_pgvector.sql` runs `CREATE EXTENSION IF NOT EXISTS vector;`. Migration `V14__create_embeddings.sql` creates the vector store table for Spring AI.
+
+#### Security
+
+| Dependency | Purpose |
+|---|---|
+| `io.jsonwebtoken:jjwt-api` | JWT token creation and validation |
+| `io.jsonwebtoken:jjwt-impl` | JWT implementation (runtimeOnly) |
+| `io.jsonwebtoken:jjwt-jackson` | JWT JSON serialization (runtimeOnly) |
+
+#### API Documentation
+
+| Dependency | Purpose |
+|---|---|
+| `org.springdoc:springdoc-openapi-starter-webmvc-ui` | Swagger UI at `/swagger-ui.html` |
+
+#### Payments
+
+| Dependency | Purpose |
+|---|---|
+| `com.stripe:stripe-java` | Stripe test mode integration |
+
+#### Image Processing
+
+| Dependency | Purpose |
+|---|---|
+| `net.coobird:thumbnailator` | Thumbnail generation (simpler than java.awt) |
+
+#### Data Generation
+
+| Dependency | Purpose |
+|---|---|
+| `net.datafaker:datafaker` | Realistic fake data for seed generation and tests |
+
+#### Testing
+
+| Dependency | Purpose |
+|---|---|
+| `spring-boot-starter-test` | JUnit 5, Mockito, MockMvc, AssertJ |
+| `spring-security-test` | Security context testing helpers |
+| `org.testcontainers:postgresql` | Real PostgreSQL in integration tests |
+| `org.testcontainers:junit-jupiter` | Testcontainers JUnit 5 integration |
+
+### 4.11 Spring AI Integration
+
+Spring AI is included in the foundation to provide a consistent, Spring-native abstraction layer for all AI exercises. Students work with familiar patterns (dependency injection, auto-configuration, Spring profiles) rather than raw HTTP clients.
+
+#### What v1 Provides
+
+1. **AiConfig.java** — auto-configures `ChatClient`, `EmbeddingModel`, and `VectorStore` beans based on active profile
+2. **EmbeddingService** — wraps `VectorStore` for storing and querying event embeddings (descriptions, artist bios, tags)
+3. **Stub endpoints** (`AiController`) — return 501 Not Implemented with fully defined request/response schemas in OpenAPI, giving students stable API contracts
+4. **PGVector table** (`V14__create_embeddings.sql`) — ready for vector similarity queries
+
+#### What Students Build
+
+Students implement the stub services to bring the endpoints to life:
+- `AiChatService` → `POST /api/v1/chat` (customer support chatbot using `ChatClient`)
+- `RecommendationService` → `GET /api/v1/recommendations` (vector similarity + collaborative filtering)
+- Enhanced `SearchService` → `POST /api/v1/search/natural-language` (embed query, search PGVector)
+- Enhanced `PricingEngine` → `GET /api/v1/events/{slug}/predicted-price` (ML price prediction)
+
+#### Application YAML (AI section)
+
+```yaml
+# In application.yml (shared defaults)
+spring:
+  ai:
+    vectorstore:
+      pgvector:
+        dimensions: 1536
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+
+# In application-ai-anthropic.yml
+spring:
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+      chat:
+        options:
+          model: claude-sonnet-4-5-20250514
+
+# In application-ai-openai.yml
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o
+      embedding:
+        options:
+          model: text-embedding-3-small
+
+# In application-ai-ollama.yml
+spring:
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: llama3.2
+      embedding:
+        options:
+          model: nomic-embed-text
+```
+
 ---
 
 ## 5. Frontend Architecture
@@ -1931,16 +2097,19 @@ Run against full docker-compose stack (real backend + database).
 **Goal:** Project scaffolding, database, basic auth, and a single page rendering.
 
 **Backend tasks:**
-1. Initialize Spring Boot project with Gradle (Java 25, Spring Boot 3.4.x)
-2. Add dependencies: Spring Web, Spring Data JPA, Spring Security, Spring Validation, Flyway, PostgreSQL driver, H2, jjwt, springdoc-openapi, Lombok (optional -- records may suffice)
-3. Create `application.yml` with dev/docker/test profiles
-4. Implement `BaseEntity`
-5. Write Flyway migrations V1 through V4 (users, roles, venues, sections, rows, seats, events, categories, tags)
-6. Implement User entity, Role entity, `user_roles` join
-7. Implement `SecurityConfig`, `JwtTokenProvider`, `JwtAuthenticationFilter`, `UserDetailsServiceImpl`
-8. Implement `AuthController` with register/login/me endpoints
-9. Implement `GlobalExceptionHandler` and custom exceptions
-10. Implement `OpenApiConfig` for Swagger UI at `/swagger-ui.html`
+1. Initialize Spring Boot project with Gradle 9.4.0 (Kotlin DSL, Java 25, Spring Boot 4)
+2. Add all dependencies including Spring AI 2.0.0-M3 starters (see full list in section 4.10)
+3. Configure Spring Milestones repository in Gradle for Spring AI
+4. Create `application.yml` with dev/docker/test/ai-anthropic/ai-openai/ai-ollama profiles
+5. Implement `BaseEntity`
+6. Write Flyway migrations V0 (pgvector extension) through V4 (users, roles, venues, sections, rows, seats, events, categories, tags)
+7. Implement User entity, Role entity, `user_roles` join
+8. Implement `SecurityConfig`, `JwtTokenProvider`, `JwtAuthenticationFilter`, `UserDetailsServiceImpl`
+9. Implement `AuthController` with register/login/me endpoints
+10. Implement `GlobalExceptionHandler` and custom exceptions
+11. Implement `OpenApiConfig` for Swagger UI at `/swagger-ui.html`
+12. Implement `AiConfig` with ChatClient, EmbeddingModel, VectorStore beans
+13. Implement `AiController` with stub endpoints (501 responses) and fully defined OpenAPI schemas
 
 **Frontend tasks:**
 1. Initialize Vite + React + TypeScript project
@@ -2253,7 +2422,7 @@ The diagram shows:
 ```yaml
 services:
   postgres:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: mockhub
       POSTGRES_USER: mockhub
@@ -2384,7 +2553,7 @@ spring:
 ```yaml
 spring:
   datasource:
-    url: jdbc:tc:postgresql:17-alpine:///mockhub
+    url: jdbc:tc:pgvector/pgvector:pg17:///mockhub
     driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
   jpa:
     hibernate:
@@ -2441,6 +2610,8 @@ Both `.env.example` files document all environment variables. The backend `.env.
 JWT_SECRET=your-secret-key-here-minimum-256-bits
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
 SPRING_PROFILES_ACTIVE=dev
 ```
 
@@ -2484,6 +2655,12 @@ A GitHub Actions workflow should:
 
 10. **No Lombok**: Java records handle DTOs cleanly. Entities use explicit getters/setters, which is more transparent for students learning JPA.
 
+11. **Spring AI in the foundation**: Rather than bolting AI on later, the Spring AI starters, `ChatClient`, `VectorStore`, and provider profiles are part of v1. Students implement AI features using the same dependency injection and auto-configuration patterns they already know from the rest of the app.
+
+12. **PGVector in the same database**: Storing vector embeddings alongside relational data in PostgreSQL (via pgvector) eliminates the need for a separate vector database. One database, one connection pool, one set of migrations — simpler for students and for deployment.
+
+13. **Datafaker for seed data**: The `net.datafaker:datafaker` library generates realistic names, cities, dates, and other domain data for both the seed dataset and test fixtures, avoiding handcrafted JSON for hundreds of records.
+
 ---
 
 ---
@@ -2498,7 +2675,7 @@ Must complete before any other wave. Sets up project scaffolding, database schem
 
 | Agent | Scope |
 |-------|-------|
-| **backend-foundation** | Spring Boot init, Gradle (Kotlin DSL), all 13 Flyway migrations, BaseEntity, auth (User/Role entities, SecurityConfig, JWT, AuthController), GlobalExceptionHandler, custom exceptions, OpenAPI config, all application YAML profiles |
+| **backend-foundation** | Spring Boot 4 init, Gradle 9.4.0 (Kotlin DSL), all 14 Flyway migrations (incl. V0 pgvector + V14 embeddings), BaseEntity, auth (User/Role entities, SecurityConfig, JWT, AuthController), GlobalExceptionHandler, custom exceptions, OpenAPI config, Spring AI config (AiConfig + provider profiles), AI stub endpoints (AiController with 501 responses), all application YAML profiles |
 | **frontend-foundation** | Vite + React + TS init, Tailwind/shadcn setup, Axios client with JWT interceptors, authStore (Zustand), MainLayout/Header/Footer, LoginPage, RegisterPage, ProtectedRoute/AdminRoute, React Router config |
 | **infrastructure** | docker-compose.yml, docker-compose.dev.yml, backend Dockerfile, frontend Dockerfile, nginx.conf, .gitignore, .env.example files, project CLAUDE.md |
 
