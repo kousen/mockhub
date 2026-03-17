@@ -20,8 +20,7 @@ test.describe('Cart and checkout', () => {
     await page.goto('/');
 
     // The cart button has an aria-label of "Open cart"
-    const cartButton = page.getByRole('button', { name: /open cart/i });
-    // Cart button is only visible when authenticated, so we check the page loaded
+    // Cart button is only visible when authenticated, so we just check the page loaded
     await expect(page.getByText('MockHub')).toBeVisible();
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,11 +59,9 @@ export function AdminEventFormPage() {
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent(eventId);
 
-  const [form, setForm] = useState<FormState>(emptyForm);
-
-  useEffect(() => {
+  const initialForm = useMemo<FormState>(() => {
     if (isEditing && existingEvent) {
-      setForm({
+      return {
         name: existingEvent.name,
         artistName: existingEvent.artistName ?? '',
         venueId: existingEvent.venue.id.toString(),
@@ -74,9 +72,12 @@ export function AdminEventFormPage() {
           : '',
         basePrice: existingEvent.basePrice.toString(),
         description: existingEvent.description ?? '',
-      });
+      };
     }
+    return emptyForm;
   }, [isEditing, existingEvent]);
+
+  const [form, setForm] = useState<FormState>(initialForm);
 
   const updateField = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));

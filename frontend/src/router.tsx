@@ -19,20 +19,6 @@ import { AdminEventsPage } from '@/pages/admin/AdminEventsPage';
 import { AdminEventFormPage } from '@/pages/admin/AdminEventFormPage';
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage';
 
-/**
- * Placeholder component for routes that will be built in future waves.
- */
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">{title}</h1>
-        <p className="mt-2 text-muted-foreground">This page is coming soon.</p>
-      </div>
-    </div>
-  );
-}
-
 export const router = createBrowserRouter([
   {
     path: '/',

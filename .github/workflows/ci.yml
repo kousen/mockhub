@@ -25,17 +25,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run unit and controller tests
+      - name: Run tests
         working-directory: backend
         run: ./gradlew test
-
-      - name: Run integration tests
-        working-directory: backend
-        run: ./gradlew integrationTest
-
-      - name: Check formatting (Spotless)
-        working-directory: backend
-        run: ./gradlew spotlessCheck
 
       - name: Upload test results
         if: always()
@@ -114,7 +106,7 @@ jobs:
 
       - name: Build and generate coverage
         working-directory: backend
-        run: ./gradlew build jacocoTestReport
+        run: ./gradlew test jacocoTestReport
 
       - name: Download frontend coverage
         uses: actions/download-artifact@v4

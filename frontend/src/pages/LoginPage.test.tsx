@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { renderWithProviders, screen, userEvent } from '@/test/test-utils';
+import { renderWithProviders, screen } from '@/test/test-utils';
 import { LoginPage } from './LoginPage';
 
 vi.mock('@/hooks/use-auth', () => ({
