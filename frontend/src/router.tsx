@@ -6,6 +6,8 @@ import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { EventListPage } from '@/pages/EventListPage';
+import { EventDetailPage } from '@/pages/EventDetailPage';
 
 /**
  * Placeholder component for routes that will be built in future waves.
@@ -29,14 +31,8 @@ export const router = createBrowserRouter([
       { index: true, Component: HomePage },
       { path: 'login', Component: LoginPage },
       { path: 'register', Component: RegisterPage },
-      {
-        path: 'events',
-        Component: () => <PlaceholderPage title="Events" />,
-      },
-      {
-        path: 'events/:slug',
-        Component: () => <PlaceholderPage title="Event Details" />,
-      },
+      { path: 'events', Component: EventListPage },
+      { path: 'events/:slug', Component: EventDetailPage },
 
       // Protected routes (require authentication)
       {
