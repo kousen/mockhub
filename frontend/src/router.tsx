@@ -1,0 +1,78 @@
+import { createBrowserRouter } from 'react-router';
+import { MainLayout } from '@/components/layout/MainLayout';
+import { ProtectedRoute } from '@/components/common/ProtectedRoute';
+import { AdminRoute } from '@/components/common/AdminRoute';
+import { HomePage } from '@/pages/HomePage';
+import { LoginPage } from '@/pages/LoginPage';
+import { RegisterPage } from '@/pages/RegisterPage';
+import { NotFoundPage } from '@/pages/NotFoundPage';
+import { EventListPage } from '@/pages/EventListPage';
+import { EventDetailPage } from '@/pages/EventDetailPage';
+import { CartPage } from '@/pages/CartPage';
+import { CheckoutPage } from '@/pages/CheckoutPage';
+import { OrderHistoryPage } from '@/pages/OrderHistoryPage';
+import { OrderConfirmationPage } from '@/pages/OrderConfirmationPage';
+
+/**
+ * Placeholder component for routes that will be built in future waves.
+ */
+function PlaceholderPage({ title }: { title: string }) {
+  return (
+    <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-3xl font-bold">{title}</h1>
+        <p className="mt-2 text-muted-foreground">This page is coming soon.</p>
+      </div>
+    </div>
+  );
+}
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    Component: MainLayout,
+    children: [
+      { index: true, Component: HomePage },
+      { path: 'login', Component: LoginPage },
+      { path: 'register', Component: RegisterPage },
+      { path: 'events', Component: EventListPage },
+      { path: 'events/:slug', Component: EventDetailPage },
+
+      // Protected routes (require authentication)
+      {
+        Component: ProtectedRoute,
+        children: [
+          { path: 'cart', Component: CartPage },
+          { path: 'checkout', Component: CheckoutPage },
+          { path: 'orders', Component: OrderHistoryPage },
+          {
+            path: 'orders/:orderNumber/confirmation',
+            Component: OrderConfirmationPage,
+          },
+          {
+            path: 'favorites',
+            Component: () => <PlaceholderPage title="My Favorites" />,
+          },
+        ],
+      },
+
+      // Admin routes (require ROLE_ADMIN)
+      {
+        Component: AdminRoute,
+        children: [
+          {
+            path: 'admin',
+            Component: () => <PlaceholderPage title="Admin Dashboard" />,
+          },
+          {
+            path: 'admin/*',
+            Component: () => <PlaceholderPage title="Admin" />,
+          },
+        ],
+      },
+
+      // Catch-all
+      { path: '*', Component: NotFoundPage },
+    ],
+  },
+]);
