@@ -1,0 +1,255 @@
+package com.mockhub.order.service;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
+import com.mockhub.auth.entity.Role;
+import com.mockhub.auth.entity.User;
+import com.mockhub.cart.entity.Cart;
+import com.mockhub.cart.entity.CartItem;
+import com.mockhub.cart.repository.CartRepository;
+import com.mockhub.cart.service.CartService;
+import com.mockhub.common.dto.PagedResponse;
+import com.mockhub.common.exception.ConflictException;
+import com.mockhub.common.exception.ResourceNotFoundException;
+import com.mockhub.common.exception.UnauthorizedException;
+import com.mockhub.event.entity.Event;
+import com.mockhub.event.repository.EventRepository;
+import com.mockhub.notification.service.NotificationService;
+import com.mockhub.order.dto.CheckoutRequest;
+import com.mockhub.order.dto.OrderDto;
+import com.mockhub.order.dto.OrderSummaryDto;
+import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.repository.OrderRepository;
+import com.mockhub.ticket.dto.TicketDto;
+import com.mockhub.ticket.entity.Listing;
+import com.mockhub.ticket.entity.Ticket;
+import com.mockhub.ticket.service.TicketService;
+import com.mockhub.venue.entity.Section;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class OrderServiceTest {
+
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private CartRepository cartRepository;
+
+    @Mock
+    private CartService cartService;
+
+    @Mock
+    private TicketService ticketService;
+
+    @Mock
+    private EventRepository eventRepository;
+
+    @Mock
+    private NotificationService notificationService;
+
+    @InjectMocks
+    private OrderService orderService;
+
+    private User testUser;
+    private User otherUser;
+    private Cart testCart;
+    private Order testOrder;
+    private Listing testListing;
+    private Ticket testTicket;
+
+    @BeforeEach
+    void setUp() {
+        Role buyerRole = new Role("ROLE_BUYER");
+        buyerRole.setId(1L);
+
+        testUser = new User();
+        testUser.setId(1L);
+        testUser.setEmail("buyer@example.com");
+        testUser.setRoles(Set.of(buyerRole));
+
+        otherUser = new User();
+        otherUser.setId(2L);
+        otherUser.setEmail("other@example.com");
+        otherUser.setRoles(Set.of(buyerRole));
+
+        Event testEvent = new Event();
+        testEvent.setId(1L);
+        testEvent.setName("Test Event");
+        testEvent.setSlug("test-event");
+
+        Section testSection = new Section();
+        testSection.setId(1L);
+        testSection.setName("Floor");
+
+        testTicket = new Ticket();
+        testTicket.setId(1L);
+        testTicket.setEvent(testEvent);
+        testTicket.setSection(testSection);
+        testTicket.setTicketType("GENERAL_ADMISSION");
+        testTicket.setFaceValue(new BigDecimal("50.00"));
+        testTicket.setStatus("LISTED");
+
+        testListing = new Listing();
+        testListing.setId(1L);
+        testListing.setTicket(testTicket);
+        testListing.setEvent(testEvent);
+        testListing.setListedPrice(new BigDecimal("75.00"));
+        testListing.setComputedPrice(new BigDecimal("75.00"));
+        testListing.setPriceMultiplier(BigDecimal.ONE);
+        testListing.setStatus("ACTIVE");
+        testListing.setListedAt(Instant.now());
+
+        CartItem cartItem = new CartItem();
+        cartItem.setId(1L);
+        cartItem.setListing(testListing);
+        cartItem.setPriceAtAdd(new BigDecimal("75.00"));
+        cartItem.setAddedAt(Instant.now());
+
+        testCart = new Cart();
+        testCart.setId(1L);
+        testCart.setUser(testUser);
+        testCart.setItems(new ArrayList<>(List.of(cartItem)));
+        testCart.setExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
+        cartItem.setCart(testCart);
+
+        testOrder = new Order();
+        testOrder.setId(1L);
+        testOrder.setUser(testUser);
+        testOrder.setOrderNumber("MH-20260317-0001");
+        testOrder.setStatus("PENDING");
+        testOrder.setSubtotal(new BigDecimal("75.00"));
+        testOrder.setServiceFee(new BigDecimal("7.50"));
+        testOrder.setTotal(new BigDecimal("82.50"));
+        testOrder.setPaymentMethod("mock");
+        testOrder.setCreatedAt(Instant.now());
+
+        OrderItem orderItem = new OrderItem();
+        orderItem.setId(1L);
+        orderItem.setOrder(testOrder);
+        orderItem.setListing(testListing);
+        orderItem.setTicket(testTicket);
+        orderItem.setPricePaid(new BigDecimal("75.00"));
+        testOrder.setItems(List.of(orderItem));
+    }
+
+    @Test
+    @DisplayName("checkout - given cart with items - creates order and clears cart")
+    void checkout_givenCartWithItems_createsOrderAndClearsCart() {
+        CheckoutRequest request = new CheckoutRequest("mock");
+
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
+        when(ticketService.reserveTicket(anyLong())).thenReturn(
+                new TicketDto(1L, 1L, "Floor", null, null, "GA", new BigDecimal("50.00"), "RESERVED"));
+        when(orderRepository.countByOrderNumberPrefix(anyString())).thenReturn(0L);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(1L);
+            order.setCreatedAt(Instant.now());
+            return order;
+        });
+
+        OrderDto result = orderService.checkout(testUser, request);
+
+        assertNotNull(result, "Order DTO should not be null");
+        assertEquals("PENDING", result.status(), "Order status should be PENDING");
+        verify(cartService).clearCart(testUser);
+    }
+
+    @Test
+    @DisplayName("checkout - given empty cart - throws ConflictException")
+    void checkout_givenEmptyCart_throwsConflictException() {
+        testCart.setItems(new ArrayList<>());
+        CheckoutRequest request = new CheckoutRequest("mock");
+
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
+
+        assertThrows(ConflictException.class,
+                () -> orderService.checkout(testUser, request),
+                "Should throw ConflictException for empty cart");
+    }
+
+    @Test
+    @DisplayName("checkout - given no cart - throws ConflictException")
+    void checkout_givenNoCart_throwsConflictException() {
+        CheckoutRequest request = new CheckoutRequest("mock");
+
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.empty());
+
+        assertThrows(ConflictException.class,
+                () -> orderService.checkout(testUser, request),
+                "Should throw ConflictException when no cart exists");
+    }
+
+    @Test
+    @DisplayName("getOrder - given own order number - returns order DTO")
+    void getOrder_givenOwnOrderNumber_returnsOrderDto() {
+        when(orderRepository.findByOrderNumber("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        OrderDto result = orderService.getOrder(testUser, "MH-20260317-0001");
+
+        assertNotNull(result, "Order DTO should not be null");
+        assertEquals("MH-20260317-0001", result.orderNumber(), "Order number should match");
+    }
+
+    @Test
+    @DisplayName("getOrder - given other user's order - throws UnauthorizedException")
+    void getOrder_givenOtherUsersOrder_throwsUnauthorizedException() {
+        when(orderRepository.findByOrderNumber("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        assertThrows(UnauthorizedException.class,
+                () -> orderService.getOrder(otherUser, "MH-20260317-0001"),
+                "Should throw UnauthorizedException for other user's order");
+    }
+
+    @Test
+    @DisplayName("getOrder - given unknown order number - throws ResourceNotFoundException")
+    void getOrder_givenUnknownOrderNumber_throwsResourceNotFoundException() {
+        when(orderRepository.findByOrderNumber("NONEXISTENT")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> orderService.getOrder(testUser, "NONEXISTENT"),
+                "Should throw ResourceNotFoundException for unknown order");
+    }
+
+    @Test
+    @DisplayName("listOrders - given user with orders - returns paged response")
+    void listOrders_givenUserWithOrders_returnsPagedResponse() {
+        Page<Order> page = new PageImpl<>(List.of(testOrder));
+        when(orderRepository.findByUserIdOrderByCreatedAtDesc(anyLong(), any(Pageable.class)))
+                .thenReturn(page);
+
+        PagedResponse<OrderSummaryDto> result = orderService.listOrders(testUser, 0, 20);
+
+        assertNotNull(result, "Paged response should not be null");
+        assertEquals(1, result.content().size(), "Should contain one order");
+    }
+}

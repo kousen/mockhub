@@ -1,0 +1,157 @@
+package com.mockhub.auth.controller;
+
+import java.time.Instant;
+import java.util.Set;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.mockhub.auth.dto.AuthResponse;
+import com.mockhub.auth.dto.UserDto;
+import com.mockhub.auth.security.JwtAuthenticationFilter;
+import com.mockhub.auth.security.JwtTokenProvider;
+import com.mockhub.auth.security.UserDetailsServiceImpl;
+import com.mockhub.auth.service.AuthService;
+import com.mockhub.common.exception.ConflictException;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(AuthController.class)
+class AuthControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private AuthService authService;
+
+    @MockitoBean
+    private AuthenticationManager authenticationManager;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @MockitoBean
+    private UserDetailsServiceImpl userDetailsService;
+
+    private AuthResponse createTestAuthResponse() {
+        UserDto userDto = new UserDto(
+                1L, "test@example.com", "John", "Doe",
+                null, null, false, Set.of("ROLE_BUYER"), Instant.now());
+        return new AuthResponse("jwt-token", 3600L, userDto);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/register - given valid request - returns 201 with auth response")
+    void register_givenValidRequest_returns201WithAuthResponse() throws Exception {
+        AuthResponse response = createTestAuthResponse();
+        when(authService.register(any())).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "email": "test@example.com",
+                                    "password": "password123",
+                                    "firstName": "John",
+                                    "lastName": "Doe"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accessToken").value("jwt-token"))
+                .andExpect(jsonPath("$.user.email").value("test@example.com"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/register - given invalid email - returns 400")
+    void register_givenInvalidEmail_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "email": "not-an-email",
+                                    "password": "password123",
+                                    "firstName": "John",
+                                    "lastName": "Doe"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/register - given missing required fields - returns 400")
+    void register_givenMissingRequiredFields_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "email": "test@example.com"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/register - given duplicate email - returns 409")
+    void register_givenDuplicateEmail_returns409() throws Exception {
+        when(authService.register(any())).thenThrow(
+                new ConflictException("Email already registered"));
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "email": "existing@example.com",
+                                    "password": "password123",
+                                    "firstName": "John",
+                                    "lastName": "Doe"
+                                }
+                                """))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/login - given valid credentials - returns 200 with auth response")
+    void login_givenValidCredentials_returns200WithAuthResponse() throws Exception {
+        AuthResponse response = createTestAuthResponse();
+        when(authService.login(any())).thenReturn(response);
+        when(authenticationManager.authenticate(any())).thenReturn(null);
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "email": "test@example.com",
+                                    "password": "password123"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("jwt-token"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/login - given missing password - returns 400")
+    void login_givenMissingPassword_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "email": "test@example.com"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+}
