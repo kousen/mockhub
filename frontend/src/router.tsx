@@ -12,6 +12,12 @@ import { CartPage } from '@/pages/CartPage';
 import { CheckoutPage } from '@/pages/CheckoutPage';
 import { OrderHistoryPage } from '@/pages/OrderHistoryPage';
 import { OrderConfirmationPage } from '@/pages/OrderConfirmationPage';
+import { FavoritesPage } from '@/pages/FavoritesPage';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
+import { AdminEventsPage } from '@/pages/admin/AdminEventsPage';
+import { AdminEventFormPage } from '@/pages/admin/AdminEventFormPage';
+import { AdminUsersPage } from '@/pages/admin/AdminUsersPage';
 
 /**
  * Placeholder component for routes that will be built in future waves.
@@ -49,10 +55,7 @@ export const router = createBrowserRouter([
             path: 'orders/:orderNumber/confirmation',
             Component: OrderConfirmationPage,
           },
-          {
-            path: 'favorites',
-            Component: () => <PlaceholderPage title="My Favorites" />,
-          },
+          { path: 'favorites', Component: FavoritesPage },
         ],
       },
 
@@ -62,11 +65,14 @@ export const router = createBrowserRouter([
         children: [
           {
             path: 'admin',
-            Component: () => <PlaceholderPage title="Admin Dashboard" />,
-          },
-          {
-            path: 'admin/*',
-            Component: () => <PlaceholderPage title="Admin" />,
+            Component: AdminLayout,
+            children: [
+              { index: true, Component: AdminDashboardPage },
+              { path: 'events', Component: AdminEventsPage },
+              { path: 'events/new', Component: AdminEventFormPage },
+              { path: 'events/:id/edit', Component: AdminEventFormPage },
+              { path: 'users', Component: AdminUsersPage },
+            ],
           },
         ],
       },
