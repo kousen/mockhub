@@ -73,9 +73,29 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 - Commit messages: imperative mood, concise ("Add event search filtering", not "Added event search filtering functionality")
 - One logical change per commit
 
+## CI / Quality
+
+- **GitHub Actions** (`.github/workflows/ci.yml`) runs on push to main and PRs: backend tests, frontend lint/typecheck/tests, SonarCloud analysis, Docker build smoke test
+- **SonarCloud** — org: `kousen-it-inc`, project: `kousen_mockhub`. Config in `sonar-project.properties`. Token stored as `SONAR_TOKEN` GitHub secret.
+- **SonarQube MCP server** is available in this project. Use it to query SonarCloud for issues, quality gate status, and hotspots. When fixing code, check SonarCloud issues first.
+- **GitHub repo:** `kousen/mockhub` (public, MIT license)
+
+## Build Organization
+
+The project is built in 5 waves of parallel agents (see ARCHITECTURE.md section 9):
+1. **Wave 1: Foundation** — Spring Boot + React scaffolding, auth, database, Docker
+2. **Wave 2: Catalog** — Events, venues, search, pricing engine
+3. **Wave 3: Commerce** — Cart, checkout, payments
+4. **Wave 4: Features** — Favorites, notifications, admin dashboard
+5. **Wave 5: Polish** — Seed data, images, responsive polish, full test suite
+
+Each wave's agents run with `mode: "bypassPermissions"` in isolated worktrees, then merge back before the next wave starts.
+
 ## File Reference
 
 - `ARCHITECTURE.md` — Complete architecture plan with database schema, API design, component hierarchy, build phases, and agent team organization
+- `sonar-project.properties` — SonarCloud configuration
+- `.github/workflows/ci.yml` — CI pipeline
 - `docker-compose.yml` — Full stack (Postgres, backend, frontend)
 - `docker-compose.dev.yml` — Postgres only (for local development)
 
