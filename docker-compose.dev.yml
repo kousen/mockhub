@@ -1,0 +1,22 @@
+# Runs only Postgres for local development.
+# Backend and frontend run on the host with hot-reload.
+# Usage: docker compose -f docker-compose.dev.yml up -d
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: mockhub
+      POSTGRES_USER: mockhub
+      POSTGRES_PASSWORD: mockhub_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mockhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
