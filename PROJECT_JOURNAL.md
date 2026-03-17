@@ -191,6 +191,10 @@ The `feature/frontend-commerce` branch diverged from before Wave 1, causing the 
 ## Commit History
 
 ```
+b16e34a Fix security filter chain and integration tests: all 148 tests pass
+3d04cf4 Rename BUILD_REPORT.md to PROJECT_JOURNAL.md
+b613dd8 Fix test suite for Spring Boot 4: dependencies, imports, and AI config
+7a70ad3 Add build report documenting the 5-wave agent build process
 0e67b25 Update Anthropic model to claude-sonnet-4-6
 54688ff Merge Wave 5: seed data, images, and OpenAPI documentation
 873f837 Add image storage, seed data, and OpenAPI documentation (Wave 5)
@@ -258,7 +262,24 @@ When multiple Spring AI providers (Anthropic, OpenAI, Ollama) are all on the cla
 
 ### Testcontainers PostgreSQL + pgvector
 
-The Flyway migration V0 creates the `vector` extension and V14 uses the `vector` column type. Integration tests using plain `postgresql:17` fail on these migrations. Resolution: switched from Testcontainers JDBC URL approach to programmatic `@Container` with `pgvector/pgvector:pg17` Docker image and `@DynamicPropertySource`.
+The Flyway migration V0 creates the `vector` extension and V14 uses the `vector` column type. Integration tests using plain `postgresql:17` fail on these migrations. Resolution: switched from Testcontainers JDBC URL approach to programmatic container with `pgvector/pgvector:pg17` Docker image and `@DynamicPropertySource`.
+
+### Shared Singleton Testcontainers Pattern
+
+Using `@Container` with `@Testcontainers` creates a per-class container lifecycle. When multiple integration test classes share the same `@SpringBootTest` context (cached by Spring), the second class starts a new container on a different port, but the cached Spring context still points to the first container's port. This causes all tests in the second class to fail with connection errors.
+
+Resolution: replace `@Container`/`@Testcontainers` with a static initializer block that starts a single shared container:
+
+```java
+static final PostgreSQLContainer<?> POSTGRES;
+static {
+    POSTGRES = new PostgreSQLContainer<>("pgvector/pgvector:pg17")
+            .withDatabaseName("mockhub");
+    POSTGRES.start();
+}
+```
+
+This ensures all integration test classes share the same container instance for the JVM's lifetime.
 
 ### AI Auto-Configuration in Tests
 
@@ -267,21 +288,46 @@ Integration tests don't need AI features. The Spring AI auto-configurations must
 - `org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration`
 - `org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration`
 
-### Test Results After Fixes
+### Security Filter Chain: Three Interleaved Bugs
 
-| Category | Total | Passing | Failing |
-|----------|-------|---------|---------|
-| Backend unit tests (Mockito) | 88 | 88 | 0 |
-| Backend controller tests (MockMvc) | 20 | 20 | 0 |
-| Backend integration tests (Testcontainers) | 14 | 4 | 10 |
-| Frontend component tests (Vitest) | 26 | 26 | 0 |
-| **Total** | **148** | **138** | **10** |
+The integration tests exposed three interleaved security issues that each masked the others:
 
-The 10 remaining integration test failures are related to Spring context initialization order and shared test context caching between integration test classes. These require further investigation of the security filter chain behavior under Spring Boot 4's new servlet module structure.
+**Bug 1: `/api/v1/auth/**` permitAll was too broad.** The wildcard included `/api/v1/auth/me`, which should require authentication. When an unauthenticated user hit `/me`, the controller received a null `@AuthenticationPrincipal`, threw a `NullPointerException`, and returned 500 instead of 401.
 
-### Key Takeaway
+Fix: replace `.requestMatchers("/api/v1/auth/**").permitAll()` with explicit paths:
+```java
+.requestMatchers("/api/v1/auth/login").permitAll()
+.requestMatchers("/api/v1/auth/register").permitAll()
+.requestMatchers("/api/v1/auth/refresh").permitAll()
+```
 
-**Never assume generated tests will pass.** The testing agent wrote syntactically valid tests with correct logic, but it used Spring Boot 3 conventions for imports, dependencies, and annotations. Spring Boot 4's modularization is the most significant breaking change for test code — every test dependency was restructured. The Spring Initializr is the authoritative source for correct dependency coordinates.
+**Bug 2: No `AuthenticationEntryPoint` configured.** Without one, Spring Security's stateless session mode didn't produce clean 401 responses for unauthenticated API requests.
+
+Fix: add `.exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))`.
+
+**Bug 3: `/error` endpoint not permitted.** This was the most subtle. When Spring Security correctly returned 403 (authenticated but not admin), Spring Boot's error handling forwarded the request to `/error`. But `/error` itself was protected by `.anyRequest().authenticated()`, triggering a second authentication check. Since the error-forwarded request didn't carry the original Authorization header, it was treated as unauthenticated → 401. So the client saw 401 instead of the original 403.
+
+Fix: add `.requestMatchers("/error").permitAll()`.
+
+This is a well-known Spring Security gotcha, but it's especially confusing when multiple bugs interact: Bug 1 caused 500s, Bug 2 caused missing 401s, and Bug 3 turned valid 403s into spurious 401s. Each fix revealed the next bug.
+
+### Test Results: All Passing
+
+| Category | Total | Passing |
+|----------|-------|---------|
+| Backend unit tests (Mockito) | 88 | 88 |
+| Backend controller tests (MockMvc) | 20 | 20 |
+| Backend integration tests (Testcontainers) | 14 | 14 |
+| Frontend component tests (Vitest) | 26 | 26 |
+| **Total** | **148** | **148** |
+
+### Key Takeaways
+
+1. **Never assume generated tests will pass.** The testing agent wrote syntactically valid tests with correct logic, but used Spring Boot 3 conventions for imports, dependencies, and annotations. Spring Boot 4's modularization is the most significant breaking change for test code — every test dependency was restructured. The Spring Initializr is the authoritative source for correct dependency coordinates.
+
+2. **Running tests found real bugs.** The security filter chain issues (permitAll too broad, missing entry point, unprotected `/error`) were production bugs, not just test problems. The tests did exactly what they should — they caught bugs that would have affected real users.
+
+3. **Test isolation matters.** The shared Testcontainers singleton pattern is essential when multiple integration test classes share a `@SpringBootTest` context. Per-class containers cause port mismatches with Spring's context caching.
 
 ---
 
@@ -299,5 +345,6 @@ The 10 remaining integration test failures are related to Spring context initial
 
 ---
 
-*Generated: 2026-03-17*
+*Last updated: 2026-03-17*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
+*All 148 tests passing (122 backend + 26 frontend)*
