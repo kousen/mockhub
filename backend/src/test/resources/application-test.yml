@@ -1,0 +1,27 @@
+spring:
+  profiles:
+    include:
+      - mock-payment
+
+  datasource:
+    url: jdbc:tc:postgresql:17:///mockhub?TC_IMAGE_TAG=17
+    username: mockhub
+    password: mockhub
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
+
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: false
+
+logging:
+  level:
+    com.mockhub: DEBUG
+    org.testcontainers: INFO
