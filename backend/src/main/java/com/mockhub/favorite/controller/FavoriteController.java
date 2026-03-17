@@ -20,8 +20,13 @@ import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.favorite.service.FavoriteService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api/v1/favorites")
+@Tag(name = "Favorites", description = "Manage favorited events")
 public class FavoriteController {
 
     private final FavoriteService favoriteService;
@@ -34,6 +39,8 @@ public class FavoriteController {
     }
 
     @GetMapping
+    @Operation(summary = "List favorites", description = "Return all events favorited by the current user")
+    @ApiResponse(responseCode = "200", description = "Favorites returned")
     public ResponseEntity<List<EventSummaryDto>> listFavorites(
             @AuthenticationPrincipal SecurityUser securityUser) {
         User user = resolveUser(securityUser);
@@ -41,6 +48,9 @@ public class FavoriteController {
     }
 
     @PostMapping("/{eventId}")
+    @Operation(summary = "Add favorite", description = "Add an event to the user's favorites")
+    @ApiResponse(responseCode = "201", description = "Favorite added")
+    @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<Void> addFavorite(
             @AuthenticationPrincipal SecurityUser securityUser,
             @PathVariable Long eventId) {
@@ -50,6 +60,8 @@ public class FavoriteController {
     }
 
     @DeleteMapping("/{eventId}")
+    @Operation(summary = "Remove favorite", description = "Remove an event from the user's favorites")
+    @ApiResponse(responseCode = "204", description = "Favorite removed")
     public ResponseEntity<Void> removeFavorite(
             @AuthenticationPrincipal SecurityUser securityUser,
             @PathVariable Long eventId) {
@@ -59,6 +71,8 @@ public class FavoriteController {
     }
 
     @GetMapping("/check/{eventId}")
+    @Operation(summary = "Check favorite status", description = "Check if an event is in the user's favorites")
+    @ApiResponse(responseCode = "200", description = "Favorite status returned")
     public ResponseEntity<Map<String, Boolean>> checkFavorite(
             @AuthenticationPrincipal SecurityUser securityUser,
             @PathVariable Long eventId) {

@@ -27,10 +27,14 @@ import com.mockhub.event.dto.EventCreateRequest;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/admin")
+@Tag(name = "Admin", description = "Administrative operations (ROLE_ADMIN required)")
 public class AdminController {
 
     private final AdminService adminService;
@@ -40,11 +44,15 @@ public class AdminController {
     }
 
     @GetMapping("/dashboard")
+    @Operation(summary = "Get dashboard stats", description = "Return aggregate statistics for the admin dashboard")
+    @ApiResponse(responseCode = "200", description = "Dashboard stats returned")
     public ResponseEntity<DashboardStatsDto> getDashboardStats() {
         return ResponseEntity.ok(adminService.getDashboardStats());
     }
 
     @GetMapping("/events")
+    @Operation(summary = "List all events (admin)", description = "Return all events with admin-level details")
+    @ApiResponse(responseCode = "200", description = "Events returned")
     public ResponseEntity<PagedResponse<AdminEventDto>> listEvents(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -53,12 +61,17 @@ public class AdminController {
     }
 
     @PostMapping("/events")
+    @Operation(summary = "Create event (admin)", description = "Create a new event")
+    @ApiResponse(responseCode = "201", description = "Event created")
     public ResponseEntity<EventDto> createEvent(@Valid @RequestBody EventCreateRequest request) {
         EventDto event = adminService.createEvent(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(event);
     }
 
     @PutMapping("/events/{id}")
+    @Operation(summary = "Update event (admin)", description = "Update an existing event")
+    @ApiResponse(responseCode = "200", description = "Event updated")
+    @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<EventDto> updateEvent(
             @PathVariable Long id,
             @Valid @RequestBody EventCreateRequest request) {
@@ -66,12 +79,17 @@ public class AdminController {
     }
 
     @DeleteMapping("/events/{id}")
+    @Operation(summary = "Delete event (admin)", description = "Delete an event by ID")
+    @ApiResponse(responseCode = "204", description = "Event deleted")
+    @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<Void> deleteEvent(@PathVariable Long id) {
         adminService.deleteEvent(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/users")
+    @Operation(summary = "List all users (admin)", description = "Return all users with pagination")
+    @ApiResponse(responseCode = "200", description = "Users returned")
     public ResponseEntity<PagedResponse<UserDto>> listUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -80,6 +98,8 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}/roles")
+    @Operation(summary = "Update user roles (admin)", description = "Set roles for a user")
+    @ApiResponse(responseCode = "204", description = "Roles updated")
     public ResponseEntity<Void> updateUserRoles(
             @PathVariable Long id,
             @RequestBody Set<String> roles) {
@@ -88,6 +108,8 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}/status")
+    @Operation(summary = "Enable/disable user (admin)", description = "Enable or disable a user account")
+    @ApiResponse(responseCode = "204", description = "User status updated")
     public ResponseEntity<Void> updateUserStatus(
             @PathVariable Long id,
             @RequestBody Map<String, Boolean> body) {
@@ -100,6 +122,8 @@ public class AdminController {
     }
 
     @GetMapping("/orders")
+    @Operation(summary = "List all orders (admin)", description = "Return all orders with pagination")
+    @ApiResponse(responseCode = "200", description = "Orders returned")
     public ResponseEntity<PagedResponse<OrderSummaryDto>> listOrders(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -108,6 +132,9 @@ public class AdminController {
     }
 
     @PostMapping("/events/{id}/generate-tickets")
+    @Operation(summary = "Generate tickets (admin)", description = "Generate tickets for all seats at the event's venue")
+    @ApiResponse(responseCode = "200", description = "Tickets generated")
+    @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<Map<String, Integer>> generateTickets(@PathVariable Long id) {
         int ticketCount = adminService.generateTicketsForEvent(id);
         return ResponseEntity.ok(Map.of("ticketsGenerated", ticketCount));

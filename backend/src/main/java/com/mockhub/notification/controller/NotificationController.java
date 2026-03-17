@@ -19,8 +19,13 @@ import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.notification.dto.NotificationDto;
 import com.mockhub.notification.service.NotificationService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api/v1/notifications")
+@Tag(name = "Notifications", description = "User notifications")
 public class NotificationController {
 
     private final NotificationService notificationService;
@@ -33,6 +38,8 @@ public class NotificationController {
     }
 
     @GetMapping
+    @Operation(summary = "List notifications", description = "Return the current user's notifications with pagination")
+    @ApiResponse(responseCode = "200", description = "Notifications returned")
     public ResponseEntity<PagedResponse<NotificationDto>> listNotifications(
             @AuthenticationPrincipal SecurityUser securityUser,
             @RequestParam(defaultValue = "0") int page,
@@ -42,6 +49,8 @@ public class NotificationController {
     }
 
     @GetMapping("/unread-count")
+    @Operation(summary = "Get unread count", description = "Return the number of unread notifications")
+    @ApiResponse(responseCode = "200", description = "Unread count returned")
     public ResponseEntity<Map<String, Long>> getUnreadCount(
             @AuthenticationPrincipal SecurityUser securityUser) {
         User user = resolveUser(securityUser);
@@ -50,6 +59,9 @@ public class NotificationController {
     }
 
     @PutMapping("/{id}/read")
+    @Operation(summary = "Mark notification as read", description = "Mark a single notification as read")
+    @ApiResponse(responseCode = "204", description = "Notification marked as read")
+    @ApiResponse(responseCode = "404", description = "Notification not found")
     public ResponseEntity<Void> markAsRead(
             @AuthenticationPrincipal SecurityUser securityUser,
             @PathVariable Long id) {
@@ -59,6 +71,8 @@ public class NotificationController {
     }
 
     @PutMapping("/read-all")
+    @Operation(summary = "Mark all as read", description = "Mark all notifications as read for the current user")
+    @ApiResponse(responseCode = "204", description = "All notifications marked as read")
     public ResponseEntity<Void> markAllAsRead(
             @AuthenticationPrincipal SecurityUser securityUser) {
         User user = resolveUser(securityUser);

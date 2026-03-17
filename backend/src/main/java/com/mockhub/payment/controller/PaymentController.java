@@ -24,8 +24,13 @@ import com.mockhub.payment.dto.PaymentConfirmation;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api/v1/payments")
+@Tag(name = "Payments", description = "Payment processing and webhooks")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -41,6 +46,10 @@ public class PaymentController {
     }
 
     @PostMapping("/create-intent")
+    @Operation(summary = "Create payment intent", description = "Create a Stripe payment intent for an order")
+    @ApiResponse(responseCode = "201", description = "Payment intent created")
+    @ApiResponse(responseCode = "404", description = "Order not found")
+    @ApiResponse(responseCode = "403", description = "Not authorized to pay for this order")
     public ResponseEntity<PaymentIntentDto> createPaymentIntent(
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody CreatePaymentIntentRequest request) {
@@ -56,6 +65,9 @@ public class PaymentController {
     }
 
     @PostMapping("/confirm")
+    @Operation(summary = "Confirm payment", description = "Confirm a payment intent has been completed")
+    @ApiResponse(responseCode = "200", description = "Payment confirmed")
+    @ApiResponse(responseCode = "400", description = "Payment failed")
     public ResponseEntity<PaymentConfirmation> confirmPayment(
             @AuthenticationPrincipal SecurityUser securityUser,
             @Valid @RequestBody ConfirmPaymentRequest request) {
@@ -65,6 +77,8 @@ public class PaymentController {
     }
 
     @PostMapping("/webhook")
+    @Operation(summary = "Handle Stripe webhook", description = "Receive and process Stripe webhook events")
+    @ApiResponse(responseCode = "200", description = "Webhook processed")
     public ResponseEntity<Void> handleWebhook(
             @RequestBody String payload,
             @RequestHeader(value = "Stripe-Signature", required = false) String sigHeader) {
