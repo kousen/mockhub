@@ -6,7 +6,8 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,6 +17,7 @@ import com.mockhub.admin.service.AdminService;
 import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
+import com.mockhub.config.SecurityConfig;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -23,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AdminController.class)
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class AdminControllerTest {
 
     @Autowired
@@ -35,16 +38,13 @@ class AdminControllerTest {
     private JwtTokenProvider jwtTokenProvider;
 
     @MockitoBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    @MockitoBean
     private UserDetailsServiceImpl userDetailsService;
 
     @Test
-    @DisplayName("GET /api/v1/admin/dashboard - unauthenticated - returns 401")
-    void getDashboardStats_unauthenticated_returns401() throws Exception {
+    @DisplayName("GET /api/v1/admin/dashboard - unauthenticated - returns 403")
+    void getDashboardStats_unauthenticated_returns403() throws Exception {
         mockMvc.perform(get("/api/v1/admin/dashboard"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -87,9 +87,9 @@ class AdminControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/admin/orders - unauthenticated - returns 401")
-    void listOrders_unauthenticated_returns401() throws Exception {
+    @DisplayName("GET /api/v1/admin/orders - unauthenticated - returns 403")
+    void listOrders_unauthenticated_returns403() throws Exception {
         mockMvc.perform(get("/api/v1/admin/orders"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 }

@@ -34,6 +34,10 @@ vi.mock('@/hooks/use-events', () => ({
     ],
     isLoading: false,
   }),
+  useTags: () => ({
+    data: [],
+    isLoading: false,
+  }),
 }));
 
 vi.mock('@/stores/auth-store', () => ({
@@ -65,6 +69,7 @@ describe('EventListPage', () => {
 
   it('renders sort dropdown', () => {
     renderWithProviders(<EventListPage />, { route: '/events' });
-    expect(screen.getByText('Sort by')).toBeDefined();
+    // The sort select has a default value of 'date', so it shows "Date (Soonest)" instead of the placeholder
+    expect(screen.getByText('Date (Soonest)')).toBeDefined();
   });
 });

@@ -225,6 +225,66 @@ a25f49c Add Docker infrastructure: Compose files, Dockerfiles, nginx, env exampl
 
 ---
 
+## Test Execution: Lessons Learned
+
+The testing agent (Wave 5) generated all test files but did not execute them. Running the tests revealed significant gaps between the generated code and Spring Boot 4's actual module structure. Here are the key issues discovered and resolved:
+
+### Spring Boot 4 Module Restructuring
+
+Spring Boot 4.0 split the monolithic `spring-boot-starter-web` and `spring-boot-starter-test` into fine-grained modules. The generated code used Spring Boot 3 conventions, which required these dependency corrections:
+
+| What changed | Spring Boot 3 | Spring Boot 4 |
+|---|---|---|
+| Web starter | `spring-boot-starter-web` | `spring-boot-starter-webmvc` |
+| `@WebMvcTest` | `spring-boot-starter-test` (included) | `spring-boot-starter-webmvc-test` (separate) |
+| `TestRestTemplate` | `spring-boot-starter-test` (included) | `spring-boot-resttestclient` (separate, needs `@AutoConfigureTestRestTemplate`) |
+| Security test | `spring-security-test` | `spring-boot-starter-security-test` |
+| JPA test | `spring-boot-starter-test` (included) | `spring-boot-starter-data-jpa-test` (separate) |
+| Flyway | `flyway-core` (auto-configured) | `spring-boot-starter-flyway` (separate starter required) |
+| Testcontainers | `org.testcontainers:postgresql` | `org.testcontainers:testcontainers-postgresql` |
+| Testcontainers JUnit | `org.testcontainers:junit-jupiter` | `org.testcontainers:testcontainers-junit-jupiter` |
+
+### Package Relocations
+
+| Class | Spring Boot 3 package | Spring Boot 4 package |
+|---|---|---|
+| `@WebMvcTest` | `org.springframework.boot.test.autoconfigure.web.servlet` | `org.springframework.boot.webmvc.test.autoconfigure` |
+| `TestRestTemplate` | `org.springframework.boot.test.web.client` | `org.springframework.boot.resttestclient` |
+| `@MockitoBean` | `org.springframework.boot.test.mock.mockito` | `org.springframework.test.context.bean.override.mockito` |
+
+### Spring AI Multi-Provider Bean Conflict
+
+When multiple Spring AI providers (Anthropic, OpenAI, Ollama) are all on the classpath, Spring creates a `ChatModel` bean for each. Without a `@Primary` designation, any code requesting a `ChatModel` fails with `NoUniqueBeanDefinitionException`. Resolution: added `@Primary` `ChatModel` bean in `AiConfig` and `@ConditionalOnBean` guards on AI-dependent services.
+
+### Testcontainers PostgreSQL + pgvector
+
+The Flyway migration V0 creates the `vector` extension and V14 uses the `vector` column type. Integration tests using plain `postgresql:17` fail on these migrations. Resolution: switched from Testcontainers JDBC URL approach to programmatic `@Container` with `pgvector/pgvector:pg17` Docker image and `@DynamicPropertySource`.
+
+### AI Auto-Configuration in Tests
+
+Integration tests don't need AI features. The Spring AI auto-configurations must be explicitly excluded using `spring.autoconfigure.exclude` in `@SpringBootTest(properties = {...})` since property-based disabling (`spring.ai.openai.enabled=false`) is not supported by Spring AI 2.0.0-M3. The actual auto-configuration class names differ from what you might guess:
+- `org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration`
+- `org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration`
+- `org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration`
+
+### Test Results After Fixes
+
+| Category | Total | Passing | Failing |
+|----------|-------|---------|---------|
+| Backend unit tests (Mockito) | 88 | 88 | 0 |
+| Backend controller tests (MockMvc) | 20 | 20 | 0 |
+| Backend integration tests (Testcontainers) | 14 | 4 | 10 |
+| Frontend component tests (Vitest) | 26 | 26 | 0 |
+| **Total** | **148** | **138** | **10** |
+
+The 10 remaining integration test failures are related to Spring context initialization order and shared test context caching between integration test classes. These require further investigation of the security filter chain behavior under Spring Boot 4's new servlet module structure.
+
+### Key Takeaway
+
+**Never assume generated tests will pass.** The testing agent wrote syntactically valid tests with correct logic, but it used Spring Boot 3 conventions for imports, dependencies, and annotations. Spring Boot 4's modularization is the most significant breaking change for test code — every test dependency was restructured. The Spring Initializr is the authoritative source for correct dependency coordinates.
+
+---
+
 ## Agent Statistics
 
 | Wave | Agents | Total Tool Uses | Notes |

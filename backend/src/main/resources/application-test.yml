@@ -1,8 +1,4 @@
 spring:
-  profiles:
-    include:
-      - mock-payment
-
   datasource:
     url: jdbc:tc:postgresql:17:///mockhub?TC_IMAGE_TAG=17
     username: mockhub

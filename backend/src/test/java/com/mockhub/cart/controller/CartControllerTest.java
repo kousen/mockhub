@@ -10,7 +10,8 @@ import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -24,6 +25,7 @@ import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
 import com.mockhub.cart.dto.CartDto;
 import com.mockhub.cart.service.CartService;
+import com.mockhub.config.SecurityConfig;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -37,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(CartController.class)
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class CartControllerTest {
 
     @Autowired
@@ -50,9 +53,6 @@ class CartControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
-
-    @MockitoBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @MockitoBean
     private UserDetailsServiceImpl userDetailsService;
@@ -77,27 +77,27 @@ class CartControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/cart - unauthenticated - returns 401")
-    void getCart_unauthenticated_returns401() throws Exception {
+    @DisplayName("GET /api/v1/cart - unauthenticated - returns 403")
+    void getCart_unauthenticated_returns403() throws Exception {
         mockMvc.perform(get("/api/v1/cart"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test
-    @DisplayName("POST /api/v1/cart/items - unauthenticated - returns 401")
-    void addToCart_unauthenticated_returns401() throws Exception {
+    @DisplayName("POST /api/v1/cart/items - unauthenticated - returns 403")
+    void addToCart_unauthenticated_returns403() throws Exception {
         mockMvc.perform(post("/api/v1/cart/items")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"listingId": 1}
                                 """))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/cart - unauthenticated - returns 401")
-    void clearCart_unauthenticated_returns401() throws Exception {
+    @DisplayName("DELETE /api/v1/cart - unauthenticated - returns 403")
+    void clearCart_unauthenticated_returns403() throws Exception {
         mockMvc.perform(delete("/api/v1/cart"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 }

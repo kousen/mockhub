@@ -1,24 +1,32 @@
 package com.mockhub.auth.controller;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.mockhub.auth.dto.AuthResponse;
 import com.mockhub.auth.dto.UserDto;
+import com.mockhub.auth.entity.Role;
+import com.mockhub.auth.entity.User;
 import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
+import com.mockhub.auth.security.SecurityUser;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
 import com.mockhub.auth.service.AuthService;
 import com.mockhub.common.exception.ConflictException;
+import com.mockhub.config.SecurityConfig;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -27,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class AuthControllerTest {
 
     @Autowired
@@ -40,9 +49,6 @@ class AuthControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
-
-    @MockitoBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @MockitoBean
     private UserDetailsServiceImpl userDetailsService;
@@ -128,7 +134,24 @@ class AuthControllerTest {
     void login_givenValidCredentials_returns200WithAuthResponse() throws Exception {
         AuthResponse response = createTestAuthResponse();
         when(authService.login(any())).thenReturn(response);
-        when(authenticationManager.authenticate(any())).thenReturn(null);
+
+        Role buyerRole = new Role("ROLE_BUYER");
+        buyerRole.setId(1L);
+        User testUser = new User();
+        testUser.setId(1L);
+        testUser.setEmail("test@example.com");
+        testUser.setPasswordHash("hash");
+        testUser.setFirstName("John");
+        testUser.setLastName("Doe");
+        testUser.setRoles(Set.of(buyerRole));
+        SecurityUser securityUser = new SecurityUser(testUser);
+
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        securityUser, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_BUYER")));
+        when(authenticationManager.authenticate(any())).thenReturn(authentication);
+        when(authService.generateRefreshToken(any())).thenReturn("refresh-token");
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

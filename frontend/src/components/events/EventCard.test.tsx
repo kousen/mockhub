@@ -21,7 +21,11 @@ const mockEvent: EventSummary = {
 describe('EventCard', () => {
   it('renders event name', () => {
     renderWithProviders(<EventCard event={mockEvent} />);
-    expect(screen.getByText('Rock Festival 2026')).toBeDefined();
+    const elements = screen.getAllByText('Rock Festival 2026');
+    expect(elements.length).toBeGreaterThan(0);
+    // Verify the card title specifically
+    const cardTitle = elements.find((el) => el.getAttribute('data-slot') === 'card-title');
+    expect(cardTitle).toBeDefined();
   });
 
   it('renders artist name when provided', () => {

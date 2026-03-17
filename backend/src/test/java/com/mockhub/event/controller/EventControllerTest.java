@@ -8,7 +8,8 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -17,6 +18,7 @@ import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.common.exception.ResourceNotFoundException;
+import com.mockhub.config.SecurityConfig;
 import com.mockhub.event.dto.CategoryDto;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.event.dto.EventSummaryDto;
@@ -33,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(EventController.class)
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class EventControllerTest {
 
     @Autowired
@@ -52,9 +55,6 @@ class EventControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
-
-    @MockitoBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @MockitoBean
     private UserDetailsServiceImpl userDetailsService;

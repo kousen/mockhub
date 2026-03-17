@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
  * and recommendation features.
  */
 @Service
+@ConditionalOnBean(VectorStore.class)
 public class EmbeddingService {
 
     private final VectorStore vectorStore;
