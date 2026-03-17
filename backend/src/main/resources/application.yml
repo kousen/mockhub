@@ -49,6 +49,10 @@ mockhub:
     thumbnail-width: 300
     thumbnail-height: 200
 
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:sk_test_placeholder}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
+
 management:
   endpoints:
     web:

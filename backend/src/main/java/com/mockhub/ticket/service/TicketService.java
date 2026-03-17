@@ -52,7 +52,7 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
 
-        if (!"AVAILABLE".equals(ticket.getStatus())) {
+        if (!"AVAILABLE".equals(ticket.getStatus()) && !"LISTED".equals(ticket.getStatus())) {
             throw new ConflictException("Ticket is not available for reservation");
         }
 
