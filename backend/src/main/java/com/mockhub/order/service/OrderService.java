@@ -32,6 +32,8 @@ import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
 import com.mockhub.order.dto.OrderSummaryDto;
+import com.mockhub.notification.entity.NotificationType;
+import com.mockhub.notification.service.NotificationService;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.repository.OrderRepository;
@@ -51,17 +53,20 @@ public class OrderService {
     private final CartService cartService;
     private final TicketService ticketService;
     private final EventRepository eventRepository;
+    private final NotificationService notificationService;
 
     public OrderService(OrderRepository orderRepository,
                         CartRepository cartRepository,
                         CartService cartService,
                         TicketService ticketService,
-                        EventRepository eventRepository) {
+                        EventRepository eventRepository,
+                        NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.cartService = cartService;
         this.ticketService = ticketService;
         this.eventRepository = eventRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -192,6 +197,16 @@ public class OrderService {
 
         orderRepository.save(order);
         log.info("Confirmed order {}", orderNumber);
+
+        // Send order confirmation notification
+        notificationService.createNotification(
+                order.getUser().getId(),
+                NotificationType.ORDER_CONFIRMED,
+                "Order Confirmed",
+                String.format("Your order %s has been confirmed. Total: $%s",
+                        orderNumber, order.getTotal().toPlainString()),
+                "/orders/" + orderNumber
+        );
     }
 
     @Transactional
