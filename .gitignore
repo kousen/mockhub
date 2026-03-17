@@ -16,13 +16,17 @@ frontend/.vite/
 .env.local
 .env.*.local
 
-# Claude Code local settings (personal, not shared)
+# Claude Code local settings and worktrees
 .claude/settings.local.json
+.claude/worktrees/
 
 # IDE
 .idea/
 .vscode/
 *.iml
+.classpath
+.project
+.settings/
 *.swp
 *.swo
 *~
