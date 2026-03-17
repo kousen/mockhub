@@ -16,6 +16,9 @@ frontend/.vite/
 .env.local
 .env.*.local
 
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
+
 # IDE
 .idea/
 .vscode/
