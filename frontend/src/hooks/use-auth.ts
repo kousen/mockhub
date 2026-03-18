@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import * as authApi from '@/api/auth';
@@ -62,14 +63,18 @@ export function useCurrentUser() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const setUser = useAuthStore((state) => state.setUser);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const user = await authApi.getMe();
-      setUser(user);
-      return user;
-    },
+    queryFn: () => authApi.getMe(),
     enabled: isAuthenticated,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  useEffect(() => {
+    if (query.data) {
+      setUser(query.data);
+    }
+  }, [query.data, setUser]);
+
+  return query;
 }
