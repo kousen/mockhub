@@ -83,6 +83,7 @@ sonar {
         property("sonar.projectKey", "kousen_mockhub")
         property("sonar.organization", "kousen-it-inc")
         property("sonar.host.url", "https://sonarcloud.io")
+        property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
     }
 }
 
@@ -101,4 +102,5 @@ checkstyle {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
 }

@@ -106,7 +106,7 @@ jobs:
 
       - name: Build, test, and analyze
         working-directory: backend
-        run: ./gradlew test --tests "com.mockhub.*.service.*" --tests "com.mockhub.*.controller.*" jacocoTestReport sonar
+        run: ./gradlew test --tests "com.mockhub.*.service.*" --tests "com.mockhub.*.controller.*" sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
