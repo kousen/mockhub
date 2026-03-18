@@ -152,7 +152,7 @@ public class EventSeeder {
 
     private String copySeedImage(String categorySlug, String eventName) {
         String prefix = CATEGORY_IMAGE_PREFIX.getOrDefault(categorySlug, "concert");
-        int imageIndex = (Math.abs(eventName.hashCode()) % IMAGES_PER_CATEGORY) + 1;
+        int imageIndex = ((eventName.hashCode() & Integer.MAX_VALUE) % IMAGES_PER_CATEGORY) + 1;
         String sourceFilename = prefix + "-" + imageIndex + ".jpg";
         String destFilename = slugify(eventName) + ".jpg";
 
