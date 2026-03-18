@@ -93,3 +93,8 @@ checkstyle {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+tasks.register<Copy>("copySonarLibs") {
+    from(configurations.runtimeClasspath)
+    into(layout.buildDirectory.dir("sonar-libs"))
+}
