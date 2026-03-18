@@ -29,14 +29,17 @@ public class PriceHistoryService {
         Event event = eventRepository.findBySlug(eventSlug)
                 .orElseThrow(() -> new ResourceNotFoundException("Event", "slug", eventSlug));
 
-        return getByEventId(event.getId());
+        return toHistoryDtos(priceHistoryRepository
+                .findByEventIdOrderByRecordedAtDesc(event.getId()));
     }
 
     @Transactional(readOnly = true)
     public List<PriceHistoryDto> getByEventId(Long eventId) {
-        List<PriceHistory> history = priceHistoryRepository
-                .findByEventIdOrderByRecordedAtDesc(eventId);
+        return toHistoryDtos(priceHistoryRepository
+                .findByEventIdOrderByRecordedAtDesc(eventId));
+    }
 
+    private List<PriceHistoryDto> toHistoryDtos(List<PriceHistory> history) {
         return history.stream()
                 .map(this::toPriceHistoryDto)
                 .toList();

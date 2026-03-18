@@ -10,14 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.cart.repository.CartItemRepository;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
-import com.mockhub.pricing.entity.PriceHistory;
-import com.mockhub.pricing.repository.PriceHistoryRepository;
-import com.mockhub.ticket.service.ListingService;
 
 @Service
 public class PricingEngine {
@@ -28,17 +24,14 @@ public class PricingEngine {
     private static final BigDecimal MAX_MULTIPLIER = new BigDecimal("3.0");
 
     private final EventRepository eventRepository;
-    private final PriceHistoryRepository priceHistoryRepository;
-    private final ListingService listingService;
+    private final PricingUpdateService pricingUpdateService;
     private final CartItemRepository cartItemRepository;
 
     public PricingEngine(EventRepository eventRepository,
-                         PriceHistoryRepository priceHistoryRepository,
-                         ListingService listingService,
+                         PricingUpdateService pricingUpdateService,
                          CartItemRepository cartItemRepository) {
         this.eventRepository = eventRepository;
-        this.priceHistoryRepository = priceHistoryRepository;
-        this.listingService = listingService;
+        this.pricingUpdateService = pricingUpdateService;
         this.cartItemRepository = cartItemRepository;
     }
 
@@ -52,46 +45,15 @@ public class PricingEngine {
                 .setScale(3, RoundingMode.HALF_UP);
     }
 
-    @Transactional
-    public void updateEventPricing(Long eventId) {
-        Event event = eventRepository.findById(eventId).orElse(null);
-        if (event == null || !"ACTIVE".equals(event.getStatus())) {
-            return;
-        }
-
-        BigDecimal multiplier = computeMultiplier(event);
-
-        BigDecimal newMinPrice = event.getBasePrice().multiply(multiplier)
-                .setScale(2, RoundingMode.HALF_UP);
-        event.setMinPrice(newMinPrice);
-        eventRepository.save(event);
-
-        listingService.updateListingPrices(eventId, multiplier);
-
-        BigDecimal supplyRatio = computeSupplyRatio(event);
-        long daysToEvent = computeDaysToEvent(event);
-
-        PriceHistory history = new PriceHistory();
-        history.setEvent(event);
-        history.setPrice(newMinPrice);
-        history.setMultiplier(multiplier);
-        history.setSupplyRatio(supplyRatio.setScale(4, RoundingMode.HALF_UP));
-        history.setDaysToEvent((int) daysToEvent);
-        history.setRecordedAt(Instant.now());
-
-        priceHistoryRepository.save(history);
-        log.debug("Updated pricing for event {}: multiplier={}", eventId, multiplier);
-    }
-
     @Scheduled(fixedRateString = "${mockhub.pricing.update-interval:300000}")
-    @Transactional
     public void updateAllPricing() {
         List<Event> activeEvents = eventRepository.findAll().stream()
                 .filter(event -> "ACTIVE".equals(event.getStatus()))
                 .toList();
 
         for (Event event : activeEvents) {
-            updateEventPricing(event.getId());
+            BigDecimal multiplier = computeMultiplier(event);
+            pricingUpdateService.updateEventPricing(event.getId(), multiplier);
         }
 
         log.info("Updated pricing for {} active events", activeEvents.size());
@@ -137,14 +99,6 @@ public class PricingEngine {
         } else {
             return new BigDecimal("0.9");
         }
-    }
-
-    private BigDecimal computeSupplyRatio(Event event) {
-        if (event.getTotalTickets() == 0) {
-            return BigDecimal.ZERO;
-        }
-        return BigDecimal.valueOf(event.getAvailableTickets())
-                .divide(BigDecimal.valueOf(event.getTotalTickets()), 4, RoundingMode.HALF_UP);
     }
 
     private long computeDaysToEvent(Event event) {

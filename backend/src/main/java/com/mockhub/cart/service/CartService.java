@@ -42,8 +42,7 @@ public class CartService {
         this.listingRepository = listingRepository;
     }
 
-    @Transactional
-    public Cart getOrCreateCart(User user) {
+    private Cart getOrCreateCart(User user) {
         return cartRepository.findByUser(user)
                 .orElseGet(() -> {
                     Cart cart = new Cart();

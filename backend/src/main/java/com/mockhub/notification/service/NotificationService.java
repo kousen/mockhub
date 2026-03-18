@@ -134,18 +134,16 @@ public class NotificationService {
 
         for (Favorite favorite : favorites) {
             Event event = favorite.getEvent();
-            String title = "Event Reminder";
-            String message = String.format("'%s' is happening soon! Don't forget to get your tickets.",
-                    event.getName());
-            String link = "/events/" + event.getSlug();
 
-            createNotification(
-                    favorite.getUser().getId(),
-                    NotificationType.EVENT_REMINDER,
-                    title,
-                    message,
-                    link
-            );
+            Notification notification = new Notification();
+            notification.setUser(favorite.getUser());
+            notification.setType(NotificationType.EVENT_REMINDER);
+            notification.setTitle("Event Reminder");
+            notification.setMessage(String.format(
+                    "'%s' is happening soon! Don't forget to get your tickets.",
+                    event.getName()));
+            notification.setLink("/events/" + event.getSlug());
+            notificationRepository.save(notification);
         }
 
         log.info("Sent {} event reminder notifications for {} upcoming events",

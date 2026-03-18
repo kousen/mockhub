@@ -15,8 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.mockhub.cart.repository.CartItemRepository;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
-import com.mockhub.pricing.repository.PriceHistoryRepository;
-import com.mockhub.ticket.service.ListingService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -31,10 +29,7 @@ class PricingEngineTest {
     private EventRepository eventRepository;
 
     @Mock
-    private PriceHistoryRepository priceHistoryRepository;
-
-    @Mock
-    private ListingService listingService;
+    private PricingUpdateService pricingUpdateService;
 
     @Mock
     private CartItemRepository cartItemRepository;
