@@ -311,15 +311,16 @@ Fix: add `.requestMatchers("/error").permitAll()`.
 
 This is a well-known Spring Security gotcha, but it's especially confusing when multiple bugs interact: Bug 1 caused 500s, Bug 2 caused missing 401s, and Bug 3 turned valid 403s into spurious 401s. Each fix revealed the next bug.
 
-### Test Results: All Passing
+### Test Results: All Passing (as of 2026-03-18)
 
 | Category | Total | Passing |
 |----------|-------|---------|
-| Backend unit tests (Mockito) | 88 | 88 |
-| Backend controller tests (MockMvc) | 20 | 20 |
-| Backend integration tests (Testcontainers) | 14 | 14 |
-| Frontend component tests (Vitest) | 26 | 26 |
-| **Total** | **148** | **148** |
+| Backend unit tests (Mockito) | 119 | 119 |
+| Backend controller tests (MockMvc) | 51 | 51 |
+| Backend integration tests (Testcontainers) | 30 | 30 |
+| Frontend component tests (Vitest) | 38 | 38 |
+| Playwright E2E (5 browsers) | 91 | 91 |
+| **Total** | **329** | **329** |
 
 ### Key Takeaways
 
@@ -345,6 +346,81 @@ This is a well-known Spring Security gotcha, but it's especially confusing when 
 
 ---
 
-*Last updated: 2026-03-17*
+---
+
+## Session: 2026-03-18 — CI, Quality, and E2E
+
+### CI Integration Tests Unblocked
+
+The CI pipeline (`.github/workflows/ci.yml`) had been filtering backend tests to only run unit tests (`--tests "com.mockhub.*.service.*" --tests "com.mockhub.*.controller.*"`), which meant Testcontainers integration tests never ran on GitHub Actions. Removed the filters so CI runs all tests. This immediately exposed a Spring context startup failure on CI caused by missing OpenAI AI auto-configuration exclusions (`OpenAiAudioSpeechAutoConfiguration`, `OpenAiImageAutoConfiguration`, etc.) — locally these worked because `OPENAI_API_KEY` was set as an environment variable.
+
+### Profile Consolidation
+
+Merged the `dev` and `docker` Spring profiles into a single `dev` profile. Both had been using PostgreSQL via Docker since H2 was removed for Flyway compatibility. The consolidated `dev` profile uses env-var overridable database settings (`DB_HOST`, `DB_PORT`, etc.) and defaults to `mock-payment`. Stripe is activated by adding the `stripe` profile: `SPRING_PROFILES_ACTIVE=dev,stripe`.
+
+### SonarCloud Quality Cleanup
+
+Resolved all 5 security hotspots:
+- **CSRF disabled** — safe (stateless JWT API)
+- **`Random` in seeders** — safe (not security-sensitive)
+- **Cookie without `secure` flag** — fixed: extracted to configurable `mockhub.cookie.secure` property
+- **Missing `verification-metadata.xml`** — accepted risk for teaching project
+
+Fixed all open issues:
+- **S6809 (4 instances)** — Transactional self-invocation. CartService: made internal method private. NotificationService: inlined notification creation. PriceHistoryService: extracted shared mapping helper. PricingEngine: extracted `PricingUpdateService` for per-event transaction isolation.
+- **S1192** — Extracted duplicated string literals to constants in StripePaymentService, LocalImageStorageService, ListingService, TicketService, EventService.
+- **S5145** — Sanitized user-controlled data before logging in AdminService and LocalImageStorageService.
+- **S5850** — Fixed regex precedence in SlugUtil, EventSeeder, VenueSeeder (`^-|-$` → `(^-|-$)`).
+
+### Test Coverage Improvement
+
+Added 63 new backend tests across 8 files:
+- Service tests: MockPaymentService (7), PricingUpdateService (7), SearchService (12), PriceHistoryService (6)
+- Controller tests: NotificationController (8), PaymentController (9), ImageController (6), SearchController (8)
+
+Added 12 new frontend tests:
+- `auth-store.test.ts` (6) — Zustand store behavior and sessionStorage persistence
+- `client.test.ts` (6) — Axios interceptor token attachment, refresh-and-retry, logout on failure
+
+Configured `sonar.coverage.exclusions` in Gradle sonar config to exclude seed data, entities, DTOs, and AiConfig from coverage calculations. Coverage rose from 44.7% to **70.4%** (on 1.8k lines to cover, down from 2.9k).
+
+**Lesson learned:** JaCoCo exclusions and SonarCloud exclusions serve different purposes. Excluding classes from JaCoCo's `classDirectories` removes them from the coverage *report*, but SonarCloud still sees those source files and counts them as 0% covered — making coverage *worse*. The correct approach: let JaCoCo report everything, and use `sonar.coverage.exclusions` to tell SonarCloud which files to skip.
+
+### Playwright E2E Tests Fixed (91/91)
+
+The existing Playwright specs had selectors written against assumed DOM structure that didn't match the actual frontend. Running the tests exposed both selector mismatches and real accessibility bugs:
+
+**Selector fixes:**
+- Scoped `MockHub` and `Events` locators to `getByRole('banner')` to avoid strict mode violations from multiple matches across header/hero/footer
+- Used `{ exact: true }` for `getByLabel('Password')` on register page (was matching both "Password" and "Confirm password")
+- Added `test.skip(!!isMobile, ...)` for desktop nav tests that can't work on mobile viewports
+
+**Accessibility bugs found and fixed:**
+- Sort dropdown `SelectTrigger` missing accessible name → added `aria-label="Sort by"`
+- Pagination disabled state using `opacity-50` caused insufficient color contrast (3.72:1 vs required 4.5:1) → replaced with `text-muted-foreground` class
+- `CategoryNav` horizontal scroll container not keyboard accessible → added `role="toolbar"`, `tabIndex={0}`, `aria-label`
+- Pagination `<a>` elements without `href` had prohibited `aria-label` → added `role="button"` to `PaginationLink`
+
+### Stripe Test Keys Configured
+
+Created `backend/.env` and `frontend/.env` (both gitignored) with Stripe test mode API keys. Documented setup process in `docs/stripe-test-setup.md` including Stripe's new Sandbox vs classic Test Mode choice.
+
+### Commits (2026-03-18)
+
+```
+7878792 Fix Playwright E2E tests and accessibility issues (91/91 passing)
+9e99067 Fix SonarCloud coverage exclusions, security and reliability issues
+1dbfc69 Improve test coverage and exclude noise from coverage metrics
+dd897bb Extract duplicated string literals into constants (S1192)
+567c77f Fix transactional self-invocation issues (S6809)
+82736c7 Make refresh cookie secure flag configurable via property
+0cf032f Consolidate dev and docker profiles into single dev profile
+30e492e Fix CI: exclude all OpenAI AI auto-configs and add Vitest global types
+f4f2d4e Unblock CI integration tests and add missing test coverage
+```
+
+---
+
+*Last updated: 2026-03-18*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*All 148 tests passing (122 backend + 26 frontend)*
+*329 tests passing (200 backend + 38 frontend unit + 91 Playwright E2E)*

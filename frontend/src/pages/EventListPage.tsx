@@ -224,7 +224,9 @@ export function EventListPage() {
                       onClick={() => handlePageChange(Math.max(0, currentPage - 1))}
                       aria-disabled={currentPage === 0}
                       className={
-                        currentPage === 0 ? 'pointer-events-none text-muted-foreground' : 'cursor-pointer'
+                        currentPage === 0
+                          ? 'pointer-events-none text-muted-foreground'
+                          : 'cursor-pointer'
                       }
                     />
                   </PaginationItem>
