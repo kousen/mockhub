@@ -27,6 +27,10 @@ import com.mockhub.auth.dto.AuthResponse;
                         "org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration," +
                         "org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration," +
                         "org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration," +
+                        "org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration," +
+                        "org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration," +
+                        "org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration," +
+                        "org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration," +
                         "org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration," +
                         "org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration," +
                         "org.springframework.ai.model.ollama.autoconfigure.OllamaApiAutoConfiguration," +
