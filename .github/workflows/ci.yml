@@ -27,7 +27,7 @@ jobs:
 
       - name: Run tests
         working-directory: backend
-        run: ./gradlew test --tests "com.mockhub.*.service.*" --tests "com.mockhub.*.controller.*"
+        run: ./gradlew test
 
       - name: Upload test results
         if: always()
@@ -106,7 +106,7 @@ jobs:
 
       - name: Build, test, and analyze
         working-directory: backend
-        run: ./gradlew test --tests "com.mockhub.*.service.*" --tests "com.mockhub.*.controller.*" sonar
+        run: ./gradlew test sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
