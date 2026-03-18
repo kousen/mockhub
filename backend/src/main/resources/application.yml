@@ -41,6 +41,8 @@ mockhub:
     secret: ${JWT_SECRET:dGhpcyBpcyBhIHZlcnkgbG9uZyBzZWNyZXQga2V5IGZvciBkZXZlbG9wbWVudCBwdXJwb3NlcyBvbmx5IGRvIG5vdCB1c2UgaW4gcHJvZHVjdGlvbg==}
     access-token-expiration-ms: 900000
     refresh-token-expiration-ms: 604800000
+  cookie:
+    secure: ${COOKIE_SECURE:false}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
   pricing:

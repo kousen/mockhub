@@ -4,6 +4,7 @@ import java.time.Duration;
 
 import jakarta.validation.Valid;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -40,11 +41,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthenticationManager authenticationManager;
+    private final boolean secureCookie;
 
     public AuthController(AuthService authService,
-                          AuthenticationManager authenticationManager) {
+                          AuthenticationManager authenticationManager,
+                          @Value("${mockhub.cookie.secure:false}") boolean secureCookie) {
         this.authService = authService;
         this.authenticationManager = authenticationManager;
+        this.secureCookie = secureCookie;
     }
 
     @PostMapping("/register")
@@ -118,7 +122,7 @@ public class AuthController {
     private ResponseCookie buildRefreshCookie(String refreshToken) {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
                 .httpOnly(true)
-                .secure(false)
+                .secure(secureCookie)
                 .path("/api/v1/auth/refresh")
                 .maxAge(Duration.ofDays(7))
                 .sameSite("Lax")
