@@ -30,7 +30,12 @@ export function CategoryNav({ activeCategory, onCategoryChange }: CategoryNavPro
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+    <div
+      role="toolbar"
+      aria-label="Event categories"
+      tabIndex={0}
+      className="flex gap-2 overflow-x-auto pb-2 scrollbar-none"
+    >
       <Badge
         variant={activeCategory === undefined ? 'default' : 'outline'}
         className="shrink-0 cursor-pointer"

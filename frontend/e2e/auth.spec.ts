@@ -13,15 +13,16 @@ test.describe('Authentication flows', () => {
   test('register page renders correctly', async ({ page }) => {
     await page.goto('/register');
 
-    await expect(page.getByText('Create an account')).toBeVisible();
+    await expect(page.locator('[data-slot="card-title"]', { hasText: 'Create an account' })).toBeVisible();
     await expect(page.getByLabel('Email')).toBeVisible();
-    await expect(page.getByLabel('Password')).toBeVisible();
+    await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Confirm password')).toBeVisible();
   });
 
   test('login page has link to register', async ({ page }) => {
     await page.goto('/login');
 
-    const signUpLink = page.getByRole('link', { name: 'Sign up' });
+    const signUpLink = page.getByRole('main').getByRole('link', { name: 'Sign up' });
     await expect(signUpLink).toBeVisible();
   });
 

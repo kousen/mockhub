@@ -197,7 +197,7 @@ export function EventListPage() {
             <div className="flex items-center gap-2">
               <ArrowUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Select value={filters.sort ?? 'date'} onValueChange={handleSortChange}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]" aria-label="Sort by">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -222,8 +222,9 @@ export function EventListPage() {
                   <PaginationItem>
                     <PaginationPrevious
                       onClick={() => handlePageChange(Math.max(0, currentPage - 1))}
+                      aria-disabled={currentPage === 0}
                       className={
-                        currentPage === 0 ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                        currentPage === 0 ? 'pointer-events-none text-muted-foreground' : 'cursor-pointer'
                       }
                     />
                   </PaginationItem>
@@ -241,9 +242,10 @@ export function EventListPage() {
                   <PaginationItem>
                     <PaginationNext
                       onClick={() => handlePageChange(Math.min(totalPages - 1, currentPage + 1))}
+                      aria-disabled={currentPage >= totalPages - 1}
                       className={
                         currentPage >= totalPages - 1
-                          ? 'pointer-events-none opacity-50'
+                          ? 'pointer-events-none text-muted-foreground'
                           : 'cursor-pointer'
                       }
                     />

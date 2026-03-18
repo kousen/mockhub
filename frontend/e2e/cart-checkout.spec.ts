@@ -16,11 +16,10 @@ test.describe('Cart and checkout', () => {
   });
 
   test('header shows cart icon when authenticated', async ({ page }) => {
-    // This test verifies the cart icon exists in the header structure
+    // This test verifies the page loads with the header structure
     await page.goto('/');
 
-    // The cart button has an aria-label of "Open cart"
-    // Cart button is only visible when authenticated, so we just check the page loaded
-    await expect(page.getByText('MockHub')).toBeVisible();
+    // Cart button is only visible when authenticated, so we just check the header loaded
+    await expect(page.getByRole('banner').getByRole('link', { name: 'MockHub' })).toBeVisible();
   });
 });
