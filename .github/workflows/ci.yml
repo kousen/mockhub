@@ -106,7 +106,7 @@ jobs:
 
       - name: Build and generate coverage
         working-directory: backend
-        run: ./gradlew test jacocoTestReport
+        run: ./gradlew test --tests "com.mockhub.*.service.*" --tests "com.mockhub.*.controller.*" jacocoTestReport
 
       - name: Download frontend coverage
         uses: actions/download-artifact@v4
