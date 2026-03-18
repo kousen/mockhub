@@ -1,6 +1,10 @@
 spring:
   application:
     name: mockhub
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+    group:
+      dev: dev,mock-payment
 
   jpa:
     hibernate:
