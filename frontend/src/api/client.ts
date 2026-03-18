@@ -55,11 +55,18 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<ApiError>) => {
     const originalRequest = error.config;
 
-    // Only attempt refresh for 401 errors that aren't the refresh endpoint itself
+    // Only attempt refresh for 401 errors on protected endpoints
+    // Public endpoints (events, venues, search, categories, tags) should not trigger refresh
+    const publicPrefixes = ['/events', '/venues', '/search', '/categories', '/tags', '/images'];
+    const isPublicEndpoint =
+      originalRequest?.method === 'get' &&
+      publicPrefixes.some((prefix) => originalRequest?.url?.startsWith(prefix));
+
     if (
       error.response?.status !== 401 ||
       !originalRequest ||
-      originalRequest.url === '/auth/refresh'
+      originalRequest.url === '/auth/refresh' ||
+      isPublicEndpoint
     ) {
       return Promise.reject(error);
     }

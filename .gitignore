@@ -40,3 +40,4 @@ postgres_data/
 
 # Logs
 *.log
+*.hprof

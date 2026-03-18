@@ -41,13 +41,31 @@ export function EventDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const eventSlug = slug ?? '';
 
-  const { data: event, isLoading: eventLoading } = useEvent(eventSlug);
+  const {
+    data: event,
+    isLoading: eventLoading,
+    error: eventError,
+  } = useEvent(eventSlug);
   const { data: listings, isLoading: listingsLoading } = useEventListings(eventSlug);
-  const { data: priceHistory, isLoading: priceHistoryLoading } = useEventPriceHistory(eventSlug);
+  const { data: priceHistory, isLoading: priceHistoryLoading } =
+    useEventPriceHistory(eventSlug);
   const { data: sections, isLoading: sectionsLoading } = useEventSections(eventSlug);
 
   if (eventLoading) {
     return <DetailSkeleton />;
+  }
+
+  if (eventError) {
+    return (
+      <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold">Error Loading Event</h1>
+          <p className="mt-2 text-muted-foreground">
+            {eventError.message || 'Something went wrong. Please try again.'}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!event) {
