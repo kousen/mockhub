@@ -93,8 +93,10 @@ Each wave's agents run with `mode: "bypassPermissions"` in isolated worktrees, t
 ## File Reference
 
 - `ARCHITECTURE.md` — Complete architecture plan with database schema, API design, component hierarchy, build phases, and agent team organization
-- `sonar-project.properties` — SonarCloud configuration
-- `.github/workflows/ci.yml` — CI pipeline
+- `PROJECT_JOURNAL.md` — Build report with session notes, challenges, metrics, and commit history
+- `docs/stripe-test-setup.md` — Stripe test mode API key setup instructions
+- `sonar-project.properties` — SonarCloud configuration (coverage exclusions, issue suppressions)
+- `.github/workflows/ci.yml` — CI pipeline (backend tests incl. Testcontainers, frontend lint/typecheck/tests, SonarCloud, Docker build)
 - `docker-compose.yml` — Full stack (Postgres, backend, frontend)
 - `docker-compose.dev.yml` — Postgres only (for local development)
 

@@ -103,60 +103,61 @@ The `feature/frontend-commerce` branch diverged from before Wave 1, causing the 
 
 ---
 
-## Final Codebase Metrics
+## Codebase Metrics (as of 2026-03-18)
 
-### File Counts
+### File and Line Counts
 
-| Category | Count |
-|----------|-------|
-| Backend Java (production) | 139 |
-| Backend Java (test) | 22 |
-| Frontend TypeScript/TSX (production) | 105 |
-| Frontend component tests | 5 |
-| Playwright E2E specs | 4 |
-| Flyway migrations | 15 (V0–V14) |
-| React components | 50 |
-| **Total files** | **~340** |
-
-### Line Counts
-
-| Category | Lines |
-|----------|-------|
-| Backend Java (all) | ~12,100 |
-| Frontend TypeScript/TSX (all) | ~8,700 |
-| **Total code** | **~20,800** |
+| Category | Files | Lines |
+|----------|------:|------:|
+| Backend Java (production) | 140 | 9,166 |
+| Backend Java (tests) | 33 | 4,874 |
+| Frontend TS/TSX (production) | 105 | 7,740 |
+| Frontend tests (unit + E2E) | 11 | 747 |
+| Flyway migrations | 16 (V0–V15) | — |
+| Seed images | 25 | 1.9 MB |
+| **Total** | **~330** | **~22,500** |
 
 ### Backend Architecture
 
 | Layer | Count | Examples |
-|-------|-------|---------|
+|-------|------:|---------|
 | Controllers | 15 | Auth, Event, Venue, Cart, Order, Payment, Favorite, Notification, Admin, Search, Price, Category, Tag, AI, Image |
-| Services | 19 | AuthService, EventService, CartService, OrderService, PricingEngine, NotificationService, AdminService, etc. |
+| Services | 21 | AuthService, EventService, CartService, OrderService, PricingEngine, PricingUpdateService, NotificationService, AdminService, MockPaymentService, StripePaymentService, etc. |
 | Entities | 23 | User, Role, Venue, Section, SeatRow, Seat, Event, Category, Tag, Ticket, Listing, Cart, CartItem, Order, OrderItem, Favorite, Notification, Image, TransactionLog, PriceHistory |
-| DTOs (records) | 38 | Request/Response records with Jakarta validation |
-| Repositories | 16 | Spring Data JPA interfaces |
-| Feature packages | 16 | admin, ai, auth, cart, common, config, event, favorite, image, notification, order, payment, pricing, search, seed, ticket, venue |
+| DTOs (records) | 39 | Request/Response records with Jakarta validation |
+| Repositories | 17 | Spring Data JPA interfaces |
+| Feature packages | 17 | admin, ai, auth, cart, common, config, event, favorite, image, notification, order, payment, pricing, search, seed, ticket, venue |
 
 ### Frontend Architecture
 
 | Layer | Count |
-|-------|-------|
-| API modules | 11 (auth, cart, client, events, favorites, notifications, orders, payments, search, venues, admin) |
-| React Query hooks | 9 (use-auth, use-cart, use-events, use-favorites, use-notifications, use-orders, use-pagination, use-search, use-admin) |
-| Type definitions | 10 (auth, cart, common, event, favorite, notification, order, ticket, venue, admin) |
-| Pages | 14 (Home, Login, Register, EventList, EventDetail, Cart, Checkout, OrderConfirmation, OrderHistory, Favorites, NotFound, AdminDashboard, AdminEvents, AdminEventForm, AdminUsers) |
-| Zustand stores | 3 (auth-store, cart-store, ui-store) |
+|-------|------:|
+| Pages | 17 |
+| Components | 50 |
+| API modules | 12 |
+| React Query hooks | 9 |
+| Zustand stores | 3 |
+| Type definitions | 10 |
 
-### Test Coverage
+### Test Suite
 
-| Test Type | Files | Description |
-|-----------|-------|-------------|
-| Backend unit tests | 11 | JUnit 5 + Mockito for all services |
-| Backend controller tests | 6 | MockMvc + @WebMvcTest |
-| Backend integration tests | 5 | Testcontainers PostgreSQL (auth, events, cart-checkout, admin flows) |
-| Frontend component tests | 5 | Vitest + React Testing Library |
-| Playwright E2E | 4 | Auth, browsing, cart-checkout, accessibility (axe-core) |
-| **E2E browsers** | **5** | Chrome, Firefox, Safari (WebKit), Mobile Android (Pixel 5), Mobile iOS (iPhone 12) |
+| Test Type | Files | Tests | Description |
+|-----------|------:|------:|-------------|
+| Backend service unit tests | 15 | ~119 | JUnit 5 + Mockito |
+| Backend controller tests | 10 | ~51 | MockMvc + @WebMvcTest |
+| Backend integration tests | 8 | ~30 | Testcontainers PostgreSQL |
+| Frontend unit tests | 7 | 38 | Vitest + React Testing Library + MSW |
+| Playwright E2E | 4 | 91 | 5 browsers: Chrome, Firefox, Safari, Mobile Android, Mobile iOS |
+| **Total** | **44** | **~329** | |
+
+### Quality Metrics (SonarCloud)
+
+| Metric | Value |
+|--------|-------|
+| Coverage | 69.9% (on 1.8k lines to cover) |
+| Duplications | 0.4% |
+| Maintainability | A |
+| Security hotspots | 0 (all reviewed) |
 
 ### Seed Data
 
@@ -164,15 +165,16 @@ The `feature/frontend-commerce` branch diverged from before Wave 1, causing the 
 |--------|-------|
 | Users | 8 (admin, buyer, seller, 5 random) |
 | Venues | 22 (arenas, theaters, amphitheaters, clubs, stadiums) |
-| Events | 100+ (concerts, sports, theater, comedy, festivals) |
+| Events | 80+ (concerts, sports, theater, comedy, festivals) |
 | Tickets/Listings | Generated per event (~35% of seats listed) |
+| Images | 25 curated photos from Unsplash (5 per category) |
 
 ### API Endpoints
 
 | Group | Endpoints |
 |-------|-----------|
 | Auth | 4 (register, login, refresh, me) |
-| Events | 6 (list, detail, search, create, update, featured) |
+| Events | 7 (list, detail, search, create, update, featured, sections) |
 | Venues | 3 (list, detail, sections) |
 | Cart | 4 (get, add, remove, clear) |
 | Orders | 3 (checkout, list, detail) |
@@ -182,7 +184,7 @@ The `feature/frontend-commerce` branch diverged from before Wave 1, causing the 
 | Admin | 10 (dashboard, event CRUD, user management, orders, ticket generation) |
 | Search | 2 (search, suggest) |
 | Pricing | 1 (price history) |
-| Images | 2 (serve, thumbnail) |
+| Images | 3 (serve by ID, thumbnail, serve by filename) |
 | AI (stubs) | 4 (recommendations, NL search, chat, price prediction) |
 | **Total** | **~50** |
 
