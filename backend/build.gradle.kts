@@ -108,4 +108,17 @@ tasks.jacocoTestReport {
     reports {
         xml.required.set(true)
     }
+    classDirectories.setFrom(
+        files(classDirectories.files.map {
+            fileTree(it) {
+                exclude(
+                    "**/seed/**",
+                    "**/entity/**",
+                    "**/dto/**",
+                    "**/config/AiConfig*",
+                    "**/MockHubApplication*"
+                )
+            }
+        })
+    )
 }
