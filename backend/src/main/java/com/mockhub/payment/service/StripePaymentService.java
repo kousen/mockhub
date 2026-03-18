@@ -27,6 +27,9 @@ import com.stripe.param.PaymentIntentCreateParams;
 public class StripePaymentService implements PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(StripePaymentService.class);
+    private static final String METADATA_ORDER_NUMBER = "order_number";
+    private static final String PROVIDER = "STRIPE";
+    private static final String CURRENCY = "USD";
 
     private final String webhookSecret;
     private final TransactionLogRepository transactionLogRepository;
@@ -52,7 +55,7 @@ public class StripePaymentService implements PaymentService {
             PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                     .setAmount(amountInCents)
                     .setCurrency("usd")
-                    .putMetadata("order_number", order.getOrderNumber())
+                    .putMetadata(METADATA_ORDER_NUMBER, order.getOrderNumber())
                     .putMetadata("user_id", order.getUser().getId().toString())
                     .build();
 
@@ -67,8 +70,8 @@ public class StripePaymentService implements PaymentService {
             txnLog.setUser(order.getUser());
             txnLog.setTransactionType("PAYMENT_INITIATED");
             txnLog.setAmount(order.getTotal());
-            txnLog.setCurrency("USD");
-            txnLog.setProvider("STRIPE");
+            txnLog.setCurrency(CURRENCY);
+            txnLog.setProvider(PROVIDER);
             txnLog.setProviderReference(paymentIntent.getId());
             txnLog.setStatus("INITIATED");
             transactionLogRepository.save(txnLog);
@@ -80,7 +83,7 @@ public class StripePaymentService implements PaymentService {
                     paymentIntent.getId(),
                     paymentIntent.getClientSecret(),
                     order.getTotal(),
-                    "USD"
+                    CURRENCY
             );
         } catch (StripeException e) {
             log.error("Failed to create Stripe PaymentIntent for order {}", order.getOrderNumber(), e);
@@ -94,7 +97,7 @@ public class StripePaymentService implements PaymentService {
         try {
             PaymentIntent paymentIntent = PaymentIntent.retrieve(paymentIntentId);
             String status = paymentIntent.getStatus();
-            String orderNumber = paymentIntent.getMetadata().get("order_number");
+            String orderNumber = paymentIntent.getMetadata().get(METADATA_ORDER_NUMBER);
 
             if (orderNumber == null) {
                 throw new PaymentException("No order number found in payment intent metadata");
@@ -108,8 +111,8 @@ public class StripePaymentService implements PaymentService {
                 txnLog.setUser(order.getUser());
                 txnLog.setTransactionType("PAYMENT_SUCCEEDED");
                 txnLog.setAmount(order.getTotal());
-                txnLog.setCurrency("USD");
-                txnLog.setProvider("STRIPE");
+                txnLog.setCurrency(CURRENCY);
+                txnLog.setProvider(PROVIDER);
                 txnLog.setProviderReference(paymentIntentId);
                 txnLog.setStatus("SUCCEEDED");
                 transactionLogRepository.save(txnLog);
@@ -123,8 +126,8 @@ public class StripePaymentService implements PaymentService {
                 txnLog.setUser(order.getUser());
                 txnLog.setTransactionType("PAYMENT_FAILED");
                 txnLog.setAmount(order.getTotal());
-                txnLog.setCurrency("USD");
-                txnLog.setProvider("STRIPE");
+                txnLog.setCurrency(CURRENCY);
+                txnLog.setProvider(PROVIDER);
                 txnLog.setProviderReference(paymentIntentId);
                 txnLog.setStatus("FAILED");
                 transactionLogRepository.save(txnLog);
@@ -157,7 +160,7 @@ public class StripePaymentService implements PaymentService {
             PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer()
                     .getObject().orElse(null);
             if (paymentIntent != null) {
-                String orderNumber = paymentIntent.getMetadata().get("order_number");
+                String orderNumber = paymentIntent.getMetadata().get(METADATA_ORDER_NUMBER);
                 if (orderNumber != null) {
                     orderService.confirmOrder(orderNumber);
                     log.info("Webhook confirmed order {} via payment intent {}",
@@ -168,7 +171,7 @@ public class StripePaymentService implements PaymentService {
             PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer()
                     .getObject().orElse(null);
             if (paymentIntent != null) {
-                String orderNumber = paymentIntent.getMetadata().get("order_number");
+                String orderNumber = paymentIntent.getMetadata().get(METADATA_ORDER_NUMBER);
                 if (orderNumber != null) {
                     orderService.failOrder(orderNumber);
                     log.info("Webhook failed order {} via payment intent {}",

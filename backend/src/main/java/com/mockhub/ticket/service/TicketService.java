@@ -21,6 +21,7 @@ import com.mockhub.venue.dto.SectionAvailabilityDto;
 public class TicketService {
 
     private static final Logger log = LoggerFactory.getLogger(TicketService.class);
+    private static final String STATUS_AVAILABLE = "AVAILABLE";
 
     private final TicketRepository ticketRepository;
     private final EventRepository eventRepository;
@@ -41,7 +42,7 @@ public class TicketService {
 
     @Transactional(readOnly = true)
     public List<TicketDto> getAvailableByEvent(Long eventId) {
-        List<Ticket> tickets = ticketRepository.findByEventIdAndStatus(eventId, "AVAILABLE");
+        List<Ticket> tickets = ticketRepository.findByEventIdAndStatus(eventId, STATUS_AVAILABLE);
         return tickets.stream()
                 .map(this::toTicketDto)
                 .toList();
@@ -52,7 +53,7 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
 
-        if (!"AVAILABLE".equals(ticket.getStatus()) && !"LISTED".equals(ticket.getStatus())) {
+        if (!STATUS_AVAILABLE.equals(ticket.getStatus()) && !"LISTED".equals(ticket.getStatus())) {
             throw new ConflictException("Ticket is not available for reservation");
         }
 
@@ -71,7 +72,7 @@ public class TicketService {
             throw new ConflictException("Ticket is not in reserved state");
         }
 
-        ticket.setStatus("AVAILABLE");
+        ticket.setStatus(STATUS_AVAILABLE);
         Ticket saved = ticketRepository.save(ticket);
         log.info("Ticket {} released", ticketId);
         return toTicketDto(saved);

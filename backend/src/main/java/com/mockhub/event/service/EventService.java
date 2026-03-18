@@ -38,6 +38,8 @@ import com.mockhub.venue.repository.VenueRepository;
 @Service
 public class EventService {
 
+    private static final String SORT_EVENT_DATE = "eventDate";
+
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
     private final TagRepository tagRepository;
@@ -238,16 +240,16 @@ public class EventService {
 
     private Sort buildSort(String sortParam) {
         if (sortParam == null || sortParam.isBlank()) {
-            return Sort.by("eventDate").ascending();
+            return Sort.by(SORT_EVENT_DATE).ascending();
         }
 
         return switch (sortParam) {
-            case "date" , "eventDate" -> Sort.by("eventDate").ascending();
-            case "dateDesc" -> Sort.by("eventDate").descending();
+            case "date" , SORT_EVENT_DATE -> Sort.by(SORT_EVENT_DATE).ascending();
+            case "dateDesc" -> Sort.by(SORT_EVENT_DATE).descending();
             case "price" -> Sort.by("minPrice").ascending();
             case "priceDesc" -> Sort.by("minPrice").descending();
             case "name" -> Sort.by("name").ascending();
-            default -> Sort.by("eventDate").ascending();
+            default -> Sort.by(SORT_EVENT_DATE).ascending();
         };
     }
 

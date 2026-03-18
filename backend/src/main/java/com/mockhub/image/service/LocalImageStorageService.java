@@ -22,6 +22,8 @@ import com.mockhub.image.repository.ImageRepository;
 public class LocalImageStorageService implements ImageStorageService {
 
     private static final Logger log = LoggerFactory.getLogger(LocalImageStorageService.class);
+    private static final String IMAGES_DIR = "images";
+    private static final String THUMBNAILS_DIR = "thumbnails";
 
     private final Path storageRootPath;
     private final ImageResizer imageResizer;
@@ -42,8 +44,8 @@ public class LocalImageStorageService implements ImageStorageService {
         String extension = extractExtension(originalFilename);
         String uniqueName = UUID.randomUUID().toString() + extension;
 
-        Path imagePath = storageRootPath.resolve("images").resolve(uniqueName);
-        Path thumbnailPath = storageRootPath.resolve("thumbnails").resolve(uniqueName);
+        Path imagePath = storageRootPath.resolve(IMAGES_DIR).resolve(uniqueName);
+        Path thumbnailPath = storageRootPath.resolve(THUMBNAILS_DIR).resolve(uniqueName);
 
         try {
             Files.copy(file.getInputStream(), imagePath, StandardCopyOption.REPLACE_EXISTING);
@@ -69,7 +71,7 @@ public class LocalImageStorageService implements ImageStorageService {
                 .orElseThrow(() -> new ResourceNotFoundException("Image", "id", imageId));
 
         String filename = extractFilenameFromUrl(image.getUrl());
-        Path imagePath = storageRootPath.resolve("images").resolve(filename);
+        Path imagePath = storageRootPath.resolve(IMAGES_DIR).resolve(filename);
 
         try {
             return Files.readAllBytes(imagePath);
@@ -85,7 +87,7 @@ public class LocalImageStorageService implements ImageStorageService {
                 .orElseThrow(() -> new ResourceNotFoundException("Image", "id", imageId));
 
         String filename = extractFilenameFromUrl(image.getUrl());
-        Path thumbnailPath = storageRootPath.resolve("thumbnails").resolve(filename);
+        Path thumbnailPath = storageRootPath.resolve(THUMBNAILS_DIR).resolve(filename);
 
         try {
             return Files.readAllBytes(thumbnailPath);
@@ -103,8 +105,8 @@ public class LocalImageStorageService implements ImageStorageService {
         String filename = extractFilenameFromUrl(image.getUrl());
 
         try {
-            Files.deleteIfExists(storageRootPath.resolve("images").resolve(filename));
-            Files.deleteIfExists(storageRootPath.resolve("thumbnails").resolve(filename));
+            Files.deleteIfExists(storageRootPath.resolve(IMAGES_DIR).resolve(filename));
+            Files.deleteIfExists(storageRootPath.resolve(THUMBNAILS_DIR).resolve(filename));
         } catch (IOException exception) {
             log.warn("Failed to delete image files for image ID: {}", imageId, exception);
         }

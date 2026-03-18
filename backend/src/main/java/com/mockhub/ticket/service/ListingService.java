@@ -24,6 +24,7 @@ import com.mockhub.ticket.repository.TicketRepository;
 public class ListingService {
 
     private static final Logger log = LoggerFactory.getLogger(ListingService.class);
+    private static final String STATUS_ACTIVE = "ACTIVE";
 
     private final ListingRepository listingRepository;
     private final TicketRepository ticketRepository;
@@ -42,7 +43,7 @@ public class ListingService {
         Event event = eventRepository.findBySlug(eventSlug)
                 .orElseThrow(() -> new ResourceNotFoundException("Event", "slug", eventSlug));
 
-        List<Listing> listings = listingRepository.findByEventIdAndStatus(event.getId(), "ACTIVE");
+        List<Listing> listings = listingRepository.findByEventIdAndStatus(event.getId(), STATUS_ACTIVE);
         return listings.stream()
                 .map(this::toListingDto)
                 .toList();
@@ -50,7 +51,7 @@ public class ListingService {
 
     @Transactional(readOnly = true)
     public List<ListingDto> getActiveListingsByEventId(Long eventId) {
-        List<Listing> listings = listingRepository.findByEventIdAndStatus(eventId, "ACTIVE");
+        List<Listing> listings = listingRepository.findByEventIdAndStatus(eventId, STATUS_ACTIVE);
         return listings.stream()
                 .map(this::toListingDto)
                 .toList();
@@ -74,7 +75,7 @@ public class ListingService {
         listing.setListedPrice(request.listedPrice());
         listing.setComputedPrice(request.listedPrice());
         listing.setPriceMultiplier(BigDecimal.ONE);
-        listing.setStatus("ACTIVE");
+        listing.setStatus(STATUS_ACTIVE);
         listing.setListedAt(Instant.now());
         listing.setExpiresAt(request.expiresAt());
 
@@ -85,7 +86,7 @@ public class ListingService {
 
     @Transactional
     public void updateListingPrices(Long eventId, BigDecimal multiplier) {
-        List<Listing> activeListings = listingRepository.findByEventIdAndStatus(eventId, "ACTIVE");
+        List<Listing> activeListings = listingRepository.findByEventIdAndStatus(eventId, STATUS_ACTIVE);
 
         for (Listing listing : activeListings) {
             BigDecimal computedPrice = listing.getListedPrice().multiply(multiplier);
