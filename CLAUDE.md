@@ -7,7 +7,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 ## Tech Stack
 
 - **Backend:** Spring Boot 4, Java 25, Gradle 9.4.0 (Kotlin DSL)
-- **Database:** PostgreSQL 17 with pgvector extension (Docker: `pgvector/pgvector:pg17`), H2 for dev profile
+- **Database:** PostgreSQL 17 with pgvector extension (Docker: `pgvector/pgvector:pg17`)
 - **AI:** Spring AI 2.0.0-M3 (milestone — requires Spring Milestones repo in Gradle)
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack React Query, Zustand
 - **Testing:** JUnit 5 + Mockito + Testcontainers (backend), Vitest + React Testing Library + MSW (frontend), Playwright (E2E, 5 browsers)
@@ -30,8 +30,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 - **Error handling** goes through `GlobalExceptionHandler` (`@RestControllerAdvice`). Custom domain exceptions map to appropriate HTTP status codes.
 - **Caching:** Use Spring `@Cacheable` annotations. Never cache carts, orders, notifications, or pricing data.
 - **Spring profiles** control implementation variants:
-  - `dev` — H2, mock payment, debug logging
-  - `docker` — PostgreSQL, Stripe payment
+  - `dev` — PostgreSQL, mock payment, debug logging (default)
   - `test` — Testcontainers PostgreSQL, mock payment
   - `mock-payment` / `stripe` — payment implementation
   - `ai-anthropic` / `ai-openai` / `ai-ollama` — AI provider

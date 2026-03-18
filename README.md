@@ -43,7 +43,7 @@ This starts PostgreSQL with the pgvector extension on port 5432.
 
 ```bash
 cd backend
-./gradlew bootRun --args='--spring.profiles.active=docker,mock-payment'
+./gradlew bootRun
 ```
 
 The API will be available at `http://localhost:8080`. Swagger UI at `http://localhost:8080/swagger-ui.html`.
