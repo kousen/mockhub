@@ -3,6 +3,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "4.0.3"
     id("io.spring.dependency-management") version "1.1.7"
+    id("org.sonarqube") version "6.0.1.5171"
     id("com.diffplug.spotless") version "7.0.2"
     checkstyle
 }
@@ -77,6 +78,14 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+sonar {
+    properties {
+        property("sonar.projectKey", "kousen_mockhub")
+        property("sonar.organization", "kousen-it-inc")
+        property("sonar.host.url", "https://sonarcloud.io")
+    }
+}
+
 spotless {
     java {
         googleJavaFormat("1.25.2")
@@ -92,9 +101,4 @@ checkstyle {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-}
-
-tasks.register<Copy>("copySonarLibs") {
-    from(configurations.runtimeClasspath)
-    into(layout.buildDirectory.dir("sonar-libs"))
 }

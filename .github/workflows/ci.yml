@@ -104,18 +104,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build and generate coverage
+      - name: Build, test, and analyze
         working-directory: backend
-        run: ./gradlew classes testClasses copySonarLibs test --tests "com.mockhub.*.service.*" --tests "com.mockhub.*.controller.*" jacocoTestReport
-
-      - name: Download frontend coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-coverage
-          path: frontend/coverage/
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v6
+        run: ./gradlew test --tests "com.mockhub.*.service.*" --tests "com.mockhub.*.controller.*" jacocoTestReport sonar
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
