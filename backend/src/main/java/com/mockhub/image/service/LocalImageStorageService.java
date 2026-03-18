@@ -60,7 +60,7 @@ public class LocalImageStorageService implements ImageStorageService {
         image.setUrl("/api/v1/images/" + uniqueName);
         image.setThumbnailUrl("/api/v1/images/" + uniqueName + "/thumbnail");
 
-        log.info("Stored image: {} as {}", originalFilename, uniqueName);
+        log.info("Stored image: {} as {}", originalFilename != null ? originalFilename.replaceAll("[\\r\\n]", "") : "unknown", uniqueName);
         return image;
     }
 

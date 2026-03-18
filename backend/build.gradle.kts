@@ -83,6 +83,13 @@ sonar {
         property("sonar.organization", "kousen-it-inc")
         property("sonar.host.url", "https://sonarcloud.io")
         property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
+        property("sonar.coverage.exclusions", listOf(
+            "**/seed/**",
+            "**/entity/**",
+            "**/dto/**",
+            "**/config/AiConfig.java",
+            "**/MockHubApplication.java"
+        ))
     }
 }
 
@@ -108,17 +115,4 @@ tasks.jacocoTestReport {
     reports {
         xml.required.set(true)
     }
-    classDirectories.setFrom(
-        files(classDirectories.files.map {
-            fileTree(it) {
-                exclude(
-                    "**/seed/**",
-                    "**/entity/**",
-                    "**/dto/**",
-                    "**/config/AiConfig*",
-                    "**/MockHubApplication*"
-                )
-            }
-        })
-    )
 }

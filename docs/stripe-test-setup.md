@@ -6,7 +6,7 @@ Sign up at [dashboard.stripe.com](https://dashboard.stripe.com). No business ver
 
 ## 2. Enable Test Mode
 
-Toggle **Test mode** in the top-right of the Stripe dashboard. New accounts default to test mode.
+Toggle **Test mode** in the top-right of the Stripe dashboard. Stripe may prompt you to choose between **Sandboxes** (their newer isolated test environments) and classic **Test mode**. Either works — click **"Stay in test mode"** for the simpler setup, or create a sandbox if you prefer isolation. Both provide test API keys that never charge real money.
 
 ## 3. Get API Keys
 
