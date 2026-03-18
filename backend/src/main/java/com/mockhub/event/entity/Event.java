@@ -68,6 +68,9 @@ public class Event extends BaseEntity {
     @Column(name = "is_featured", nullable = false)
     private boolean isFeatured;
 
+    @Column(name = "primary_image_url", length = 512)
+    private String primaryImageUrl;
+
     @Column(name = "search_vector", insertable = false, updatable = false,
             columnDefinition = "TSVECTOR")
     private String searchVector;
@@ -201,6 +204,14 @@ public class Event extends BaseEntity {
 
     public void setFeatured(boolean featured) {
         this.isFeatured = featured;
+    }
+
+    public String getPrimaryImageUrl() {
+        return primaryImageUrl;
+    }
+
+    public void setPrimaryImageUrl(String primaryImageUrl) {
+        this.primaryImageUrl = primaryImageUrl;
     }
 
     public String getSearchVector() {

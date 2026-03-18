@@ -290,7 +290,7 @@ public class EventService {
                 venueSummary,
                 categoryDto,
                 tagDtos,
-                null
+                event.getPrimaryImageUrl()
         );
     }
 
@@ -306,7 +306,7 @@ public class EventService {
                 event.getEventDate(),
                 event.getMinPrice(),
                 event.getAvailableTickets(),
-                null,
+                event.getPrimaryImageUrl(),
                 event.getCategory().getName(),
                 event.isFeatured()
         );

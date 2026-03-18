@@ -16,6 +16,8 @@ import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.config.SecurityConfig;
 import com.mockhub.image.service.ImageStorageService;
 
+import java.nio.file.Path;
+
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -37,6 +39,9 @@ class ImageControllerTest {
 
     @MockitoBean
     private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private Path storageRootPath;
 
     private byte[] createTestImageBytes() {
         return new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};

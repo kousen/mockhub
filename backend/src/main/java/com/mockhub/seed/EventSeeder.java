@@ -1,16 +1,23 @@
 package com.mockhub.seed;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,21 +34,32 @@ import com.mockhub.venue.repository.VenueRepository;
 public class EventSeeder {
 
     private static final Logger log = LoggerFactory.getLogger(EventSeeder.class);
+    private static final int IMAGES_PER_CATEGORY = 5;
+    private static final Map<String, String> CATEGORY_IMAGE_PREFIX = Map.of(
+            "concerts", "concert",
+            "sports", "sports",
+            "theater", "theater",
+            "comedy", "comedy",
+            "festivals", "festival"
+    );
 
     private final EventRepository eventRepository;
     private final VenueRepository venueRepository;
     private final CategoryRepository categoryRepository;
     private final TagRepository tagRepository;
+    private final Path storageRootPath;
     private final Random random = new Random(42);
 
     public EventSeeder(EventRepository eventRepository,
                        VenueRepository venueRepository,
                        CategoryRepository categoryRepository,
-                       TagRepository tagRepository) {
+                       TagRepository tagRepository,
+                       Path storageRootPath) {
         this.eventRepository = eventRepository;
         this.venueRepository = venueRepository;
         this.categoryRepository = categoryRepository;
         this.tagRepository = tagRepository;
+        this.storageRootPath = storageRootPath;
     }
 
     @Transactional
@@ -105,6 +123,9 @@ public class EventSeeder {
             }
             event.setTags(eventTags);
 
+            String imageUrl = copySeedImage(eventData.categorySlug, eventData.name);
+            event.setPrimaryImageUrl(imageUrl);
+
             eventRepository.save(event);
             created++;
         }
@@ -127,6 +148,29 @@ public class EventSeeder {
                 .filter(c -> c.getSlug().equals(slug))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private String copySeedImage(String categorySlug, String eventName) {
+        String prefix = CATEGORY_IMAGE_PREFIX.getOrDefault(categorySlug, "concert");
+        int imageIndex = (Math.abs(eventName.hashCode()) % IMAGES_PER_CATEGORY) + 1;
+        String sourceFilename = prefix + "-" + imageIndex + ".jpg";
+        String destFilename = slugify(eventName) + ".jpg";
+
+        try {
+            ClassPathResource resource = new ClassPathResource(
+                    "seed-images/" + categorySlug + "/" + sourceFilename);
+            if (!resource.exists()) {
+                return null;
+            }
+            Path destPath = storageRootPath.resolve("images").resolve(destFilename);
+            try (InputStream inputStream = resource.getInputStream()) {
+                Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return "/api/v1/images/file/" + destFilename;
+        } catch (IOException exception) {
+            log.warn("Failed to copy seed image for event: {}", eventName);
+            return null;
+        }
     }
 
     private String slugify(String name) {
