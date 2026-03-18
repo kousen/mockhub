@@ -24,7 +24,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
             + "SUM(CASE WHEN t.status = 'AVAILABLE' THEN 1 ELSE 0 END), "
             + "MIN(t.faceValue), MAX(t.faceValue), t.section.colorHex "
             + "FROM Ticket t WHERE t.event.id = :eventId "
-            + "GROUP BY t.section.id, t.section.name, t.section.sectionType, t.section.colorHex "
+            + "GROUP BY t.section.id, t.section.name, t.section.sectionType, t.section.colorHex, t.section.sortOrder "
             + "ORDER BY t.section.sortOrder")
     List<Object[]> findSectionAvailabilityByEventId(@Param("eventId") Long eventId);
 }
