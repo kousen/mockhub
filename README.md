@@ -128,16 +128,33 @@ cd frontend
 # Component tests
 npm test
 
-# E2E tests (requires full stack running)
+# E2E tests (requires backend running — see below)
 npx playwright test
+
+# AI-specific E2E tests only
+npx playwright test e2e/ai-features.spec.ts
 
 # E2E with specific browser
 npx playwright test --project=chromium
-npx playwright test --project=firefox
-npx playwright test --project=webkit
-npx playwright test --project="Mobile Android"
-npx playwright test --project="Mobile iOS"
 ```
+
+### E2E Tests with AI
+
+E2E tests include AI feature tests that call a real Claude Haiku model. Start the backend with AI before running:
+
+```bash
+# Terminal 1: start backend with Haiku
+cd backend
+SPRING_PROFILES_ACTIVE=dev-ai,ai-anthropic \
+SPRING_AI_ANTHROPIC_CHAT_OPTIONS_MODEL=claude-haiku-4-5 \
+./gradlew bootRun
+
+# Terminal 2: run E2E tests
+cd frontend
+npx playwright test
+```
+
+CI runs these automatically using the `ANTHROPIC_API_KEY` GitHub secret.
 
 ## AI Features
 
@@ -179,6 +196,19 @@ Without an AI profile, these endpoints return 503 with a message indicating whic
 ### AI Agent Discovery
 
 The API serves an `llms.txt` file at `/llms.txt` describing all endpoints for AI agent consumption. Error responses follow [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457) format.
+
+### MCP Server
+
+MockHub embeds an MCP (Model Context Protocol) server that exposes 13 tools for AI agents via Streamable HTTP:
+
+| Category | Tools |
+|----------|-------|
+| Events | `searchEvents`, `getEventDetail`, `getEventListings`, `getFeaturedEvents` |
+| Pricing | `getPriceHistory`, `getPricePrediction` |
+| Cart | `getCart`, `addToCart`, `removeFromCart`, `clearCart` |
+| Orders | `checkout`, `getOrder`, `listOrders` |
+
+MCP endpoint: `POST /mcp` with `X-API-Key: mockhub-dev-key` header. Uses session-based communication — initialize first, then include the `Mcp-Session-Id` header in subsequent requests.
 
 ## Data Oriented Programming
 
