@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { Loader2, ShoppingCart } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { OrderReview } from '@/components/checkout/OrderReview';
 import { MockPaymentForm } from '@/components/checkout/MockPaymentForm';
 import { StripePaymentForm } from '@/components/checkout/StripePaymentForm';
@@ -17,21 +18,22 @@ const SERVICE_FEE_RATE = 0.1;
 
 /**
  * Checkout page with order review and payment method selection.
- * Supports mock payment (instant) and Stripe (real card processing).
  *
- * Stripe flow: create order first (clears cart), then create payment intent,
- * then show Stripe Elements for card input. The page tracks the pending order
- * in local state so it doesn't re-render to "empty cart" mid-flow.
+ * Mock flow: single click creates order + confirms immediately.
+ * Stripe flow: user clicks "Pay with Stripe" → creates order → creates
+ * payment intent → shows Stripe Elements → user enters card → confirms.
  */
 export function CheckoutPage() {
   const { data: cart, isLoading } = useCart();
   const checkoutMutation = useCheckout();
   const navigate = useNavigate();
   const [paymentTab, setPaymentTab] = useState<string>('mock');
+
+  // Stripe flow state
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripeOrderTotal, setStripeOrderTotal] = useState<number | null>(null);
-  const [isCreatingIntent, setIsCreatingIntent] = useState(false);
-  const stripeFlowStarted = useRef(false);
+  const [isSettingUpStripe, setIsSettingUpStripe] = useState(false);
+  const [stripeReady, setStripeReady] = useState(false);
 
   const handleMockCheckout = useCallback(() => {
     checkoutMutation.mutate(
@@ -47,6 +49,32 @@ export function CheckoutPage() {
       },
     );
   }, [checkoutMutation, navigate]);
+
+  const handleStartStripe = useCallback(async () => {
+    setIsSettingUpStripe(true);
+    try {
+      // Step 1: Create the order (this clears the cart)
+      const order = await new Promise<{ orderNumber: string; total: number }>((resolve, reject) => {
+        checkoutMutation.mutate(
+          { paymentMethod: 'STRIPE' },
+          {
+            onSuccess: (o) => resolve({ orderNumber: o.orderNumber, total: o.total }),
+            onError: reject,
+          },
+        );
+      });
+      setStripeOrderTotal(order.total);
+
+      // Step 2: Create a payment intent
+      const intent = await createPaymentIntent(order.orderNumber);
+      setClientSecret(intent.clientSecret);
+      setStripeReady(true);
+    } catch {
+      toast.error('Failed to set up Stripe payment. Please try again.');
+    } finally {
+      setIsSettingUpStripe(false);
+    }
+  }, [checkoutMutation]);
 
   const handleStripeSuccess = useCallback(
     async (paymentIntentId: string) => {
@@ -66,46 +94,6 @@ export function CheckoutPage() {
     toast.error(message);
   }, []);
 
-  // Create order + payment intent when user selects Stripe tab
-  useEffect(() => {
-    if (paymentTab !== 'stripe' || stripeFlowStarted.current || isCreatingIntent) {
-      return;
-    }
-
-    stripeFlowStarted.current = true;
-    setIsCreatingIntent(true);
-
-    const startStripeFlow = async () => {
-      try {
-        // Create the order first (this clears the cart)
-        const order = await new Promise<{ orderNumber: string; total: number }>(
-          (resolve, reject) => {
-            checkoutMutation.mutate(
-              { paymentMethod: 'STRIPE' },
-              {
-                onSuccess: (o) => resolve({ orderNumber: o.orderNumber, total: o.total }),
-                onError: reject,
-              },
-            );
-          },
-        );
-        setStripeOrderTotal(order.total);
-
-        // Then create a payment intent for the order
-        const intent = await createPaymentIntent(order.orderNumber);
-        setClientSecret(intent.clientSecret);
-      } catch {
-        toast.error('Failed to set up payment. Please try again.');
-        stripeFlowStarted.current = false;
-        setPaymentTab('mock');
-      } finally {
-        setIsCreatingIntent(false);
-      }
-    };
-
-    startStripeFlow();
-  }, [paymentTab, isCreatingIntent, checkoutMutation]);
-
   if (isLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
@@ -122,9 +110,8 @@ export function CheckoutPage() {
     );
   }
 
-  // Show empty state only if cart is empty AND we're not in a Stripe flow
-  const inStripeFlow = stripeFlowStarted.current || clientSecret !== null;
-  if (!inStripeFlow && (!cart || cart.items.length === 0)) {
+  // Show empty state only if cart is empty AND we're not in the Stripe flow
+  if (!stripeReady && (!cart || cart.items.length === 0)) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
         <EmptyState
@@ -144,17 +131,16 @@ export function CheckoutPage() {
       <h1 className="mb-6 text-2xl font-bold">Checkout</h1>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Order Review — show cart if available, otherwise show Stripe pending state */}
+        {/* Order Review */}
         {cart && cart.items.length > 0 ? (
           <OrderReview cart={cart} />
         ) : (
-          <div className="flex items-center justify-center rounded-lg border p-8">
-            <div className="text-center">
-              <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">
-                Order created, processing payment...
-              </p>
-            </div>
+          <div className="rounded-lg border p-6">
+            <h3 className="font-semibold">Order Summary</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your order has been created. Complete payment below.
+            </p>
+            <p className="mt-3 text-lg font-semibold">Total: ${total.toFixed(2)}</p>
           </div>
         )}
 
@@ -163,10 +149,10 @@ export function CheckoutPage() {
           <h2 className="text-lg font-semibold">Payment Method</h2>
           <Tabs value={paymentTab} onValueChange={setPaymentTab}>
             <TabsList className="w-full">
-              <TabsTrigger value="mock" className="flex-1" disabled={inStripeFlow}>
+              <TabsTrigger value="mock" className="flex-1" disabled={stripeReady}>
                 Mock Payment
               </TabsTrigger>
-              <TabsTrigger value="stripe" className="flex-1" disabled={inStripeFlow}>
+              <TabsTrigger value="stripe" className="flex-1" disabled={stripeReady}>
                 Stripe
               </TabsTrigger>
             </TabsList>
@@ -178,13 +164,37 @@ export function CheckoutPage() {
               />
             </TabsContent>
             <TabsContent value="stripe">
-              <StripePaymentForm
-                clientSecret={clientSecret}
-                total={total}
-                onSuccess={handleStripeSuccess}
-                onError={handleStripeError}
-                isProcessing={isCreatingIntent}
-              />
+              {stripeReady ? (
+                <StripePaymentForm
+                  clientSecret={clientSecret}
+                  total={total}
+                  onSuccess={handleStripeSuccess}
+                  onError={handleStripeError}
+                  isProcessing={false}
+                />
+              ) : (
+                <div className="space-y-4 rounded-lg border p-6">
+                  <p className="text-sm text-muted-foreground">
+                    Pay securely with your credit or debit card via Stripe. Use test card{' '}
+                    <code className="text-xs">4242 4242 4242 4242</code> with any future expiry and
+                    any CVC.
+                  </p>
+                  <Button
+                    onClick={handleStartStripe}
+                    disabled={isSettingUpStripe}
+                    className="w-full"
+                  >
+                    {isSettingUpStripe ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Setting up payment...
+                      </>
+                    ) : (
+                      `Pay $${total.toFixed(2)} with Stripe`
+                    )}
+                  </Button>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
