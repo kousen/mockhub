@@ -93,7 +93,7 @@ public class PricePredictionService {
                     currentPrice,
                     predictedPrice,
                     trend,
-                    Math.max(0.0, Math.min(1.0, confidence)),
+                    Math.clamp(confidence, 0.0, 1.0),
                     Instant.now()
             );
         } catch (Exception e) {
