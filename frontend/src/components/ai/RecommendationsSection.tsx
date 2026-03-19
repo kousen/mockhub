@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRecommendations } from '@/hooks/use-ai';
+import { useAuthStore } from '@/stores/auth-store';
 import { formatCurrency, formatShortDate } from '@/lib/formatters';
 
 function RecommendationSkeleton() {
@@ -31,9 +32,15 @@ function RecommendationSkeleton() {
  * Hides entirely if AI is unavailable or no recommendations exist.
  */
 export function RecommendationsSection() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { data: recommendations, isLoading } = useRecommendations();
 
-  // Hide entirely if no recommendations or AI unavailable
+  // Only show recommendations for logged-in users
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  // Hide if no recommendations or AI unavailable
   if (!isLoading && (!recommendations || recommendations.length === 0)) {
     return null;
   }
