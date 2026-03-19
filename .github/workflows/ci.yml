@@ -85,10 +85,9 @@ jobs:
           path: frontend/coverage/
 
   e2e-test:
-    name: E2E Tests (AI + Playwright)
-    if: false  # Temporarily disabled — see issue #30
+    name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     needs: [backend-test, frontend-test]
 
     services:
@@ -118,20 +117,23 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Start backend with AI
+      - name: Start backend
         working-directory: backend
         run: |
-          ./gradlew bootRun &
-          # Wait for backend to be ready
+          ./gradlew bootRun > bootRun.log 2>&1 &
+          echo "Waiting for backend to start..."
           for i in $(seq 1 60); do
-            curl -s http://localhost:8080/actuator/health > /dev/null 2>&1 && break
+            if curl -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
+              echo "Backend is ready!"
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "Backend failed to start. Last 50 lines of log:"
+              tail -50 bootRun.log
+              exit 1
+            fi
             sleep 2
           done
-          curl -s http://localhost:8080/actuator/health || exit 1
-        env:
-          SPRING_PROFILES_ACTIVE: dev-ai,ai-anthropic
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          SPRING_AI_ANTHROPIC_CHAT_OPTIONS_MODEL: claude-haiku-4-5
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -151,6 +153,13 @@ jobs:
       - name: Run E2E tests
         working-directory: frontend
         run: npx playwright test
+
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-bootrun-log
+          path: backend/bootRun.log
 
       - name: Upload Playwright report
         if: always()
