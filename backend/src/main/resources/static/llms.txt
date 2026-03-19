@@ -1,0 +1,60 @@
+# MockHub API — llms.txt
+# Secondary concert ticket marketplace
+
+> MockHub is a secondary ticket marketplace for concerts, sports, theater, comedy, and festivals.
+> This file describes the public API for AI agents.
+
+## Base URL
+/api/v1
+
+## Authentication
+POST /api/v1/auth/login — JSON body: {"email", "password"} → {"accessToken", "expiresIn", "user"}
+POST /api/v1/auth/register — JSON body: {"email", "password", "firstName", "lastName"} → {"accessToken", "expiresIn", "user"}
+Authenticated requests: Authorization: Bearer <accessToken>
+
+## Events (public, no auth required)
+GET /api/v1/events — List events with search/filter/pagination
+  Query params: q, category, tags, city, dateFrom, dateTo, minPrice, maxPrice, status, sort, page, size
+  Returns: {"content": [EventSummary], "page", "size", "totalElements", "totalPages"}
+GET /api/v1/events/featured — Featured events list
+GET /api/v1/events/{slug} — Event detail by slug
+GET /api/v1/events/{slug}/listings — Active ticket listings for an event
+GET /api/v1/events/{slug}/sections — Section availability with pricing
+GET /api/v1/events/{slug}/predicted-price — AI price prediction (requires AI profile)
+
+## Venues (public)
+GET /api/v1/venues — List all venues
+GET /api/v1/venues/{slug} — Venue detail by slug
+
+## Search (public)
+GET /api/v1/search?q={query} — Full-text event search
+
+## AI Features (public, requires AI provider profile)
+POST /api/v1/chat — Chat with AI assistant. JSON body: {"message": "string"}
+GET /api/v1/recommendations — AI-ranked event recommendations
+
+## Cart (requires auth)
+GET /api/v1/cart — Get current cart
+POST /api/v1/cart/items — Add listing to cart. JSON body: {"listingId": number}
+DELETE /api/v1/cart/items/{itemId} — Remove item from cart
+DELETE /api/v1/cart — Clear cart
+
+## Checkout (requires auth)
+POST /api/v1/orders/checkout — Create order from cart. JSON body: {"paymentMethod": "string"}
+
+## Orders (requires auth)
+GET /api/v1/orders — List user's orders (paginated)
+GET /api/v1/orders/{orderNumber} — Order detail
+
+## Payments (requires auth except webhook)
+POST /api/v1/payments/create-intent — Create payment intent. JSON body: {"orderNumber": "string"}
+POST /api/v1/payments/confirm — Confirm payment. JSON body: {"paymentIntentId": "string"}
+POST /api/v1/payments/webhook — Stripe webhook (no auth, signature verified)
+
+## Error Format
+All errors use RFC 9457 Problem Details:
+{"type", "title", "status", "detail", "instance"}
+
+## Content Types
+Request: application/json
+Response: application/json

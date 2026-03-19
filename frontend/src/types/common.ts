@@ -1,7 +1,12 @@
 export interface ApiError {
+  type?: string;
+  title?: string;
   status: number;
-  message: string;
-  errors?: FieldError[];
+  detail?: string;
+  instance?: string;
+  fieldErrors?: Record<string, string>;
+  // Backwards compatibility alias
+  message?: string;
 }
 
 export interface FieldError {

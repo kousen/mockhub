@@ -55,9 +55,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/recommendations").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/images/**").permitAll()
-                        // API documentation
+                        // API documentation and agent discovery
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/v3/api-docs/**").permitAll()
+                        .requestMatchers("/llms.txt").permitAll()
                         // Actuator health and error page
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()

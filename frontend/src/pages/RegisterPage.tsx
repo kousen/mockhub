@@ -32,7 +32,7 @@ export function RegisterPage() {
   };
 
   const serverError =
-    (registerMutation.error as AxiosError<ApiError>)?.response?.data?.message ??
+    (registerMutation.error as AxiosError<ApiError>)?.response?.data?.detail ??
     (registerMutation.error ? 'Registration failed. Please try again.' : null);
 
   const errorMessage = validationError ?? serverError;

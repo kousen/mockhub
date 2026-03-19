@@ -21,7 +21,7 @@ export function LoginPage() {
   };
 
   const errorMessage =
-    (loginMutation.error as AxiosError<ApiError>)?.response?.data?.message ??
+    (loginMutation.error as AxiosError<ApiError>)?.response?.data?.detail ??
     (loginMutation.error ? 'Login failed. Please try again.' : null);
 
   return (
