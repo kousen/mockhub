@@ -32,7 +32,7 @@ type SortDirection = 'asc' | 'desc';
  * allow authenticated users to add tickets to their cart.
  */
 export function TicketListView({ listings, isLoading }: TicketListViewProps) {
-  const [sortField, setSortField] = useState<SortField>('price');
+  const [sortField, setSortField] = useState<SortField>('section');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [addingListingId, setAddingListingId] = useState<number | null>(null);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -65,6 +65,12 @@ export function TicketListView({ listings, isLoading }: TicketListViewProps) {
         cmp = a.computedPrice - b.computedPrice;
       } else if (sortField === 'section') {
         cmp = a.sectionName.localeCompare(b.sectionName);
+        if (cmp === 0) {
+          cmp = (a.rowLabel ?? '').localeCompare(b.rowLabel ?? '');
+        }
+        if (cmp === 0) {
+          cmp = Number(a.seatNumber ?? 0) - Number(b.seatNumber ?? 0);
+        }
       }
       return sortDirection === 'desc' ? -cmp : cmp;
     });
