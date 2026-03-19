@@ -27,6 +27,9 @@ import com.mockhub.common.exception.ResourceNotFoundException;
 @Service
 public class AuthService {
 
+    private static final String USER_RESOURCE = "User";
+    private static final String EMAIL_FIELD = "email";
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -84,7 +87,7 @@ public class AuthService {
         String accessToken = jwtTokenProvider.generateAccessToken(authentication);
 
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", request.email()));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_RESOURCE, EMAIL_FIELD, request.email()));
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
@@ -103,7 +106,7 @@ public class AuthService {
 
         String email = jwtTokenProvider.getEmailFromToken(refreshToken);
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_RESOURCE, EMAIL_FIELD, email));
 
         SecurityUser securityUser = new SecurityUser(user);
         String newAccessToken = jwtTokenProvider.generateAccessToken(securityUser);
@@ -118,7 +121,7 @@ public class AuthService {
     @Transactional(readOnly = true)
     public UserDto getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_RESOURCE, EMAIL_FIELD, email));
 
         return toUserDto(user);
     }
@@ -126,7 +129,7 @@ public class AuthService {
     @Transactional
     public UserDto updateCurrentUser(String email, String firstName, String lastName, String phone) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_RESOURCE, EMAIL_FIELD, email));
 
         if (firstName != null) {
             user.setFirstName(firstName);

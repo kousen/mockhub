@@ -86,7 +86,6 @@ public class StripePaymentService implements PaymentService {
                     CURRENCY
             );
         } catch (StripeException e) {
-            log.error("Failed to create Stripe PaymentIntent for order {}", order.getOrderNumber(), e);
             throw new PaymentException("Failed to create payment intent: " + e.getMessage(), e);
         }
     }
@@ -137,7 +136,6 @@ public class StripePaymentService implements PaymentService {
                 return new PaymentConfirmation(paymentIntentId, "FAILED", orderNumber);
             }
         } catch (StripeException e) {
-            log.error("Failed to confirm Stripe payment {}", paymentIntentId, e);
             throw new PaymentException("Failed to confirm payment: " + e.getMessage(), e);
         }
     }

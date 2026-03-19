@@ -47,6 +47,8 @@ public class OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
     private static final BigDecimal SERVICE_FEE_RATE = new BigDecimal("0.10");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final String ORDER_RESOURCE = "Order";
+    private static final String ORDER_NUMBER_FIELD = "orderNumber";
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
@@ -143,7 +145,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public OrderDto getOrder(User user, String orderNumber) {
         Order order = orderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", "orderNumber", orderNumber));
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
         if (!order.getUser().getId().equals(user.getId())) {
             throw new UnauthorizedException("You do not have access to this order");
@@ -180,7 +182,7 @@ public class OrderService {
     @Transactional
     public void confirmOrder(String orderNumber) {
         Order order = orderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", "orderNumber", orderNumber));
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
         order.setStatus("CONFIRMED");
         order.setConfirmedAt(Instant.now());
@@ -212,7 +214,7 @@ public class OrderService {
     @Transactional
     public void failOrder(String orderNumber) {
         Order order = orderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", "orderNumber", orderNumber));
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
         order.setStatus("FAILED");
 
@@ -228,7 +230,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public Order getOrderEntity(String orderNumber) {
         return orderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", "orderNumber", orderNumber));
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
     }
 
     private String generateOrderNumber() {
