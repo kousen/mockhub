@@ -41,3 +41,4 @@ postgres_data/
 # Logs
 *.log
 *.hprof
+frontend/test-results/
