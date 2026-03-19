@@ -24,6 +24,7 @@ import com.stripe.param.PaymentIntentCreateParams;
 
 @Service
 @Profile("stripe")
+@org.springframework.context.annotation.Primary
 public class StripePaymentService implements PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(StripePaymentService.class);

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { ShoppingCart } from 'lucide-react';
+import { Loader2, ShoppingCart } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderReview } from '@/components/checkout/OrderReview';
@@ -18,6 +18,10 @@ const SERVICE_FEE_RATE = 0.1;
 /**
  * Checkout page with order review and payment method selection.
  * Supports mock payment (instant) and Stripe (real card processing).
+ *
+ * Stripe flow: create order first (clears cart), then create payment intent,
+ * then show Stripe Elements for card input. The page tracks the pending order
+ * in local state so it doesn't re-render to "empty cart" mid-flow.
  */
 export function CheckoutPage() {
   const { data: cart, isLoading } = useCart();
@@ -25,7 +29,9 @@ export function CheckoutPage() {
   const navigate = useNavigate();
   const [paymentTab, setPaymentTab] = useState<string>('mock');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [stripeOrderTotal, setStripeOrderTotal] = useState<number | null>(null);
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
+  const stripeFlowStarted = useRef(false);
 
   const handleMockCheckout = useCallback(() => {
     checkoutMutation.mutate(
@@ -60,34 +66,45 @@ export function CheckoutPage() {
     toast.error(message);
   }, []);
 
-  // Create a Stripe payment intent when the user selects the Stripe tab
+  // Create order + payment intent when user selects Stripe tab
   useEffect(() => {
-    if (paymentTab !== 'stripe' || clientSecret || isCreatingIntent) {
+    if (paymentTab !== 'stripe' || stripeFlowStarted.current || isCreatingIntent) {
       return;
     }
 
-    const createIntent = async () => {
-      setIsCreatingIntent(true);
+    stripeFlowStarted.current = true;
+    setIsCreatingIntent(true);
+
+    const startStripeFlow = async () => {
       try {
-        // First create the order, then create a payment intent for it
-        const order = await new Promise<{ orderNumber: string }>((resolve, reject) => {
-          checkoutMutation.mutate(
-            { paymentMethod: 'STRIPE' },
-            { onSuccess: resolve, onError: reject },
-          );
-        });
+        // Create the order first (this clears the cart)
+        const order = await new Promise<{ orderNumber: string; total: number }>(
+          (resolve, reject) => {
+            checkoutMutation.mutate(
+              { paymentMethod: 'STRIPE' },
+              {
+                onSuccess: (o) => resolve({ orderNumber: o.orderNumber, total: o.total }),
+                onError: reject,
+              },
+            );
+          },
+        );
+        setStripeOrderTotal(order.total);
+
+        // Then create a payment intent for the order
         const intent = await createPaymentIntent(order.orderNumber);
         setClientSecret(intent.clientSecret);
       } catch {
         toast.error('Failed to set up payment. Please try again.');
+        stripeFlowStarted.current = false;
         setPaymentTab('mock');
       } finally {
         setIsCreatingIntent(false);
       }
     };
 
-    createIntent();
-  }, [paymentTab, clientSecret, isCreatingIntent, checkoutMutation]);
+    startStripeFlow();
+  }, [paymentTab, isCreatingIntent, checkoutMutation]);
 
   if (isLoading) {
     return (
@@ -105,7 +122,9 @@ export function CheckoutPage() {
     );
   }
 
-  if (!cart || cart.items.length === 0) {
+  // Show empty state only if cart is empty AND we're not in a Stripe flow
+  const inStripeFlow = stripeFlowStarted.current || clientSecret !== null;
+  if (!inStripeFlow && (!cart || cart.items.length === 0)) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
         <EmptyState
@@ -118,25 +137,36 @@ export function CheckoutPage() {
     );
   }
 
-  const total = cart.subtotal + cart.subtotal * SERVICE_FEE_RATE;
+  const total = stripeOrderTotal ?? (cart ? cart.subtotal + cart.subtotal * SERVICE_FEE_RATE : 0);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
       <h1 className="mb-6 text-2xl font-bold">Checkout</h1>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Order Review */}
-        <OrderReview cart={cart} />
+        {/* Order Review — show cart if available, otherwise show Stripe pending state */}
+        {cart && cart.items.length > 0 ? (
+          <OrderReview cart={cart} />
+        ) : (
+          <div className="flex items-center justify-center rounded-lg border p-8">
+            <div className="text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="mt-2 text-sm text-muted-foreground">
+                Order created, processing payment...
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Payment Method */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Payment Method</h2>
           <Tabs value={paymentTab} onValueChange={setPaymentTab}>
             <TabsList className="w-full">
-              <TabsTrigger value="mock" className="flex-1">
+              <TabsTrigger value="mock" className="flex-1" disabled={inStripeFlow}>
                 Mock Payment
               </TabsTrigger>
-              <TabsTrigger value="stripe" className="flex-1">
+              <TabsTrigger value="stripe" className="flex-1" disabled={inStripeFlow}>
                 Stripe
               </TabsTrigger>
             </TabsList>

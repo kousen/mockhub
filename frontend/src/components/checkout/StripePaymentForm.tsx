@@ -1,10 +1,5 @@
 import { useState } from 'react';
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,7 +16,12 @@ interface StripePaymentFormProps {
   isProcessing: boolean;
 }
 
-function CheckoutForm({ total, onSuccess, onError, isProcessing }: Omit<StripePaymentFormProps, 'clientSecret'>) {
+function CheckoutForm({
+  total,
+  onSuccess,
+  onError,
+  isProcessing,
+}: Omit<StripePaymentFormProps, 'clientSecret'>) {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
