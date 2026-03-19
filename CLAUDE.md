@@ -30,13 +30,12 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 - **Error handling** uses RFC 9457 Problem Details via `GlobalExceptionHandler` (`@RestControllerAdvice`). Returns `ProblemDetail` objects with `type`, `title`, `status`, `detail` fields. Domain exceptions are modeled as a sealed hierarchy (see DOP section).
 - **Caching:** Use Spring `@Cacheable` annotations. Never cache carts, orders, notifications, or pricing data.
 - **Spring profiles** control implementation variants:
-  - `dev` — PostgreSQL, mock payment, debug logging, AI disabled (default). Profile group: `dev,mock-payment,no-ai`
-  - `dev-ai` — Same as dev but AI enabled. Profile group: `mock-payment`. Use with an AI provider profile.
+  - `dev` — PostgreSQL, mock payment, debug logging, AI disabled (default). Profile group: `dev,mock-payment`
   - `test` — Testcontainers PostgreSQL, mock payment
-  - `no-ai` — Excludes all AI auto-configurations. Included automatically in `dev` group.
-  - `mock-payment` / `stripe` — payment implementation
-  - `ai-anthropic` / `ai-openai` / `ai-ollama` — AI provider (each excludes the other providers' auto-configs)
-  - **IMPORTANT:** Do NOT use `SPRING_PROFILES_ACTIVE=dev,ai-anthropic` — the `dev` group recursively adds `no-ai`. Use `dev-ai,ai-anthropic` instead.
+  - `mock-payment` / `stripe` — payment implementation (`@Primary` on Stripe resolves conflicts when both active)
+  - `ai-anthropic` / `ai-openai` / `ai-ollama` — AI provider (each overrides the base AI exclusion list to enable only its own provider)
+  - Base `application.yml` excludes all AI auto-configs. Each `ai-*` profile overrides with a narrower list.
+  - To enable AI: `SPRING_PROFILES_ACTIVE=dev,ai-anthropic` (just add the provider to dev)
 
 ### Data Oriented Programming
 
@@ -50,7 +49,7 @@ The codebase uses Java DOP patterns where they add value:
 ### AI Features
 
 - **Conditional activation:** AI services use `@ConditionalOnProperty(name = "spring.ai.anthropic.api-key")` (NOT `@ConditionalOnBean` — that evaluates before auto-config creates the beans). The `AiController` injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active.
-- **Profile activation:** Use `SPRING_PROFILES_ACTIVE=dev-ai,ai-anthropic` (NOT `dev,ai-anthropic`).
+- **Profile activation:** `SPRING_PROFILES_ACTIVE=dev,ai-anthropic` — just add the AI provider to dev.
 - **Services:** `ChatService` (chat assistant with 10-message `MessageWindowChatMemory`), `PricePredictionService` (price trend analysis), `RecommendationService` (AI-ranked event recommendations).
 - **AI responses are parsed from JSON.** Services prompt the LLM for JSON output and parse with Jackson. Fallback logic returns safe defaults if parsing fails.
 - **Circular dependency:** MCP tool registration → PricingTools → PricePredictionService → ChatClient creates a cycle. Broken with `@Lazy` on the `ChatClient` parameter in `PricePredictionService`.

@@ -3,7 +3,7 @@
  *
  * Prerequisites:
  *   - Database running: docker compose -f docker-compose.dev.yml up -d
- *   - Backend running with AI: SPRING_PROFILES_ACTIVE=dev-ai,ai-anthropic ./gradlew bootRun
+ *   - Backend running with AI: SPRING_PROFILES_ACTIVE=dev,ai-anthropic ./gradlew bootRun
  *   - Frontend running: cd frontend && npm run dev
  *
  * Usage:

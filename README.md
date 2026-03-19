@@ -157,7 +157,7 @@ E2E tests include AI feature tests that call a real Claude Haiku model. Start th
 ```bash
 # Terminal 1: start backend with Haiku
 cd backend
-SPRING_PROFILES_ACTIVE=dev-ai,ai-anthropic \
+SPRING_PROFILES_ACTIVE=dev,ai-anthropic \
 SPRING_AI_ANTHROPIC_CHAT_OPTIONS_MODEL=claude-haiku-4-5 \
 ./gradlew bootRun
 
@@ -180,22 +180,22 @@ MockHub includes working AI-powered endpoints backed by Spring AI:
 
 ### Enabling AI
 
-AI features require the `dev-ai` profile (not plain `dev`, which disables AI). Set the profile and API key:
+AI features require an AI provider profile alongside `dev`. Set the profile and API key:
 
 ```bash
 # Anthropic Claude
-SPRING_PROFILES_ACTIVE=dev-ai,ai-anthropic ./gradlew bootRun
+SPRING_PROFILES_ACTIVE=dev,ai-anthropic ./gradlew bootRun
 # Requires ANTHROPIC_API_KEY environment variable
 
 # OpenAI
-SPRING_PROFILES_ACTIVE=dev-ai,ai-openai ./gradlew bootRun
+SPRING_PROFILES_ACTIVE=dev,ai-openai ./gradlew bootRun
 # Requires OPENAI_API_KEY environment variable
 
 # Ollama (local, no API key needed)
-SPRING_PROFILES_ACTIVE=dev-ai,ai-ollama ./gradlew bootRun
+SPRING_PROFILES_ACTIVE=dev,ai-ollama ./gradlew bootRun
 ```
 
-**Why `dev-ai`?** The default `dev` profile group includes `no-ai`, which excludes all AI auto-configurations. The `dev-ai` group omits that exclusion. Each AI provider profile also excludes the other providers to avoid bean conflicts.
+The base configuration excludes all AI auto-configs by default. Each AI provider profile overrides the exclusion list to enable only its own provider. No special profile group needed — just add `ai-anthropic` (or `ai-openai` or `ai-ollama`) to the dev profile.
 
 Without an AI profile, these endpoints return 503 with a message indicating which profile to activate. The frontend AI components (chat widget, recommendations, price predictions) hide gracefully when AI is not configured.
 

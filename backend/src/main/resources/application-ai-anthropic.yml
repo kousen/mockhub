@@ -6,6 +6,7 @@ spring:
         options:
           model: claude-sonnet-4-6
 
+  # Override base exclusions: keep Anthropic, exclude everything else
   autoconfigure:
     exclude:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiChatAutoConfiguration
