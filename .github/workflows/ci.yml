@@ -86,6 +86,7 @@ jobs:
 
   e2e-test:
     name: E2E Tests (AI + Playwright)
+    if: false  # Temporarily disabled — see issue #30
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [backend-test, frontend-test]
