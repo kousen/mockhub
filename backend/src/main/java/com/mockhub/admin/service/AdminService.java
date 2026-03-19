@@ -183,7 +183,7 @@ public class AdminService {
 
         user.setRoles(roles);
         userRepository.save(user);
-        log.info("Admin updated roles for user {} to {}", userId, roleNames.toString().replaceAll("[\\r\\n]", ""));
+        log.atInfo().setMessage("Admin updated roles for user {} to {}").addArgument(userId).addArgument(() -> roleNames.toString().replaceAll("[\\r\\n]", "")).log();
     }
 
     @Transactional

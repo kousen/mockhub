@@ -83,7 +83,6 @@ public class AuthService {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
-        SecurityUser securityUser = (SecurityUser) authentication.getPrincipal();
         String accessToken = jwtTokenProvider.generateAccessToken(authentication);
 
         User user = userRepository.findByEmail(request.email())

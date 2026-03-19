@@ -128,8 +128,6 @@ class AuthServiceTest {
         LoginRequest request = new LoginRequest("test@example.com", "password123");
 
         Authentication authentication = mock(Authentication.class);
-        SecurityUser securityUser = new SecurityUser(testUser);
-        when(authentication.getPrincipal()).thenReturn(securityUser);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));

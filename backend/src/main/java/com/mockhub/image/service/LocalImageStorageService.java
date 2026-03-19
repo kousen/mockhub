@@ -24,6 +24,7 @@ public class LocalImageStorageService implements ImageStorageService {
     private static final Logger log = LoggerFactory.getLogger(LocalImageStorageService.class);
     private static final String IMAGES_DIR = "images";
     private static final String THUMBNAILS_DIR = "thumbnails";
+    private static final String IMAGE_RESOURCE = "Image";
 
     private final Path storageRootPath;
     private final ImageResizer imageResizer;
@@ -68,7 +69,7 @@ public class LocalImageStorageService implements ImageStorageService {
     @Transactional(readOnly = true)
     public byte[] get(Long imageId) {
         Image image = imageRepository.findById(imageId)
-                .orElseThrow(() -> new ResourceNotFoundException("Image", "id", imageId));
+                .orElseThrow(() -> new ResourceNotFoundException(IMAGE_RESOURCE, "id", imageId));
 
         String filename = extractFilenameFromUrl(image.getUrl());
         Path imagePath = storageRootPath.resolve(IMAGES_DIR).resolve(filename);
@@ -84,7 +85,7 @@ public class LocalImageStorageService implements ImageStorageService {
     @Transactional(readOnly = true)
     public byte[] getThumbnail(Long imageId) {
         Image image = imageRepository.findById(imageId)
-                .orElseThrow(() -> new ResourceNotFoundException("Image", "id", imageId));
+                .orElseThrow(() -> new ResourceNotFoundException(IMAGE_RESOURCE, "id", imageId));
 
         String filename = extractFilenameFromUrl(image.getUrl());
         Path thumbnailPath = storageRootPath.resolve(THUMBNAILS_DIR).resolve(filename);
@@ -100,7 +101,7 @@ public class LocalImageStorageService implements ImageStorageService {
     @Transactional
     public void delete(Long imageId) {
         Image image = imageRepository.findById(imageId)
-                .orElseThrow(() -> new ResourceNotFoundException("Image", "id", imageId));
+                .orElseThrow(() -> new ResourceNotFoundException(IMAGE_RESOURCE, "id", imageId));
 
         String filename = extractFilenameFromUrl(image.getUrl());
 
