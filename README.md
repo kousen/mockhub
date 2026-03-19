@@ -151,20 +151,30 @@ MockHub includes working AI-powered endpoints backed by Spring AI:
 
 ### Enabling AI
 
-AI features require an active AI provider profile. Set the profile and API key:
+AI features require the `dev-ai` profile (not plain `dev`, which disables AI). Set the profile and API key:
 
 ```bash
 # Anthropic Claude
-SPRING_PROFILES_ACTIVE=dev,mock-payment,ai-anthropic ANTHROPIC_API_KEY=sk-ant-... ./gradlew bootRun
+SPRING_PROFILES_ACTIVE=dev-ai,ai-anthropic ./gradlew bootRun
+# Requires ANTHROPIC_API_KEY environment variable
 
 # OpenAI
-SPRING_PROFILES_ACTIVE=dev,mock-payment,ai-openai OPENAI_API_KEY=sk-... ./gradlew bootRun
+SPRING_PROFILES_ACTIVE=dev-ai,ai-openai ./gradlew bootRun
+# Requires OPENAI_API_KEY environment variable
 
 # Ollama (local, no API key needed)
-SPRING_PROFILES_ACTIVE=dev,mock-payment,ai-ollama ./gradlew bootRun
+SPRING_PROFILES_ACTIVE=dev-ai,ai-ollama ./gradlew bootRun
 ```
 
-Without an AI profile, these endpoints return 503 with a message indicating which profile to activate.
+**Why `dev-ai`?** The default `dev` profile group includes `no-ai`, which excludes all AI auto-configurations. The `dev-ai` group omits that exclusion. Each AI provider profile also excludes the other providers to avoid bean conflicts.
+
+Without an AI profile, these endpoints return 503 with a message indicating which profile to activate. The frontend AI components (chat widget, recommendations, price predictions) hide gracefully when AI is not configured.
+
+### AI Frontend Components
+
+- **Chat widget** — floating button (bottom-right) opens a slide-out conversation panel
+- **Recommendations** — "Recommended for You" section on the homepage with AI-ranked events
+- **Price prediction** — badge on event detail pages showing predicted price, trend, and confidence
 
 ### AI Agent Discovery
 
