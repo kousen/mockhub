@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { ShoppingCart } from 'lucide-react';
@@ -10,27 +10,26 @@ import { StripePaymentForm } from '@/components/checkout/StripePaymentForm';
 import { EmptyState } from '@/components/common/EmptyState';
 import { useCart } from '@/hooks/use-cart';
 import { useCheckout } from '@/hooks/use-orders';
+import { createPaymentIntent, confirmPayment } from '@/api/payments';
 import { ROUTES } from '@/lib/constants';
-import type { CheckoutRequest } from '@/types/order';
 
 const SERVICE_FEE_RATE = 0.1;
 
 /**
  * Checkout page with order review and payment method selection.
- * Supports mock payment (for testing) and a Stripe placeholder.
+ * Supports mock payment (instant) and Stripe (real card processing).
  */
 export function CheckoutPage() {
   const { data: cart, isLoading } = useCart();
-  const checkout = useCheckout();
+  const checkoutMutation = useCheckout();
   const navigate = useNavigate();
   const [paymentTab, setPaymentTab] = useState<string>('mock');
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isCreatingIntent, setIsCreatingIntent] = useState(false);
 
-  const handleCheckout = () => {
-    const paymentMethod: CheckoutRequest['paymentMethod'] =
-      paymentTab === 'stripe' ? 'STRIPE' : 'MOCK';
-
-    checkout.mutate(
-      { paymentMethod },
+  const handleMockCheckout = useCallback(() => {
+    checkoutMutation.mutate(
+      { paymentMethod: 'MOCK' },
       {
         onSuccess: (order) => {
           toast.success('Payment successful!');
@@ -41,7 +40,54 @@ export function CheckoutPage() {
         },
       },
     );
-  };
+  }, [checkoutMutation, navigate]);
+
+  const handleStripeSuccess = useCallback(
+    async (paymentIntentId: string) => {
+      try {
+        const confirmation = await confirmPayment(paymentIntentId);
+        toast.success('Payment successful!');
+        navigate(`/orders/${confirmation.orderNumber}/confirmation`);
+      } catch {
+        toast.error('Payment confirmation failed. Please check your orders.');
+        navigate(ROUTES.ORDERS);
+      }
+    },
+    [navigate],
+  );
+
+  const handleStripeError = useCallback((message: string) => {
+    toast.error(message);
+  }, []);
+
+  // Create a Stripe payment intent when the user selects the Stripe tab
+  useEffect(() => {
+    if (paymentTab !== 'stripe' || clientSecret || isCreatingIntent) {
+      return;
+    }
+
+    const createIntent = async () => {
+      setIsCreatingIntent(true);
+      try {
+        // First create the order, then create a payment intent for it
+        const order = await new Promise<{ orderNumber: string }>((resolve, reject) => {
+          checkoutMutation.mutate(
+            { paymentMethod: 'STRIPE' },
+            { onSuccess: resolve, onError: reject },
+          );
+        });
+        const intent = await createPaymentIntent(order.orderNumber);
+        setClientSecret(intent.clientSecret);
+      } catch {
+        toast.error('Failed to set up payment. Please try again.');
+        setPaymentTab('mock');
+      } finally {
+        setIsCreatingIntent(false);
+      }
+    };
+
+    createIntent();
+  }, [paymentTab, clientSecret, isCreatingIntent, checkoutMutation]);
 
   if (isLoading) {
     return (
@@ -97,12 +143,18 @@ export function CheckoutPage() {
             <TabsContent value="mock">
               <MockPaymentForm
                 total={total}
-                onSubmit={handleCheckout}
-                isProcessing={checkout.isPending}
+                onSubmit={handleMockCheckout}
+                isProcessing={checkoutMutation.isPending}
               />
             </TabsContent>
             <TabsContent value="stripe">
-              <StripePaymentForm />
+              <StripePaymentForm
+                clientSecret={clientSecret}
+                total={total}
+                onSuccess={handleStripeSuccess}
+                onError={handleStripeError}
+                isProcessing={isCreatingIntent}
+              />
             </TabsContent>
           </Tabs>
         </div>
