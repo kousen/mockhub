@@ -3,14 +3,14 @@ package com.mockhub.ai.service;
 import java.time.Instant;
 
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import com.mockhub.ai.dto.ChatRequest;
 import com.mockhub.ai.dto.ChatResponse;
 
 @Service
-@ConditionalOnBean(ChatClient.class)
+@ConditionalOnProperty(name = "spring.ai.anthropic.api-key")
 public class ChatService {
 
     private static final String DEFAULT_CONVERSATION_ID = "default";

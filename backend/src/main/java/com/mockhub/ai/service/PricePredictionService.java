@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +23,7 @@ import com.mockhub.pricing.entity.PriceHistory;
 import com.mockhub.pricing.repository.PriceHistoryRepository;
 
 @Service
-@ConditionalOnBean(ChatClient.class)
+@ConditionalOnProperty(name = "spring.ai.anthropic.api-key")
 public class PricePredictionService {
 
     private static final Logger log = LoggerFactory.getLogger(PricePredictionService.class);
@@ -33,7 +33,7 @@ public class PricePredictionService {
     private final EventRepository eventRepository;
     private final PriceHistoryRepository priceHistoryRepository;
 
-    public PricePredictionService(ChatClient chatClient,
+    public PricePredictionService(@org.springframework.context.annotation.Lazy ChatClient chatClient,
                                   EventRepository eventRepository,
                                   PriceHistoryRepository priceHistoryRepository) {
         this.chatClient = chatClient;

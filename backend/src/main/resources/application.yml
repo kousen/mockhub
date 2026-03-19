@@ -4,7 +4,8 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
     group:
-      dev: dev,mock-payment
+      dev: dev,mock-payment,no-ai
+      dev-ai: mock-payment
 
   jpa:
     hibernate:
