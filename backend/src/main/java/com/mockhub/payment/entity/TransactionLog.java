@@ -44,6 +44,7 @@ public class TransactionLog extends BaseEntity {
     private String status;
 
     @Column(name = "metadata", columnDefinition = "jsonb")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     private String metadata;
 
     @Column(name = "ip_address", length = 45)
