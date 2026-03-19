@@ -149,6 +149,7 @@ export function ChatWidget() {
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div
+                      data-testid={msg.role === 'user' ? 'user-message' : 'ai-message'}
                       className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
                         msg.role === 'user'
                           ? 'bg-primary text-primary-foreground'

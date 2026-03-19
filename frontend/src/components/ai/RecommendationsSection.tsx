@@ -82,7 +82,7 @@ export function RecommendationsSection() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                         From {formatCurrency(rec.minPrice)}
                       </span>
                     </div>
