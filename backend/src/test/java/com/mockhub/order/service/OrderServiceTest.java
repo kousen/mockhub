@@ -175,7 +175,7 @@ class OrderServiceTest {
             return order;
         });
 
-        OrderDto result = orderService.checkout(testUser, request);
+        OrderDto result = orderService.checkout(testUser, request, null);
 
         assertNotNull(result, "Order DTO should not be null");
         assertEquals("PENDING", result.status(), "Order status should be PENDING");
@@ -191,7 +191,7 @@ class OrderServiceTest {
         when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
 
         assertThrows(ConflictException.class,
-                () -> orderService.checkout(testUser, request),
+                () -> orderService.checkout(testUser, request, null),
                 "Should throw ConflictException for empty cart");
     }
 
@@ -203,8 +203,55 @@ class OrderServiceTest {
         when(cartRepository.findByUser(testUser)).thenReturn(Optional.empty());
 
         assertThrows(ConflictException.class,
-                () -> orderService.checkout(testUser, request),
+                () -> orderService.checkout(testUser, request, null),
                 "Should throw ConflictException when no cart exists");
+    }
+
+    @Test
+    @DisplayName("checkout - given duplicate idempotency key - returns existing order")
+    void checkout_givenDuplicateIdempotencyKey_returnsExistingOrder() {
+        Order existingOrder = new Order();
+        existingOrder.setId(99L);
+        existingOrder.setUser(testUser);
+        existingOrder.setOrderNumber("MH-20260319-0001");
+        existingOrder.setStatus("PENDING");
+        existingOrder.setSubtotal(new BigDecimal("75.00"));
+        existingOrder.setServiceFee(new BigDecimal("7.50"));
+        existingOrder.setTotal(new BigDecimal("82.50"));
+        existingOrder.setPaymentMethod("STRIPE");
+        existingOrder.setIdempotencyKey("idem-key-123");
+        existingOrder.setItems(new ArrayList<>());
+        existingOrder.setCreatedAt(Instant.now());
+
+        when(orderRepository.findByIdempotencyKey("idem-key-123"))
+                .thenReturn(Optional.of(existingOrder));
+
+        CheckoutRequest request = new CheckoutRequest("STRIPE");
+        OrderDto result = orderService.checkout(testUser, request, "idem-key-123");
+
+        assertNotNull(result);
+        assertEquals("MH-20260319-0001", result.orderNumber());
+        verify(cartRepository, org.mockito.Mockito.never()).findByUser(any());
+    }
+
+    @Test
+    @DisplayName("checkout - given null idempotency key - creates new order normally")
+    void checkout_givenNullIdempotencyKey_createsNewOrderNormally() {
+        CheckoutRequest request = new CheckoutRequest("mock");
+
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
+        when(orderRepository.countByOrderNumberPrefix(anyString())).thenReturn(0L);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(1L);
+            order.setCreatedAt(Instant.now());
+            return order;
+        });
+
+        OrderDto result = orderService.checkout(testUser, request, null);
+
+        assertNotNull(result);
+        verify(orderRepository, org.mockito.Mockito.never()).findByIdempotencyKey(any());
     }
 
     @Test

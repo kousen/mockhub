@@ -49,6 +49,9 @@ public class Order extends BaseEntity {
     @Column(name = "confirmed_at")
     private Instant confirmedAt;
 
+    @Column(name = "idempotency_key")
+    private String idempotencyKey;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
@@ -125,6 +128,14 @@ public class Order extends BaseEntity {
 
     public void setConfirmedAt(Instant confirmedAt) {
         this.confirmedAt = confirmedAt;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 
     public List<OrderItem> getItems() {

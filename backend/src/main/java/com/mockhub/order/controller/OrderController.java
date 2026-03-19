@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,14 +44,17 @@ public class OrderController {
     }
 
     @PostMapping("/checkout")
-    @Operation(summary = "Checkout", description = "Convert the current cart into an order")
+    @Operation(summary = "Checkout", description = "Convert the current cart into an order. " +
+            "Supply an Idempotency-Key header to prevent duplicate orders on retry.")
     @ApiResponse(responseCode = "201", description = "Order created")
+    @ApiResponse(responseCode = "200", description = "Existing order returned (idempotent retry)")
     @ApiResponse(responseCode = "400", description = "Cart is empty or invalid")
     public ResponseEntity<OrderDto> checkout(
             @AuthenticationPrincipal SecurityUser securityUser,
-            @Valid @RequestBody CheckoutRequest request) {
+            @Valid @RequestBody CheckoutRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         User user = resolveUser(securityUser);
-        OrderDto orderDto = orderService.checkout(user, request);
+        OrderDto orderDto = orderService.checkout(user, request, idempotencyKey);
         return ResponseEntity.status(HttpStatus.CREATED).body(orderDto);
     }
 

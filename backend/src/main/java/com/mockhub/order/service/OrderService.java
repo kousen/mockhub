@@ -8,6 +8,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +73,17 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderDto checkout(User user, CheckoutRequest request) {
+    public OrderDto checkout(User user, CheckoutRequest request, String idempotencyKey) {
+        // Idempotency check: if a key was provided and an order already exists, return it
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Optional<Order> existingOrder = orderRepository.findByIdempotencyKey(idempotencyKey);
+            if (existingOrder.isPresent()) {
+                log.info("Idempotent retry detected for key {}, returning existing order {}",
+                        idempotencyKey, existingOrder.get().getOrderNumber());
+                return toOrderDto(existingOrder.get());
+            }
+        }
+
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new ConflictException("No cart found"));
 
@@ -119,6 +130,9 @@ public class OrderService {
         order.setServiceFee(serviceFee);
         order.setTotal(total);
         order.setPaymentMethod(request.paymentMethod());
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            order.setIdempotencyKey(idempotencyKey);
+        }
 
         // Create order items
         List<OrderItem> orderItems = new ArrayList<>();

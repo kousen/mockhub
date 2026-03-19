@@ -64,11 +64,11 @@ class OrderToolsTest {
             stubUserLookup("buyer@example.com");
             OrderDto orderDto = new OrderDto(
                     null, null, null, null, null, null, null, null, null, null);
-            when(orderService.checkout(eq(testUser), any(CheckoutRequest.class))).thenReturn(orderDto);
+            when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), any())).thenReturn(orderDto);
 
             String result = orderTools.checkout("buyer@example.com", "mock");
 
-            verify(orderService).checkout(eq(testUser), any(CheckoutRequest.class));
+            verify(orderService).checkout(eq(testUser), any(CheckoutRequest.class), any());
             assertTrue(!result.contains("\"error\""), "Result should not contain error field");
         }
 
@@ -113,7 +113,7 @@ class OrderToolsTest {
         @DisplayName("given service throws exception - returns error JSON")
         void givenServiceThrowsException_returnsErrorJson() {
             stubUserLookup("buyer@example.com");
-            when(orderService.checkout(eq(testUser), any(CheckoutRequest.class)))
+            when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), any()))
                     .thenThrow(new RuntimeException("Cart is empty"));
 
             String result = orderTools.checkout("buyer@example.com", "mock");

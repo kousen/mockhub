@@ -46,7 +46,7 @@ public class OrderTools {
             }
             User user = resolveUser(userEmail);
             CheckoutRequest request = new CheckoutRequest(paymentMethod.strip());
-            OrderDto order = orderService.checkout(user, request);
+            OrderDto order = orderService.checkout(user, request, null);
             return objectMapper.writeValueAsString(order);
         } catch (Exception e) {
             log.error("Error during checkout for '{}': {}", userEmail, e.getMessage(), e);
