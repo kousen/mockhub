@@ -58,15 +58,6 @@ npm run dev
 
 The app will be available at `http://localhost:5173`.
 
-### Running with H2 (no Docker needed)
-
-```bash
-cd backend
-./gradlew bootRun --args='--spring.profiles.active=dev'
-```
-
-This uses an in-memory H2 database. H2 console available at `http://localhost:8080/h2-console`.
-
 ## Full Docker Stack
 
 To run everything in containers:
@@ -95,7 +86,7 @@ mockhub/
 │   │   ├── payment/  # Stripe + mock payment
 │   │   ├── favorite/ # User favorites
 │   │   ├── notification/ # In-app notifications
-│   │   ├── ai/       # AI stub endpoints (for student implementation)
+│   │   ├── ai/       # AI-powered chat, recommendations, price predictions
 │   │   ├── admin/    # Admin dashboard
 │   │   ├── search/   # Full-text search
 │   │   ├── image/    # Image storage
@@ -125,11 +116,8 @@ mockhub/
 ```bash
 cd backend
 
-# Unit + controller tests
+# Unit + controller + integration tests (requires Docker for Testcontainers)
 ./gradlew test
-
-# Integration tests (requires Docker for Testcontainers)
-./gradlew integrationTest
 ```
 
 ### Frontend
@@ -151,24 +139,44 @@ npx playwright test --project="Mobile Android"
 npx playwright test --project="Mobile iOS"
 ```
 
-## AI Integration Exercises
+## AI Features
 
-MockHub includes stub API endpoints designed for students to implement AI features:
+MockHub includes working AI-powered endpoints backed by Spring AI:
 
-| Endpoint | Exercise |
-|----------|----------|
-| `POST /api/v1/chat` | Customer support chatbot (Spring AI ChatClient) |
-| `GET /api/v1/recommendations` | Event recommendations (vector similarity + collaborative filtering) |
-| `POST /api/v1/search/natural-language` | Natural language search ("jazz concerts under $50 this weekend") |
-| `GET /api/v1/events/{slug}/predicted-price` | ML-powered price prediction |
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/v1/chat` | Chat assistant — ask questions about events, pricing, recommendations |
+| `GET /api/v1/recommendations` | AI-ranked event recommendations with relevance scores and reasons |
+| `GET /api/v1/events/{slug}/predicted-price` | Price trend prediction based on historical pricing data |
 
-Additional AI exercise areas:
-- Dynamic pricing model improvements
-- Fraud detection on transactions
-- Sentiment analysis on event reviews
-- Image recognition for ticket verification
+### Enabling AI
 
-Spring AI is pre-configured with profiles for Anthropic Claude, OpenAI, and Ollama (local models).
+AI features require an active AI provider profile. Set the profile and API key:
+
+```bash
+# Anthropic Claude
+SPRING_PROFILES_ACTIVE=dev,mock-payment,ai-anthropic ANTHROPIC_API_KEY=sk-ant-... ./gradlew bootRun
+
+# OpenAI
+SPRING_PROFILES_ACTIVE=dev,mock-payment,ai-openai OPENAI_API_KEY=sk-... ./gradlew bootRun
+
+# Ollama (local, no API key needed)
+SPRING_PROFILES_ACTIVE=dev,mock-payment,ai-ollama ./gradlew bootRun
+```
+
+Without an AI profile, these endpoints return 503 with a message indicating which profile to activate.
+
+### AI Agent Discovery
+
+The API serves an `llms.txt` file at `/llms.txt` describing all endpoints for AI agent consumption. Error responses follow [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457) format.
+
+## Data Oriented Programming
+
+The backend demonstrates Java DOP patterns:
+
+- **Sealed exception hierarchy** — `DomainException` is an `abstract sealed class` with four `final` subtypes (`ResourceNotFoundException`, `ConflictException`, `PaymentException`, `UnauthorizedException`)
+- **Exhaustive pattern matching** — `GlobalExceptionHandler` uses a switch expression over the sealed hierarchy with no default case; the compiler enforces completeness
+- **Records everywhere** — all 38 DTOs are records, including `EventSearchRequest` with a compact constructor for default values
 
 ## Environment Variables
 
@@ -181,6 +189,14 @@ Copy `.env.example` files in `backend/` and `frontend/` to `.env` and configure:
 | `STRIPE_WEBHOOK_SECRET` | For Stripe | Stripe webhook signing secret |
 | `ANTHROPIC_API_KEY` | For AI | Anthropic API key |
 | `OPENAI_API_KEY` | For AI | OpenAI API key |
+
+## Seed Accounts
+
+| Email | Password | Roles |
+|-------|----------|-------|
+| `admin@mockhub.com` | `admin123` | Admin, User |
+| `buyer@mockhub.com` | `buyer123` | User |
+| `seller@mockhub.com` | `seller123` | User |
 
 ## Contributing
 

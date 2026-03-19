@@ -27,13 +27,35 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 - **No Lombok.** Java records for DTOs, explicit getters/setters for JPA entities. Students should see what the code does.
 - **All write operations** use `@Transactional`. Read-only operations use `@Transactional(readOnly = true)`.
 - **Database migrations** use Flyway (never JPA auto-DDL in any profile except `validate`).
-- **Error handling** goes through `GlobalExceptionHandler` (`@RestControllerAdvice`). Custom domain exceptions map to appropriate HTTP status codes.
+- **Error handling** uses RFC 9457 Problem Details via `GlobalExceptionHandler` (`@RestControllerAdvice`). Returns `ProblemDetail` objects with `type`, `title`, `status`, `detail` fields. Domain exceptions are modeled as a sealed hierarchy (see DOP section).
 - **Caching:** Use Spring `@Cacheable` annotations. Never cache carts, orders, notifications, or pricing data.
 - **Spring profiles** control implementation variants:
   - `dev` — PostgreSQL, mock payment, debug logging (default)
   - `test` — Testcontainers PostgreSQL, mock payment
   - `mock-payment` / `stripe` — payment implementation
   - `ai-anthropic` / `ai-openai` / `ai-ollama` — AI provider
+
+### Data Oriented Programming
+
+The codebase uses Java DOP patterns where they add value:
+
+- **Sealed exception hierarchy:** `DomainException` is `abstract sealed`, permitting `ResourceNotFoundException`, `ConflictException`, `PaymentException`, `UnauthorizedException` (all `final`). The `GlobalExceptionHandler` uses an exhaustive pattern-matching switch with no default case.
+- **Records for all DTOs:** 38 out of 38 DTOs are records. `EventSearchRequest` uses a compact constructor to apply defaults and clamp bounds.
+- **`PaymentService` is intentionally NOT sealed.** Mockito cannot mock sealed interfaces, which breaks `@WebMvcTest` controller tests. Testability wins over closed polymorphism here.
+- **JPA entities cannot be records** (require mutable state, no-arg constructors). They use explicit getters/setters with `BaseEntity` superclass.
+
+### AI Features
+
+- **Conditional activation:** AI services use `@ConditionalOnBean(ChatClient.class)`. The `AiController` injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active.
+- **The `dev` and `test` profiles disable all AI auto-configuration** (see `application-dev.yml` exclude list). To enable AI: `SPRING_PROFILES_ACTIVE=dev,mock-payment,ai-anthropic`.
+- **Services:** `ChatService` (chat assistant), `PricePredictionService` (price trend analysis), `RecommendationService` (AI-ranked event recommendations).
+- **AI responses are parsed from JSON.** Services prompt the LLM for JSON output and parse with Jackson. Fallback logic returns safe defaults if parsing fails.
+
+### Agentic Support
+
+- **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints for AI agents
+- **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors
+- **MCP server** — not yet implemented; planned using `spring-ai-starter-mcp-server-webmvc`
 
 ### Frontend
 
@@ -43,6 +65,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 - **shadcn/ui components** live in `src/components/ui/`. Custom components live in feature folders (`events/`, `cart/`, `checkout/`, etc.).
 - **Mobile-first** responsive design using Tailwind breakpoints.
 - **No inline styles.** Use Tailwind utility classes exclusively.
+- **Error responses:** Frontend `ApiError` type uses `detail` field (RFC 9457), not `message`.
 
 ### Testing
 
@@ -71,34 +94,27 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 - Feature branches: `feature/<description>`
 - Commit messages: imperative mood, concise ("Add event search filtering", not "Added event search filtering functionality")
 - One logical change per commit
+- Use TDD on feature branches: write tests first (RED), implement (GREEN), refactor
 
 ## CI / Quality
 
 - **GitHub Actions** (`.github/workflows/ci.yml`) runs on push to main and PRs: backend tests, frontend lint/typecheck/tests, SonarCloud analysis, Docker build smoke test
-- **SonarCloud** — org: `kousen-it-inc`, project: `kousen_mockhub`. Config in `sonar-project.properties`. Token stored as `SONAR_TOKEN` GitHub secret.
+- **SonarCloud** — org: `kousen-it-inc`, project: `kousen_mockhub`. Config in both `sonar-project.properties` (frontend) and `build.gradle.kts` sonar block (backend). Token stored as `SONAR_TOKEN` GitHub secret.
+- **Issue exclusions** are in the Gradle `sonar {}` block: S1186 (JPA empty constructors), S1192 (seed data literals), S3776 (seed data complexity). Do NOT add them only to `sonar-project.properties` — the backend scanner won't see them there.
 - **SonarQube MCP server** is available in this project. Use it to query SonarCloud for issues, quality gate status, and hotspots. When fixing code, check SonarCloud issues first.
 - **GitHub repo:** `kousen/mockhub` (public, MIT license)
-
-## Build Organization
-
-The project is built in 5 waves of parallel agents (see ARCHITECTURE.md section 9):
-1. **Wave 1: Foundation** — Spring Boot + React scaffolding, auth, database, Docker
-2. **Wave 2: Catalog** — Events, venues, search, pricing engine
-3. **Wave 3: Commerce** — Cart, checkout, payments
-4. **Wave 4: Features** — Favorites, notifications, admin dashboard
-5. **Wave 5: Polish** — Seed data, images, responsive polish, full test suite
-
-Each wave's agents run with `mode: "bypassPermissions"` in isolated worktrees, then merge back before the next wave starts.
 
 ## File Reference
 
 - `ARCHITECTURE.md` — Complete architecture plan with database schema, API design, component hierarchy, build phases, and agent team organization
 - `PROJECT_JOURNAL.md` — Build report with session notes, challenges, metrics, and commit history
 - `docs/stripe-test-setup.md` — Stripe test mode API key setup instructions
-- `sonar-project.properties` — SonarCloud configuration (coverage exclusions, issue suppressions)
+- `sonar-project.properties` — SonarCloud configuration for frontend (coverage exclusions, issue suppressions)
+- `backend/build.gradle.kts` — Backend build config including SonarCloud issue exclusions in `sonar {}` block
 - `.github/workflows/ci.yml` — CI pipeline (backend tests incl. Testcontainers, frontend lint/typecheck/tests, SonarCloud, Docker build)
 - `docker-compose.yml` — Full stack (Postgres, backend, frontend)
 - `docker-compose.dev.yml` — Postgres only (for local development)
+- `backend/src/main/resources/static/llms.txt` — API description for AI agent discovery
 
 ## What NOT to Do
 
@@ -109,3 +125,5 @@ Each wave's agents run with `mode: "bypassPermissions"` in isolated worktrees, t
 - Do not create REST endpoints that bypass the service layer
 - Do not suppress exceptions silently — log or rethrow as domain exceptions
 - Do not use `@Autowired` on fields — use constructor injection (implicit with single constructor)
+- Do not seal interfaces that need Mockito mocking in `@WebMvcTest` tests (Mockito can't create subclasses of sealed types)
+- Do not add SonarCloud issue exclusions only to `sonar-project.properties` — backend issues need the Gradle `sonar {}` block
