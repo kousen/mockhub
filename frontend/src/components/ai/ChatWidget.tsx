@@ -1,9 +1,61 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { MessageCircle, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useChat } from '@/hooks/use-ai';
 import type { ChatMessage } from '@/types/ai';
+
+/**
+ * Renders text with markdown links converted to clickable React Router Links.
+ * Handles [text](url) patterns, using internal Links for relative URLs
+ * and anchor tags for external URLs.
+ */
+function MessageContent({ content }: { content: string }) {
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = linkRegex.exec(content)) !== null) {
+    // Add text before the link
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
+    }
+
+    const linkText = match[1];
+    const linkUrl = match[2];
+
+    if (linkUrl.startsWith('/')) {
+      parts.push(
+        <Link key={match.index} to={linkUrl} className="font-medium text-primary underline">
+          {linkText}
+        </Link>,
+      );
+    } else {
+      parts.push(
+        <a
+          key={match.index}
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary underline"
+        >
+          {linkText}
+        </a>,
+      );
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+
+  return <>{parts}</>;
+}
 
 /**
  * Floating chat widget that provides AI assistant access from any page.
@@ -156,7 +208,11 @@ export function ChatWidget() {
                           : 'bg-muted text-foreground'
                       }`}
                     >
-                      {msg.content}
+                      {msg.role === 'assistant' ? (
+                        <MessageContent content={msg.content} />
+                      ) : (
+                        msg.content
+                      )}
                     </div>
                   </div>
                 ))}
