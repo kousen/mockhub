@@ -90,6 +90,18 @@ sonar {
             "**/config/AiConfig.java",
             "**/MockHubApplication.java"
         ))
+
+        // Issue exclusions — suppress known false positives
+        property("sonar.issue.ignore.multicriteria", "e1,e2,e3")
+        // S1186: Empty method body — JPA requires no-arg constructors on entities
+        property("sonar.issue.ignore.multicriteria.e1.ruleKey", "java:S1186")
+        property("sonar.issue.ignore.multicriteria.e1.resourceKey", "**/entity/**")
+        // S1192: Duplicated string literals in seed data
+        property("sonar.issue.ignore.multicriteria.e2.ruleKey", "java:S1192")
+        property("sonar.issue.ignore.multicriteria.e2.resourceKey", "**/seed/**")
+        // S3776: Cognitive complexity in seed data
+        property("sonar.issue.ignore.multicriteria.e3.ruleKey", "java:S3776")
+        property("sonar.issue.ignore.multicriteria.e3.resourceKey", "**/seed/**")
     }
 }
 
