@@ -1,4 +1,4 @@
-import { Bell, DollarSign, Calendar, Package, Tag, Info } from 'lucide-react';
+import { Bell, CheckCircle, DollarSign, Calendar, XCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/formatters';
 import type { Notification, NotificationType } from '@/types/notification';
@@ -9,18 +9,18 @@ interface NotificationItemProps {
 }
 
 const typeIcons: Record<NotificationType, React.ElementType> = {
+  ORDER_CONFIRMED: CheckCircle,
+  ORDER_CANCELLED: XCircle,
   PRICE_DROP: DollarSign,
   EVENT_REMINDER: Calendar,
-  ORDER_UPDATE: Package,
-  NEW_LISTING: Tag,
   SYSTEM: Info,
 };
 
 const typeColors: Record<NotificationType, string> = {
-  PRICE_DROP: 'text-green-500',
+  ORDER_CONFIRMED: 'text-green-500',
+  ORDER_CANCELLED: 'text-red-500',
+  PRICE_DROP: 'text-emerald-600',
   EVENT_REMINDER: 'text-blue-500',
-  ORDER_UPDATE: 'text-orange-500',
-  NEW_LISTING: 'text-purple-500',
   SYSTEM: 'text-muted-foreground',
 };
 

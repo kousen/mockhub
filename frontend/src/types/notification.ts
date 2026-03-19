@@ -1,8 +1,8 @@
 export type NotificationType =
-  | 'PRICE_DROP'
+  | 'ORDER_CONFIRMED'
+  | 'ORDER_CANCELLED'
   | 'EVENT_REMINDER'
-  | 'ORDER_UPDATE'
-  | 'NEW_LISTING'
+  | 'PRICE_DROP'
   | 'SYSTEM';
 
 export interface Notification {
