@@ -42,6 +42,7 @@ dependencies {
     implementation("org.springframework.ai:spring-ai-starter-model-openai")
     implementation("org.springframework.ai:spring-ai-starter-model-ollama")
     implementation("org.springframework.ai:spring-ai-starter-vector-store-pgvector")
+    implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
 
     // Database
     runtimeOnly("org.postgresql:postgresql")

@@ -19,6 +19,11 @@ spring:
     locations: classpath:db/migration
 
   ai:
+    mcp:
+      server:
+        enabled: ${mockhub.mcp.enabled:false}
+        name: mockhub-mcp-server
+        version: 0.0.1
     vectorstore:
       pgvector:
         dimensions: 1536
@@ -37,6 +42,9 @@ springdoc:
     operations-sorter: method
 
 mockhub:
+  mcp:
+    enabled: false
+    api-key: ${MCP_API_KEY:mockhub-dev-key}
   jwt:
     secret: ${JWT_SECRET:dGhpcyBpcyBhIHZlcnkgbG9uZyBzZWNyZXQga2V5IGZvciBkZXZlbG9wbWVudCBwdXJwb3NlcyBvbmx5IGRvIG5vdCB1c2UgaW4gcHJvZHVjdGlvbg==}
     access-token-expiration-ms: 900000

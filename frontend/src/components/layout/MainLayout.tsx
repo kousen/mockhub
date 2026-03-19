@@ -3,6 +3,7 @@ import { Header } from './Header';
 import { Footer } from './Footer';
 import { MobileNav } from './MobileNav';
 import { CartDrawer } from '@/components/cart/CartDrawer';
+import { ChatWidget } from '@/components/ai/ChatWidget';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -23,6 +24,7 @@ export function MainLayout() {
         </ErrorBoundary>
       </main>
       <Footer />
+      <ChatWidget />
       <Toaster />
     </div>
   );

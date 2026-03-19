@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { PricePredictionBadge } from '@/components/ai/PricePredictionBadge';
 import { FavoriteButton } from '@/components/events/FavoriteButton';
 import { TicketListView } from '@/components/tickets/TicketListView';
 import { SeatSelector } from '@/components/tickets/SeatSelector';
@@ -153,6 +154,11 @@ export function EventDetailPage() {
             ))}
           </div>
         )}
+
+        {/* AI Price Prediction */}
+        <div className="mt-4">
+          <PricePredictionBadge slug={eventSlug} />
+        </div>
 
         {/* Price Summary */}
         <div className="mt-4 flex flex-wrap gap-4 rounded-lg border p-4">

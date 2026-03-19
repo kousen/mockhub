@@ -1,7 +1,5 @@
 package com.mockhub.ai.service;
 
-import java.time.Instant;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +15,7 @@ import com.mockhub.ai.dto.ChatResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -39,15 +38,19 @@ class ChatServiceTest {
         chatService = new ChatService(chatClient);
     }
 
+    private void stubChatClient(String response) {
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(anyString())).thenReturn(requestSpec);
+        when(requestSpec.advisors(any(java.util.function.Consumer.class))).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callResponseSpec);
+        when(callResponseSpec.content()).thenReturn(response);
+    }
+
     @Test
     @DisplayName("chat - given valid message - returns AI response")
     void chat_givenValidMessage_returnsAiResponse() {
         ChatRequest request = new ChatRequest("What concerts are in New York?", null);
-
-        when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.user(anyString())).thenReturn(requestSpec);
-        when(requestSpec.call()).thenReturn(callResponseSpec);
-        when(callResponseSpec.content()).thenReturn("Here are some upcoming concerts in New York...");
+        stubChatClient("Here are some upcoming concerts in New York...");
 
         ChatResponse response = chatService.chat(request);
 
@@ -60,11 +63,7 @@ class ChatServiceTest {
     @DisplayName("chat - given message with conversationId - preserves conversationId")
     void chat_givenMessageWithConversationId_preservesConversationId() {
         ChatRequest request = new ChatRequest("Tell me more", 42L);
-
-        when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.user(anyString())).thenReturn(requestSpec);
-        when(requestSpec.call()).thenReturn(callResponseSpec);
-        when(callResponseSpec.content()).thenReturn("Sure, here's more detail...");
+        stubChatClient("Sure, here's more detail...");
 
         ChatResponse response = chatService.chat(request);
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { EventGrid } from '@/components/events/EventGrid';
 import { EventSearch } from '@/components/events/EventSearch';
 import { CategoryNav } from '@/components/events/CategoryNav';
+import { RecommendationsSection } from '@/components/ai/RecommendationsSection';
 import { useFeaturedEvents } from '@/hooks/use-events';
 import { ROUTES } from '@/lib/constants';
 
@@ -81,6 +82,9 @@ export function HomePage() {
           <EventGrid events={featuredEvents ?? []} isLoading={isLoading} />
         </div>
       </section>
+
+      {/* AI Recommendations */}
+      <RecommendationsSection />
 
       {/* Browse All CTA */}
       <section className="border-t bg-muted/30 py-12">

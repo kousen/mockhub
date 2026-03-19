@@ -59,6 +59,8 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/llms.txt").permitAll()
+                        // MCP server endpoints (API key filter handles auth)
+                        .requestMatchers("/mcp/**").permitAll()
                         // Actuator health and error page
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()

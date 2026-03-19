@@ -13,6 +13,9 @@ import com.mockhub.ai.dto.ChatResponse;
 @ConditionalOnBean(ChatClient.class)
 public class ChatService {
 
+    private static final String DEFAULT_CONVERSATION_ID = "default";
+    private static final String CONVERSATION_ID_KEY = "chat_memory_conversation_id";
+
     private final ChatClient chatClient;
 
     public ChatService(ChatClient chatClient) {
@@ -20,8 +23,14 @@ public class ChatService {
     }
 
     public ChatResponse chat(ChatRequest request) {
+        String conversationId = request.conversationId() != null
+                ? String.valueOf(request.conversationId())
+                : DEFAULT_CONVERSATION_ID;
+
         String aiResponse = chatClient.prompt()
                 .user(request.message())
+                .advisors(advisorSpec -> advisorSpec.param(
+                        CONVERSATION_ID_KEY, conversationId))
                 .call()
                 .content();
 
