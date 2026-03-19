@@ -19,44 +19,21 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException ex) {
-        ErrorResponse response = new ErrorResponse(
-                HttpStatus.NOT_FOUND.value(),
-                "Not Found",
-                ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-    }
+    @ExceptionHandler(DomainException.class)
+    public ResponseEntity<ErrorResponse> handleDomainException(DomainException ex) {
+        HttpStatus status = switch (ex) {
+            case ResourceNotFoundException e -> HttpStatus.NOT_FOUND;
+            case ConflictException e -> HttpStatus.CONFLICT;
+            case PaymentException e -> HttpStatus.PAYMENT_REQUIRED;
+            case UnauthorizedException e -> HttpStatus.UNAUTHORIZED;
+        };
 
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ErrorResponse> handleConflict(ConflictException ex) {
         ErrorResponse response = new ErrorResponse(
-                HttpStatus.CONFLICT.value(),
-                "Conflict",
+                status.value(),
+                status.getReasonPhrase(),
                 ex.getMessage()
         );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-    }
-
-    @ExceptionHandler(PaymentException.class)
-    public ResponseEntity<ErrorResponse> handlePayment(PaymentException ex) {
-        ErrorResponse response = new ErrorResponse(
-                HttpStatus.PAYMENT_REQUIRED.value(),
-                "Payment Required",
-                ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(response);
-    }
-
-    @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex) {
-        ErrorResponse response = new ErrorResponse(
-                HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized",
-                ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        return ResponseEntity.status(status).body(response);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

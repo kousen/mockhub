@@ -66,8 +66,8 @@ public class EventService {
     @Transactional(readOnly = true)
     public PagedResponse<EventSummaryDto> listEvents(EventSearchRequest request) {
         Specification<Event> spec = buildSpecification(request);
-        Sort sort = buildSort(request.getSort());
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
+        Sort sort = buildSort(request.sort());
+        Pageable pageable = PageRequest.of(request.page(), request.size(), sort);
 
         Page<Event> eventPage = eventRepository.findAll(spec, pageable);
 
@@ -198,41 +198,41 @@ public class EventService {
         Specification<Event> spec = Specification.where(
                 (Specification<Event>) (root, query, cb) -> cb.conjunction());
 
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            spec = spec.and(EventSpecification.hasStatus(request.getStatus()));
+        if (request.status() != null && !request.status().isBlank()) {
+            spec = spec.and(EventSpecification.hasStatus(request.status()));
         }
 
-        if (request.getQ() != null && !request.getQ().isBlank()) {
-            spec = spec.and(EventSpecification.nameOrArtistContains(request.getQ()));
+        if (request.q() != null && !request.q().isBlank()) {
+            spec = spec.and(EventSpecification.nameOrArtistContains(request.q()));
         }
 
-        if (request.getCategory() != null && !request.getCategory().isBlank()) {
-            spec = spec.and(EventSpecification.hasCategory(request.getCategory()));
+        if (request.category() != null && !request.category().isBlank()) {
+            spec = spec.and(EventSpecification.hasCategory(request.category()));
         }
 
-        if (request.getTags() != null && !request.getTags().isBlank()) {
-            List<String> tagSlugs = Arrays.asList(request.getTags().split(","));
+        if (request.tags() != null && !request.tags().isBlank()) {
+            List<String> tagSlugs = Arrays.asList(request.tags().split(","));
             spec = spec.and(EventSpecification.hasTags(tagSlugs));
         }
 
-        if (request.getCity() != null && !request.getCity().isBlank()) {
-            spec = spec.and(EventSpecification.inCity(request.getCity()));
+        if (request.city() != null && !request.city().isBlank()) {
+            spec = spec.and(EventSpecification.inCity(request.city()));
         }
 
-        if (request.getDateFrom() != null) {
-            spec = spec.and(EventSpecification.eventDateAfter(request.getDateFrom()));
+        if (request.dateFrom() != null) {
+            spec = spec.and(EventSpecification.eventDateAfter(request.dateFrom()));
         }
 
-        if (request.getDateTo() != null) {
-            spec = spec.and(EventSpecification.eventDateBefore(request.getDateTo()));
+        if (request.dateTo() != null) {
+            spec = spec.and(EventSpecification.eventDateBefore(request.dateTo()));
         }
 
-        if (request.getMinPrice() != null) {
-            spec = spec.and(EventSpecification.minPriceGreaterThanOrEqual(request.getMinPrice()));
+        if (request.minPrice() != null) {
+            spec = spec.and(EventSpecification.minPriceGreaterThanOrEqual(request.minPrice()));
         }
 
-        if (request.getMaxPrice() != null) {
-            spec = spec.and(EventSpecification.maxPriceLessThanOrEqual(request.getMaxPrice()));
+        if (request.maxPrice() != null) {
+            spec = spec.and(EventSpecification.maxPriceLessThanOrEqual(request.maxPrice()));
         }
 
         return spec;

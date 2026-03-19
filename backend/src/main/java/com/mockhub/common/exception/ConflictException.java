@@ -1,6 +1,6 @@
 package com.mockhub.common.exception;
 
-public class ConflictException extends RuntimeException {
+public final class ConflictException extends DomainException {
 
     public ConflictException(String message) {
         super(message);

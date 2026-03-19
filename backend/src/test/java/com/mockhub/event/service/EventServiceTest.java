@@ -129,7 +129,10 @@ class EventServiceTest {
     @Test
     @DisplayName("listEvents - given default search request - returns paged response")
     void listEvents_givenDefaultSearchRequest_returnsPagedResponse() {
-        EventSearchRequest request = new EventSearchRequest();
+        EventSearchRequest request = new EventSearchRequest(
+                null, null, null, null, null, null, null, null,
+                null, null, null, null
+        );
 
         Page<Event> page = new PageImpl<>(List.of(testEvent));
         when(eventRepository.findAll(any(Specification.class), any(Pageable.class)))

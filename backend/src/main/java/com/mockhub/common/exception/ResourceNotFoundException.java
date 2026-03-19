@@ -1,6 +1,6 @@
 package com.mockhub.common.exception;
 
-public class ResourceNotFoundException extends RuntimeException {
+public final class ResourceNotFoundException extends DomainException {
 
     public ResourceNotFoundException(String message) {
         super(message);
