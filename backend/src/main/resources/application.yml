@@ -25,6 +25,7 @@ spring:
         enabled: ${mockhub.mcp.enabled:false}
         name: mockhub-mcp-server
         version: 0.0.1
+        protocol: STREAMABLE
     vectorstore:
       pgvector:
         dimensions: 1536

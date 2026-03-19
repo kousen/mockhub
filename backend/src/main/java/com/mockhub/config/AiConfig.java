@@ -38,10 +38,11 @@ public class AiConfig {
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
         return builder
-                .defaultSystem("You are a helpful assistant for MockHub, "
-                        + "a secondary concert ticket marketplace. "
-                        + "Help users find events, understand pricing, "
-                        + "and navigate the platform.")
+                .defaultSystem("""
+                        You are a helpful assistant for MockHub, \
+                        a secondary concert ticket marketplace. \
+                        Help users find events, understand pricing, \
+                        and navigate the platform.""")
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
     }
