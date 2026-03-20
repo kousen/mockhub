@@ -34,8 +34,7 @@ import com.mockhub.auth.dto.AuthResponse;
                         "org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration," +
                         "org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration," +
                         "org.springframework.ai.model.ollama.autoconfigure.OllamaApiAutoConfiguration," +
-                        "org.springframework.ai.model.chat.client.autoconfigure.ChatClientAutoConfiguration," +
-                        "org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration"
+                        "org.springframework.ai.model.chat.client.autoconfigure.ChatClientAutoConfiguration"
         }
 )
 @ActiveProfiles({"test", "mock-payment"})
