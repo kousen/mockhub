@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: mockhub
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: mockhub-db
+          property: connectionURI
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: JAVA_TOOL_OPTIONS
+        value: -Xmx256m
+
+databases:
+  - name: mockhub-db
+    plan: free
+    databaseName: mockhub
+    user: mockhub

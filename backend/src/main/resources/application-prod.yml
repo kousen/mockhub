@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+
+mockhub:
+  mcp:
+    enabled: true
+  cookie:
+    secure: true
+
+logging:
+  level:
+    com.mockhub: INFO
+    org.springframework.security: WARN
