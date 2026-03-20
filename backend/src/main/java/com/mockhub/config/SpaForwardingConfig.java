@@ -26,6 +26,15 @@ public class SpaForwardingConfig implements WebMvcConfigurer {
                     @Override
                     protected Resource getResource(String resourcePath,
                                                     Resource location) throws IOException {
+                        // Don't intercept API, actuator, or Swagger paths
+                        if (resourcePath.startsWith("api/")
+                                || resourcePath.startsWith("actuator/")
+                                || resourcePath.startsWith("swagger-ui/")
+                                || resourcePath.startsWith("v3/")
+                                || resourcePath.startsWith("mcp/")) {
+                            return null;
+                        }
+
                         Resource requested = location.createRelative(resourcePath);
                         return requested.exists() && requested.isReadable()
                                 ? requested

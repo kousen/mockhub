@@ -62,7 +62,7 @@ public class SecurityConfig {
                         // MCP server endpoints (API key filter handles auth)
                         .requestMatchers("/mcp/**").permitAll()
                         // Static frontend resources and SPA routes (React served from classpath:/static/)
-                        .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico").permitAll()
+                        .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/favicon.svg").permitAll()
                         .requestMatchers("/login", "/register", "/events/**", "/sell", "/my/**",
                                 "/cart", "/checkout", "/orders/**", "/favorites", "/admin/**").permitAll()
                         // Actuator health and error page
