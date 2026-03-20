@@ -1,5 +1,15 @@
 import { Link } from 'react-router';
-import { Menu, LogOut, User, Ticket, ShoppingCart, Heart, Settings, Tag, DollarSign } from 'lucide-react';
+import {
+  Menu,
+  LogOut,
+  User,
+  Ticket,
+  ShoppingCart,
+  Heart,
+  Settings,
+  Tag,
+  DollarSign,
+} from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Button } from '@/components/ui/button';
 import {

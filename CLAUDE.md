@@ -42,7 +42,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 The codebase uses Java DOP patterns where they add value:
 
 - **Sealed exception hierarchy:** `DomainException` is `abstract sealed`, permitting `ResourceNotFoundException`, `ConflictException`, `PaymentException`, `UnauthorizedException` (all `final`). The `GlobalExceptionHandler` uses an exhaustive pattern-matching switch with no default case.
-- **Records for all DTOs:** 38 out of 38 DTOs are records. `EventSearchRequest` uses a compact constructor to apply defaults and clamp bounds.
+- **Records for all DTOs:** 43 out of 43 DTOs are records. `EventSearchRequest` uses a compact constructor to apply defaults and clamp bounds.
 - **`PaymentService` is intentionally NOT sealed.** Mockito cannot mock sealed interfaces, which breaks `@WebMvcTest` controller tests. Testability wins over closed polymorphism here.
 - **JPA entities cannot be records** (require mutable state, no-arg constructors). They use explicit getters/setters with `BaseEntity` superclass.
 
@@ -54,9 +54,19 @@ The codebase uses Java DOP patterns where they add value:
 - **AI responses are parsed from JSON.** Services prompt the LLM for JSON output and parse with Jackson. Fallback logic returns safe defaults if parsing fails.
 - **Circular dependency:** MCP tool registration → PricingTools → PricePredictionService → ChatClient creates a cycle. Broken with `@Lazy` on the `ChatClient` parameter in `PricePredictionService`.
 
+### Seller Flow
+
+- **Any authenticated user can sell.** No separate seller role — `seller_id` is nullable on `listings` (NULL = platform/primary-market listing, non-null = user-created resale listing).
+- **Seller creates listing by describing seat:** `POST /api/v1/listings` with eventSlug, sectionName, rowLabel, seatNumber, price. Backend finds the matching Ticket, validates availability, sets seller, creates Listing.
+- **Ownership enforcement:** Update price and deactivate check `listing.seller.id == authenticated user`. Throws `UnauthorizedException` on mismatch.
+- **Duplicate prevention:** `existsByTicketIdAndStatus(ticketId, "ACTIVE")` rejects re-listing an already-listed ticket.
+- **Earnings aggregation:** Computed from `OrderItem` where `listing.seller.id` matches and `order.status = 'COMPLETED'`.
+- **Endpoints:** `POST /api/v1/listings`, `GET /api/v1/my/listings`, `PUT /api/v1/listings/{id}/price`, `DELETE /api/v1/listings/{id}`, `GET /api/v1/my/earnings`
+- **Frontend:** 3 pages (SellPage with 3-step form, MyListingsPage with tab filtering, EarningsPage dashboard), seller API + hooks, nav links visible when authenticated.
+
 ### Agentic Support
 
-- **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints for AI agents
+- **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints for AI agents (including seller endpoints)
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors
 - **MCP server** — 13 tools registered (EventTools, PricingTools, CartTools, OrderTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. **SSE transport returns 500 — needs investigation** (may need different transport for Spring AI M3).
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens
@@ -66,7 +76,7 @@ The codebase uses Java DOP patterns where they add value:
 - **TypeScript** — no `any` types. Use proper interfaces defined in `src/types/`.
 - **React Query (TanStack)** for all server state. Zustand only for client-side UI state (auth token, cart drawer, mobile nav).
 - **API layer:** `src/api/*.ts` files export typed functions. `src/hooks/use*.ts` files wrap them in React Query hooks. Components use hooks, never call API functions directly.
-- **shadcn/ui components** live in `src/components/ui/`. Custom components live in feature folders (`events/`, `cart/`, `checkout/`, etc.).
+- **shadcn/ui components** live in `src/components/ui/`. Custom components live in feature folders (`events/`, `cart/`, `checkout/`, `sell/`, etc.).
 - **Mobile-first** responsive design using Tailwind breakpoints.
 - **No inline styles.** Use Tailwind utility classes exclusively.
 - **Error responses:** Frontend `ApiError` type uses `detail` field (RFC 9457), not `message`.

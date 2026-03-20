@@ -105,15 +105,14 @@ export function SellPage() {
           <div key={s} className="flex items-center gap-2">
             {index > 0 && (
               <div
-                className={`h-px w-8 ${step === s || (['seat', 'price'].indexOf(step) > ['seat', 'price'].indexOf(s)) ? 'bg-primary' : 'bg-border'}`}
+                className={`h-px w-8 ${step === s || ['seat', 'price'].indexOf(step) > ['seat', 'price'].indexOf(s) ? 'bg-primary' : 'bg-border'}`}
               />
             )}
             <div
               className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
                 step === s
                   ? 'bg-primary text-primary-foreground'
-                  : (['event', 'seat', 'price'].indexOf(s) <
-                        ['event', 'seat', 'price'].indexOf(step))
+                  : ['event', 'seat', 'price'].indexOf(s) < ['event', 'seat', 'price'].indexOf(step)
                     ? 'bg-primary/20 text-primary'
                     : 'bg-muted text-muted-foreground'
               }`}
@@ -244,11 +243,7 @@ export function SellPage() {
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep('event')}
-                >
+                <Button type="button" variant="outline" onClick={() => setStep('event')}>
                   Back
                 </Button>
                 <Button type="submit" className="flex-1">
@@ -307,18 +302,10 @@ export function SellPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStep('seat')}
-                >
+                <Button type="button" variant="outline" onClick={() => setStep('seat')}>
                   Back
                 </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={createListing.isPending}
-                >
+                <Button type="submit" className="flex-1" disabled={createListing.isPending}>
                   {createListing.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

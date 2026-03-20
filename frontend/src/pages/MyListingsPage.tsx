@@ -44,13 +44,7 @@ function formatSeatInfo(listing: SellerListing): string {
 /**
  * Inline price editor shown when a seller clicks "Edit Price" on an active listing.
  */
-function PriceEditor({
-  listing,
-  onClose,
-}: {
-  listing: SellerListing;
-  onClose: () => void;
-}) {
+function PriceEditor({ listing, onClose }: { listing: SellerListing; onClose: () => void }) {
   const [newPrice, setNewPrice] = useState(listing.listedPrice.toFixed(2));
   const updatePrice = useUpdatePrice();
 
@@ -121,10 +115,7 @@ function ListingCard({
     <div className="rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <Link
-            to={`/events/${listing.eventSlug}`}
-            className="font-medium hover:underline"
-          >
+          <Link to={`/events/${listing.eventSlug}`} className="font-medium hover:underline">
             {listing.eventName}
           </Link>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -168,11 +159,7 @@ function ListingCard({
                   onClick={() => onDeactivate(listing.id)}
                   disabled={isDeactivating}
                 >
-                  {isDeactivating ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    'Cancel'
-                  )}
+                  {isDeactivating ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Cancel'}
                 </Button>
               </div>
             )}
@@ -240,10 +227,7 @@ export function MyListingsPage() {
         </Button>
       </div>
 
-      <Tabs
-        value={statusFilter}
-        onValueChange={(value) => setStatusFilter(value as StatusFilter)}
-      >
+      <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
         <TabsList>
           <TabsTrigger value="ALL">All</TabsTrigger>
           <TabsTrigger value="ACTIVE">Active</TabsTrigger>
@@ -261,11 +245,7 @@ export function MyListingsPage() {
                   ? 'When you list tickets for sale, they will appear here.'
                   : `You have no ${statusFilter.toLowerCase()} listings.`
               }
-              action={
-                statusFilter === 'ALL'
-                  ? { label: 'Sell Tickets', href: '/sell' }
-                  : undefined
-              }
+              action={statusFilter === 'ALL' ? { label: 'Sell Tickets', href: '/sell' } : undefined}
             />
           ) : (
             <>
@@ -309,16 +289,11 @@ export function MyListingsPage() {
                             {listing.eventName}
                           </Link>
                         </TableCell>
-                        <TableCell>
-                          {new Date(listing.eventDate).toLocaleDateString()}
-                        </TableCell>
+                        <TableCell>{new Date(listing.eventDate).toLocaleDateString()}</TableCell>
                         <TableCell>{formatSeatInfo(listing)}</TableCell>
                         <TableCell>
                           {editingId === listing.id ? (
-                            <PriceEditor
-                              listing={listing}
-                              onClose={() => setEditingId(null)}
-                            />
+                            <PriceEditor listing={listing} onClose={() => setEditingId(null)} />
                           ) : (
                             <span>${listing.listedPrice.toFixed(2)}</span>
                           )}
@@ -328,9 +303,7 @@ export function MyListingsPage() {
                             {listing.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          {new Date(listing.listedAt).toLocaleDateString()}
-                        </TableCell>
+                        <TableCell>{new Date(listing.listedAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                           {listing.status === 'ACTIVE' && editingId !== listing.id && (
                             <div className="flex items-center justify-end gap-1">

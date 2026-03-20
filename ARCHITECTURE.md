@@ -65,11 +65,18 @@ mockhub/
 │   │   │   │   │       ├── SeatRow.java
 │   │   │   │   │       └── Seat.java
 │   │   │   │   ├── ticket/
-│   │   │   │   │   ├── controller/TicketController.java
+│   │   │   │   │   ├── controller/
+│   │   │   │   │   │   ├── TicketController.java
+│   │   │   │   │   │   └── SellerController.java
 │   │   │   │   │   ├── dto/
 │   │   │   │   │   │   ├── TicketDto.java
 │   │   │   │   │   │   ├── ListingDto.java
-│   │   │   │   │   │   └── ListingCreateRequest.java
+│   │   │   │   │   │   ├── ListingCreateRequest.java
+│   │   │   │   │   │   ├── SellListingRequest.java
+│   │   │   │   │   │   ├── SellerListingDto.java
+│   │   │   │   │   │   ├── UpdatePriceRequest.java
+│   │   │   │   │   │   ├── EarningsSummaryDto.java
+│   │   │   │   │   │   └── SaleDto.java
 │   │   │   │   │   ├── service/
 │   │   │   │   │   │   ├── TicketService.java
 │   │   │   │   │   │   └── ListingService.java
@@ -532,6 +539,7 @@ erDiagram
         BIGINT id PK
         BIGINT ticket_id FK
         BIGINT event_id FK
+        BIGINT seller_id FK "nullable -- NULL = platform listing"
         DECIMAL listed_price
         DECIMAL computed_price
         DECIMAL price_multiplier
@@ -554,6 +562,7 @@ erDiagram
     seats ||--o| tickets : "assigned to"
     sections ||--o{ tickets : "in"
     tickets ||--o{ listings : "listed as"
+    users ||--o{ listings : "sells"
     events ||--o{ price_history : "tracked by"
     listings ||--o{ price_history : "recorded in"
 ```
@@ -1232,7 +1241,24 @@ All endpoints are prefixed with `/api/v1`. Responses use standard HTTP status co
 | DELETE | `/api/v1/favorites/{eventId}` | Remove from favorites | BUYER |
 | GET | `/api/v1/favorites/check/{eventId}` | Check if event is favorited | BUYER |
 
-### 3.9 Notifications
+### 3.9 Seller Listings
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| POST | `/api/v1/listings` | Create a listing (seller provides eventSlug, sectionName, rowLabel, seatNumber, price) | Any authenticated user |
+| GET | `/api/v1/my/listings` | List seller's own listings (optional `?status=ACTIVE\|SOLD\|CANCELLED`) | Any authenticated user |
+| PUT | `/api/v1/listings/{id}/price` | Update listing price (owner only) | Any authenticated user |
+| DELETE | `/api/v1/listings/{id}` | Deactivate listing, return ticket to AVAILABLE (owner only) | Any authenticated user |
+| GET | `/api/v1/my/earnings` | Seller earnings summary with recent sales | Any authenticated user |
+
+**Design notes:**
+- No separate seller role — any authenticated user can sell.
+- `listings.seller_id` is nullable: NULL = platform listing, non-null = user-created resale listing.
+- Seller describes their seat; backend finds the matching Ticket via event + section + row + seat lookup.
+- Ownership enforced on mutations: listing.seller must match the authenticated user.
+- Earnings aggregated from `order_items` where `listing.seller.id` matches and `order.status = 'COMPLETED'`.
+
+### 3.10 Notifications
 
 | Method | Path | Description | Auth |
 |---|---|---|---|

@@ -1,5 +1,15 @@
 import { Link, useLocation } from 'react-router';
-import { Bell, DollarSign, Heart, LogOut, Settings, ShoppingCart, Tag, Ticket, User } from 'lucide-react';
+import {
+  Bell,
+  DollarSign,
+  Heart,
+  LogOut,
+  Settings,
+  ShoppingCart,
+  Tag,
+  Ticket,
+  User,
+} from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -96,11 +106,7 @@ export function MobileNav() {
                 Notifications
               </Link>
               <Separator className="my-2" />
-              <Link
-                to={ROUTES.SELL}
-                onClick={closeMobileNav}
-                className={navLinkClass(ROUTES.SELL)}
-              >
+              <Link to={ROUTES.SELL} onClick={closeMobileNav} className={navLinkClass(ROUTES.SELL)}>
                 <Ticket className="h-4 w-4" />
                 Sell Tickets
               </Link>

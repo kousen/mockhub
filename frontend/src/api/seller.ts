@@ -18,10 +18,7 @@ export async function createListing(request: SellListingRequest): Promise<Seller
   return response.data;
 }
 
-export async function updateListingPrice(
-  id: number,
-  request: UpdatePriceRequest,
-): Promise<void> {
+export async function updateListingPrice(id: number, request: UpdatePriceRequest): Promise<void> {
   await apiClient.put(`/listings/${id}/price`, request);
 }
 

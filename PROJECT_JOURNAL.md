@@ -423,6 +423,88 @@ f4f2d4e Unblock CI integration tests and add missing test coverage
 
 ---
 
-*Last updated: 2026-03-18*
+---
+
+## Session: 2026-03-20 — Seller Flow (Two-Sided Marketplace)
+
+### Overview
+
+Added the seller flow (issue #28), turning MockHub from a buyer-only marketplace into a two-sided platform. Any authenticated user can now list tickets for sale, manage their listings, and view earnings.
+
+### Architecture Decisions
+
+**Seller identity as nullable FK:** Added `seller_id` to the `listings` table as a nullable FK to `users`. `NULL` = platform/primary-market listing (seeded inventory), non-null = user-created resale listing. This avoids a Flyway-vs-seeder ordering problem (migrations run before Spring seeders, so users don't exist when the migration executes) and creates a clean primary vs. secondary market distinction.
+
+**No separate seller role:** Per issue #28, any authenticated user can sell. No `ROLE_SELLER` needed. This simplifies auth and matches the StubHub model.
+
+**Seller creates listing by describing seat:** Rather than requiring sellers to know internal ticket IDs, they provide eventSlug + sectionName + rowLabel + seatNumber + price. The backend finds the matching Ticket via a JPQL join query across event → section → seat row → seat, validates availability, and creates the Listing + sets ticket status to LISTED. This is how real secondary marketplaces work.
+
+**Ownership-based authorization:** Seller mutations (update price, deactivate) verify `listing.seller.id == authenticatedUser.id`. Unauthorized access throws `UnauthorizedException` (part of the sealed exception hierarchy).
+
+### Build Process
+
+Used parallel worktree agents after committing the foundation:
+
+1. **Wave 1 (manual):** Migration V17, Listing entity update, ListingDto + frontend Listing type updated, TicketSeeder modified to assign sellers round-robin
+2. **Waves 2-4 (2 parallel agents):** Backend agent (SellerController, service methods, DTOs, 27 tests) + Frontend agent (types, API, hooks, 3 pages, nav updates)
+3. **Wave 5 (manual):** Playwright E2E tests (19 tests × 5 browsers = 91 assertions), accessibility fixes, llms.txt update, coverage gap tests
+
+**Worktree merge lesson:** Agents branched from `main` (not the feature branch), so their `ListingService.java` lacked the Wave 1 `sellerDisplayName` mapping. Also caught a field name mismatch: frontend used `listedPrice` in request types but backend DTOs used `price`. Both fixed during merge.
+
+**E2E debugging insights:**
+- Playwright's `**` glob is greedy across path separators: `**/api/v1/listings` matched `/api/v1/my/listings`. Fixed by switching to regex with `$` anchoring.
+- Mobile-first `md:hidden` / `hidden md:block` creates two DOM trees. `getByText().first()` finds the hidden mobile element on desktop. Fixed with `isMobile` branching and table-scoped selectors.
+- Axe-core caught icon-only buttons (Pencil, X) missing `aria-label` in the listings table — real accessibility bug fixed.
+
+### Deliverables
+
+**Backend (30 files changed):**
+- `V17__add_seller_to_listings.sql` — adds nullable `seller_id` FK with indexes
+- `SellerController.java` — 5 endpoints with OpenAPI annotations
+- 5 new DTOs: `SellListingRequest`, `SellerListingDto`, `UpdatePriceRequest`, `EarningsSummaryDto`, `SaleDto`
+- `ListingService.java` — 5 seller methods + helpers (resolveUser, verifyOwnership, toSellerListingDto, toSaleDto)
+- Repository additions: seller queries, seat-based ticket lookup, earnings aggregation
+- `TicketSeeder.java` — assigns sellers to seeded listings round-robin
+- `llms.txt` — seller endpoints added
+
+**Frontend (16 files changed):**
+- `SellPage.tsx` — 3-step form (event search → seat details → set price)
+- `MyListingsPage.tsx` — tab-filtered table (desktop) / cards (mobile) with inline price editing
+- `EarningsPage.tsx` — dashboard with summary stat cards and recent sales table
+- `seller.ts` types, `seller.ts` API, `use-seller.ts` hooks
+- Navigation updates (Header, MobileNav, router, constants)
+
+**Tests:**
+- 33 new backend tests (16 service + 11 controller + 6 coverage gap tests)
+- `ListingService.java` at 100% line coverage (190/190)
+- 19 Playwright E2E tests across 5 browsers (91 assertions, 4 desktop-only skips)
+- Accessibility tests on all 3 seller pages (axe-core WCAG2A/2AA)
+
+### Updated Metrics
+
+| Category | Before | After |
+|----------|--------|-------|
+| Backend tests | 316 | 349 |
+| Playwright E2E tests | 4 specs (91 assertions) | 5 specs (182 assertions) |
+| Total test count | ~367 | ~400 |
+| API endpoints | ~50 | ~55 |
+| DTOs | 38 records | 43 records |
+| Frontend pages | 17 | 20 |
+| Flyway migrations | V0–V16 | V0–V17 |
+
+### Commits (2026-03-20)
+
+```
+8d90a17 Merge feature/seller-flow: two-sided marketplace (#28)
+6632c78 Add coverage tests for ListingService edge cases
+22620e1 Add Playwright E2E tests for seller flow (19 tests, 5 browsers)
+1fad927 Add seller endpoints to llms.txt for AI agent discovery
+19c8b85 Add seller flow: endpoints, frontend pages, and tests
+d9cd91f Add seller identity to listings for seller flow
+```
+
+---
+
+*Last updated: 2026-03-20*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*329 tests passing (200 backend + 38 frontend unit + 91 Playwright E2E)*
+*~400 tests passing (349 backend + 38 frontend unit + 182 Playwright E2E assertions)*

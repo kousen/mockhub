@@ -168,6 +168,20 @@ npx playwright test
 
 CI runs these automatically using the `ANTHROPIC_API_KEY` GitHub secret.
 
+## Seller Flow
+
+MockHub is a two-sided marketplace — any authenticated user can sell tickets:
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/v1/listings` | List a ticket for sale (provide event, section, row, seat, price) |
+| `GET /api/v1/my/listings` | View your listings (filter by status: ACTIVE, SOLD, CANCELLED) |
+| `PUT /api/v1/listings/{id}/price` | Update your listing price |
+| `DELETE /api/v1/listings/{id}` | Cancel your listing (returns ticket to available) |
+| `GET /api/v1/my/earnings` | View earnings summary with recent sales |
+
+The frontend includes a 3-step sell flow (search event → enter seat details → set price), a My Listings dashboard with tab filtering and inline price editing, and an earnings page with summary stats.
+
 ## AI Features
 
 MockHub includes working AI-powered endpoints backed by Spring AI:
