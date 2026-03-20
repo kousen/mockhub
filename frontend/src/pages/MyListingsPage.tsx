@@ -337,6 +337,7 @@ export function MyListingsPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                aria-label="Edit price"
                                 onClick={() => setEditingId(listing.id)}
                               >
                                 <Pencil className="h-3 w-3" />
@@ -344,6 +345,7 @@ export function MyListingsPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                aria-label="Cancel listing"
                                 className="text-destructive hover:text-destructive"
                                 onClick={() => handleDeactivate(listing.id)}
                                 disabled={deactivateListing.isPending}
