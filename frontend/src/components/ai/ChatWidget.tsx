@@ -177,11 +177,29 @@ export function ChatWidget() {
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto px-4 py-3">
             {messages.length === 0 && !aiUnavailable && (
-              <div className="flex h-full items-center justify-center">
+              <div className="flex h-full flex-col items-center justify-center gap-4">
                 <p className="text-center text-sm text-muted-foreground">
-                  Ask me about events, tickets, or pricing. I am here to help you find the perfect
-                  show!
+                  Try asking something like:
                 </p>
+                <div className="flex flex-col gap-2">
+                  {[
+                    'What concerts are coming up in New York?',
+                    'Find me tickets under $100',
+                    'When is the best time to buy tickets?',
+                    'What events are good for a date night?',
+                  ].map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => {
+                        setInputValue(prompt);
+                        inputRef.current?.focus();
+                      }}
+                      className="rounded-lg border px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
