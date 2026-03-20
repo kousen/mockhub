@@ -382,7 +382,7 @@ test.describe('Seller Flow', () => {
       await authenticateUser(page);
       await mockSellerEndpoints(page);
       await page.goto('/sell');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa'])
@@ -399,7 +399,7 @@ test.describe('Seller Flow', () => {
       await authenticateUser(page);
       await mockSellerEndpoints(page);
       await page.goto('/my/listings');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa'])
@@ -416,7 +416,7 @@ test.describe('Seller Flow', () => {
       await authenticateUser(page);
       await mockSellerEndpoints(page);
       await page.goto('/my/earnings');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const results = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa'])
