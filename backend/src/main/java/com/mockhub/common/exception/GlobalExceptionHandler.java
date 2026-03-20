@@ -21,10 +21,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ProblemDetail> handleDomainException(DomainException ex) {
         HttpStatus status = switch (ex) {
-            case ResourceNotFoundException e -> HttpStatus.NOT_FOUND;
-            case ConflictException e -> HttpStatus.CONFLICT;
-            case PaymentException e -> HttpStatus.PAYMENT_REQUIRED;
-            case UnauthorizedException e -> HttpStatus.UNAUTHORIZED;
+            case ResourceNotFoundException _ -> HttpStatus.NOT_FOUND;
+            case ConflictException _ -> HttpStatus.CONFLICT;
+            case PaymentException _ -> HttpStatus.PAYMENT_REQUIRED;
+            case UnauthorizedException _ -> HttpStatus.UNAUTHORIZED;
         };
 
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ex.getMessage());

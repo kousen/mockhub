@@ -1,6 +1,5 @@
 package com.mockhub.ticket.repository;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 

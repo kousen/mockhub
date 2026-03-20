@@ -33,7 +33,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -82,7 +81,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("createPaymentIntent - given valid order - returns PaymentIntentDto")
-    void createPaymentIntent_givenValidOrder_returnsPaymentIntentDto() throws StripeException {
+    void createPaymentIntent_givenValidOrder_returnsPaymentIntentDto() {
         PaymentIntent mockIntent = mock(PaymentIntent.class);
         when(mockIntent.getId()).thenReturn("pi_test_123");
         when(mockIntent.getClientSecret()).thenReturn("cs_test_secret");
@@ -108,7 +107,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("createPaymentIntent - given Stripe error - throws PaymentException")
-    void createPaymentIntent_givenStripeError_throwsPaymentException() throws StripeException {
+    void createPaymentIntent_givenStripeError_throwsPaymentException() {
         try (MockedStatic<PaymentIntent> paymentIntentMock = mockStatic(PaymentIntent.class)) {
             paymentIntentMock.when(() -> PaymentIntent.create(any(PaymentIntentCreateParams.class)))
                     .thenThrow(new StripeException("Card declined", null, null, 402) {});
@@ -125,7 +124,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("confirmPayment - given succeeded payment - confirms order and returns SUCCEEDED")
-    void confirmPayment_givenSucceededPayment_confirmsOrderAndReturnSucceeded() throws StripeException {
+    void confirmPayment_givenSucceededPayment_confirmsOrderAndReturnSucceeded() {
         PaymentIntent mockIntent = mock(PaymentIntent.class);
         when(mockIntent.getStatus()).thenReturn("succeeded");
         when(mockIntent.getMetadata()).thenReturn(Map.of("order_number", "MH-20260319-0001"));
@@ -150,7 +149,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("confirmPayment - given failed payment - fails order and returns FAILED")
-    void confirmPayment_givenFailedPayment_failsOrderAndReturnsFailed() throws StripeException {
+    void confirmPayment_givenFailedPayment_failsOrderAndReturnsFailed() {
         PaymentIntent mockIntent = mock(PaymentIntent.class);
         when(mockIntent.getStatus()).thenReturn("requires_payment_method");
         when(mockIntent.getMetadata()).thenReturn(Map.of("order_number", "MH-20260319-0001"));
@@ -172,7 +171,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("confirmPayment - given missing order number in metadata - throws PaymentException")
-    void confirmPayment_givenMissingOrderNumber_throwsPaymentException() throws StripeException {
+    void confirmPayment_givenMissingOrderNumber_throwsPaymentException() {
         PaymentIntent mockIntent = mock(PaymentIntent.class);
         when(mockIntent.getStatus()).thenReturn("succeeded");
         when(mockIntent.getMetadata()).thenReturn(Map.of());
@@ -188,7 +187,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("confirmPayment - given Stripe error - throws PaymentException")
-    void confirmPayment_givenStripeError_throwsPaymentException() throws StripeException {
+    void confirmPayment_givenStripeError_throwsPaymentException() {
         try (MockedStatic<PaymentIntent> paymentIntentMock = mockStatic(PaymentIntent.class)) {
             paymentIntentMock.when(() -> PaymentIntent.retrieve("pi_test_123"))
                     .thenThrow(new StripeException("Not found", null, null, 404) {});
@@ -204,7 +203,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("handleWebhook - given payment_intent.succeeded event - confirms order")
-    void handleWebhook_givenSucceededEvent_confirmsOrder() throws SignatureVerificationException {
+    void handleWebhook_givenSucceededEvent_confirmsOrder() {
         PaymentIntent mockIntent = mock(PaymentIntent.class);
         when(mockIntent.getId()).thenReturn("pi_test_123");
         when(mockIntent.getMetadata()).thenReturn(Map.of("order_number", "MH-20260319-0001"));
@@ -228,7 +227,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("handleWebhook - given payment_intent.payment_failed event - fails order")
-    void handleWebhook_givenFailedEvent_failsOrder() throws SignatureVerificationException {
+    void handleWebhook_givenFailedEvent_failsOrder() {
         PaymentIntent mockIntent = mock(PaymentIntent.class);
         when(mockIntent.getMetadata()).thenReturn(Map.of("order_number", "MH-20260319-0001"));
 
@@ -251,7 +250,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("handleWebhook - given invalid signature - throws PaymentException")
-    void handleWebhook_givenInvalidSignature_throwsPaymentException() throws SignatureVerificationException {
+    void handleWebhook_givenInvalidSignature_throwsPaymentException() {
         try (MockedStatic<Webhook> webhookMock = mockStatic(Webhook.class)) {
             webhookMock.when(() -> Webhook.constructEvent(anyString(), anyString(), anyString()))
                     .thenThrow(new SignatureVerificationException("Invalid signature", null));
@@ -266,7 +265,7 @@ class StripePaymentServiceTest {
 
     @Test
     @DisplayName("handleWebhook - given unrelated event type - does nothing")
-    void handleWebhook_givenUnrelatedEventType_doesNothing() throws SignatureVerificationException {
+    void handleWebhook_givenUnrelatedEventType_doesNothing() {
         Event mockEvent = mock(Event.class);
         when(mockEvent.getType()).thenReturn("customer.created");
 

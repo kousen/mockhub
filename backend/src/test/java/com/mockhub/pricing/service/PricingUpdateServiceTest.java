@@ -24,7 +24,6 @@ import com.mockhub.ticket.service.ListingService;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -72,7 +71,7 @@ class PricingUpdateServiceTest {
         assertEquals(expectedPrice, testEvent.getMinPrice(),
                 "Event min price should be updated to basePrice * multiplier");
         verify(eventRepository).save(testEvent);
-        verify(listingService).updateListingPrices(eq(1L), eq(multiplier));
+        verify(listingService).updateListingPrices(1L, multiplier);
         verify(priceHistoryRepository).save(any(PriceHistory.class));
     }
 

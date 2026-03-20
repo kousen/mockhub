@@ -167,7 +167,7 @@ public class EventSeeder {
                 Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
             }
             return "/api/v1/images/file/" + destFilename;
-        } catch (IOException exception) {
+        } catch (IOException _) {
             log.warn("Failed to copy seed image for event: {}", eventName);
             return null;
         }
@@ -178,7 +178,7 @@ public class EventSeeder {
                 .replaceAll("[^a-z0-9\\s-]", "")
                 .replaceAll("\\s+", "-")
                 .replaceAll("-+", "-")
-                .replaceAll("(^-|-$)", "");
+                .replaceAll("(^-|(?:-$))", "");
     }
 
     private List<EventData> getEventData() {

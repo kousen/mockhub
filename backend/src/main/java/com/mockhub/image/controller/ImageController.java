@@ -67,7 +67,7 @@ public class ImageController {
                     .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS))
                     .contentType(mediaType)
                     .body(imageData);
-        } catch (IOException exception) {
+        } catch (IOException _) {
             throw new ResourceNotFoundException("Image", "filename", filename);
         }
     }

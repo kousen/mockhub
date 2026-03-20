@@ -18,10 +18,8 @@ import com.mockhub.event.service.EventService;
 import com.mockhub.ticket.dto.ListingDto;
 import com.mockhub.ticket.service.ListingService;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -89,7 +87,7 @@ class EventToolsTest {
 
     @Test
     @DisplayName("getEventDetail - given valid slug - returns event JSON")
-    void getEventDetail_givenValidSlug_returnsEventJson() throws Exception {
+    void getEventDetail_givenValidSlug_returnsEventJson() {
         EventDto eventDto = new EventDto(
                 1L, "Rock Festival", "rock-festival", "A great show",
                 null, null, null, null, null, null, null, 0, 0, false, null, null, null, null);
@@ -103,7 +101,7 @@ class EventToolsTest {
 
     @Test
     @DisplayName("getEventDetail - given slug with whitespace - strips whitespace before lookup")
-    void getEventDetail_givenSlugWithWhitespace_stripsWhitespace() throws Exception {
+    void getEventDetail_givenSlugWithWhitespace_stripsWhitespace() {
         EventDto eventDto = new EventDto(
                 1L, "Rock Festival", "rock-festival", "A great show",
                 null, null, null, null, null, null, null, 0, 0, false, null, null, null, null);
@@ -148,7 +146,7 @@ class EventToolsTest {
 
     @Test
     @DisplayName("getEventListings - given valid slug - returns listings JSON")
-    void getEventListings_givenValidSlug_returnsListingsJson() throws Exception {
+    void getEventListings_givenValidSlug_returnsListingsJson() {
         List<ListingDto> listings = List.of();
         when(listingService.getActiveListingsByEventSlug("rock-festival")).thenReturn(listings);
 

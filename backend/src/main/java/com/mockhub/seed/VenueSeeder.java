@@ -116,7 +116,7 @@ public class VenueSeeder {
                 .replaceAll("[^a-z0-9\\s-]", "")
                 .replaceAll("\\s+", "-")
                 .replaceAll("-+", "-")
-                .replaceAll("(^-|-$)", "");
+                .replaceAll("(^-|(?:-$))", "");
     }
 
     private List<VenueData> getVenueData() {

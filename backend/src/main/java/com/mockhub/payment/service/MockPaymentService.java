@@ -81,7 +81,7 @@ public class MockPaymentService implements PaymentService {
         // Simulate processing delay
         try {
             Thread.sleep(500);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             throw new PaymentException("Payment processing interrupted");
         }

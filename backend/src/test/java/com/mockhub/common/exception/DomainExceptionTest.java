@@ -85,10 +85,10 @@ class DomainExceptionTest {
 
         for (DomainException ex : exceptions) {
             int statusCode = switch (ex) {
-                case ResourceNotFoundException e -> 404;
-                case ConflictException e -> 409;
-                case PaymentException e -> 402;
-                case UnauthorizedException e -> 401;
+                case ResourceNotFoundException _ -> 404;
+                case ConflictException _ -> 409;
+                case PaymentException _ -> 402;
+                case UnauthorizedException _ -> 401;
             };
             assertTrue(statusCode > 0,
                     "Each DomainException subtype should map to a valid HTTP status code");

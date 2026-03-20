@@ -25,7 +25,6 @@ import com.mockhub.pricing.dto.PriceHistoryDto;
 import com.mockhub.pricing.service.PriceHistoryService;
 import com.mockhub.ticket.dto.ListingDto;
 import com.mockhub.ticket.service.ListingService;
-import com.mockhub.venue.dto.SectionDto;
 import com.mockhub.venue.dto.SectionAvailabilityDto;
 import com.mockhub.ticket.service.TicketService;
 

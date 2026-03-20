@@ -15,7 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ai.dto.PricePredictionDto;
 import com.mockhub.ai.service.PricePredictionService;
-import com.mockhub.pricing.dto.PriceHistoryDto;
 import com.mockhub.pricing.service.PriceHistoryService;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;

@@ -76,7 +76,7 @@ public class LocalImageStorageService implements ImageStorageService {
 
         try {
             return Files.readAllBytes(imagePath);
-        } catch (IOException exception) {
+        } catch (IOException _) {
             throw new ResourceNotFoundException("Image file", "id", imageId);
         }
     }
@@ -92,7 +92,7 @@ public class LocalImageStorageService implements ImageStorageService {
 
         try {
             return Files.readAllBytes(thumbnailPath);
-        } catch (IOException exception) {
+        } catch (IOException _) {
             throw new ResourceNotFoundException("Thumbnail file", "id", imageId);
         }
     }

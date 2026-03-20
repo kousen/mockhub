@@ -33,7 +33,6 @@ import com.mockhub.event.entity.Category;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.event.service.EventService;
-import com.mockhub.order.entity.Order;
 import com.mockhub.order.repository.OrderRepository;
 import com.mockhub.ticket.repository.ListingRepository;
 import com.mockhub.ticket.repository.TicketRepository;
