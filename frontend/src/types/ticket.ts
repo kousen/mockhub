@@ -11,6 +11,7 @@ export interface Listing {
   priceMultiplier: number;
   status: string;
   listedAt: string;
+  sellerDisplayName: string | null;
 }
 
 export interface PriceHistory {

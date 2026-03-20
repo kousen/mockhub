@@ -15,6 +15,7 @@ public record ListingDto(
         BigDecimal computedPrice,
         BigDecimal priceMultiplier,
         String status,
-        Instant listedAt
+        Instant listedAt,
+        String sellerDisplayName
 ) {
 }

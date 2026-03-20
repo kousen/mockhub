@@ -3,6 +3,7 @@ package com.mockhub.ticket.entity;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import com.mockhub.auth.entity.User;
 import com.mockhub.common.entity.BaseEntity;
 import com.mockhub.event.entity.Event;
 
@@ -24,6 +25,10 @@ public class Listing extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seller_id")
+    private User seller;
 
     @Column(name = "listed_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal listedPrice;
@@ -108,5 +113,13 @@ public class Listing extends BaseEntity {
 
     public void setExpiresAt(Instant expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    public User getSeller() {
+        return seller;
+    }
+
+    public void setSeller(User seller) {
+        this.seller = seller;
     }
 }

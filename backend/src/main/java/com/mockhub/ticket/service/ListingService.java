@@ -109,6 +109,12 @@ public class ListingService {
             seatNumber = ticket.getSeat().getSeatNumber();
         }
 
+        String sellerDisplayName = null;
+        if (listing.getSeller() != null) {
+            sellerDisplayName = listing.getSeller().getFirstName() + " "
+                    + listing.getSeller().getLastName().charAt(0) + ".";
+        }
+
         return new ListingDto(
                 listing.getId(),
                 ticket.getId(),
@@ -121,7 +127,8 @@ public class ListingService {
                 listing.getComputedPrice(),
                 listing.getPriceMultiplier(),
                 listing.getStatus(),
-                listing.getListedAt()
+                listing.getListedAt(),
+                sellerDisplayName
         );
     }
 }
