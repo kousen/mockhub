@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:${SPRING_DATASOURCE_URL}
+    url: ${SPRING_DATASOURCE_URL}
     driver-class-name: org.postgresql.Driver
 
   jpa:
