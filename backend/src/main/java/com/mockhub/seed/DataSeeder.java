@@ -30,14 +30,18 @@ public class DataSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        log.info("Starting data seeding for dev profile...");
+        log.info("Starting data seeding...");
 
         long startTime = System.currentTimeMillis();
 
-        userSeeder.seed();
-        venueSeeder.seed();
-        eventSeeder.seed();
-        ticketSeeder.seed();
+        try {
+            userSeeder.seed();
+            venueSeeder.seed();
+            eventSeeder.seed();
+            ticketSeeder.seed();
+        } catch (RuntimeException ex) {
+            log.error("Data seeding failed: {}", ex.getMessage(), ex);
+        }
 
         long elapsed = System.currentTimeMillis() - startTime;
         log.info("Data seeding completed in {} ms", elapsed);
