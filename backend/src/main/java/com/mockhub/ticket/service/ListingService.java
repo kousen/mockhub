@@ -9,12 +9,22 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mockhub.auth.entity.User;
+import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
+import com.mockhub.common.exception.UnauthorizedException;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
+import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.repository.OrderItemRepository;
+import com.mockhub.ticket.dto.EarningsSummaryDto;
 import com.mockhub.ticket.dto.ListingCreateRequest;
 import com.mockhub.ticket.dto.ListingDto;
+import com.mockhub.ticket.dto.SaleDto;
+import com.mockhub.ticket.dto.SellListingRequest;
+import com.mockhub.ticket.dto.SellerListingDto;
+import com.mockhub.ticket.dto.UpdatePriceRequest;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.ticket.repository.ListingRepository;
@@ -25,17 +35,27 @@ public class ListingService {
 
     private static final Logger log = LoggerFactory.getLogger(ListingService.class);
     private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String STATUS_SOLD = "SOLD";
+    private static final String STATUS_CANCELLED = "CANCELLED";
+    private static final String TICKET_AVAILABLE = "AVAILABLE";
+    private static final String TICKET_LISTED = "LISTED";
 
     private final ListingRepository listingRepository;
     private final TicketRepository ticketRepository;
     private final EventRepository eventRepository;
+    private final UserRepository userRepository;
+    private final OrderItemRepository orderItemRepository;
 
     public ListingService(ListingRepository listingRepository,
                           TicketRepository ticketRepository,
-                          EventRepository eventRepository) {
+                          EventRepository eventRepository,
+                          UserRepository userRepository,
+                          OrderItemRepository orderItemRepository) {
         this.listingRepository = listingRepository;
         this.ticketRepository = ticketRepository;
         this.eventRepository = eventRepository;
+        this.userRepository = userRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     @Transactional(readOnly = true)
@@ -62,11 +82,11 @@ public class ListingService {
         Ticket ticket = ticketRepository.findById(request.ticketId())
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", request.ticketId()));
 
-        if (!"AVAILABLE".equals(ticket.getStatus())) {
+        if (!TICKET_AVAILABLE.equals(ticket.getStatus())) {
             throw new ConflictException("Ticket is not available for listing");
         }
 
-        ticket.setStatus("LISTED");
+        ticket.setStatus(TICKET_LISTED);
         ticketRepository.save(ticket);
 
         Listing listing = new Listing();
@@ -98,6 +118,224 @@ public class ListingService {
         log.debug("Updated {} listing prices for event {}", activeListings.size(), eventId);
     }
 
+    // -- Seller flow methods --
+
+    @Transactional
+    public SellerListingDto createSellerListing(String userEmail,
+                                                SellListingRequest request) {
+        User seller = resolveUser(userEmail);
+        Event event = eventRepository.findBySlug(request.eventSlug())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Event", "slug", request.eventSlug()));
+
+        Ticket ticket = ticketRepository.findByEventIdAndSectionAndRowAndSeat(
+                        event.getId(),
+                        request.sectionName(),
+                        request.rowLabel(),
+                        request.seatNumber())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Ticket",
+                        "seat",
+                        request.sectionName() + "/" + request.rowLabel()
+                                + "/" + request.seatNumber()));
+
+        if (!TICKET_AVAILABLE.equals(ticket.getStatus())) {
+            throw new ConflictException("Ticket is not available for listing");
+        }
+
+        if (listingRepository.existsByTicketIdAndStatus(ticket.getId(), STATUS_ACTIVE)) {
+            throw new ConflictException(
+                    "An active listing already exists for this ticket");
+        }
+
+        ticket.setStatus(TICKET_LISTED);
+        ticketRepository.save(ticket);
+
+        Listing listing = new Listing();
+        listing.setTicket(ticket);
+        listing.setEvent(event);
+        listing.setSeller(seller);
+        listing.setListedPrice(request.price());
+        listing.setComputedPrice(request.price());
+        listing.setPriceMultiplier(BigDecimal.ONE);
+        listing.setStatus(STATUS_ACTIVE);
+        listing.setListedAt(Instant.now());
+
+        Listing saved = listingRepository.save(listing);
+        log.info("Seller {} created listing {} for ticket {}",
+                seller.getEmail(), saved.getId(), ticket.getId());
+        return toSellerListingDto(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SellerListingDto> getSellerListings(String userEmail,
+                                                     String statusFilter) {
+        User seller = resolveUser(userEmail);
+        List<Listing> listings;
+
+        if (statusFilter != null && !statusFilter.isBlank()) {
+            listings = listingRepository.findBySellerIdAndStatus(
+                    seller.getId(), statusFilter.toUpperCase());
+        } else {
+            listings = listingRepository.findBySellerId(seller.getId());
+        }
+
+        return listings.stream()
+                .map(this::toSellerListingDto)
+                .toList();
+    }
+
+    @Transactional
+    public SellerListingDto updateListingPrice(Long listingId,
+                                                String userEmail,
+                                                UpdatePriceRequest request) {
+        User seller = resolveUser(userEmail);
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Listing", "id", listingId));
+
+        verifyOwnership(listing, seller);
+
+        if (!STATUS_ACTIVE.equals(listing.getStatus())) {
+            throw new ConflictException(
+                    "Can only update price of active listings");
+        }
+
+        listing.setListedPrice(request.price());
+        listing.setComputedPrice(
+                request.price().multiply(listing.getPriceMultiplier()));
+        Listing saved = listingRepository.save(listing);
+
+        log.info("Seller {} updated listing {} price to {}",
+                seller.getEmail(), listingId, request.price());
+        return toSellerListingDto(saved);
+    }
+
+    @Transactional
+    public void deactivateListing(Long listingId, String userEmail) {
+        User seller = resolveUser(userEmail);
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Listing", "id", listingId));
+
+        verifyOwnership(listing, seller);
+
+        if (!STATUS_ACTIVE.equals(listing.getStatus())) {
+            throw new ConflictException(
+                    "Can only deactivate active listings");
+        }
+
+        listing.setStatus(STATUS_CANCELLED);
+        listingRepository.save(listing);
+
+        Ticket ticket = listing.getTicket();
+        ticket.setStatus(TICKET_AVAILABLE);
+        ticketRepository.save(ticket);
+
+        log.info("Seller {} deactivated listing {}",
+                seller.getEmail(), listingId);
+    }
+
+    @Transactional(readOnly = true)
+    public EarningsSummaryDto getEarningsSummary(String userEmail) {
+        User seller = resolveUser(userEmail);
+        Long sellerId = seller.getId();
+
+        BigDecimal totalEarnings =
+                orderItemRepository.sumEarningsBySellerId(sellerId);
+        long totalListings =
+                listingRepository.countBySellerIdAndStatus(sellerId, STATUS_ACTIVE)
+                + listingRepository.countBySellerIdAndStatus(sellerId, STATUS_SOLD)
+                + listingRepository.countBySellerIdAndStatus(
+                        sellerId, STATUS_CANCELLED);
+        long activeListings =
+                listingRepository.countBySellerIdAndStatus(
+                        sellerId, STATUS_ACTIVE);
+        long soldListings =
+                listingRepository.countBySellerIdAndStatus(
+                        sellerId, STATUS_SOLD);
+
+        List<OrderItem> completedSales =
+                orderItemRepository.findCompletedSalesBySellerId(sellerId);
+        List<SaleDto> recentSales = completedSales.stream()
+                .limit(10)
+                .map(this::toSaleDto)
+                .toList();
+
+        return new EarningsSummaryDto(
+                totalEarnings,
+                totalListings,
+                activeListings,
+                soldListings,
+                recentSales);
+    }
+
+    // -- Private helpers --
+
+    private User resolveUser(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User", "email", email));
+    }
+
+    private void verifyOwnership(Listing listing, User seller) {
+        if (listing.getSeller() == null
+                || !listing.getSeller().getId().equals(seller.getId())) {
+            throw new UnauthorizedException(
+                    "You do not own this listing");
+        }
+    }
+
+    private SellerListingDto toSellerListingDto(Listing listing) {
+        Ticket ticket = listing.getTicket();
+        Event event = listing.getEvent();
+        String sectionName = ticket.getSection().getName();
+        String rowLabel = null;
+        String seatNumber = null;
+
+        if (ticket.getSeat() != null) {
+            rowLabel = ticket.getSeat().getRow().getRowLabel();
+            seatNumber = ticket.getSeat().getSeatNumber();
+        }
+
+        return new SellerListingDto(
+                listing.getId(),
+                ticket.getId(),
+                event.getSlug(),
+                event.getName(),
+                event.getEventDate(),
+                event.getVenue().getName(),
+                sectionName,
+                rowLabel,
+                seatNumber,
+                ticket.getTicketType(),
+                listing.getListedPrice(),
+                listing.getComputedPrice(),
+                ticket.getFaceValue(),
+                listing.getStatus(),
+                listing.getCreatedAt());
+    }
+
+    private SaleDto toSaleDto(OrderItem orderItem) {
+        Ticket ticket = orderItem.getTicket();
+        String sectionName = ticket.getSection().getName();
+        String seatInfo = sectionName;
+
+        if (ticket.getSeat() != null) {
+            seatInfo = sectionName + ", Row "
+                    + ticket.getSeat().getRow().getRowLabel()
+                    + ", Seat " + ticket.getSeat().getSeatNumber();
+        }
+
+        return new SaleDto(
+                orderItem.getOrder().getOrderNumber(),
+                orderItem.getListing().getEvent().getName(),
+                sectionName,
+                seatInfo,
+                orderItem.getPricePaid(),
+                orderItem.getOrder().getConfirmedAt());
+    }
+
     private ListingDto toListingDto(Listing listing) {
         Ticket ticket = listing.getTicket();
         String sectionName = ticket.getSection().getName();
@@ -107,6 +345,12 @@ public class ListingService {
         if (ticket.getSeat() != null) {
             rowLabel = ticket.getSeat().getRow().getRowLabel();
             seatNumber = ticket.getSeat().getSeatNumber();
+        }
+
+        String sellerDisplayName = null;
+        if (listing.getSeller() != null) {
+            sellerDisplayName = listing.getSeller().getFirstName() + " "
+                    + listing.getSeller().getLastName().charAt(0) + ".";
         }
 
         return new ListingDto(
@@ -121,7 +365,8 @@ public class ListingService {
                 listing.getComputedPrice(),
                 listing.getPriceMultiplier(),
                 listing.getStatus(),
-                listing.getListedAt()
+                listing.getListedAt(),
+                sellerDisplayName
         );
     }
 }

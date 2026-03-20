@@ -39,6 +39,13 @@ POST /api/v1/cart/items — Add listing to cart. JSON body: {"listingId": number
 DELETE /api/v1/cart/items/{itemId} — Remove item from cart
 DELETE /api/v1/cart — Clear cart
 
+## Seller Listings (requires auth)
+POST /api/v1/listings — Create a listing. JSON body: {"eventSlug", "sectionName", "rowLabel", "seatNumber", "price"}
+GET /api/v1/my/listings — List seller's own listings. Query param: status (ACTIVE|SOLD|CANCELLED)
+PUT /api/v1/listings/{id}/price — Update listing price. JSON body: {"price": number}
+DELETE /api/v1/listings/{id} — Deactivate a listing (sets status CANCELLED, returns ticket to available)
+GET /api/v1/my/earnings — Seller earnings summary with recent sales
+
 ## Checkout (requires auth)
 POST /api/v1/orders/checkout — Create order from cart. JSON body: {"paymentMethod": "string"}
 

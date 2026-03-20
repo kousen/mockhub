@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mockhub.auth.entity.User;
+import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.ticket.entity.Listing;
@@ -33,14 +35,17 @@ public class TicketSeeder {
     private final EventRepository eventRepository;
     private final TicketRepository ticketRepository;
     private final ListingRepository listingRepository;
+    private final UserRepository userRepository;
     private final Random random = new Random(42);
 
     public TicketSeeder(EventRepository eventRepository,
                         TicketRepository ticketRepository,
-                        ListingRepository listingRepository) {
+                        ListingRepository listingRepository,
+                        UserRepository userRepository) {
         this.eventRepository = eventRepository;
         this.ticketRepository = ticketRepository;
         this.listingRepository = listingRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -50,9 +55,15 @@ public class TicketSeeder {
             return;
         }
 
+        // Assign seeded listings to the seller and buyer demo accounts
+        List<User> sellers = userRepository.findAll().stream()
+                .filter(u -> !u.getEmail().equals("admin@mockhub.com"))
+                .toList();
+
         List<Event> events = eventRepository.findAll();
         int totalTickets = 0;
         int totalListings = 0;
+        int sellerIndex = 0;
 
         for (Event event : events) {
             Venue venue = event.getVenue();
@@ -96,6 +107,8 @@ public class TicketSeeder {
                             .setScale(3, RoundingMode.HALF_UP));
                     listing.setStatus("ACTIVE");
                     listing.setListedAt(Instant.now());
+                    listing.setSeller(sellers.get(sellerIndex % sellers.size()));
+                    sellerIndex++;
 
                     eventListings.add(listing);
                     ticket.setStatus("LISTED");

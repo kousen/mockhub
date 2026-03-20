@@ -1,0 +1,338 @@
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { Loader2, Search, DollarSign, Ticket, MapPin, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useEvents } from '@/hooks/use-events';
+import { useCreateListing } from '@/hooks/use-seller';
+import type { EventSummary } from '@/types/event';
+import type { SellListingRequest } from '@/types/seller';
+
+type Step = 'event' | 'seat' | 'price';
+
+/**
+ * Multi-step form for creating a new ticket listing.
+ * Step 1: Search and select an event
+ * Step 2: Enter seat details (section, row, seat number)
+ * Step 3: Set the listing price
+ */
+export function SellPage() {
+  const navigate = useNavigate();
+  const createListing = useCreateListing();
+
+  const [step, setStep] = useState<Step>('event');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState<EventSummary | null>(null);
+  const [sectionName, setSectionName] = useState('');
+  const [rowLabel, setRowLabel] = useState('');
+  const [seatNumber, setSeatNumber] = useState('');
+  const [listedPrice, setListedPrice] = useState('');
+
+  const { data: eventsPage, isLoading: eventsLoading } = useEvents({
+    q: searchQuery.length >= 2 ? searchQuery : undefined,
+    size: 10,
+  });
+
+  const events = eventsPage?.content ?? [];
+
+  const handleSelectEvent = useCallback((event: EventSummary) => {
+    setSelectedEvent(event);
+    setStep('seat');
+  }, []);
+
+  const handleSeatSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!sectionName.trim()) {
+        toast.error('Section name is required.');
+        return;
+      }
+      if (!rowLabel.trim()) {
+        toast.error('Row label is required.');
+        return;
+      }
+      if (!seatNumber.trim()) {
+        toast.error('Seat number is required.');
+        return;
+      }
+      setStep('price');
+    },
+    [sectionName, rowLabel, seatNumber],
+  );
+
+  const handleSubmit = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!selectedEvent) return;
+
+      const price = parseFloat(listedPrice);
+      if (isNaN(price) || price <= 0) {
+        toast.error('Please enter a valid price greater than $0.');
+        return;
+      }
+
+      const request: SellListingRequest = {
+        eventSlug: selectedEvent.slug,
+        sectionName: sectionName.trim(),
+        rowLabel: rowLabel.trim(),
+        seatNumber: seatNumber.trim(),
+        price,
+      };
+
+      createListing.mutate(request, {
+        onSuccess: () => {
+          toast.success('Listing created successfully!');
+          navigate('/my/listings');
+        },
+        onError: () => {
+          toast.error('Failed to create listing. Please try again.');
+        },
+      });
+    },
+    [selectedEvent, sectionName, rowLabel, seatNumber, listedPrice, createListing, navigate],
+  );
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
+      <h1 className="mb-6 text-2xl font-bold">Sell Tickets</h1>
+
+      {/* Step Indicator */}
+      <div className="mb-8 flex items-center gap-2">
+        {(['event', 'seat', 'price'] as const).map((s, index) => (
+          <div key={s} className="flex items-center gap-2">
+            {index > 0 && (
+              <div
+                className={`h-px w-8 ${step === s || (['seat', 'price'].indexOf(step) > ['seat', 'price'].indexOf(s)) ? 'bg-primary' : 'bg-border'}`}
+              />
+            )}
+            <div
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                step === s
+                  ? 'bg-primary text-primary-foreground'
+                  : (['event', 'seat', 'price'].indexOf(s) <
+                        ['event', 'seat', 'price'].indexOf(step))
+                    ? 'bg-primary/20 text-primary'
+                    : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              {index + 1}
+            </div>
+            <span
+              className={`hidden text-sm sm:inline ${step === s ? 'font-medium' : 'text-muted-foreground'}`}
+            >
+              {s === 'event' ? 'Event' : s === 'seat' ? 'Seat Details' : 'Set Price'}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Step 1: Select Event */}
+      {step === 'event' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Select an Event</CardTitle>
+            <CardDescription>Search for the event you have tickets for.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search events..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            {eventsLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {!eventsLoading && searchQuery.length >= 2 && events.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                No events found. Try a different search term.
+              </p>
+            )}
+
+            {!eventsLoading && searchQuery.length < 2 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Type at least 2 characters to search for events.
+              </p>
+            )}
+
+            <div className="space-y-2">
+              {events.map((event) => (
+                <button
+                  key={event.id}
+                  onClick={() => handleSelectEvent(event)}
+                  className="w-full rounded-lg border p-4 text-left transition-colors hover:bg-accent"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{event.name}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {new Date(event.eventDate).toLocaleDateString()}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {event.venueName}, {event.city}
+                        </span>
+                      </div>
+                    </div>
+                    {event.minPrice !== null && (
+                      <span className="shrink-0 text-sm text-muted-foreground">
+                        from ${event.minPrice.toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 2: Enter Seat Details */}
+      {step === 'seat' && selectedEvent && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Seat Details</CardTitle>
+            <CardDescription>
+              Enter the seat details for{' '}
+              <span className="font-medium text-foreground">{selectedEvent.name}</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSeatSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="section">Section</Label>
+                <Input
+                  id="section"
+                  placeholder="e.g., Floor, Section 101, GA"
+                  value={sectionName}
+                  onChange={(e) => setSectionName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="row">Row</Label>
+                  <Input
+                    id="row"
+                    placeholder="e.g., A, 12"
+                    value={rowLabel}
+                    onChange={(e) => setRowLabel(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="seat">Seat Number</Label>
+                  <Input
+                    id="seat"
+                    placeholder="e.g., 5, 23"
+                    value={seatNumber}
+                    onChange={(e) => setSeatNumber(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep('event')}
+                >
+                  Back
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Continue
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 3: Set Price */}
+      {step === 'price' && selectedEvent && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Set Your Price</CardTitle>
+            <CardDescription>
+              Choose a price for your ticket to{' '}
+              <span className="font-medium text-foreground">{selectedEvent.name}</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Listing Summary */}
+              <div className="rounded-lg bg-muted/50 p-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <Ticket className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{selectedEvent.name}</span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {sectionName} &middot; Row {rowLabel} &middot; Seat {seatNumber}
+                </p>
+                {selectedEvent.minPrice !== null && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Current lowest price: ${selectedEvent.minPrice.toFixed(2)}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price">Listing Price ($)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="price"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={listedPrice}
+                    onChange={(e) => setListedPrice(e.target.value)}
+                    className="pl-9"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep('seat')}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={createListing.isPending}
+                >
+                  {createListing.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating Listing...
+                    </>
+                  ) : (
+                    'Create Listing'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

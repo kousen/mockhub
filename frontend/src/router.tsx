@@ -13,6 +13,9 @@ import { CheckoutPage } from '@/pages/CheckoutPage';
 import { OrderHistoryPage } from '@/pages/OrderHistoryPage';
 import { OrderConfirmationPage } from '@/pages/OrderConfirmationPage';
 import { FavoritesPage } from '@/pages/FavoritesPage';
+import { SellPage } from '@/pages/SellPage';
+import { MyListingsPage } from '@/pages/MyListingsPage';
+import { EarningsPage } from '@/pages/EarningsPage';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
 import { AdminEventsPage } from '@/pages/admin/AdminEventsPage';
@@ -42,6 +45,9 @@ export const router = createBrowserRouter([
             Component: OrderConfirmationPage,
           },
           { path: 'favorites', Component: FavoritesPage },
+          { path: 'sell', Component: SellPage },
+          { path: 'my/listings', Component: MyListingsPage },
+          { path: 'my/earnings', Component: EarningsPage },
         ],
       },
 
