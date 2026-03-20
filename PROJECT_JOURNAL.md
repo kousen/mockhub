@@ -505,6 +505,60 @@ d9cd91f Add seller identity to listings for seller flow
 
 ---
 
+## Session: 2026-03-20 (cont.) — Deployment, AI Tools, and Production Fixes
+
+### Overview
+
+Deployed MockHub to production on Railway after attempting Render (512MB RAM insufficient for Spring Boot 4). Fixed numerous deployment issues: JDBC URL format, port binding, CORS, SPA routing, security config, seed data, ephemeral filesystem images, and AI chat function-calling.
+
+### Deployment Journey
+
+**Render (attempted, abandoned):**
+- 512MB RAM on starter tier ($7/mo) couldn't run Spring Boot 4 + Hibernate + Spring AI
+- Even with `-Xmx200m -XX:+UseSerialGC`, the JVM was OOM-killed silently
+- Next tier up was $25/mo (2GB) — too expensive for a teaching demo
+
+**Railway (successful, $5/mo):**
+- Hobby plan: up to 8GB RAM per replica, $5 minimum
+- PostgreSQL add-on with internal networking
+- Auto-deploy from GitHub pushes
+
+### Production Issues Fixed (in order)
+
+1. **JDBC URL format** — Railway/Render provide `postgresql://user:pass@host/db`, Spring JDBC needs `jdbc:postgresql://host:port/db` with separate username/password properties
+2. **Port binding** — Render assigns dynamic `PORT` env var; added `server.port: ${PORT:8080}` to prod profile
+3. **OOM on Render** — 512MB too small; switched to Railway
+4. **JWT secret** — Railway auto-generated a secret with dots (`.`), which are invalid Base64 for JJWT
+5. **Missing mock-payment profile** — `PaymentService` bean not found without `mock-payment` in active profiles
+6. **Database URL format on Railway** — Split `DATABASE_URL` into `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` reference variables
+7. **Security blocking static files** — `.anyRequest().authenticated()` blocked `index.html`, CSS, JS. Added `permitAll()` for static resources and SPA routes
+8. **SPA handler intercepting API routes** — `/**` resource handler served `index.html` for `/api/v1/auth/login`, causing 403. Excluded `api/`, `actuator/`, `mcp/` paths
+9. **Data seeder gated to dev profile** — Changed `@Profile("dev")` to `@Profile({"dev", "prod"})`
+10. **CORS rejecting production origin** — CorsFilter only allowed `localhost:5173`. Added Railway domain to prod profile
+11. **Ephemeral filesystem images** — Seed images lost on container redeploy. Added `restoreSeedImages()` that runs every startup
+12. **AI chat had no database access** — Wired `EventTools` and `PricingTools` into ChatClient via `.defaultToolCallbacks()`
+13. **SellerListingDto missing listedAt** — Frontend expected `listedAt` but DTO only had `createdAt`, causing "Invalid Date"
+
+### Other Changes
+
+- **Removed pgvector dependency** — Neutralized V0/V14 migrations, dropped vector_store table (V18/V19), switched Docker/Testcontainers/CI to `postgres:17`
+- **Removed unused EmbeddingService** — Was scaffolded but never called
+- **AiConfig refactor** — Wire `AnthropicChatModel` directly instead of `ChatClient.Builder` (no more `@Primary` workaround)
+- **Chat starter prompts** — Clickable example queries in empty chat widget state
+- **57 SonarCloud issues fixed** — Unused imports, throws, patterns, regex
+- **CI concurrency groups** — New pushes auto-cancel previous in-progress runs
+- **Documented embedding/provider decisions on issue #9** — Future: one config per chat provider, OpenAI `text-embedding-3-small` for embeddings regardless of chat provider
+
+### New Issues Created
+
+| # | Issue |
+|---|-------|
+| 33 | Sell form: show valid sections and surface seat-not-found errors |
+| 34 | My Listings table: action columns hidden on narrow viewports |
+
+---
+
 *Last updated: 2026-03-20*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
 *~400 tests passing (349 backend + 38 frontend unit + 182 Playwright E2E assertions)*
+*Live at: https://mockhub-production.up.railway.app*

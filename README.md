@@ -4,6 +4,8 @@ A secondary concert ticket marketplace built as a teaching platform for AI integ
 
 MockHub mimics the functionality of sites like StubHub and TicketNetwork — registration, event browsing, seat selection, dynamic pricing, and checkout — providing a realistic, full-featured codebase for students to build AI features on top of.
 
+**Live demo:** [mockhub-production.up.railway.app](https://mockhub-production.up.railway.app) — log in with `buyer@mockhub.com` / `buyer123`
+
 ![Homepage with search and featured events](docs/screenshots/homepage.png)
 
 ### AI-Powered Features
@@ -21,7 +23,7 @@ MockHub mimics the functionality of sites like StubHub and TicketNetwork — reg
 | Layer | Technology |
 |-------|-----------|
 | Backend | Spring Boot 4, Java 25, Spring AI 2.0.0-M3 |
-| Database | PostgreSQL 17 + pgvector |
+| Database | PostgreSQL 17 |
 | Frontend | React 19, TypeScript, Tailwind CSS, shadcn/ui |
 | Build | Gradle 9.4.0, Vite |
 | Testing | JUnit 5, Testcontainers, Vitest, Playwright |
@@ -245,6 +247,36 @@ MockHub embeds an MCP (Model Context Protocol) server that exposes 13 tools for 
 | Orders | `checkout`, `getOrder`, `listOrders` |
 
 MCP endpoint: `POST /mcp` with `X-API-Key: mockhub-dev-key` header. Uses session-based communication — initialize first, then include the `Mcp-Session-Id` header in subsequent requests.
+
+## Deployment
+
+MockHub is deployed on [Railway](https://railway.com) as a single Docker container serving both the Spring Boot API and the React frontend. The combined Dockerfile builds the frontend, copies the output into the Spring Boot jar's static resources, and serves everything from one process.
+
+### Architecture
+- **Single service** — no CORS, no separate frontend hosting
+- **Railway PostgreSQL** — managed database with auto-provisioned credentials
+- **SPA forwarding** — `SpaForwardingConfig` serves `index.html` for client-side routes while excluding `/api/`, `/actuator/`, `/mcp/` paths
+- **Ephemeral filesystem** — seed images are restored from classpath on every startup since container storage is lost on redeploy
+- **Auth** — JWT tokens stored in `sessionStorage` (scoped to browser tab, cleared on tab close)
+
+### Environment Variables (Railway)
+| Variable | Value |
+|----------|-------|
+| `SPRING_PROFILES_ACTIVE` | `prod,ai-anthropic,mock-payment` |
+| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://${{db.PGHOST}}:${{db.PGPORT}}/${{db.PGDATABASE}}` |
+| `SPRING_DATASOURCE_USERNAME` | `${{db.PGUSER}}` |
+| `SPRING_DATASOURCE_PASSWORD` | `${{db.PGPASSWORD}}` |
+| `ANTHROPIC_API_KEY` | Your Anthropic API key |
+| `JWT_SECRET` | Any random Base64 string (no dots or special chars) |
+
+### Demo Accounts
+| Email | Password | Notes |
+|-------|----------|-------|
+| `buyer@mockhub.com` | `buyer123` | Standard user |
+| `seller@mockhub.com` | `seller123` | Standard user |
+| `admin@mockhub.com` | `admin123` | Admin access |
+
+Any authenticated user can both buy and sell — the names are just for demo convenience.
 
 ## Data Oriented Programming
 

@@ -7,7 +7,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 ## Tech Stack
 
 - **Backend:** Spring Boot 4, Java 25, Gradle 9.4.0 (Kotlin DSL)
-- **Database:** PostgreSQL 17 with pgvector extension (Docker: `pgvector/pgvector:pg17`)
+- **Database:** PostgreSQL 17 (standard — pgvector removed, all search uses tsvector full-text)
 - **AI:** Spring AI 2.0.0-M3 (milestone — requires Spring Milestones repo in Gradle)
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack React Query, Zustand
 - **Testing:** JUnit 5 + Mockito + Testcontainers (backend), Vitest + React Testing Library + MSW (frontend), Playwright (E2E, 5 browsers)
@@ -51,6 +51,7 @@ The codebase uses Java DOP patterns where they add value:
 - **Conditional activation:** AI services use `@ConditionalOnProperty(name = "spring.ai.anthropic.api-key")` (NOT `@ConditionalOnBean` — that evaluates before auto-config creates the beans). The `AiController` injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active.
 - **Profile activation:** `SPRING_PROFILES_ACTIVE=dev,ai-anthropic` — just add the AI provider to dev.
 - **Services:** `ChatService` (chat assistant with 10-message `MessageWindowChatMemory`), `PricePredictionService` (price trend analysis), `RecommendationService` (AI-ranked event recommendations).
+- **ChatClient has function-calling tools.** `EventTools` and `PricingTools` are wired into the ChatClient via `.defaultToolCallbacks(ToolCallbacks.from(...))`. The same `@Tool`-annotated classes serve both the MCP server (external agents) and the chat endpoint (users on the website).
 - **AI responses are parsed from JSON.** Services prompt the LLM for JSON output and parse with Jackson. Fallback logic returns safe defaults if parsing fails.
 - **Circular dependency:** MCP tool registration → PricingTools → PricePredictionService → ChatClient creates a cycle. Broken with `@Lazy` on the `ChatClient` parameter in `PricePredictionService`.
 
@@ -118,6 +119,20 @@ The codebase uses Java DOP patterns where they add value:
 - **SonarQube MCP server** is available in this project. Use it to query SonarCloud for issues, quality gate status, and hotspots. When fixing code, check SonarCloud issues first.
 - **GitHub repo:** `kousen/mockhub` (public, MIT license)
 
+## Deployment
+
+- **Platform:** Railway (Hobby plan, $5/mo minimum)
+- **URL:** https://mockhub-production.up.railway.app
+- **Architecture:** Single Docker container serves both Spring Boot API and React SPA (no CORS needed)
+- **Dockerfile:** Root `Dockerfile` builds frontend (Node), bundles into Spring Boot jar, runs on JRE Alpine
+- **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `api/`, `actuator/`, `mcp/`, `swagger-ui/`, `v3/` paths
+- **Security:** Static frontend routes (`/`, `/events/**`, `/sell`, `/my/**`, etc.) are `permitAll()` in SecurityConfig. CORS allows the Railway production domain.
+- **Ephemeral filesystem:** Seed images are restored from classpath on every container startup via `restoreSeedImages()` in `EventSeeder`
+- **Profiles:** `prod,ai-anthropic,mock-payment` — production datasource, Anthropic AI, mock payment
+- **Database:** Railway PostgreSQL with separate `SPRING_DATASOURCE_URL`, `_USERNAME`, `_PASSWORD` env vars (Railway's `DATABASE_URL` format is incompatible with JDBC)
+- **JWT secret:** Must be valid Base64 (no dots or special characters)
+- **Auto-deploy:** Pushes to `main` trigger automatic Railway deployments
+
 ## File Reference
 
 - `ARCHITECTURE.md` — Complete architecture plan with database schema, API design, component hierarchy, build phases, and agent team organization
@@ -126,8 +141,11 @@ The codebase uses Java DOP patterns where they add value:
 - `sonar-project.properties` — SonarCloud configuration for frontend (coverage exclusions, issue suppressions)
 - `backend/build.gradle.kts` — Backend build config including SonarCloud issue exclusions in `sonar {}` block
 - `.github/workflows/ci.yml` — CI pipeline (backend tests incl. Testcontainers, frontend lint/typecheck/tests, SonarCloud, Docker build)
+- `Dockerfile` — Combined frontend+backend Docker build for production deployment
+- `render.yaml` — Render deployment config (unused — switched to Railway)
 - `docker-compose.yml` — Full stack (Postgres, backend, frontend)
 - `docker-compose.dev.yml` — Postgres only (for local development)
+- `backend/src/main/resources/application-prod.yml` — Production profile (Railway datasource, PORT binding)
 - `backend/src/main/resources/static/llms.txt` — API description for AI agent discovery
 
 ## What NOT to Do
