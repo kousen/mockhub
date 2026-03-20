@@ -23,6 +23,8 @@ mockhub:
     enabled: true
   cookie:
     secure: true
+  cors:
+    allowed-origins: https://mockhub-production.up.railway.app
 
 logging:
   level:
