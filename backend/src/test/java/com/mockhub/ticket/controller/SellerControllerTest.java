@@ -107,7 +107,7 @@ class SellerControllerTest {
                 "Madison Square Garden",
                 "Floor", "A", "1", "RESERVED",
                 new BigDecimal("75.00"), new BigDecimal("75.00"),
-                new BigDecimal("50.00"), "ACTIVE", Instant.now());
+                new BigDecimal("50.00"), "ACTIVE", Instant.now(), Instant.now());
 
         when(listingService.createSellerListing(
                 eq("seller@example.com"), any()))
@@ -154,7 +154,7 @@ class SellerControllerTest {
                 "Madison Square Garden",
                 "Floor", "A", "1", "RESERVED",
                 new BigDecimal("75.00"), new BigDecimal("75.00"),
-                new BigDecimal("50.00"), "ACTIVE", Instant.now());
+                new BigDecimal("50.00"), "ACTIVE", Instant.now(), Instant.now());
 
         when(listingService.getSellerListings("seller@example.com", null))
                 .thenReturn(List.of(dto));
@@ -190,7 +190,7 @@ class SellerControllerTest {
                 "Madison Square Garden",
                 "Floor", "A", "1", "RESERVED",
                 new BigDecimal("100.00"), new BigDecimal("100.00"),
-                new BigDecimal("50.00"), "ACTIVE", Instant.now());
+                new BigDecimal("50.00"), "ACTIVE", Instant.now(), Instant.now());
 
         when(listingService.updateListingPrice(eq(1L),
                 eq("seller@example.com"), any()))

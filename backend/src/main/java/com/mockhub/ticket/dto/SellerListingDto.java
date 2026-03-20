@@ -18,6 +18,7 @@ public record SellerListingDto(
         BigDecimal computedPrice,
         BigDecimal faceValue,
         String status,
+        Instant listedAt,
         Instant createdAt
 ) {
 }

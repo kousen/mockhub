@@ -313,6 +313,7 @@ public class ListingService {
                 listing.getComputedPrice(),
                 ticket.getFaceValue(),
                 listing.getStatus(),
+                listing.getListedAt(),
                 listing.getCreatedAt());
     }
 
