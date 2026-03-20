@@ -230,6 +230,54 @@ class SellerListingServiceTest {
                 "Should throw ConflictException for duplicate listing");
     }
 
+    @Test
+    @DisplayName("createSellerListing - given unknown seat - throws ResourceNotFoundException")
+    void createSellerListing_givenUnknownSeat_throwsResourceNotFoundException() {
+        SellListingRequest request = new SellListingRequest(
+                "test-concert", "Balcony", "Z", "99", new BigDecimal("75.00"));
+
+        when(userRepository.findByEmail("seller@example.com"))
+                .thenReturn(Optional.of(testSeller));
+        when(eventRepository.findBySlug("test-concert"))
+                .thenReturn(Optional.of(testEvent));
+        when(ticketRepository.findByEventIdAndSectionAndRowAndSeat(
+                1L, "Balcony", "Z", "99"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> listingService.createSellerListing(
+                        "seller@example.com", request),
+                "Should throw ResourceNotFoundException for unknown seat");
+    }
+
+    @Test
+    @DisplayName("updateListingPrice - given unknown listing ID - throws ResourceNotFoundException")
+    void updateListingPrice_givenUnknownListingId_throwsResourceNotFoundException() {
+        UpdatePriceRequest request = new UpdatePriceRequest(
+                new BigDecimal("100.00"));
+
+        when(userRepository.findByEmail("seller@example.com"))
+                .thenReturn(Optional.of(testSeller));
+        when(listingRepository.findById(99L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> listingService.updateListingPrice(
+                        99L, "seller@example.com", request),
+                "Should throw ResourceNotFoundException for unknown listing");
+    }
+
+    @Test
+    @DisplayName("resolveUser - given unknown email - throws ResourceNotFoundException")
+    void getSellerListings_givenUnknownUser_throwsResourceNotFoundException() {
+        when(userRepository.findByEmail("nobody@example.com"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> listingService.getSellerListings("nobody@example.com", null),
+                "Should throw ResourceNotFoundException for unknown user");
+    }
+
     // -- getSellerListings tests --
 
     @Test

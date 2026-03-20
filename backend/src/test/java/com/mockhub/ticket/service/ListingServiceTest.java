@@ -22,14 +22,18 @@ import com.mockhub.event.repository.EventRepository;
 import com.mockhub.order.repository.OrderItemRepository;
 import com.mockhub.ticket.dto.ListingCreateRequest;
 import com.mockhub.ticket.dto.ListingDto;
+import com.mockhub.auth.entity.User;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.ticket.repository.ListingRepository;
 import com.mockhub.ticket.repository.TicketRepository;
+import com.mockhub.venue.entity.Seat;
+import com.mockhub.venue.entity.SeatRow;
 import com.mockhub.venue.entity.Section;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -161,5 +165,77 @@ class ListingServiceTest {
         listingService.updateListingPrices(1L, multiplier);
 
         verify(listingRepository).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("getActiveListingsByEventId - given active listings - returns listing DTOs")
+    void getActiveListingsByEventId_givenActiveListings_returnsListingDtos() {
+        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE"))
+                .thenReturn(List.of(testListing));
+
+        List<ListingDto> result = listingService.getActiveListingsByEventId(1L);
+
+        assertEquals(1, result.size(), "Should return one listing");
+        assertEquals("Floor", result.get(0).sectionName());
+    }
+
+    @Test
+    @DisplayName("createListing - given unknown ticket ID - throws ResourceNotFoundException")
+    void createListing_givenUnknownTicketId_throwsResourceNotFoundException() {
+        ListingCreateRequest request = new ListingCreateRequest(
+                99L, new BigDecimal("100.00"), null);
+
+        when(ticketRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> listingService.createListing(request),
+                "Should throw ResourceNotFoundException for unknown ticket");
+    }
+
+    @Test
+    @DisplayName("toListingDto - given listing with seat and seller - maps all fields")
+    void toListingDto_givenListingWithSeatAndSeller_mapsAllFields() {
+        SeatRow row = new SeatRow();
+        row.setId(1L);
+        row.setRowLabel("B");
+
+        Seat seat = new Seat();
+        seat.setId(1L);
+        seat.setSeatNumber("7");
+        seat.setRow(row);
+
+        testTicket.setSeat(seat);
+
+        User seller = new User();
+        seller.setId(1L);
+        seller.setFirstName("Jane");
+        seller.setLastName("Seller");
+        testListing.setSeller(seller);
+
+        when(eventRepository.findBySlug("test-event")).thenReturn(Optional.of(testEvent));
+        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE"))
+                .thenReturn(List.of(testListing));
+
+        List<ListingDto> result = listingService.getActiveListingsByEventSlug("test-event");
+
+        ListingDto dto = result.get(0);
+        assertEquals("B", dto.rowLabel(), "Row label should map from seat");
+        assertEquals("7", dto.seatNumber(), "Seat number should map from seat");
+        assertEquals("Jane S.", dto.sellerDisplayName(),
+                "Seller display name should be first name + last initial");
+    }
+
+    @Test
+    @DisplayName("toListingDto - given listing without seat or seller - returns nulls")
+    void toListingDto_givenListingWithoutSeatOrSeller_returnsNulls() {
+        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE"))
+                .thenReturn(List.of(testListing));
+
+        List<ListingDto> result = listingService.getActiveListingsByEventId(1L);
+
+        ListingDto dto = result.get(0);
+        assertNull(dto.rowLabel(), "Row label should be null when no seat");
+        assertNull(dto.seatNumber(), "Seat number should be null when no seat");
+        assertNull(dto.sellerDisplayName(), "Seller should be null for platform listing");
     }
 }
