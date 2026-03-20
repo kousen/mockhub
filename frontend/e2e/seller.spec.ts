@@ -101,6 +101,33 @@ async function authenticateUser(page: Page) {
   await page.addInitScript((authState) => {
     sessionStorage.setItem('mockhub-auth', JSON.stringify(authState));
   }, MOCK_AUTH_STATE);
+
+  // Mock background API calls that fire on any authenticated page.
+  // Without these, the mock JWT hits the real backend, gets 401,
+  // triggers a token refresh cascade, and redirects to /login.
+  await page.route(/\/api\/v1\/notifications/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 }),
+    });
+  });
+
+  await page.route(/\/api\/v1\/cart$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ items: [], totalPrice: 0 }),
+    });
+  });
+
+  await page.route(/\/api\/v1\/favorites/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    });
+  });
 }
 
 async function mockSellerEndpoints(page: Page) {
