@@ -170,7 +170,17 @@ CI runs these automatically using the `ANTHROPIC_API_KEY` GitHub secret.
 
 ## Seller Flow
 
-MockHub is a two-sided marketplace — any authenticated user can sell tickets:
+MockHub is a two-sided marketplace — any authenticated user can list tickets for sale, manage listings, and track earnings.
+
+![Sell tickets page with event search and 3-step form](docs/screenshots/sell-page.png)
+
+![My listings dashboard with status tabs and inline actions](docs/screenshots/my-listings.png)
+
+![Seller earnings page with summary cards and recent sales](docs/screenshots/seller-earnings.png)
+
+### Seller Endpoints
+
+Any authenticated user can sell tickets:
 
 | Endpoint | Description |
 |----------|-------------|
