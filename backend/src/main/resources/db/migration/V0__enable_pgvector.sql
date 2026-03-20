@@ -1,1 +1,4 @@
-CREATE EXTENSION IF NOT EXISTS vector;
+-- pgvector extension removed — embeddings are not currently used.
+-- All search uses PostgreSQL's built-in tsvector full-text search.
+-- If embeddings are added in the future, re-enable with:
+--   CREATE EXTENSION IF NOT EXISTS vector;

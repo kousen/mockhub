@@ -1,10 +1,4 @@
--- Spring AI vector store table for pgvector embeddings
-CREATE TABLE IF NOT EXISTS vector_store (
-    id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    content   TEXT,
-    metadata  JSONB,
-    embedding vector(1536)
-);
-
-CREATE INDEX idx_vector_store_embedding ON vector_store
-    USING hnsw (embedding vector_cosine_ops);
+-- Vector store table removed — embeddings are not currently used.
+-- All search uses PostgreSQL's built-in tsvector full-text search.
+-- Original migration created a vector_store table with vector(1536) columns;
+-- V18 would have dropped it. Both are now no-ops.

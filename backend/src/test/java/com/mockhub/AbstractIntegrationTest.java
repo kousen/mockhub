@@ -18,7 +18,7 @@ import com.mockhub.auth.dto.AuthResponse;
 /**
  * Base class for integration tests using a shared Testcontainers PostgreSQL instance.
  * The container is started once and reused across all test classes to avoid port
- * conflicts with the cached Spring context. Uses pgvector image for vector extension support.
+ * conflicts with the cached Spring context.
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -44,7 +44,7 @@ public abstract class AbstractIntegrationTest {
     static final PostgreSQLContainer<?> POSTGRES;
 
     static {
-        POSTGRES = new PostgreSQLContainer<>("pgvector/pgvector:pg17")
+        POSTGRES = new PostgreSQLContainer<>("postgres:17")
                 .withDatabaseName("mockhub")
                 .withUsername("mockhub")
                 .withPassword("mockhub");

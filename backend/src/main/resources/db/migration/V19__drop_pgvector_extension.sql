@@ -1,0 +1,2 @@
+-- No-op: pgvector extension was removed in V0 update.
+-- This migration exists for Flyway ordering consistency.
