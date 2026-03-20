@@ -64,6 +64,9 @@ public class EventSeeder {
 
     @Transactional
     public void seed() {
+        // Always restore seed images — container filesystem is ephemeral
+        restoreSeedImages();
+
         if (eventRepository.count() > 0) {
             log.info("Events already seeded, skipping");
             return;
@@ -148,6 +151,53 @@ public class EventSeeder {
                 .filter(c -> c.getSlug().equals(slug))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private void restoreSeedImages() {
+        Path imagesDir = storageRootPath.resolve("images");
+        try {
+            Files.createDirectories(imagesDir);
+        } catch (IOException _) {
+            log.warn("Failed to create images directory");
+            return;
+        }
+
+        int copied = 0;
+        for (Map.Entry<String, String> entry : CATEGORY_IMAGE_PREFIX.entrySet()) {
+            String categorySlug = entry.getKey();
+            String prefix = entry.getValue();
+            for (int i = 1; i <= IMAGES_PER_CATEGORY; i++) {
+                String filename = prefix + "-" + i + ".jpg";
+                ClassPathResource resource = new ClassPathResource(
+                        "seed-images/" + categorySlug + "/" + filename);
+                if (resource.exists()) {
+                    try (InputStream inputStream = resource.getInputStream()) {
+                        Path destPath = imagesDir.resolve(filename);
+                        Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
+                        copied++;
+                    } catch (IOException _) {
+                        log.warn("Failed to restore seed image: {}", filename);
+                    }
+                }
+            }
+        }
+
+        // Also restore event-specific images from existing events
+        List<Event> events = eventRepository.findAll();
+        for (Event event : events) {
+            String imageUrl = event.getPrimaryImageUrl();
+            if (imageUrl != null && imageUrl.startsWith("/api/v1/images/file/")) {
+                String destFilename = imageUrl.replace("/api/v1/images/file/", "");
+                Path destPath = imagesDir.resolve(destFilename);
+                if (!Files.exists(destPath)) {
+                    String categorySlug = event.getCategory() != null
+                            ? event.getCategory().getSlug() : "concerts";
+                    copySeedImage(categorySlug, event.getName());
+                }
+            }
+        }
+
+        log.info("Restored {} seed images to {}", copied, imagesDir);
     }
 
     private String copySeedImage(String categorySlug, String eventName) {
