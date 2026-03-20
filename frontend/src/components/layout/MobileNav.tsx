@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { Bell, Heart, LogOut, Settings, ShoppingCart, Ticket, User } from 'lucide-react';
+import { Bell, DollarSign, Heart, LogOut, Settings, ShoppingCart, Tag, Ticket, User } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -94,6 +94,31 @@ export function MobileNav() {
               >
                 <Bell className="h-4 w-4" />
                 Notifications
+              </Link>
+              <Separator className="my-2" />
+              <Link
+                to={ROUTES.SELL}
+                onClick={closeMobileNav}
+                className={navLinkClass(ROUTES.SELL)}
+              >
+                <Ticket className="h-4 w-4" />
+                Sell Tickets
+              </Link>
+              <Link
+                to={ROUTES.MY_LISTINGS}
+                onClick={closeMobileNav}
+                className={navLinkClass(ROUTES.MY_LISTINGS)}
+              >
+                <Tag className="h-4 w-4" />
+                My Listings
+              </Link>
+              <Link
+                to={ROUTES.EARNINGS}
+                onClick={closeMobileNav}
+                className={navLinkClass(ROUTES.EARNINGS)}
+              >
+                <DollarSign className="h-4 w-4" />
+                Earnings
               </Link>
               {isAdmin && (
                 <>

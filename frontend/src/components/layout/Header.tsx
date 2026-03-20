@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Menu, LogOut, User, Ticket, ShoppingCart, Heart, Settings } from 'lucide-react';
+import { Menu, LogOut, User, Ticket, ShoppingCart, Heart, Settings, Tag, DollarSign } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +45,14 @@ export function Header() {
           >
             Events
           </Link>
+          {isAuthenticated && (
+            <Link
+              to={ROUTES.SELL}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sell
+            </Link>
+          )}
         </nav>
 
         {/* Desktop Auth Section */}
@@ -99,6 +107,19 @@ export function Header() {
                   <Link to={ROUTES.FAVORITES}>
                     <Heart className="mr-2 h-4 w-4" />
                     Favorites
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to={ROUTES.MY_LISTINGS}>
+                    <Tag className="mr-2 h-4 w-4" />
+                    My Listings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={ROUTES.EARNINGS}>
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    Earnings
                   </Link>
                 </DropdownMenuItem>
                 {user.roles?.includes('ROLE_ADMIN') && (

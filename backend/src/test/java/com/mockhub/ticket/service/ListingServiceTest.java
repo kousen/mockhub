@@ -14,10 +14,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
+import com.mockhub.order.repository.OrderItemRepository;
 import com.mockhub.ticket.dto.ListingCreateRequest;
 import com.mockhub.ticket.dto.ListingDto;
 import com.mockhub.ticket.entity.Listing;
@@ -44,6 +46,12 @@ class ListingServiceTest {
 
     @Mock
     private EventRepository eventRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private OrderItemRepository orderItemRepository;
 
     @InjectMocks
     private ListingService listingService;
