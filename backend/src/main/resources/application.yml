@@ -39,11 +39,6 @@ spring:
         name: mockhub-mcp-server
         version: 0.0.1
         protocol: STREAMABLE
-    vectorstore:
-      pgvector:
-        dimensions: 1536
-        index-type: HNSW
-        distance-type: COSINE_DISTANCE
 
 server:
   port: 8080

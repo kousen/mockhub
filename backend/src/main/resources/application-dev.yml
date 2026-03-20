@@ -15,11 +15,6 @@ spring:
   flyway:
     enabled: true
 
-  ai:
-    vectorstore:
-      pgvector:
-        initialize-schema: false
-
 mockhub:
   mcp:
     enabled: true

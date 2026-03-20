@@ -12,11 +12,6 @@ spring:
   flyway:
     enabled: true
 
-  ai:
-    vectorstore:
-      pgvector:
-        initialize-schema: false
-
 logging:
   level:
     com.mockhub: DEBUG
