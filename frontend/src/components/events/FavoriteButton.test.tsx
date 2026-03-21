@@ -71,7 +71,9 @@ describe('FavoriteButton', () => {
 
   it('calls addFavorite when clicked and not yet favorited', async () => {
     setAuthenticated(true);
-    vi.mocked(useCheckFavorite).mockReturnValue({ data: false } as ReturnType<typeof useCheckFavorite>);
+    vi.mocked(useCheckFavorite).mockReturnValue({ data: false } as ReturnType<
+      typeof useCheckFavorite
+    >);
 
     renderWithProviders(<FavoriteButton eventId={42} />);
     await userEvent.setup().click(screen.getByRole('button'));
@@ -81,7 +83,9 @@ describe('FavoriteButton', () => {
 
   it('calls removeFavorite when clicked and already favorited', async () => {
     setAuthenticated(true);
-    vi.mocked(useCheckFavorite).mockReturnValue({ data: true } as ReturnType<typeof useCheckFavorite>);
+    vi.mocked(useCheckFavorite).mockReturnValue({ data: true } as ReturnType<
+      typeof useCheckFavorite
+    >);
 
     renderWithProviders(<FavoriteButton eventId={42} />);
     await userEvent.setup().click(screen.getByRole('button'));
@@ -91,7 +95,9 @@ describe('FavoriteButton', () => {
 
   it('has accessible label for unfavorited state', () => {
     setAuthenticated(true);
-    vi.mocked(useCheckFavorite).mockReturnValue({ data: false } as ReturnType<typeof useCheckFavorite>);
+    vi.mocked(useCheckFavorite).mockReturnValue({ data: false } as ReturnType<
+      typeof useCheckFavorite
+    >);
 
     renderWithProviders(<FavoriteButton eventId={1} />);
     expect(screen.getByLabelText('Add to favorites')).toBeDefined();
@@ -99,7 +105,9 @@ describe('FavoriteButton', () => {
 
   it('has accessible label for favorited state', () => {
     setAuthenticated(true);
-    vi.mocked(useCheckFavorite).mockReturnValue({ data: true } as ReturnType<typeof useCheckFavorite>);
+    vi.mocked(useCheckFavorite).mockReturnValue({ data: true } as ReturnType<
+      typeof useCheckFavorite
+    >);
 
     renderWithProviders(<FavoriteButton eventId={1} />);
     expect(screen.getByLabelText('Remove from favorites')).toBeDefined();

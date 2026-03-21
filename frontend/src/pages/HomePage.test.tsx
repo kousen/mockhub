@@ -41,16 +41,12 @@ describe('HomePage', () => {
 
   it('renders hero description', () => {
     renderWithProviders(<HomePage />);
-    expect(
-      screen.getByText(/secondary ticket marketplace/),
-    ).toBeDefined();
+    expect(screen.getByText(/secondary ticket marketplace/)).toBeDefined();
   });
 
   it('renders search input in hero', () => {
     renderWithProviders(<HomePage />);
-    expect(
-      screen.getByPlaceholderText('Search events, artists, venues...'),
-    ).toBeDefined();
+    expect(screen.getByPlaceholderText('Search events, artists, venues...')).toBeDefined();
   });
 
   it('renders "Browse Events" CTA button in hero', () => {
@@ -58,9 +54,7 @@ describe('HomePage', () => {
     const browseLinks = screen.getAllByRole('link', { name: /Browse Events/i });
     // The hero CTA should be among the Browse Events links
     expect(browseLinks.length).toBeGreaterThanOrEqual(1);
-    const heroCta = browseLinks.find(
-      (link) => link.getAttribute('href') === '/events',
-    );
+    const heroCta = browseLinks.find((link) => link.getAttribute('href') === '/events');
     expect(heroCta).toBeDefined();
   });
 

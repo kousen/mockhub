@@ -42,10 +42,7 @@ export function VenueMap({
     onSectionSelect(selectedSectionId === section.sectionId ? null : section.sectionId);
   }
 
-  function handleKeyDown(
-    event: React.KeyboardEvent,
-    section: SectionAvailability,
-  ): void {
+  function handleKeyDown(event: React.KeyboardEvent, section: SectionAvailability): void {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       handleSectionClick(section);
@@ -73,35 +70,21 @@ export function VenueMap({
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <svg
-        viewBox="0 0 600 400"
-        role="img"
-        aria-label="Venue seating map"
-        className="w-full"
-      >
+      <svg viewBox="0 0 600 400" role="img" aria-label="Venue seating map" className="w-full">
         {/* Stage indicator */}
-        <rect
-          x={200}
-          y={5}
-          width={200}
-          height={30}
-          rx={4}
-          fill="#374151"
-        />
-        <text
-          x={300}
-          y={25}
-          textAnchor="middle"
-          fill="#e5e7eb"
-          fontSize={14}
-          fontWeight="bold"
-        >
+        <rect x={200} y={5} width={200} height={30} rx={4} fill="#374151" />
+        <text x={300} y={25} textAnchor="middle" fill="#e5e7eb" fontSize={14} fontWeight="bold">
           STAGE
         </text>
 
         {/* Section rectangles */}
         {sections.map((section) => {
-          if (section.svgX === null || section.svgY === null || section.svgWidth === null || section.svgHeight === null) {
+          if (
+            section.svgX === null ||
+            section.svgY === null ||
+            section.svgWidth === null ||
+            section.svgHeight === null
+          ) {
             return null;
           }
 

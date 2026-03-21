@@ -18,19 +18,57 @@ vi.mock('@/stores/cart-store', () => ({
 }));
 
 const mockSections: SectionAvailability[] = [
-  { sectionId: 1, sectionName: 'Floor', sectionType: 'FLOOR', totalTickets: 100, availableTickets: 45, minPrice: 75, maxPrice: 150, colorHex: '#FF4444', svgPathId: 'floor', svgX: 50, svgY: 45, svgWidth: 500, svgHeight: 80 },
-  { sectionId: 2, sectionName: 'Lower Bowl', sectionType: 'LOWER', totalTickets: 200, availableTickets: 120, minPrice: 50, maxPrice: 100, colorHex: '#FF8800', svgPathId: 'lower-bowl', svgX: 50, svgY: 133, svgWidth: 500, svgHeight: 80 },
-  { sectionId: 3, sectionName: 'Upper Deck', sectionType: 'UPPER', totalTickets: 150, availableTickets: 0, minPrice: null, maxPrice: null, colorHex: '#44BB44', svgPathId: 'upper-deck', svgX: 50, svgY: 221, svgWidth: 500, svgHeight: 80 },
+  {
+    sectionId: 1,
+    sectionName: 'Floor',
+    sectionType: 'FLOOR',
+    totalTickets: 100,
+    availableTickets: 45,
+    minPrice: 75,
+    maxPrice: 150,
+    colorHex: '#FF4444',
+    svgPathId: 'floor',
+    svgX: 50,
+    svgY: 45,
+    svgWidth: 500,
+    svgHeight: 80,
+  },
+  {
+    sectionId: 2,
+    sectionName: 'Lower Bowl',
+    sectionType: 'LOWER',
+    totalTickets: 200,
+    availableTickets: 120,
+    minPrice: 50,
+    maxPrice: 100,
+    colorHex: '#FF8800',
+    svgPathId: 'lower-bowl',
+    svgX: 50,
+    svgY: 133,
+    svgWidth: 500,
+    svgHeight: 80,
+  },
+  {
+    sectionId: 3,
+    sectionName: 'Upper Deck',
+    sectionType: 'UPPER',
+    totalTickets: 150,
+    availableTickets: 0,
+    minPrice: null,
+    maxPrice: null,
+    colorHex: '#44BB44',
+    svgPathId: 'upper-deck',
+    svgX: 50,
+    svgY: 221,
+    svgWidth: 500,
+    svgHeight: 80,
+  },
 ];
 
 describe('VenueMap', () => {
   it('renders SVG with section rectangles', () => {
     renderWithProviders(
-      <VenueMap
-        sections={mockSections}
-        selectedSectionId={null}
-        onSectionSelect={vi.fn()}
-      />,
+      <VenueMap sections={mockSections} selectedSectionId={null} onSectionSelect={vi.fn()} />,
     );
 
     const svg = screen.getByRole('img', { name: 'Venue seating map' });
@@ -45,11 +83,7 @@ describe('VenueMap', () => {
     const onSelect = vi.fn();
 
     renderWithProviders(
-      <VenueMap
-        sections={mockSections}
-        selectedSectionId={null}
-        onSectionSelect={onSelect}
-      />,
+      <VenueMap sections={mockSections} selectedSectionId={null} onSectionSelect={onSelect} />,
     );
 
     const floorSection = screen.getByRole('button', { name: /Floor section/ });
@@ -63,11 +97,7 @@ describe('VenueMap', () => {
     const onSelect = vi.fn();
 
     renderWithProviders(
-      <VenueMap
-        sections={mockSections}
-        selectedSectionId={1}
-        onSectionSelect={onSelect}
-      />,
+      <VenueMap sections={mockSections} selectedSectionId={1} onSectionSelect={onSelect} />,
     );
 
     const floorSection = screen.getByRole('button', { name: /Floor section/ });
@@ -81,11 +111,7 @@ describe('VenueMap', () => {
     const onSelect = vi.fn();
 
     renderWithProviders(
-      <VenueMap
-        sections={mockSections}
-        selectedSectionId={null}
-        onSectionSelect={onSelect}
-      />,
+      <VenueMap sections={mockSections} selectedSectionId={null} onSectionSelect={onSelect} />,
     );
 
     const upperDeck = screen.getByRole('button', { name: /Upper Deck section/ });
@@ -105,11 +131,7 @@ describe('VenueMap', () => {
     }));
 
     renderWithProviders(
-      <VenueMap
-        sections={sectionsWithoutSvg}
-        selectedSectionId={null}
-        onSectionSelect={vi.fn()}
-      />,
+      <VenueMap sections={sectionsWithoutSvg} selectedSectionId={null} onSectionSelect={vi.fn()} />,
     );
 
     // SeatSelector renders cards, not an SVG
@@ -124,11 +146,7 @@ describe('VenueMap', () => {
     const onSelect = vi.fn();
 
     renderWithProviders(
-      <VenueMap
-        sections={mockSections}
-        selectedSectionId={null}
-        onSectionSelect={onSelect}
-      />,
+      <VenueMap sections={mockSections} selectedSectionId={null} onSectionSelect={onSelect} />,
     );
 
     const floorSection = screen.getByRole('button', { name: /Floor section/ });

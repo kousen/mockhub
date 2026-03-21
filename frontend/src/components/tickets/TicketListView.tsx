@@ -33,7 +33,12 @@ type SortDirection = 'asc' | 'desc';
  * Supports sorting by price and section. "Add to Cart" buttons
  * allow authenticated users to add tickets to their cart.
  */
-export function TicketListView({ listings, isLoading, sectionFilter, onClearFilter }: TicketListViewProps) {
+export function TicketListView({
+  listings,
+  isLoading,
+  sectionFilter,
+  onClearFilter,
+}: TicketListViewProps) {
   const [sortField, setSortField] = useState<SortField>('section');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [addingListingId, setAddingListingId] = useState<number | null>(null);
@@ -119,7 +124,8 @@ export function TicketListView({ listings, isLoading, sectionFilter, onClearFilt
       {sectionFilter && (
         <div className="mb-3 flex items-center gap-2">
           <Badge variant="secondary" className="gap-1 text-sm">
-            {sectionFilter} — {filteredListings.length} ticket{filteredListings.length !== 1 ? 's' : ''}
+            {sectionFilter} — {filteredListings.length} ticket
+            {filteredListings.length !== 1 ? 's' : ''}
             {onClearFilter && (
               <button
                 onClick={onClearFilter}
