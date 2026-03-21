@@ -35,6 +35,7 @@ import com.mockhub.order.dto.OrderItemDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.notification.entity.NotificationType;
 import com.mockhub.notification.service.NotificationService;
+import com.mockhub.notification.service.SmsDeliveryService;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.repository.OrderRepository;
@@ -57,19 +58,25 @@ public class OrderService {
     private final TicketService ticketService;
     private final EventRepository eventRepository;
     private final NotificationService notificationService;
+    private final SmsDeliveryService smsDeliveryService;
+    private final String smsOrderBaseUrl;
 
     public OrderService(OrderRepository orderRepository,
                         CartRepository cartRepository,
                         CartService cartService,
                         TicketService ticketService,
                         EventRepository eventRepository,
-                        NotificationService notificationService) {
+                        NotificationService notificationService,
+                        SmsDeliveryService smsDeliveryService,
+                        @org.springframework.beans.factory.annotation.Value("${mockhub.sms.order-base-url}") String smsOrderBaseUrl) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.cartService = cartService;
         this.ticketService = ticketService;
         this.eventRepository = eventRepository;
         this.notificationService = notificationService;
+        this.smsDeliveryService = smsDeliveryService;
+        this.smsOrderBaseUrl = smsOrderBaseUrl;
     }
 
     @Transactional
@@ -223,6 +230,20 @@ public class OrderService {
                         orderNumber, order.getTotal().toPlainString()),
                 "/orders/" + orderNumber
         );
+
+        // Send SMS confirmation if user has a phone number
+        String phone = order.getUser().getPhone();
+        if (phone != null && !phone.isBlank()) {
+            String eventName = order.getItems().stream()
+                    .findFirst()
+                    .map(item -> item.getListing().getEvent().getName())
+                    .orElse("your event");
+            String orderUrl = smsOrderBaseUrl + "/orders/" + orderNumber + "/confirmation";
+            String smsMessage = String.format(
+                    "MockHub: Your tickets for %s are confirmed! View and download: %s",
+                    eventName, orderUrl);
+            smsDeliveryService.sendSms(phone, smsMessage);
+        }
     }
 
     @Transactional

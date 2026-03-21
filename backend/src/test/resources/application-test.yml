@@ -21,6 +21,8 @@ spring:
 mockhub:
   ticket:
     signing-secret: ZGV2LW9ubHktdGlja2V0LXNpZ25pbmctc2VjcmV0LW5vdC1mb3ItcHJvZHVjdGlvbg==
+  sms:
+    order-base-url: http://localhost:5173
   jwt:
     secret: ZGV2LW9ubHktand0LXNlY3JldC1rZXktbm90LWZvci1wcm9kdWN0aW9uLXVzZS1vbmx5
 

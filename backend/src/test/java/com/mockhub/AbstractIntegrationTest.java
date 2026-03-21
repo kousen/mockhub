@@ -37,7 +37,7 @@ import com.mockhub.auth.dto.AuthResponse;
                         "org.springframework.ai.model.chat.client.autoconfigure.ChatClientAutoConfiguration"
         }
 )
-@ActiveProfiles({"test", "mock-payment"})
+@ActiveProfiles({"test", "mock-payment", "mock-sms"})
 @AutoConfigureTestRestTemplate
 public abstract class AbstractIntegrationTest {
 

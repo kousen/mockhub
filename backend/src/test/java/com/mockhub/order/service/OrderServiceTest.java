@@ -32,6 +32,7 @@ import com.mockhub.common.exception.UnauthorizedException;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.service.NotificationService;
+import com.mockhub.notification.service.SmsDeliveryService;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
@@ -74,7 +75,9 @@ class OrderServiceTest {
     @Mock
     private NotificationService notificationService;
 
-    @InjectMocks
+    @Mock
+    private SmsDeliveryService smsDeliveryService;
+
     private OrderService orderService;
 
     private User testUser;
@@ -86,6 +89,10 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        orderService = new OrderService(orderRepository, cartRepository, cartService,
+                ticketService, eventRepository, notificationService,
+                smsDeliveryService, "http://localhost:5173");
+
         Role buyerRole = new Role("ROLE_BUYER");
         buyerRole.setId(1L);
 
