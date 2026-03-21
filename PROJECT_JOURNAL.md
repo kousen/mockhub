@@ -606,7 +606,75 @@ The UX changes were implemented directly on main without TDD or a prior GitHub i
 
 ---
 
+---
+
+## Session: 2026-03-21 (cont.) — Interactive Venue Seat Maps (#36)
+
+### Overview
+
+Added section-level interactive SVG venue maps to the EventDetailPage. Any ticket marketplace needs seat maps — GPT-4.5 recommended a phased approach, and this implements Phase 1: clickable section-level maps with availability and pricing overlays.
+
+### Architecture
+
+**Backend:**
+- Added 5 SVG fields to `SectionAvailabilityDto`: `svgPathId`, `svgX`, `svgY`, `svgWidth`, `svgHeight`
+- Extended JPQL query and mapping in `TicketRepository`/`TicketService`
+- `VenueSeeder` computes stacked-bar layout coordinates (600x400 canvas) for all 76 sections across 22 venues
+- `V20__populate_section_svg_coordinates.sql` — Flyway migration using window functions to populate SVG data for existing databases
+
+**Frontend:**
+- `VenueMap.tsx` — SVG component with accessible sections (`role="button"`, `tabIndex`, keyboard Enter/Space, `aria-label` per section)
+- Graceful fallback to `SeatSelector` card grid when SVG data is missing
+- EventDetailPage integration: "Venue Map" tab replaces "Sections" tab, click section → "View tickets" button → switches to Tickets tab with section filter
+- `TicketListView` gains `sectionFilter`/`onClearFilter` props with a dismissable filter badge
+
+**Layout algorithm (all venue types):**
+- Canvas: 600x400, stage indicator at top (y=5, h=30)
+- Sections stack vertically as colored horizontal bars
+- Position computed from section count: `sectionHeight = (350 - (N-1) * 8) / N`
+
+### Bug Found During Testing
+
+The `SectionAvailability` TypeScript interface had wrong field names (`id`/`name`/`availableCount`) that didn't match the backend DTO (`sectionId`/`sectionName`/`availableTickets`). The old `SeatSelector` component happened to work because JavaScript silently returns `undefined` for missing properties. Fixed across all consuming components.
+
+### Visual Fix
+
+Initial implementation used white text on pastel section colors at 0.7 opacity — poor contrast. Fixed to dark text (`#1a1a1a`) on 0.85 opacity fills. Also replaced CSS custom property colors (`hsl(var(--muted))`) with hex values that work reliably in SVG `fill` attributes.
+
+### Parallelization
+
+Used two parallel subagents after establishing the DTO contract:
+- Backend agent: seeder SVG population + Flyway migration
+- Frontend agent: TypeScript types + VenueMap component + 6 tests
+
+Both completed independently, then integration and fixes done sequentially.
+
+### Deliverables
+
+**Modified files (8):** SectionAvailabilityDto, TicketRepository, TicketService, TicketServiceTest, VenueSeeder, ticket.ts types, EventDetailPage, TicketListView, SeatSelector, TicketGridView
+
+**New files (3):** V20 migration, VenueMap.tsx, VenueMap.test.tsx
+
+**Tests:** 1 new backend test (SVG field mapping), 6 new VenueMap component tests — 60 frontend tests total
+
+### Commits (2026-03-21)
+
+```
+940f0e9 Add interactive section-level venue maps (#36)
+c163f67 Fix SectionAvailability field names to match API response
+3a8fa86 Fix venue map contrast: dark text on colored sections, solid stage bar
+```
+
+### Future (Phase 2-3)
+
+- Type-specific layouts (concentric arcs for arenas, fan shapes for theaters)
+- Row-level interactivity for 1-2 showcase venues
+- Zoom/pan for large venues
+- Price heatmap overlay
+
+---
+
 *Last updated: 2026-03-21*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*~416 tests passing (349 backend + 54 frontend unit + 182 Playwright E2E assertions)*
+*~422 tests passing (350 backend + 60 frontend unit + 182 Playwright E2E assertions)*
 *Live at: https://mockhub-production.up.railway.app*
