@@ -19,12 +19,14 @@ import com.mockhub.event.repository.EventRepository;
 import com.mockhub.ticket.dto.TicketDto;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.ticket.repository.TicketRepository;
+import com.mockhub.venue.dto.SectionAvailabilityDto;
 import com.mockhub.venue.entity.Section;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -142,5 +144,37 @@ class TicketServiceTest {
         assertThrows(ConflictException.class,
                 () -> ticketService.releaseTicket(1L),
                 "Should throw ConflictException for non-reserved ticket");
+    }
+
+    @Test
+    @DisplayName("getSectionAvailability - given event with SVG data - returns SVG fields in DTO")
+    void getSectionAvailability_givenEventWithSvgData_returnsSvgFieldsInDto() {
+        when(eventRepository.findBySlug("test-event")).thenReturn(Optional.of(testEvent));
+
+        Object[] row = new Object[]{
+                1L, "Floor", "FLOOR",
+                100L, 75L,
+                new BigDecimal("50.00"), new BigDecimal("150.00"),
+                "#FF4444",
+                "floor",
+                new BigDecimal("50.00"), new BigDecimal("45.00"),
+                new BigDecimal("500.00"), new BigDecimal("80.00")
+        };
+        List<Object[]> rows = java.util.Collections.singletonList(row);
+        when(ticketRepository.findSectionAvailabilityByEventId(anyLong()))
+                .thenReturn(rows);
+
+        List<SectionAvailabilityDto> result = ticketService.getSectionAvailability("test-event");
+
+        assertEquals(1, result.size());
+        SectionAvailabilityDto dto = result.get(0);
+        assertEquals(1L, dto.sectionId());
+        assertEquals("Floor", dto.sectionName());
+        assertEquals("#FF4444", dto.colorHex());
+        assertEquals("floor", dto.svgPathId());
+        assertEquals(new BigDecimal("50.00"), dto.svgX());
+        assertEquals(new BigDecimal("45.00"), dto.svgY());
+        assertEquals(new BigDecimal("500.00"), dto.svgWidth());
+        assertEquals(new BigDecimal("80.00"), dto.svgHeight());
     }
 }

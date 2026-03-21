@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowUpDown, Loader2, ShoppingCart } from 'lucide-react';
+import { ArrowUpDown, Loader2, ShoppingCart, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Table,
@@ -21,6 +21,8 @@ import type { Listing } from '@/types/ticket';
 interface TicketListViewProps {
   listings: Listing[];
   isLoading?: boolean;
+  sectionFilter?: string | null;
+  onClearFilter?: () => void;
 }
 
 type SortField = 'price' | 'section';
@@ -31,7 +33,7 @@ type SortDirection = 'asc' | 'desc';
  * Supports sorting by price and section. "Add to Cart" buttons
  * allow authenticated users to add tickets to their cart.
  */
-export function TicketListView({ listings, isLoading }: TicketListViewProps) {
+export function TicketListView({ listings, isLoading, sectionFilter, onClearFilter }: TicketListViewProps) {
   const [sortField, setSortField] = useState<SortField>('section');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [addingListingId, setAddingListingId] = useState<number | null>(null);
@@ -57,8 +59,13 @@ export function TicketListView({ listings, isLoading }: TicketListViewProps) {
     );
   };
 
+  const filteredListings = useMemo(() => {
+    if (!sectionFilter) return listings;
+    return listings.filter((listing) => listing.sectionName === sectionFilter);
+  }, [listings, sectionFilter]);
+
   const sortedListings = useMemo(() => {
-    const sorted = [...listings];
+    const sorted = [...filteredListings];
     sorted.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'price') {
@@ -75,7 +82,7 @@ export function TicketListView({ listings, isLoading }: TicketListViewProps) {
       return sortDirection === 'desc' ? -cmp : cmp;
     });
     return sorted;
-  }, [listings, sortField, sortDirection]);
+  }, [filteredListings, sortField, sortDirection]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -109,6 +116,22 @@ export function TicketListView({ listings, isLoading }: TicketListViewProps) {
 
   return (
     <div className="overflow-x-auto">
+      {sectionFilter && (
+        <div className="mb-3 flex items-center gap-2">
+          <Badge variant="secondary" className="gap-1 text-sm">
+            {sectionFilter} — {filteredListings.length} ticket{filteredListings.length !== 1 ? 's' : ''}
+            {onClearFilter && (
+              <button
+                onClick={onClearFilter}
+                className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                aria-label="Clear section filter"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </Badge>
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow>

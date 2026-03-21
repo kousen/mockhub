@@ -33,4 +33,9 @@ export interface SectionAvailability {
   minPrice: number | null;
   maxPrice: number | null;
   colorHex: string | null;
+  svgPathId: string | null;
+  svgX: number | null;
+  svgY: number | null;
+  svgWidth: number | null;
+  svgHeight: number | null;
 }

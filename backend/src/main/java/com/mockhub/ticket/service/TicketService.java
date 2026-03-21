@@ -94,7 +94,12 @@ public class TicketService {
                         ((Long) row[4]).intValue(),
                         (BigDecimal) row[5],
                         (BigDecimal) row[6],
-                        (String) row[7]
+                        (String) row[7],
+                        (String) row[8],
+                        (BigDecimal) row[9],
+                        (BigDecimal) row[10],
+                        (BigDecimal) row[11],
+                        (BigDecimal) row[12]
                 ))
                 .toList();
     }

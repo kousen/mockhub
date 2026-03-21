@@ -69,14 +69,31 @@ public class VenueSeeder {
         List<Section> sections = new ArrayList<>();
         int sortOrder = 0;
 
+        int sectionCount = venueData.sections.size();
+        double availableHeight = 350.0;
+        double gap = 8.0;
+        double sectionHeight = (availableHeight - (sectionCount - 1) * gap) / sectionCount;
+
         for (SectionData sectionData : venueData.sections) {
             Section section = new Section();
             section.setVenue(venue);
             section.setName(sectionData.name);
             section.setSectionType(sectionData.type);
             section.setCapacity(sectionData.rowCount * sectionData.seatsPerRow);
-            section.setSortOrder(sortOrder++);
+            section.setSortOrder(sortOrder);
             section.setColorHex(sectionData.colorHex);
+
+            // SVG seat map coordinates — stacked horizontal bars
+            String svgPathId = sectionData.name.toLowerCase().replace(' ', '-');
+            double svgY = 45.0 + sortOrder * (sectionHeight + gap);
+
+            section.setSvgPathId(svgPathId);
+            section.setSvgX(BigDecimal.valueOf(50));
+            section.setSvgY(BigDecimal.valueOf(Math.round(svgY)));
+            section.setSvgWidth(BigDecimal.valueOf(500));
+            section.setSvgHeight(BigDecimal.valueOf(Math.round(sectionHeight)));
+
+            sortOrder++;
 
             List<SeatRow> rows = createRows(section, sectionData.rowCount, sectionData.seatsPerRow);
             section.setSeatRows(rows);
