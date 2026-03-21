@@ -54,6 +54,7 @@ The codebase uses Java DOP patterns where they add value:
 - **ChatClient has function-calling tools.** `EventTools` and `PricingTools` are wired into the ChatClient via `.defaultToolCallbacks(ToolCallbacks.from(...))`. The same `@Tool`-annotated classes serve both the MCP server (external agents) and the chat endpoint (users on the website).
 - **AI responses are parsed from JSON.** Services prompt the LLM for JSON output and parse with Jackson. Fallback logic returns safe defaults if parsing fails.
 - **Circular dependency:** MCP tool registration → PricingTools → PricePredictionService → ChatClient creates a cycle. Broken with `@Lazy` on the `ChatClient` parameter in `PricePredictionService`.
+- **Circular dependency (eval variant):** When a bean that depends on `AnthropicChatModel` (like `evalJudgeChatClient`) is injected into a `@Component` collected via `List<EvalCondition>`, Spring eagerly resolves the entire list during context startup — `@Lazy` on the component class or the list parameter does NOT prevent this. Fix: remove `@Component` from the condition class and define it as a `@Bean` in a `@Configuration` class with `@Lazy` on the `ChatClient` parameter. This ensures the `ChatClient` proxy is only resolved at first method call, after the context is fully initialized. Unit tests won't catch this because they mock dependencies; only a full `@SpringBootTest` or production deploy with all profiles active will trigger the cycle.
 
 ### Evaluation Conditions
 
