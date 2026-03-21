@@ -89,7 +89,7 @@ public class PricePredictionService {
         EvalContext evalContext = EvalContext.forPricePrediction(prediction.predictedPrice(), prediction.currentPrice());
         EvalSummary evalSummary = evalRunner.evaluate(evalContext);
         if (evalSummary.hasCriticalFailure()) {
-            log.warn("Price prediction eval failed for {}: {}", eventSlug, evalSummary.failures());
+            log.warn("Price prediction eval failed for slug [{}]: {}", eventSlug.replaceAll("[\r\n]", ""), evalSummary.failures());
             return new PricePredictionDto(eventSlug, event.getMinPrice(), event.getMinPrice(),
                     "STABLE", 0.0, Instant.now());
         }
