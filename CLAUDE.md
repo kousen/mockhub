@@ -67,6 +67,16 @@ The codebase uses Java DOP patterns where they add value:
 - **Separate `evalJudgeChatClient` bean** in `EvalConfig` — no tools, no memory, avoids circular dependency with main ChatClient.
 - **Documentation:** `docs/evaluation-conditions.md` covers the concept, Design by Contract lineage, Nate Jones's contextual stewardship framework, and how to add new conditions.
 
+### Ticket PDF Generation
+
+- **Signed PDF tickets with QR codes.** On confirmed orders, each ticket can be downloaded as a PDF containing event details, seating info, and a QR code encoding a signed JWT verification token.
+- **HMAC-SHA256 signing** with a separate secret (`mockhub.ticket.signing-secret`) from auth JWTs. Ticket tokens have no expiration.
+- **Verification endpoint** (`GET /api/v1/tickets/verify?token={jwt}`) is public — QR scanning at venues doesn't require authentication. The signed JWT itself proves authenticity.
+- **Scan tracking:** First scan sets `scannedAt` on `OrderItem`. Subsequent scans return "already scanned" warning.
+- **Services:** `TicketSigningService` (JJWT signing/verification), `QrCodeService` (ZXing in-memory QR), `TicketPdfService` (PDFBox rendering, orchestrates the pipeline).
+- **All in-memory** — no temp files. PDFBox uses standard Helvetica fonts (no custom font loading).
+- **Frontend:** Download icon button on `OrderItemRow` (visible when order status is CONFIRMED). Uses blob download pattern.
+
 ### Seller Flow
 
 - **Any authenticated user can sell.** No separate seller role — `seller_id` is nullable on `listings` (NULL = platform/primary-market listing, non-null = user-created resale listing).

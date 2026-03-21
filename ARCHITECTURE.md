@@ -498,6 +498,17 @@ Two implementations controlled by Spring profiles:
 - **`AiController`** injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active
 - **Circular dependency** (MCP tools → PricingTools → PricePredictionService → ChatClient) broken with `@Lazy`
 
+### Ticket PDF Generation
+
+Downloadable ticket PDFs with cryptographically signed QR codes:
+
+- **Pipeline:** `TicketSigningService` (JJWT) → `QrCodeService` (ZXing) → `TicketPdfService` (PDFBox)
+- **QR content:** JWT signed with HMAC-SHA256 containing order number, ticket ID, event slug, section/row/seat
+- **Download:** `GET /api/v1/orders/{orderNumber}/tickets/{ticketId}/download` (authenticated, validates ownership + CONFIRMED status)
+- **Verification:** `GET /api/v1/tickets/verify?token={jwt}` (public, marks first scan, warns on re-scan)
+- **Scan tracking:** `scannedAt` nullable timestamp on `OrderItem` entity (V21 migration)
+- **Dependencies:** PDFBox 3.0.4, ZXing core+javase 3.5.3
+
 ### Evaluation Conditions
 
 Formalized sanity checks (Design by Contract for AI agents) in `com.mockhub.eval`:

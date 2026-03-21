@@ -53,6 +53,13 @@ POST /api/v1/orders/checkout — Create order from cart. JSON body: {"paymentMet
 GET /api/v1/orders — List user's orders (paginated)
 GET /api/v1/orders/{orderNumber} — Order detail
 
+## Ticket Download (requires auth)
+GET /api/v1/orders/{orderNumber}/tickets/{ticketId}/download — Download ticket PDF with QR code
+
+## Ticket Verification (public, no auth)
+GET /api/v1/tickets/verify?token={jwt} — Verify ticket QR code token
+  Returns: {"valid", "orderNumber", "ticketId", "eventSlug", "sectionName", "rowLabel", "seatNumber", "alreadyScanned", "scannedAt", "message"}
+
 ## Payments (requires auth except webhook)
 POST /api/v1/payments/create-intent — Create payment intent. JSON body: {"orderNumber": "string"}
 POST /api/v1/payments/confirm — Confirm payment. JSON body: {"paymentIntentId": "string"}
