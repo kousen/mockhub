@@ -214,7 +214,7 @@ export function EventDetailPage() {
             listings={listings ?? []}
             isLoading={listingsLoading}
             sectionFilter={selectedSectionId
-              ? (sections ?? []).find((s) => s.id === selectedSectionId)?.name ?? null
+              ? (sections ?? []).find((s) => s.sectionId === selectedSectionId)?.sectionName ?? null
               : null}
             onClearFilter={() => setSelectedSectionId(null)}
           />
@@ -231,7 +231,7 @@ export function EventDetailPage() {
             <div className="mt-4 flex justify-center">
               <Button onClick={() => setActiveTab('tickets')}>
                 <Ticket className="mr-1.5 h-4 w-4" />
-                View {(sections ?? []).find((s) => s.id === selectedSectionId)?.name} tickets
+                View {(sections ?? []).find((s) => s.sectionId === selectedSectionId)?.sectionName} tickets
               </Button>
             </div>
           )}

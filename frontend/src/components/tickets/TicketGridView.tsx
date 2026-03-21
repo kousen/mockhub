@@ -53,13 +53,13 @@ export function TicketGridView({ sections, isLoading, onSectionClick }: TicketGr
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sectionList.map((section) => (
               <Card
-                key={section.id}
+                key={section.sectionId}
                 className={`transition-shadow hover:shadow-md ${onSectionClick ? 'cursor-pointer' : ''}`}
-                onClick={() => onSectionClick?.(section.id)}
+                onClick={() => onSectionClick?.(section.sectionId)}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{section.name}</CardTitle>
+                    <CardTitle className="text-base">{section.sectionName}</CardTitle>
                     {section.colorHex && (
                       <div
                         className="h-4 w-4 rounded-full border"
@@ -72,10 +72,10 @@ export function TicketGridView({ sections, isLoading, onSectionClick }: TicketGr
                 <CardContent>
                   <div className="flex items-center justify-between">
                     <Badge
-                      variant={section.availableCount > 0 ? 'secondary' : 'outline'}
+                      variant={section.availableTickets > 0 ? 'secondary' : 'outline'}
                       className="text-xs"
                     >
-                      {section.availableCount} available
+                      {section.availableTickets} available
                     </Badge>
                     <div className="text-right text-sm">
                       {section.minPrice !== null && section.maxPrice !== null ? (

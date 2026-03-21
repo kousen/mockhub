@@ -38,8 +38,8 @@ export function VenueMap({
   }
 
   function handleSectionClick(section: SectionAvailability): void {
-    if (section.availableCount === 0) return;
-    onSectionSelect(selectedSectionId === section.id ? null : section.id);
+    if (section.availableTickets === 0) return;
+    onSectionSelect(selectedSectionId === section.sectionId ? null : section.sectionId);
   }
 
   function handleKeyDown(
@@ -53,9 +53,9 @@ export function VenueMap({
   }
 
   function buildAriaLabel(section: SectionAvailability): string {
-    const parts = [`${section.name} section`];
+    const parts = [`${section.sectionName} section`];
     parts.push(
-      `${section.availableCount} ticket${section.availableCount !== 1 ? 's' : ''} available`,
+      `${section.availableTickets} ticket${section.availableTickets !== 1 ? 's' : ''} available`,
     );
     if (section.minPrice !== null) {
       parts.push(`from ${formatCurrency(section.minPrice)}`);
@@ -64,7 +64,7 @@ export function VenueMap({
   }
 
   function buildSubLabel(section: SectionAvailability): string {
-    const count = `${section.availableCount} ticket${section.availableCount !== 1 ? 's' : ''}`;
+    const count = `${section.availableTickets} ticket${section.availableTickets !== 1 ? 's' : ''}`;
     if (section.minPrice !== null) {
       return `${count} from ${formatCurrency(section.minPrice)}`;
     }
@@ -105,15 +105,15 @@ export function VenueMap({
             return null;
           }
 
-          const isAvailable = section.availableCount > 0;
-          const isSelected = selectedSectionId === section.id;
+          const isAvailable = section.availableTickets > 0;
+          const isSelected = selectedSectionId === section.sectionId;
           const fillColor = section.colorHex ?? '#6B7280';
           const centerX = section.svgX + section.svgWidth / 2;
           const centerY = section.svgY + section.svgHeight / 2;
 
           return (
             <g
-              key={section.id}
+              key={section.sectionId}
               role="button"
               tabIndex={isAvailable ? 0 : -1}
               aria-label={buildAriaLabel(section)}
@@ -144,7 +144,7 @@ export function VenueMap({
                 fontSize={14}
                 fontWeight="bold"
               >
-                {section.name}
+                {section.sectionName}
               </text>
               <text
                 x={centerX}

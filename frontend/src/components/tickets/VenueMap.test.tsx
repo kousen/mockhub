@@ -18,9 +18,9 @@ vi.mock('@/stores/cart-store', () => ({
 }));
 
 const mockSections: SectionAvailability[] = [
-  { id: 1, name: 'Floor', sectionType: 'FLOOR', availableCount: 45, minPrice: 75, maxPrice: 150, colorHex: '#FF4444', svgPathId: 'floor', svgX: 50, svgY: 45, svgWidth: 500, svgHeight: 80 },
-  { id: 2, name: 'Lower Bowl', sectionType: 'LOWER', availableCount: 120, minPrice: 50, maxPrice: 100, colorHex: '#FF8800', svgPathId: 'lower-bowl', svgX: 50, svgY: 133, svgWidth: 500, svgHeight: 80 },
-  { id: 3, name: 'Upper Deck', sectionType: 'UPPER', availableCount: 0, minPrice: null, maxPrice: null, colorHex: '#44BB44', svgPathId: 'upper-deck', svgX: 50, svgY: 221, svgWidth: 500, svgHeight: 80 },
+  { sectionId: 1, sectionName: 'Floor', sectionType: 'FLOOR', totalTickets: 100, availableTickets: 45, minPrice: 75, maxPrice: 150, colorHex: '#FF4444', svgPathId: 'floor', svgX: 50, svgY: 45, svgWidth: 500, svgHeight: 80 },
+  { sectionId: 2, sectionName: 'Lower Bowl', sectionType: 'LOWER', totalTickets: 200, availableTickets: 120, minPrice: 50, maxPrice: 100, colorHex: '#FF8800', svgPathId: 'lower-bowl', svgX: 50, svgY: 133, svgWidth: 500, svgHeight: 80 },
+  { sectionId: 3, sectionName: 'Upper Deck', sectionType: 'UPPER', totalTickets: 150, availableTickets: 0, minPrice: null, maxPrice: null, colorHex: '#44BB44', svgPathId: 'upper-deck', svgX: 50, svgY: 221, svgWidth: 500, svgHeight: 80 },
 ];
 
 describe('VenueMap', () => {
