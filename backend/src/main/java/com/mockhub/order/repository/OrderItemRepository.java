@@ -19,6 +19,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     @Query("""
             SELECT oi FROM OrderItem oi
             JOIN FETCH oi.order o
+            JOIN FETCH o.user u
             JOIN FETCH oi.ticket t
             JOIN FETCH oi.listing l
             JOIN FETCH l.event e
