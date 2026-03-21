@@ -16,6 +16,10 @@ import org.springframework.ai.chat.client.ChatClient.CallResponseSpec;
 import org.springframework.ai.chat.client.ChatClient.ChatClientRequestSpec;
 
 import com.mockhub.ai.dto.RecommendationDto;
+import com.mockhub.eval.dto.EvalContext;
+import com.mockhub.eval.dto.EvalResult;
+import com.mockhub.eval.dto.EvalSummary;
+import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.event.entity.Category;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
@@ -24,7 +28,9 @@ import com.mockhub.venue.entity.Venue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +43,9 @@ class RecommendationServiceTest {
     private EventRepository eventRepository;
 
     @Mock
+    private EvalRunner evalRunner;
+
+    @Mock
     private ChatClientRequestSpec requestSpec;
 
     @Mock
@@ -46,7 +55,7 @@ class RecommendationServiceTest {
 
     @BeforeEach
     void setUp() {
-        recommendationService = new RecommendationService(chatClient, eventRepository);
+        recommendationService = new RecommendationService(chatClient, eventRepository, evalRunner);
     }
 
     private Event createTestEvent(Long id, String name, String slug, String venueName, String city) {
@@ -67,6 +76,11 @@ class RecommendationServiceTest {
         event.setCategory(category);
 
         return event;
+    }
+
+    private void stubEvalRunnerPassing() {
+        when(evalRunner.evaluate(any(EvalContext.class)))
+                .thenReturn(new EvalSummary(java.util.List.of(EvalResult.pass("test"))));
     }
 
     @Test
@@ -91,10 +105,13 @@ class RecommendationServiceTest {
                 ]
                 """);
 
+        stubEvalRunnerPassing();
+
         List<RecommendationDto> recommendations = recommendationService.getRecommendations();
 
         assertNotNull(recommendations);
         assertFalse(recommendations.isEmpty(), "Should return at least one recommendation");
+        verify(evalRunner).evaluate(any(EvalContext.class));
     }
 
     @Test

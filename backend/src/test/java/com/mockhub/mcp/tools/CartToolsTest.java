@@ -1,5 +1,9 @@
 package com.mockhub.mcp.tools;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -15,8 +19,18 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
 import com.mockhub.cart.service.CartService;
+import com.mockhub.eval.dto.EvalContext;
+import com.mockhub.eval.dto.EvalResult;
+import com.mockhub.eval.dto.EvalSeverity;
+import com.mockhub.eval.dto.EvalSummary;
+import com.mockhub.eval.service.EvalRunner;
+import com.mockhub.event.entity.Event;
+import com.mockhub.ticket.entity.Listing;
+import com.mockhub.ticket.repository.ListingRepository;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,6 +43,12 @@ class CartToolsTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ListingRepository listingRepository;
+
+    @Mock
+    private EvalRunner evalRunner;
+
     private ObjectMapper objectMapper;
     private CartTools cartTools;
     private User testUser;
@@ -37,7 +57,7 @@ class CartToolsTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        cartTools = new CartTools(cartService, userRepository, objectMapper);
+        cartTools = new CartTools(cartService, userRepository, listingRepository, evalRunner, objectMapper);
 
         testUser = new User();
         testUser.setId(1L);
@@ -111,10 +131,24 @@ class CartToolsTest {
     @DisplayName("addToCart")
     class AddToCart {
 
+        private Listing createActiveListing() {
+            Event event = new Event();
+            event.setEventDate(Instant.now().plus(30, ChronoUnit.DAYS));
+            event.setStatus("ACTIVE");
+            Listing listing = new Listing();
+            listing.setStatus("ACTIVE");
+            listing.setEvent(event);
+            listing.setComputedPrice(new BigDecimal("75.00"));
+            return listing;
+        }
+
         @Test
         @DisplayName("given valid email and listing ID - returns updated cart JSON")
         void givenValidEmailAndListingId_returnsUpdatedCartJson() {
             stubUserLookup("buyer@example.com");
+            when(listingRepository.findById(42L)).thenReturn(Optional.of(createActiveListing()));
+            when(evalRunner.evaluate(any(EvalContext.class)))
+                    .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
             CartDto cartDto = new CartDto(null, null, null, null, 0, null);
             when(cartService.addToCart(testUser, 42L)).thenReturn(cartDto);
 
@@ -136,6 +170,10 @@ class CartToolsTest {
         @Test
         @DisplayName("given null email - returns error JSON")
         void givenNullEmail_returnsErrorJson() {
+            when(listingRepository.findById(42L)).thenReturn(Optional.of(createActiveListing()));
+            when(evalRunner.evaluate(any(EvalContext.class)))
+                    .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
+
             String result = cartTools.addToCart(null, 42L);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
@@ -145,6 +183,9 @@ class CartToolsTest {
         @DisplayName("given service throws exception - returns error JSON")
         void givenServiceThrowsException_returnsErrorJson() {
             stubUserLookup("buyer@example.com");
+            when(listingRepository.findById(42L)).thenReturn(Optional.of(createActiveListing()));
+            when(evalRunner.evaluate(any(EvalContext.class)))
+                    .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
             when(cartService.addToCart(testUser, 42L))
                     .thenThrow(new RuntimeException("Listing already in cart"));
 
@@ -152,6 +193,22 @@ class CartToolsTest {
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to add to cart"), "Result should contain failure message");
+        }
+
+        @Test
+        @DisplayName("given eval blocks with critical failure - returns error JSON without calling cart service")
+        void givenCriticalEvalFailure_returnsErrorWithoutCallingCartService() {
+            when(listingRepository.findById(42L)).thenReturn(Optional.of(createActiveListing()));
+            when(evalRunner.evaluate(any(EvalContext.class)))
+                    .thenReturn(new EvalSummary(List.of(
+                            EvalResult.fail("event-in-future", EvalSeverity.CRITICAL,
+                                    "Event has already occurred"))));
+
+            String result = cartTools.addToCart("buyer@example.com", 42L);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Cannot add to cart"), "Result should indicate eval blocked the action");
+            verify(cartService, never()).addToCart(any(), any());
         }
     }
 
