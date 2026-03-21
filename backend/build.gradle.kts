@@ -67,6 +67,9 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.google.zxing:javase:3.5.3")
 
+    // SMS delivery
+    implementation("com.twilio.sdk:twilio:10.9.2")
+
     // Data generation
     implementation("net.datafaker:datafaker:2.4.2")
 

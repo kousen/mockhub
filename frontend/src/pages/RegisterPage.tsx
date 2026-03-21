@@ -13,6 +13,7 @@ import type { ApiError } from '@/types/common';
 export function RegisterPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,7 +29,13 @@ export function RegisterPage() {
       return;
     }
 
-    registerMutation.mutate({ email, password, firstName, lastName });
+    registerMutation.mutate({
+      email,
+      password,
+      firstName,
+      lastName,
+      ...(phone.trim() ? { phone: phone.trim() } : {}),
+    });
   };
 
   const serverError =
@@ -77,6 +84,17 @@ export function RegisterPage() {
                   autoComplete="family-name"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number (optional)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="(555) 555-0123"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                autoComplete="tel"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
