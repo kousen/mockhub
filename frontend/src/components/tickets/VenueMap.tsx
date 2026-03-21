@@ -86,13 +86,13 @@ export function VenueMap({
           width={200}
           height={30}
           rx={4}
-          fill="hsl(var(--muted))"
+          fill="#374151"
         />
         <text
           x={300}
           y={25}
           textAnchor="middle"
-          fill="hsl(var(--muted-foreground))"
+          fill="#e5e7eb"
           fontSize={14}
           fontWeight="bold"
         >
@@ -131,8 +131,8 @@ export function VenueMap({
                 height={section.svgHeight}
                 rx={6}
                 fill={fillColor}
-                opacity={isAvailable ? 0.7 : 0.3}
-                stroke={isSelected ? 'hsl(var(--primary))' : 'none'}
+                opacity={isAvailable ? 0.85 : 0.3}
+                stroke={isSelected ? '#2563eb' : 'none'}
                 strokeWidth={isSelected ? 3 : 0}
               />
               <text
@@ -140,7 +140,7 @@ export function VenueMap({
                 y={centerY - 8}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fill="white"
+                fill="#1a1a1a"
                 fontSize={14}
                 fontWeight="bold"
               >
@@ -151,7 +151,7 @@ export function VenueMap({
                 y={centerY + 10}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fill="white"
+                fill="#1a1a1a"
                 fontSize={11}
               >
                 {buildSubLabel(section)}
