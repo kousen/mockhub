@@ -106,6 +106,8 @@ Any authenticated user can both buy and sell tickets.
 
 ![Generated ticket PDF with QR code for venue verification](docs/screenshots/ticket-pdf.png)
 
+![Ticket verification page after scanning QR code](docs/screenshots/ticket-verify.png)
+
 ## Testing
 
 ```bash
