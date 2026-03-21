@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { useParams } from 'react-router';
-import { Calendar, Clock, MapPin, Tag, Ticket, Users } from 'lucide-react';
+import { Calendar, Clock, Map, MapPin, Tag, Ticket, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { PricePredictionBadge } from '@/components/ai/PricePredictionBadge';
 import { FavoriteButton } from '@/components/events/FavoriteButton';
+import { Button } from '@/components/ui/button';
 import { TicketListView } from '@/components/tickets/TicketListView';
-import { SeatSelector } from '@/components/tickets/SeatSelector';
+import { VenueMap } from '@/components/tickets/VenueMap';
 import { PriceHistoryChart } from '@/components/tickets/PriceHistoryChart';
 import {
   useEvent,
@@ -41,6 +43,9 @@ function DetailSkeleton() {
 export function EventDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const eventSlug = slug ?? '';
+
+  const [activeTab, setActiveTab] = useState('tickets');
+  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
 
   const { data: event, isLoading: eventLoading, error: eventError } = useEvent(eventSlug);
   const { data: listings, isLoading: listingsLoading } = useEventListings(eventSlug);
@@ -185,8 +190,8 @@ export function EventDetailPage() {
 
       <Separator className="mb-6" />
 
-      {/* Tabs: Tickets, Sections, Price History */}
-      <Tabs defaultValue="tickets">
+      {/* Tabs: Tickets, Venue Map, Price History */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="tickets">
             <Ticket className="mr-1.5 h-4 w-4" />
@@ -197,16 +202,39 @@ export function EventDetailPage() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="sections">Sections</TabsTrigger>
+          <TabsTrigger value="venue-map">
+            <Map className="mr-1.5 h-4 w-4" />
+            Venue Map
+          </TabsTrigger>
           <TabsTrigger value="price-history">Price History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tickets">
-          <TicketListView listings={listings ?? []} isLoading={listingsLoading} />
+          <TicketListView
+            listings={listings ?? []}
+            isLoading={listingsLoading}
+            sectionFilter={selectedSectionId
+              ? (sections ?? []).find((s) => s.sectionId === selectedSectionId)?.sectionName ?? null
+              : null}
+            onClearFilter={() => setSelectedSectionId(null)}
+          />
         </TabsContent>
 
-        <TabsContent value="sections">
-          <SeatSelector sections={sections ?? []} isLoading={sectionsLoading} />
+        <TabsContent value="venue-map">
+          <VenueMap
+            sections={sections ?? []}
+            selectedSectionId={selectedSectionId}
+            onSectionSelect={setSelectedSectionId}
+            isLoading={sectionsLoading}
+          />
+          {selectedSectionId && (
+            <div className="mt-4 flex justify-center">
+              <Button onClick={() => setActiveTab('tickets')}>
+                <Ticket className="mr-1.5 h-4 w-4" />
+                View {(sections ?? []).find((s) => s.sectionId === selectedSectionId)?.sectionName} tickets
+              </Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="price-history">

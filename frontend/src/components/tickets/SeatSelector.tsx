@@ -51,12 +51,12 @@ export function SeatSelector({
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {sections.map((section) => {
-        const isSelected = selected === section.id;
-        const isAvailable = section.availableCount > 0;
+        const isSelected = selected === section.sectionId;
+        const isAvailable = section.availableTickets > 0;
 
         return (
           <Card
-            key={section.id}
+            key={section.sectionId}
             className={cn(
               'cursor-pointer transition-all',
               isSelected && 'ring-2 ring-primary',
@@ -64,7 +64,7 @@ export function SeatSelector({
             )}
             onClick={() => {
               if (isAvailable) {
-                handleSelect(isSelected ? null : section.id);
+                handleSelect(isSelected ? null : section.sectionId);
               }
             }}
           >
@@ -76,13 +76,13 @@ export function SeatSelector({
                     style={{ backgroundColor: section.colorHex }}
                   />
                 )}
-                <CardTitle className="text-sm">{section.name}</CardTitle>
+                <CardTitle className="text-sm">{section.sectionName}</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between text-xs">
                 <Badge variant={isAvailable ? 'secondary' : 'outline'} className="text-xs">
-                  {section.availableCount} ticket{section.availableCount !== 1 ? 's' : ''}
+                  {section.availableTickets} ticket{section.availableTickets !== 1 ? 's' : ''}
                 </Badge>
                 {section.minPrice !== null ? (
                   <span className="font-medium text-sm">

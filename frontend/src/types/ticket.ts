@@ -26,11 +26,17 @@ export interface PriceHistory {
 }
 
 export interface SectionAvailability {
-  id: number;
-  name: string;
+  sectionId: number;
+  sectionName: string;
   sectionType: string;
-  availableCount: number;
+  totalTickets: number;
+  availableTickets: number;
   minPrice: number | null;
   maxPrice: number | null;
   colorHex: string | null;
+  svgPathId: string | null;
+  svgX: number | null;
+  svgY: number | null;
+  svgWidth: number | null;
+  svgHeight: number | null;
 }

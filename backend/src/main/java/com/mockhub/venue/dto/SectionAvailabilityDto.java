@@ -10,6 +10,11 @@ public record SectionAvailabilityDto(
         int availableTickets,
         BigDecimal minPrice,
         BigDecimal maxPrice,
-        String colorHex
+        String colorHex,
+        String svgPathId,
+        BigDecimal svgX,
+        BigDecimal svgY,
+        BigDecimal svgWidth,
+        BigDecimal svgHeight
 ) {
 }
