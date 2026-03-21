@@ -6,11 +6,6 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.lang.Nullable;
-import org.springframework.stereotype.Component;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.eval.EvalCondition;
@@ -18,7 +13,6 @@ import com.mockhub.eval.dto.EvalContext;
 import com.mockhub.eval.dto.EvalResult;
 import com.mockhub.eval.dto.EvalSeverity;
 
-@Component
 public class GroundingEvalCondition implements EvalCondition {
 
     private static final Logger log = LoggerFactory.getLogger(GroundingEvalCondition.class);
@@ -27,10 +21,7 @@ public class GroundingEvalCondition implements EvalCondition {
     private final ChatClient evalJudgeChatClient;
     private final boolean enabled;
 
-    public GroundingEvalCondition(
-            @Nullable @Qualifier("evalJudgeChatClient") ChatClient evalJudgeChatClient,
-            @Value("${mockhub.eval.ai-judge.enabled:false}") boolean enabled
-    ) {
+    public GroundingEvalCondition(ChatClient evalJudgeChatClient, boolean enabled) {
         this.evalJudgeChatClient = evalJudgeChatClient;
         this.enabled = enabled;
     }

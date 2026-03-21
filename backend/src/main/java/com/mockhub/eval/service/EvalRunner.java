@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.mockhub.eval.EvalCondition;
@@ -19,7 +18,7 @@ public class EvalRunner {
 
     private final List<EvalCondition> conditions;
 
-    public EvalRunner(@Lazy List<EvalCondition> conditions) {
+    public EvalRunner(List<EvalCondition> conditions) {
         this.conditions = conditions;
     }
 
