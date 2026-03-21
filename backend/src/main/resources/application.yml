@@ -55,6 +55,12 @@ mockhub:
   mcp:
     enabled: false
     api-key: ${MCP_API_KEY:mockhub-dev-key}
+  eval:
+    ai-judge:
+      enabled: ${MOCKHUB_EVAL_AI_JUDGE_ENABLED:false}
+    price-plausibility:
+      min-ratio: 0.1
+      max-ratio: 10.0
   jwt:
     secret: ${JWT_SECRET:dGhpcyBpcyBhIHZlcnkgbG9uZyBzZWNyZXQga2V5IGZvciBkZXZlbG9wbWVudCBwdXJwb3NlcyBvbmx5IGRvIG5vdCB1c2UgaW4gcHJvZHVjdGlvbg==}
     access-token-expiration-ms: 900000
