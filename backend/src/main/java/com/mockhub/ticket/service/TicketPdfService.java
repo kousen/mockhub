@@ -112,8 +112,7 @@ public class TicketPdfService {
     }
 
     private byte[] renderPdf(TicketPdfData data) {
-        PDDocument document = new PDDocument();
-        try {
+        try (PDDocument document = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.LETTER);
             document.addPage(page);
 
@@ -234,12 +233,6 @@ public class TicketPdfService {
 
         } catch (IOException exception) {
             throw new RuntimeException("Failed to generate ticket PDF", exception);
-        } finally {
-            try {
-                document.close();
-            } catch (IOException exception) {
-                log.warn("Failed to close PDF document", exception);
-            }
         }
     }
 

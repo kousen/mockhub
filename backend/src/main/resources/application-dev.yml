@@ -18,6 +18,12 @@ spring:
 mockhub:
   mcp:
     enabled: true
+  ticket:
+    # Base64 of "dev-only-ticket-signing-secret-not-for-production"
+    signing-secret: ZGV2LW9ubHktdGlja2V0LXNpZ25pbmctc2VjcmV0LW5vdC1mb3ItcHJvZHVjdGlvbg==
+  jwt:
+    # Base64 of "dev-only-jwt-secret-key-not-for-production-use-only"
+    secret: ZGV2LW9ubHktand0LXNlY3JldC1rZXktbm90LWZvci1wcm9kdWN0aW9uLXVzZS1vbmx5
 
 logging:
   level:

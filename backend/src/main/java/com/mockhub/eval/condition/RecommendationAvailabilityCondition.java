@@ -39,24 +39,22 @@ public class RecommendationAvailabilityCondition implements EvalCondition {
         List<String> issues = new ArrayList<>();
 
         for (RecommendationDto recommendation : context.recommendations()) {
+            String eventRef = formatEventRef(recommendation);
             Optional<Event> eventOptional = eventRepository.findById(recommendation.eventId());
 
             if (eventOptional.isEmpty()) {
-                issues.add("Event ID " + recommendation.eventId() + " ("
-                        + recommendation.eventName() + ") not found");
+                issues.add(eventRef + " not found");
                 continue;
             }
 
             Event event = eventOptional.get();
 
             if (!event.getEventDate().isAfter(Instant.now())) {
-                issues.add("Event ID " + recommendation.eventId() + " ("
-                        + recommendation.eventName() + ") has already occurred");
+                issues.add(eventRef + " has already occurred");
             }
 
             if (event.getAvailableTickets() <= 0) {
-                issues.add("Event ID " + recommendation.eventId() + " ("
-                        + recommendation.eventName() + ") has no available tickets");
+                issues.add(eventRef + " has no available tickets");
             }
         }
 
@@ -66,5 +64,9 @@ public class RecommendationAvailabilityCondition implements EvalCondition {
         }
 
         return EvalResult.pass(name());
+    }
+
+    private String formatEventRef(RecommendationDto recommendation) {
+        return "Event ID " + recommendation.eventId() + " (" + recommendation.eventName() + ")";
     }
 }
