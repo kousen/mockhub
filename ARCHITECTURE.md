@@ -498,6 +498,15 @@ Two implementations controlled by Spring profiles:
 - **`AiController`** injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active
 - **Circular dependency** (MCP tools → PricingTools → PricePredictionService → ChatClient) broken with `@Lazy`
 
+### SMS Delivery
+
+Profile-based SMS notification on order confirmation:
+
+- **Interface:** `SmsDeliveryService` with `MockSmsDeliveryService` (mock-sms) and `TwilioSmsDeliveryService` (sms-twilio, `@Primary`)
+- **Trigger:** `OrderService.confirmOrder()` sends SMS with event name and order link when user has phone number
+- **Twilio SDK:** 10.9.2, auth via env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`)
+- **Failure handling:** caught and logged, never breaks checkout
+
 ### Ticket PDF Generation
 
 Downloadable ticket PDFs with cryptographically signed QR codes:

@@ -67,6 +67,15 @@ The codebase uses Java DOP patterns where they add value:
 - **Separate `evalJudgeChatClient` bean** in `EvalConfig` — no tools, no memory, avoids circular dependency with main ChatClient.
 - **Documentation:** `docs/evaluation-conditions.md` covers the concept, Design by Contract lineage, Nate Jones's contextual stewardship framework, and how to add new conditions.
 
+### SMS Delivery
+
+- **Profile-based SMS:** `SmsDeliveryService` interface with `MockSmsDeliveryService` (console logging, `mock-sms` profile) and `TwilioSmsDeliveryService` (real SMS, `sms-twilio` profile, `@Primary`).
+- **Triggered on order confirmation:** `OrderService.confirmOrder()` sends SMS if user has a phone number. Message includes event name and link to order confirmation page.
+- **SMS failures are caught and logged** — never break the checkout flow.
+- **Twilio SDK:** `com.twilio.sdk:twilio:10.9.2`. Auth via `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` env vars.
+- **Phone number:** Optional field on `RegisterRequest`. Already on `User` entity. Frontend registration form includes it.
+- **Dev profile group:** `dev: dev,mock-payment,mock-sms` — mock SMS logs to console by default.
+
 ### Ticket PDF Generation
 
 - **Signed PDF tickets with QR codes.** On confirmed orders, each ticket can be downloaded as a PDF containing event details, seating info, and a QR code encoding a signed JWT verification token.
