@@ -26,15 +26,11 @@ export function TicketVerifyPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const [result, setResult] = useState<VerificationResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!token);
+  const [error, setError] = useState<string | null>(token ? null : 'No ticket token provided');
 
   useEffect(() => {
-    if (!token) {
-      setError('No ticket token provided');
-      setLoading(false);
-      return;
-    }
+    if (!token) return;
 
     apiClient
       .get<VerificationResult>('/tickets/verify', { params: { token } })
