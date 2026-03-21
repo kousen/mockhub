@@ -6,6 +6,7 @@ import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
+import { TicketVerifyPage } from '@/pages/TicketVerifyPage';
 import { EventListPage } from '@/pages/EventListPage';
 import { EventDetailPage } from '@/pages/EventDetailPage';
 import { CartPage } from '@/pages/CartPage';
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { path: 'register', Component: RegisterPage },
       { path: 'events', Component: EventListPage },
       { path: 'events/:slug', Component: EventDetailPage },
+      { path: 'verify', Component: TicketVerifyPage },
 
       // Protected routes (require authentication)
       {

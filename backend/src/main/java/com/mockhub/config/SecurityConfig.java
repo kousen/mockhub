@@ -66,7 +66,8 @@ public class SecurityConfig {
                         // Static frontend resources and SPA routes (React served from classpath:/static/)
                         .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/favicon.svg").permitAll()
                         .requestMatchers("/login", "/register", "/events/**", "/sell", "/my/**",
-                                "/cart", "/checkout", "/orders/**", "/favorites", "/admin/**").permitAll()
+                                "/cart", "/checkout", "/orders/**", "/favorites", "/admin/**",
+                                "/verify").permitAll()
                         // Actuator health and error page
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()

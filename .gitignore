@@ -36,6 +36,9 @@ frontend/.vite/
 .DS_Store
 Thumbs.db
 
+# YouTube video scripts and resources
+youtube/
+
 # Docker
 postgres_data/
 

@@ -57,7 +57,15 @@ apiClient.interceptors.response.use(
 
     // Only attempt refresh for 401 errors on protected endpoints
     // Public endpoints (events, venues, search, categories, tags) should not trigger refresh
-    const publicPrefixes = ['/events', '/venues', '/search', '/categories', '/tags', '/images'];
+    const publicPrefixes = [
+      '/events',
+      '/venues',
+      '/search',
+      '/categories',
+      '/tags',
+      '/images',
+      '/tickets',
+    ];
     const isPublicEndpoint =
       originalRequest?.method === 'get' &&
       publicPrefixes.some((prefix) => originalRequest?.url?.startsWith(prefix));
