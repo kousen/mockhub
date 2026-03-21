@@ -18,6 +18,11 @@ import org.springframework.ai.chat.client.ChatClient.ChatClientRequestSpec;
 
 import com.mockhub.ai.dto.PricePredictionDto;
 import com.mockhub.common.exception.ResourceNotFoundException;
+import com.mockhub.eval.dto.EvalContext;
+import com.mockhub.eval.dto.EvalResult;
+import com.mockhub.eval.dto.EvalSeverity;
+import com.mockhub.eval.dto.EvalSummary;
+import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.pricing.entity.PriceHistory;
@@ -27,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +49,9 @@ class PricePredictionServiceTest {
     private PriceHistoryRepository priceHistoryRepository;
 
     @Mock
+    private EvalRunner evalRunner;
+
+    @Mock
     private ChatClientRequestSpec requestSpec;
 
     @Mock
@@ -53,7 +62,7 @@ class PricePredictionServiceTest {
 
     @BeforeEach
     void setUp() {
-        pricePredictionService = new PricePredictionService(chatClient, eventRepository, priceHistoryRepository);
+        pricePredictionService = new PricePredictionService(chatClient, eventRepository, priceHistoryRepository, evalRunner);
 
         testEvent = new Event();
         testEvent.setId(1L);
@@ -62,6 +71,11 @@ class PricePredictionServiceTest {
         testEvent.setMinPrice(new BigDecimal("75.00"));
         testEvent.setMaxPrice(new BigDecimal("200.00"));
         testEvent.setEventDate(Instant.now().plus(30, ChronoUnit.DAYS));
+    }
+
+    private void stubEvalRunnerPassing() {
+        when(evalRunner.evaluate(any(EvalContext.class)))
+                .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
     }
 
     @Test
@@ -89,6 +103,8 @@ class PricePredictionServiceTest {
                 {"predictedPrice": 82.00, "trend": "RISING", "confidence": 0.72}
                 """);
 
+        stubEvalRunnerPassing();
+
         PricePredictionDto prediction = pricePredictionService.predictPrice("rock-festival-2026");
 
         assertNotNull(prediction);
@@ -98,6 +114,33 @@ class PricePredictionServiceTest {
         assertNotNull(prediction.trend());
         assertTrue(prediction.confidence() >= 0.0 && prediction.confidence() <= 1.0);
         assertNotNull(prediction.predictedAt());
+    }
+
+    @Test
+    @DisplayName("predictPrice - given critical eval failure - returns safe fallback")
+    void predictPrice_givenCriticalEvalFailure_returnsSafeFallback() {
+        when(eventRepository.findBySlug("rock-festival-2026")).thenReturn(Optional.of(testEvent));
+        when(priceHistoryRepository.findByEventIdOrderByRecordedAtDesc(1L))
+                .thenReturn(List.of());
+
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(anyString())).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callResponseSpec);
+        when(callResponseSpec.content()).thenReturn(
+                """
+                {"predictedPrice": 50000.00, "trend": "RISING", "confidence": 0.99}
+                """);
+
+        when(evalRunner.evaluate(any(EvalContext.class)))
+                .thenReturn(new EvalSummary(List.of(
+                        EvalResult.fail("price-plausibility", EvalSeverity.CRITICAL,
+                                "Predicted price is implausible"))));
+
+        PricePredictionDto prediction = pricePredictionService.predictPrice("rock-festival-2026");
+
+        assertEquals("STABLE", prediction.trend());
+        assertEquals(0.0, prediction.confidence());
+        assertEquals(testEvent.getMinPrice(), prediction.predictedPrice());
     }
 
     @Test

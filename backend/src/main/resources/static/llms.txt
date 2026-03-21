@@ -62,6 +62,12 @@ POST /api/v1/payments/webhook — Stripe webhook (no auth, signature verified)
 All errors use RFC 9457 Problem Details:
 {"type", "title", "status", "detail", "instance"}
 
+## Evaluation Conditions
+MockHub implements evaluation conditions (sanity checks) on AI services and MCP tool actions.
+Deterministic checks verify domain invariants (event in future, listing active, price plausible).
+AI-as-judge checks verify response grounding (no fabricated events, prices, or dates).
+Eval results are logged for observability. Critical eval failures may block agent actions.
+
 ## Content Types
 Request: application/json
 Response: application/json

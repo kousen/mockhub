@@ -16,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ai.dto.RecommendationDto;
+import com.mockhub.eval.dto.EvalContext;
+import com.mockhub.eval.dto.EvalSummary;
+import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 
@@ -28,10 +31,12 @@ public class RecommendationService {
 
     private final ChatClient chatClient;
     private final EventRepository eventRepository;
+    private final EvalRunner evalRunner;
 
-    public RecommendationService(ChatClient chatClient, EventRepository eventRepository) {
+    public RecommendationService(ChatClient chatClient, EventRepository eventRepository, EvalRunner evalRunner) {
         this.chatClient = chatClient;
         this.eventRepository = eventRepository;
+        this.evalRunner = evalRunner;
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +75,15 @@ public class RecommendationService {
                 .call()
                 .content();
 
-        return parseRecommendations(aiResponse, events);
+        List<RecommendationDto> recommendations = parseRecommendations(aiResponse, events);
+
+        EvalContext evalContext = EvalContext.forRecommendations(recommendations);
+        EvalSummary evalSummary = evalRunner.evaluate(evalContext);
+        if (!evalSummary.allPassed()) {
+            log.warn("Recommendation eval conditions flagged issues: {}", evalSummary.failures());
+        }
+
+        return recommendations;
     }
 
     private List<RecommendationDto> parseRecommendations(String aiResponse, List<Event> events) {

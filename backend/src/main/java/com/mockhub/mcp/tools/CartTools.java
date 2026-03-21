@@ -12,6 +12,11 @@ import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.common.exception.ResourceNotFoundException;
+import com.mockhub.eval.dto.EvalContext;
+import com.mockhub.eval.dto.EvalSummary;
+import com.mockhub.eval.service.EvalRunner;
+import com.mockhub.ticket.entity.Listing;
+import com.mockhub.ticket.repository.ListingRepository;
 
 @Component
 public class CartTools {
@@ -20,13 +25,19 @@ public class CartTools {
 
     private final CartService cartService;
     private final UserRepository userRepository;
+    private final ListingRepository listingRepository;
+    private final EvalRunner evalRunner;
     private final ObjectMapper objectMapper;
 
     public CartTools(CartService cartService,
                      UserRepository userRepository,
+                     ListingRepository listingRepository,
+                     EvalRunner evalRunner,
                      ObjectMapper objectMapper) {
         this.cartService = cartService;
         this.userRepository = userRepository;
+        this.listingRepository = listingRepository;
+        this.evalRunner = evalRunner;
         this.objectMapper = objectMapper;
     }
 
@@ -53,6 +64,21 @@ public class CartTools {
             if (listingId == null) {
                 return errorJson("Listing ID is required");
             }
+
+            java.util.Optional<Listing> listingOpt = listingRepository.findById(listingId);
+            if (listingOpt.isPresent()) {
+                Listing listing = listingOpt.get();
+                EvalContext evalContext = EvalContext.forEventAndListing(listing.getEvent(), listing);
+                EvalSummary evalSummary = evalRunner.evaluate(evalContext);
+                if (evalSummary.hasCriticalFailure()) {
+                    String failureMessage = evalSummary.failures().stream()
+                            .map(r -> r.conditionName() + ": " + r.message())
+                            .collect(java.util.stream.Collectors.joining("; "));
+                    log.warn("Eval blocked addToCart for listing {}: {}", listingId, failureMessage);
+                    return errorJson("Cannot add to cart: " + failureMessage);
+                }
+            }
+
             User user = resolveUser(userEmail);
             CartDto cart = cartService.addToCart(user, listingId);
             return objectMapper.writeValueAsString(cart);

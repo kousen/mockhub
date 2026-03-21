@@ -498,6 +498,17 @@ Two implementations controlled by Spring profiles:
 - **`AiController`** injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active
 - **Circular dependency** (MCP tools → PricingTools → PricePredictionService → ChatClient) broken with `@Lazy`
 
+### Evaluation Conditions
+
+Formalized sanity checks (Design by Contract for AI agents) in `com.mockhub.eval`:
+
+- **Deterministic conditions** (always run): `EventInFutureCondition`, `ListingActiveCondition`, `PricePlausibilityCondition`, `RecommendationAvailabilityCondition`, `CartTotalIntegrityCondition`
+- **AI-as-judge conditions** (opt-in): `GroundingEvalCondition` uses a separate `evalJudgeChatClient` bean to verify chat responses aren't fabricated
+- **Integration:** `EvalRunner` wired into `ChatService` (post-response logging), `PricePredictionService` (fallback on critical failure), `RecommendationService` (warning logging), `CartTools` (blocks agent add-to-cart on critical failure)
+- **Configuration:** `mockhub.eval.ai-judge.enabled` (default false), `mockhub.eval.price-plausibility.min-ratio` / `max-ratio`
+- **Design:** `EvalCondition` interface (not sealed — Mockito compatibility), `EvalResult` records, explicit service calls (no AOP)
+- See `docs/evaluation-conditions.md` for full documentation including Design by Contract mapping and Nate Jones's contextual stewardship framework
+
 ### Caching Strategy
 
 Cached (in-memory `ConcurrentMapCacheManager`):

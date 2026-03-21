@@ -17,6 +17,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ai.dto.PricePredictionDto;
 import com.mockhub.common.exception.ResourceNotFoundException;
+import com.mockhub.eval.dto.EvalContext;
+import com.mockhub.eval.dto.EvalSummary;
+import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.pricing.entity.PriceHistory;
@@ -32,13 +35,16 @@ public class PricePredictionService {
     private final ChatClient chatClient;
     private final EventRepository eventRepository;
     private final PriceHistoryRepository priceHistoryRepository;
+    private final EvalRunner evalRunner;
 
     public PricePredictionService(@org.springframework.context.annotation.Lazy ChatClient chatClient,
                                   EventRepository eventRepository,
-                                  PriceHistoryRepository priceHistoryRepository) {
+                                  PriceHistoryRepository priceHistoryRepository,
+                                  EvalRunner evalRunner) {
         this.chatClient = chatClient;
         this.eventRepository = eventRepository;
         this.priceHistoryRepository = priceHistoryRepository;
+        this.evalRunner = evalRunner;
     }
 
     @Transactional(readOnly = true)
@@ -78,7 +84,17 @@ public class PricePredictionService {
                 .call()
                 .content();
 
-        return parsePrediction(aiResponse, eventSlug, event.getMinPrice());
+        PricePredictionDto prediction = parsePrediction(aiResponse, eventSlug, event.getMinPrice());
+
+        EvalContext evalContext = EvalContext.forPricePrediction(prediction.predictedPrice(), prediction.currentPrice());
+        EvalSummary evalSummary = evalRunner.evaluate(evalContext);
+        if (evalSummary.hasCriticalFailure()) {
+            log.warn("Price prediction eval failed for {}: {}", eventSlug, evalSummary.failures());
+            return new PricePredictionDto(eventSlug, event.getMinPrice(), event.getMinPrice(),
+                    "STABLE", 0.0, Instant.now());
+        }
+
+        return prediction;
     }
 
     private PricePredictionDto parsePrediction(String aiResponse, String eventSlug, BigDecimal currentPrice) {

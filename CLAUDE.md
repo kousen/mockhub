@@ -55,6 +55,17 @@ The codebase uses Java DOP patterns where they add value:
 - **AI responses are parsed from JSON.** Services prompt the LLM for JSON output and parse with Jackson. Fallback logic returns safe defaults if parsing fails.
 - **Circular dependency:** MCP tool registration → PricingTools → PricePredictionService → ChatClient creates a cycle. Broken with `@Lazy` on the `ChatClient` parameter in `PricePredictionService`.
 
+### Evaluation Conditions
+
+- **Design by Contract for AI agents.** Evaluation conditions are formalized sanity checks (preconditions, postconditions, invariants) that encode domain judgment. They prevent AI agents from taking technically correct but contextually inappropriate actions.
+- **Package: `com.mockhub.eval`** — top-level package (cross-cutting, used by both AI services and MCP tools). Contains `EvalCondition` interface, DTOs (`EvalResult`, `EvalContext`, `EvalSeverity`, `EvalSummary`), concrete conditions in `condition/`, `EvalRunner` service in `service/`, config in `config/`.
+- **Two types of conditions:** Deterministic (rule-based, always run, zero cost) and AI-as-judge (second LLM call, opt-in via `mockhub.eval.ai-judge.enabled`).
+- **`EvalCondition` is NOT sealed** — must be mockable with Mockito, and extensible for students adding their own conditions.
+- **Explicit calls, not AOP.** Services call `evalRunner.evaluate(context)` visibly. Students read the code and see where judgment happens.
+- **Eval results are records, not exceptions.** Callers decide what to do — block (CartTools), fallback (PricePredictionService), or log-only (ChatService).
+- **Separate `evalJudgeChatClient` bean** in `EvalConfig` — no tools, no memory, avoids circular dependency with main ChatClient.
+- **Documentation:** `docs/evaluation-conditions.md` covers the concept, Design by Contract lineage, Nate Jones's contextual stewardship framework, and how to add new conditions.
+
 ### Seller Flow
 
 - **Any authenticated user can sell.** No separate seller role — `seller_id` is nullable on `listings` (NULL = platform/primary-market listing, non-null = user-created resale listing).
@@ -150,6 +161,7 @@ The codebase uses Java DOP patterns where they add value:
 - `docker-compose.dev.yml` — Postgres only (for local development)
 - `backend/src/main/resources/application-prod.yml` — Production profile (Railway datasource, PORT binding)
 - `backend/src/main/resources/static/llms.txt` — API description for AI agent discovery
+- `docs/evaluation-conditions.md` — Eval conditions concept, Design by Contract mapping, architecture, how to add conditions
 
 ## What NOT to Do
 
