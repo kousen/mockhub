@@ -100,6 +100,12 @@ Any authenticated user can both buy and sell tickets.
 
 ![Seller earnings page with summary cards and recent sales](docs/screenshots/seller-earnings.png)
 
+### Ticket Delivery
+
+![Order confirmation with download buttons for each ticket](docs/screenshots/order-confirmation.png)
+
+![Generated ticket PDF with QR code for venue verification](docs/screenshots/ticket-pdf.png)
+
 ## Testing
 
 ```bash
