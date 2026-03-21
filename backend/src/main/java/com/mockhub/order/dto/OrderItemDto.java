@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public record OrderItemDto(
         Long id,
+        Long ticketId,
         String eventName,
         String eventSlug,
         String sectionName,

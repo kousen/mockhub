@@ -61,6 +61,9 @@ mockhub:
     price-plausibility:
       min-ratio: 0.1
       max-ratio: 10.0
+  ticket:
+    signing-secret: ${TICKET_SIGNING_SECRET:dGlja2V0LXNpZ25pbmctc2VjcmV0LWZvci1kZXYtb25seS1tdXN0LWJlLWF0LWxlYXN0LTMyLWJ5dGVzLWxvbmc=}
+    verification-base-url: ${TICKET_VERIFICATION_URL:http://localhost:8080}
   jwt:
     secret: ${JWT_SECRET:dGhpcyBpcyBhIHZlcnkgbG9uZyBzZWNyZXQga2V5IGZvciBkZXZlbG9wbWVudCBwdXJwb3NlcyBvbmx5IGRvIG5vdCB1c2UgaW4gcHJvZHVjdGlvbg==}
     access-token-expiration-ms: 900000

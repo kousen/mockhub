@@ -272,6 +272,7 @@ public class OrderService {
 
                     return new OrderItemDto(
                             item.getId(),
+                            ticket.getId(),
                             listing.getEvent().getName(),
                             listing.getEvent().getSlug(),
                             ticket.getSection().getName(),

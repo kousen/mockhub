@@ -62,6 +62,11 @@ dependencies {
     // Image processing
     implementation("net.coobird:thumbnailator:0.4.20")
 
+    // PDF generation and QR codes
+    implementation("org.apache.pdfbox:pdfbox:3.0.4")
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:javase:3.5.3")
+
     // Data generation
     implementation("net.datafaker:datafaker:2.4.2")
 

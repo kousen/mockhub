@@ -2,6 +2,7 @@ package com.mockhub.order.repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +15,22 @@ import com.mockhub.order.entity.OrderItem;
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
     List<OrderItem> findByOrderId(Long orderId);
+
+    @Query("""
+            SELECT oi FROM OrderItem oi
+            JOIN FETCH oi.order o
+            JOIN FETCH oi.ticket t
+            JOIN FETCH oi.listing l
+            JOIN FETCH l.event e
+            JOIN FETCH e.venue v
+            JOIN FETCH t.section s
+            LEFT JOIN FETCH t.seat seat
+            LEFT JOIN FETCH seat.row r
+            WHERE o.orderNumber = :orderNumber AND t.id = :ticketId
+            """)
+    Optional<OrderItem> findByOrderNumberAndTicketId(
+            @Param("orderNumber") String orderNumber,
+            @Param("ticketId") Long ticketId);
 
     @Query("""
             SELECT oi FROM OrderItem oi

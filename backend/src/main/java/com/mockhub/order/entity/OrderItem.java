@@ -1,6 +1,7 @@
 package com.mockhub.order.entity;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import com.mockhub.common.entity.BaseEntity;
 import com.mockhub.ticket.entity.Listing;
@@ -31,6 +32,9 @@ public class OrderItem extends BaseEntity {
 
     @Column(name = "price_paid", nullable = false, precision = 10, scale = 2)
     private BigDecimal pricePaid;
+
+    @Column(name = "scanned_at")
+    private Instant scannedAt;
 
     public OrderItem() {
     }
@@ -65,5 +69,13 @@ public class OrderItem extends BaseEntity {
 
     public void setPricePaid(BigDecimal pricePaid) {
         this.pricePaid = pricePaid;
+    }
+
+    public Instant getScannedAt() {
+        return scannedAt;
+    }
+
+    public void setScannedAt(Instant scannedAt) {
+        this.scannedAt = scannedAt;
     }
 }
