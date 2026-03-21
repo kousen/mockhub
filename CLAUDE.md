@@ -77,7 +77,9 @@ The codebase uses Java DOP patterns where they add value:
 - **TypeScript** — no `any` types. Use proper interfaces defined in `src/types/`.
 - **React Query (TanStack)** for all server state. Zustand only for client-side UI state (auth token, cart drawer, mobile nav).
 - **API layer:** `src/api/*.ts` files export typed functions. `src/hooks/use*.ts` files wrap them in React Query hooks. Components use hooks, never call API functions directly.
-- **shadcn/ui components** live in `src/components/ui/`. Custom components live in feature folders (`events/`, `cart/`, `checkout/`, `sell/`, etc.).
+- **shadcn/ui components** live in `src/components/ui/` (18 components including Tooltip). Custom components live in feature folders (`events/`, `cart/`, `checkout/`, `sell/`, etc.).
+- **`TooltipProvider`** wraps the app in `App.tsx` (required by Radix Tooltip). Must also be included in `test-utils.tsx` `renderWithProviders` wrapper — any new provider added to `App.tsx` must be mirrored there.
+- **Tooltips on disabled elements:** Disabled buttons swallow pointer events. Wrap with `<span className="inline-flex" tabIndex={0}>` to restore hover/focus for the tooltip trigger (see `FavoriteButton.tsx` for the pattern).
 - **Mobile-first** responsive design using Tailwind breakpoints.
 - **No inline styles.** Use Tailwind utility classes exclusively.
 - **Error responses:** Frontend `ApiError` type uses `detail` field (RFC 9457), not `message`.
@@ -90,6 +92,8 @@ The codebase uses Java DOP patterns where they add value:
 - Backend integration tests: Testcontainers with real PostgreSQL
 - Frontend component tests: Vitest + React Testing Library, colocated as `*.test.tsx`
 - Frontend API mocking: MSW (Mock Service Worker)
+- **jsdom polyfills:** `ResizeObserver` stub is in `src/test/setup.ts` — required for any Radix UI component that uses poppers/tooltips. Add other browser API stubs here as needed.
+- **Tooltip testing:** Use `findByRole('tooltip')` not `findByText` — Radix renders tooltip content in two DOM locations (visible + accessible hidden), causing `findByText` to fail with duplicate matches.
 - E2E tests: Playwright configured for Chrome, Firefox, Safari, Mobile Android, Mobile iOS
 - E2E accessibility checks: axe-core via `@axe-core/playwright`
 
@@ -135,14 +139,13 @@ The codebase uses Java DOP patterns where they add value:
 
 ## File Reference
 
-- `ARCHITECTURE.md` — Complete architecture plan with database schema, API design, component hierarchy, build phases, and agent team organization
+- `ARCHITECTURE.md` — Database schema, API design, backend/frontend architecture, key decisions
 - `PROJECT_JOURNAL.md` — Build report with session notes, challenges, metrics, and commit history
 - `docs/stripe-test-setup.md` — Stripe test mode API key setup instructions
 - `sonar-project.properties` — SonarCloud configuration for frontend (coverage exclusions, issue suppressions)
 - `backend/build.gradle.kts` — Backend build config including SonarCloud issue exclusions in `sonar {}` block
 - `.github/workflows/ci.yml` — CI pipeline (backend tests incl. Testcontainers, frontend lint/typecheck/tests, SonarCloud, Docker build)
 - `Dockerfile` — Combined frontend+backend Docker build for production deployment
-- `render.yaml` — Render deployment config (unused — switched to Railway)
 - `docker-compose.yml` — Full stack (Postgres, backend, frontend)
 - `docker-compose.dev.yml` — Postgres only (for local development)
 - `backend/src/main/resources/application-prod.yml` — Production profile (Railway datasource, PORT binding)
@@ -151,7 +154,7 @@ The codebase uses Java DOP patterns where they add value:
 ## What NOT to Do
 
 - Do not use `var` in Java (use explicit types for readability — this is a teaching codebase)
-- Do not add dependencies not listed in ARCHITECTURE.md section 4.10 without justification
+- Do not add dependencies without justification — check `build.gradle.kts` for what's already included
 - Do not use `localStorage` for JWT tokens (security anti-pattern — use in-memory + HttpOnly refresh cookie)
 - Do not write Flyway migrations with `ddl-auto: create` or `update` (always `validate`)
 - Do not create REST endpoints that bypass the service layer

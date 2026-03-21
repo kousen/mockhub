@@ -56,6 +56,14 @@ export function HomePage() {
                 placeholder="Search events, artists, venues..."
               />
             </div>
+            <div className="mt-6">
+              <Button size="lg" asChild>
+                <Link to={ROUTES.EVENTS}>
+                  Browse Events
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </section>

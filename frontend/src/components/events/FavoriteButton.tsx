@@ -1,5 +1,10 @@
 import { Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCheckFavorite, useAddFavorite, useRemoveFavorite } from '@/hooks/use-favorites';
@@ -12,7 +17,7 @@ interface FavoriteButtonProps {
 /**
  * Heart icon toggle button for favoriting events.
  * Shows a filled red heart when the event is favorited.
- * Disabled when the user is not authenticated.
+ * Disabled with a helpful tooltip when the user is not authenticated.
  */
 export function FavoriteButton({ eventId, className }: FavoriteButtonProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -31,7 +36,7 @@ export function FavoriteButton({ eventId, className }: FavoriteButtonProps) {
 
   const isLoading = addFavorite.isPending || removeFavorite.isPending;
 
-  return (
+  const button = (
     <Button
       variant="ghost"
       size="icon"
@@ -50,4 +55,21 @@ export function FavoriteButton({ eventId, className }: FavoriteButtonProps) {
       />
     </Button>
   );
+
+  if (!isAuthenticated) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex" tabIndex={0}>
+            {button}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Log in to save favorites</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return button;
 }

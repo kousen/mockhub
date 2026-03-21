@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { render, type RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 /**
  * Creates a fresh QueryClient for each test to avoid shared state.
@@ -39,7 +40,9 @@ export function renderWithProviders(
   function Wrapper({ children }: WrapperProps) {
     return (
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+        <TooltipProvider>
+          <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+        </TooltipProvider>
       </QueryClientProvider>
     );
   }
