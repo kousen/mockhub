@@ -18,3 +18,10 @@ export async function getOrder(orderNumber: string): Promise<Order> {
   const response = await apiClient.get<Order>(`/orders/${orderNumber}`);
   return response.data;
 }
+
+export async function downloadTicket(orderNumber: string, ticketId: number): Promise<Blob> {
+  const response = await apiClient.get(`/orders/${orderNumber}/tickets/${ticketId}/download`, {
+    responseType: 'blob',
+  });
+  return response.data as Blob;
+}

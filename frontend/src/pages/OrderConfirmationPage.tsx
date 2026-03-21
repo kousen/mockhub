@@ -93,7 +93,12 @@ export function OrderConfirmationPage() {
       <h2 className="mb-3 text-lg font-semibold">Tickets ({order.items.length})</h2>
       <div className="space-y-2">
         {order.items.map((item) => (
-          <OrderItemRow key={item.id} item={item} />
+          <OrderItemRow
+            key={item.id}
+            item={item}
+            orderNumber={order.orderNumber}
+            orderStatus={order.status}
+          />
         ))}
       </div>
 

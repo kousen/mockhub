@@ -1,5 +1,6 @@
 export interface OrderItem {
   id: number;
+  ticketId: number;
   eventName: string;
   eventSlug: string;
   sectionName: string;
