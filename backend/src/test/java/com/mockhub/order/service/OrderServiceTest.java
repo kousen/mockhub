@@ -183,7 +183,7 @@ class OrderServiceTest {
         when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
         when(ticketService.reserveTicket(anyLong())).thenReturn(
                 new TicketDto(1L, 1L, "Floor", null, null, "GA", new BigDecimal("50.00"), "RESERVED"));
-        when(orderRepository.countByOrderNumberPrefix(anyString())).thenReturn(0L);
+        when(orderRepository.findMaxOrderNumberByPrefix(anyString())).thenReturn(Optional.empty());
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order order = invocation.getArgument(0);
             order.setId(1L);
@@ -256,7 +256,7 @@ class OrderServiceTest {
         CheckoutRequest request = new CheckoutRequest("mock");
 
         when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
-        when(orderRepository.countByOrderNumberPrefix(anyString())).thenReturn(0L);
+        when(orderRepository.findMaxOrderNumberByPrefix(anyString())).thenReturn(Optional.empty());
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order order = invocation.getArgument(0);
             order.setId(1L);

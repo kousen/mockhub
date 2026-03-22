@@ -21,8 +21,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findByIdempotencyKey(String idempotencyKey);
 
-    @Query("SELECT COUNT(o) FROM Order o WHERE o.orderNumber LIKE :prefix%")
-    long countByOrderNumberPrefix(@Param("prefix") String prefix);
+    @Query("SELECT MAX(o.orderNumber) FROM Order o WHERE o.orderNumber LIKE :prefix%")
+    Optional<String> findMaxOrderNumberByPrefix(@Param("prefix") String prefix);
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :start")
     long countByCreatedAtAfter(@Param("start") Instant start);

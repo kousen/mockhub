@@ -320,8 +320,12 @@ public class OrderService {
         String dateStr = LocalDate.now(ZoneOffset.UTC).format(DATE_FORMAT);
         String prefix = "MH-" + dateStr + "-";
 
-        long count = orderRepository.countByOrderNumberPrefix(prefix);
-        long sequence = count + 1;
+        long sequence = orderRepository.findMaxOrderNumberByPrefix(prefix)
+                .map(maxOrderNumber -> {
+                    String suffix = maxOrderNumber.substring(prefix.length());
+                    return Long.parseLong(suffix) + 1;
+                })
+                .orElse(1L);
 
         return String.format("%s%04d", prefix, sequence);
     }
