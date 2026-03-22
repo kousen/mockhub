@@ -19,9 +19,9 @@ const SERVICE_FEE_RATE = 0.1;
 /**
  * Checkout page with order review and payment method selection.
  *
- * Mock flow: single click creates order + confirms immediately.
- * Stripe flow: user clicks "Pay with Stripe" → creates order → creates
- * payment intent → shows Stripe Elements → user enters card → confirms.
+ * Both flows follow the same steps: create order → create payment intent → confirm.
+ * Mock flow does all three in one click. Stripe flow shows Stripe Elements
+ * between intent creation and confirmation for card entry.
  */
 export function CheckoutPage() {
   const { data: cart, isLoading } = useCart();
@@ -35,19 +35,30 @@ export function CheckoutPage() {
   const [isSettingUpStripe, setIsSettingUpStripe] = useState(false);
   const [stripeReady, setStripeReady] = useState(false);
 
-  const handleMockCheckout = useCallback(() => {
-    checkoutMutation.mutate(
-      { paymentMethod: 'MOCK' },
-      {
-        onSuccess: (order) => {
-          toast.success('Payment successful!');
-          navigate(`/orders/${order.orderNumber}/confirmation`);
-        },
-        onError: () => {
-          toast.error('Payment failed. Please try again.');
-        },
-      },
-    );
+  const [isMockProcessing, setIsMockProcessing] = useState(false);
+
+  const handleMockCheckout = useCallback(async () => {
+    setIsMockProcessing(true);
+    try {
+      const order = await new Promise<{ orderNumber: string }>((resolve, reject) => {
+        checkoutMutation.mutate(
+          { paymentMethod: 'MOCK' },
+          {
+            onSuccess: (o) => resolve({ orderNumber: o.orderNumber }),
+            onError: reject,
+          },
+        );
+      });
+
+      const intent = await createPaymentIntent(order.orderNumber);
+      const confirmation = await confirmPayment(intent.paymentIntentId);
+      toast.success('Payment successful!');
+      navigate(`/orders/${confirmation.orderNumber}/confirmation`);
+    } catch {
+      toast.error('Payment failed. Please try again.');
+    } finally {
+      setIsMockProcessing(false);
+    }
   }, [checkoutMutation, navigate]);
 
   const handleStartStripe = useCallback(async () => {
@@ -160,7 +171,7 @@ export function CheckoutPage() {
               <MockPaymentForm
                 total={total}
                 onSubmit={handleMockCheckout}
-                isProcessing={checkoutMutation.isPending}
+                isProcessing={isMockProcessing}
               />
             </TabsContent>
             <TabsContent value="stripe">
