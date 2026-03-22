@@ -254,20 +254,25 @@ public class OrderService {
             smsDeliveryService.sendSms(phone, smsMessage);
         }
 
-        // Send email confirmation
+        // Send email confirmation (caught separately — never break checkout)
         String email = order.getUser().getEmail();
         if (email != null && !email.isBlank()) {
-            String eventName = order.getItems().stream()
-                    .findFirst()
-                    .map(item -> item.getListing().getEvent().getName())
-                    .orElse("your event");
-            String orderViewToken = ticketSigningService.generateOrderViewToken(orderNumber);
-            String ticketUrl = smsOrderBaseUrl + "/tickets/view?token=" + orderViewToken;
+            try {
+                String emailEventName = order.getItems().stream()
+                        .findFirst()
+                        .map(item -> item.getListing().getEvent().getName())
+                        .orElse("your event");
+                String emailToken = ticketSigningService.generateOrderViewToken(orderNumber);
+                String ticketUrl = smsOrderBaseUrl + "/tickets/view?token=" + emailToken;
 
-            String htmlBody = buildConfirmationEmail(orderNumber, eventName,
-                    order.getTotal().toPlainString(), order.getItems().size(), ticketUrl);
-            emailDeliveryService.sendEmail(email,
-                    "Your MockHub tickets for " + eventName, htmlBody);
+                String htmlBody = buildConfirmationEmail(orderNumber, emailEventName,
+                        order.getTotal().toPlainString(), order.getItems().size(), ticketUrl);
+                emailDeliveryService.sendEmail(email,
+                        "Your MockHub tickets for " + emailEventName, htmlBody);
+            } catch (Exception exception) {
+                log.error("Failed to send confirmation email for order {}: {}",
+                        orderNumber, exception.getMessage());
+            }
         }
     }
 
