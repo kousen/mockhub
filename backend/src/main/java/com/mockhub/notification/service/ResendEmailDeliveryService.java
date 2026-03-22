@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
@@ -22,6 +23,7 @@ public class ResendEmailDeliveryService implements EmailDeliveryService {
     private final RestClient restClient;
     private final String fromAddress;
 
+    @Autowired
     public ResendEmailDeliveryService(
             @Value("${RESEND_API_KEY}") String apiKey,
             @Value("${mockhub.email.from-address}") String fromAddress) {
