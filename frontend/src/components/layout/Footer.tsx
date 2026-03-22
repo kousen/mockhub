@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Ticket } from 'lucide-react';
+import { Github, Ticket } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 
@@ -15,7 +15,7 @@ export function Footer() {
             <span className="text-sm font-semibold">{APP_NAME}</span>
             <span className="text-xs text-muted-foreground">- A Teaching Platform</span>
           </div>
-          <nav className="flex gap-6">
+          <nav className="flex items-center gap-6">
             <Link
               to={ROUTES.EVENTS}
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -28,11 +28,20 @@ export function Footer() {
             >
               About
             </Link>
+            <a
+              href="https://github.com/kousen/mockhub"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="View source on GitHub"
+            >
+              <Github className="h-5 w-5" />
+            </a>
           </nav>
         </div>
         <Separator className="my-4" />
         <p className="text-center text-xs text-muted-foreground">
-          &copy; {currentYear} {APP_NAME}. Built for learning. All rights reserved.
+          &copy; {currentYear} {APP_NAME}. Open source &amp; built for learning.
         </p>
       </div>
     </footer>
