@@ -80,12 +80,14 @@ The codebase uses Java DOP patterns where they add value:
 
 ### Email Delivery
 
-- **Profile-based email:** `EmailDeliveryService` interface with `MockEmailDeliveryService` (console logging, `mock-email` profile) and `SmtpEmailDeliveryService` (real email via Spring `JavaMailSender`, `email-smtp` profile, `@Primary`).
-- **Uses Spring Mail standard** — `spring-boot-starter-mail` with `JavaMailSender` and `MimeMessageHelper`. Works with any SMTP provider; configured for Resend SMTP (`smtp.resend.com:465`).
+- **Profile-based email:** `EmailDeliveryService` interface with three implementations:
+  - `MockEmailDeliveryService` (console logging, `mock-email` profile)
+  - `SmtpEmailDeliveryService` (Spring `JavaMailSender`, `email-smtp` profile) — works with any SMTP provider
+  - `ResendEmailDeliveryService` (Resend REST API, `email-resend` profile, `@Primary`) — uses Spring `RestClient` to POST to `https://api.resend.com/emails`. Preferred in production because Railway blocks SMTP port 465.
 - **Triggered on order confirmation:** `OrderService.confirmOrder()` sends HTML email with order summary and "View Your Tickets" button linking to the public ticket view page.
 - **Email failures are caught and logged** — never break the checkout flow.
-- **Resend SMTP config:** `application-email-smtp.yml` uses `RESEND_API_KEY` as the SMTP password, `resend` as the username.
-- **From address:** Configurable via `mockhub.email.from-address` (env: `EMAIL_FROM_ADDRESS`, default: `noreply@mockhub.dev`). Resend free tier requires `onboarding@resend.dev` or a verified custom domain.
+- **From address:** Configurable via `mockhub.email.from-address` (env: `EMAIL_FROM_ADDRESS`). Production uses `tickets@updates.kousenit.com` (verified domain in Resend).
+- **Multiple constructors:** `ResendEmailDeliveryService` has a package-private constructor for testing. The public constructor uses `@Autowired` to resolve ambiguity (Spring requires this when multiple constructors exist).
 
 ### Public Ticket View
 
@@ -183,7 +185,7 @@ The codebase uses Java DOP patterns where they add value:
 - **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `api/`, `actuator/`, `mcp/`, `swagger-ui/`, `v3/` paths
 - **Security:** Static frontend routes (`/`, `/events/**`, `/sell`, `/my/**`, etc.) are `permitAll()` in SecurityConfig. CORS allows the Railway production domain.
 - **Ephemeral filesystem:** Seed images are restored from classpath on every container startup via `restoreSeedImages()` in `EventSeeder`
-- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-smtp` — production datasource, Anthropic AI, mock payment, real SMS and email
+- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend` — production datasource, Anthropic AI, mock payment, real SMS and email
 - **Database:** Railway PostgreSQL with separate `SPRING_DATASOURCE_URL`, `_USERNAME`, `_PASSWORD` env vars (Railway's `DATABASE_URL` format is incompatible with JDBC)
 - **JWT secret:** Must be valid Base64 (no dots or special characters)
 - **Auto-deploy:** Pushes to `main` trigger automatic Railway deployments
