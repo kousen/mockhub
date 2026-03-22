@@ -31,6 +31,7 @@ import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.common.exception.UnauthorizedException;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
+import com.mockhub.notification.service.EmailDeliveryService;
 import com.mockhub.notification.service.NotificationService;
 import com.mockhub.notification.service.SmsDeliveryService;
 import com.mockhub.ticket.service.TicketSigningService;
@@ -80,6 +81,9 @@ class OrderServiceTest {
     private SmsDeliveryService smsDeliveryService;
 
     @Mock
+    private EmailDeliveryService emailDeliveryService;
+
+    @Mock
     private TicketSigningService ticketSigningService;
 
     private OrderService orderService;
@@ -95,7 +99,8 @@ class OrderServiceTest {
     void setUp() {
         orderService = new OrderService(orderRepository, cartRepository, cartService,
                 ticketService, eventRepository, notificationService,
-                smsDeliveryService, ticketSigningService, "http://localhost:5173");
+                smsDeliveryService, emailDeliveryService, ticketSigningService,
+                "http://localhost:5173");
 
         Role buyerRole = new Role("ROLE_BUYER");
         buyerRole.setId(1L);

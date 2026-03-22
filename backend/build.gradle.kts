@@ -70,6 +70,9 @@ dependencies {
     // SMS delivery
     implementation("com.twilio.sdk:twilio:10.9.2")
 
+    // Email delivery
+    implementation("org.springframework.boot:spring-boot-starter-mail")
+
     // Data generation
     implementation("net.datafaker:datafaker:2.4.2")
 
