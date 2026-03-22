@@ -121,8 +121,8 @@ export function CheckoutPage() {
     );
   }
 
-  // Show empty state only if cart is empty AND we're not in the Stripe flow
-  if (!stripeReady && (!cart || cart.items.length === 0)) {
+  // Show empty state only if cart is empty AND we're not in a payment flow
+  if (!stripeReady && !isMockProcessing && (!cart || cart.items.length === 0)) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
         <EmptyState
