@@ -133,7 +133,13 @@ checkstyle {
 }
 
 tasks.withType<Test> {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        if (project.hasProperty("includeTags")) {
+            includeTags(project.property("includeTags") as String)
+        } else {
+            excludeTags("twilio")
+        }
+    }
     finalizedBy(tasks.jacocoTestReport)
 }
 

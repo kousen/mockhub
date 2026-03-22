@@ -12,7 +12,8 @@ public class MockSmsDeliveryService implements SmsDeliveryService {
     private static final Logger log = LoggerFactory.getLogger(MockSmsDeliveryService.class);
 
     @Override
-    public void sendSms(String toPhoneNumber, String message) {
+    public String sendSms(String toPhoneNumber, String message) {
         log.info("[MOCK SMS] To: {} | Message: {}", toPhoneNumber, message);
+        return "MOCK-SID-" + System.currentTimeMillis();
     }
 }

@@ -28,14 +28,16 @@ public class TwilioSmsDeliveryService implements SmsDeliveryService {
     }
 
     @Override
-    public void sendSms(String toPhoneNumber, String messageText) {
+    public String sendSms(String toPhoneNumber, String messageText) {
         try {
             Message message =
                     Message.creator(new PhoneNumber(toPhoneNumber), new PhoneNumber(fromNumber), messageText)
                             .create();
             log.info("SMS sent to {} — SID: {}", toPhoneNumber, message.getSid());
+            return message.getSid();
         } catch (Exception e) {
             log.error("Failed to send SMS to {}: {}", toPhoneNumber, e.getMessage(), e);
+            return null;
         }
     }
 }
