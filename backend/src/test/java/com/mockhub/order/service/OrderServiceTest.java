@@ -33,6 +33,7 @@ import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.service.NotificationService;
 import com.mockhub.notification.service.SmsDeliveryService;
+import com.mockhub.ticket.service.TicketSigningService;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
@@ -78,6 +79,9 @@ class OrderServiceTest {
     @Mock
     private SmsDeliveryService smsDeliveryService;
 
+    @Mock
+    private TicketSigningService ticketSigningService;
+
     private OrderService orderService;
 
     private User testUser;
@@ -91,7 +95,7 @@ class OrderServiceTest {
     void setUp() {
         orderService = new OrderService(orderRepository, cartRepository, cartService,
                 ticketService, eventRepository, notificationService,
-                smsDeliveryService, "http://localhost:5173");
+                smsDeliveryService, ticketSigningService, "http://localhost:5173");
 
         Role buyerRole = new Role("ROLE_BUYER");
         buyerRole.setId(1L);

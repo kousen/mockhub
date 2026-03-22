@@ -42,6 +42,7 @@ import com.mockhub.order.repository.OrderRepository;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.ticket.service.TicketService;
+import com.mockhub.ticket.service.TicketSigningService;
 
 @Service
 public class OrderService {
@@ -59,6 +60,7 @@ public class OrderService {
     private final EventRepository eventRepository;
     private final NotificationService notificationService;
     private final SmsDeliveryService smsDeliveryService;
+    private final TicketSigningService ticketSigningService;
     private final String smsOrderBaseUrl;
 
     public OrderService(OrderRepository orderRepository,
@@ -68,6 +70,7 @@ public class OrderService {
                         EventRepository eventRepository,
                         NotificationService notificationService,
                         SmsDeliveryService smsDeliveryService,
+                        TicketSigningService ticketSigningService,
                         @org.springframework.beans.factory.annotation.Value("${mockhub.sms.order-base-url}") String smsOrderBaseUrl) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
@@ -76,6 +79,7 @@ public class OrderService {
         this.eventRepository = eventRepository;
         this.notificationService = notificationService;
         this.smsDeliveryService = smsDeliveryService;
+        this.ticketSigningService = ticketSigningService;
         this.smsOrderBaseUrl = smsOrderBaseUrl;
     }
 
@@ -238,9 +242,10 @@ public class OrderService {
                     .findFirst()
                     .map(item -> item.getListing().getEvent().getName())
                     .orElse("your event");
-            String orderUrl = smsOrderBaseUrl + "/orders/" + orderNumber + "/confirmation";
+            String orderViewToken = ticketSigningService.generateOrderViewToken(orderNumber);
+            String orderUrl = smsOrderBaseUrl + "/tickets/view?token=" + orderViewToken;
             String smsMessage = String.format(
-                    "MockHub: Your tickets for %s are confirmed! View and download: %s",
+                    "MockHub: Your tickets for %s are confirmed! View your tickets: %s",
                     eventName, orderUrl);
             smsDeliveryService.sendSms(phone, smsMessage);
         }

@@ -2,6 +2,7 @@ package com.mockhub.ticket.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -46,5 +47,25 @@ public class TicketSigningService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    private static final String ORDER_VIEW_TYPE = "order-view";
+
+    public String generateOrderViewToken(String orderNumber) {
+        return Jwts.builder()
+                .subject(orderNumber)
+                .claim("typ", ORDER_VIEW_TYPE)
+                .issuedAt(new Date())
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public Claims verifyOrderViewToken(String token) {
+        Claims claims = verifyToken(token);
+        String type = claims.get("typ", String.class);
+        if (!ORDER_VIEW_TYPE.equals(type)) {
+            throw new JwtException("Token is not an order-view token");
+        }
+        return claims;
     }
 }

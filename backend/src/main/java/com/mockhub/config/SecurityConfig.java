@@ -55,8 +55,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/recommendations").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/images/**").permitAll()
-                        // Public ticket verification endpoint
+                        // Public ticket endpoints (verification + public ticket view)
                         .requestMatchers(HttpMethod.GET, "/api/v1/tickets/verify").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/tickets/view").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/tickets/*/*/qr").permitAll()
                         // API documentation and agent discovery
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/v3/api-docs/**").permitAll()
@@ -67,7 +69,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/favicon.svg").permitAll()
                         .requestMatchers("/login", "/register", "/events/**", "/sell", "/my/**",
                                 "/cart", "/checkout", "/orders/**", "/favorites", "/admin/**",
-                                "/verify").permitAll()
+                                "/verify", "/tickets/**").permitAll()
                         // Actuator health and error page
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
