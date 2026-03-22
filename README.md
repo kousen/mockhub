@@ -28,6 +28,7 @@ MockHub mimics the functionality of sites like StubHub and TicketNetwork — reg
 | Build | Gradle 9.4.0, Vite |
 | Testing | JUnit 5, Testcontainers, Vitest, Playwright |
 | Payments | Stripe (test mode) + mock fallback |
+| Notifications | Twilio SMS, Resend email (Spring Mail SMTP) |
 
 ## Prerequisites
 
@@ -101,6 +102,12 @@ Any authenticated user can both buy and sell tickets.
 ![Seller earnings page with summary cards and recent sales](docs/screenshots/seller-earnings.png)
 
 ### Ticket Delivery
+
+- **PDF tickets with signed QR codes** — downloadable from order confirmation page
+- **SMS notifications** via Twilio — tap the link to view tickets instantly (no login required)
+- **Email confirmations** via Resend SMTP — HTML email with "View Your Tickets" button
+- **Public ticket view** — mobile-optimized page showing scannable QR codes, authenticated by signed JWT tokens
+- **Venue verification** — scan QR code at entry, tracks first scan with "already scanned" warnings
 
 ![Order confirmation with download buttons for each ticket](docs/screenshots/order-confirmation.png)
 

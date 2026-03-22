@@ -674,7 +674,55 @@ c163f67 Fix SectionAvailability field names to match API response
 
 ---
 
-*Last updated: 2026-03-21*
+## Session: 2026-03-22 — Ticket Delivery Completion, Email, Public Ticket View
+
+### Summary
+
+Completed all three phases of ticket delivery (PDF, SMS, email) and added a public ticket view page accessible from SMS/email links without authentication. Fixed two UX bugs in the checkout flow. Added GitHub link to footer.
+
+### Changes
+
+1. **GitHub repo link in footer** — lucide-react `Github` icon, `target="_blank"` with `noopener noreferrer`, updated tagline to "Open source & built for learning"
+
+2. **Twilio SMS integration test** — `TwilioSmsDeliveryServiceIntegrationTest` sends a real SMS, gated by `@Tag("twilio")` and `@EnabledIfEnvironmentVariable`. Gradle config excludes `twilio` tag by default; run with `./gradlew test -PincludeTags=twilio`. Discovered Twilio account was suspended for billing/compliance — resolved via Twilio support ticket.
+
+3. **`SmsDeliveryService.sendSms()` returns String** — returns provider message SID (or null on failure) instead of void. Mock implementation returns `MOCK-SID-{timestamp}`.
+
+4. **Fixed mock checkout flow** — Frontend was only calling `/orders/checkout` without calling `createPaymentIntent` + `confirmPayment`, leaving orders permanently PENDING. Now follows the same three-step flow as Stripe: checkout → createPaymentIntent → confirmPayment.
+
+5. **Fixed checkout page flash** — Empty cart state briefly appeared during mock payment processing because React Query refetched the (now-empty) cart between checkout and payment confirmation. Added `isMockProcessing` guard to the empty state condition.
+
+6. **Public ticket view page** — New `/tickets/view?token={orderViewToken}` route (no auth). Order-view JWT tokens (`typ: "order-view"`) are distinct from per-ticket verification tokens. `PublicTicketViewController` serves order details and QR code PNGs. Mobile-optimized `PublicTicketViewPage` component. SMS and email now link here instead of the authenticated order confirmation page.
+
+7. **Email delivery** — `EmailDeliveryService` interface with `MockEmailDeliveryService` (mock-email profile) and `SmtpEmailDeliveryService` (email-smtp profile). Uses Spring `JavaMailSender` with Resend SMTP (`smtp.resend.com:465`). HTML email includes order summary and "View Your Tickets" button. Added `spring-boot-starter-mail` dependency.
+
+8. **Railway environment updates** — Added `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`, updated `SPRING_PROFILES_ACTIVE` to `prod,ai-anthropic,mock-payment,sms-twilio,email-smtp`. Updated `TWILIO_AUTH_TOKEN` after account reactivation.
+
+### Challenges
+
+- **Twilio account suspended** — billing/compliance issue from inactivity. Auth token returned 401 despite showing correctly in console. Resolved by Twilio support within 30 minutes of filing a ticket. The integration test caught the auth failure correctly.
+- **Twilio API key creation** — Console UI kept erroring when creating Standard/Main API keys. Ended up using the existing auth token (2-param `Twilio.init`) instead of the 3-param API key approach.
+- **Mock checkout PENDING bug** — The mock payment flow never called `confirmPayment`, discovered only during live testing on Railway. Unit tests all passed because they tested each step independently — classic integration gap.
+
+### Commits (2026-03-22)
+
+```
+120f395 Add GitHub repository link to footer
+de49f4c Add Twilio SMS integration test and return SID from sendSms
+6b6478c Fix mock checkout to confirm payment before showing order
+82bd290 Add public ticket view page accessible from SMS link
+bc4e9ab Fix checkout page flash during mock payment processing
+5230f05 Add email delivery on order confirmation via Spring Mail
+```
+
+### GitHub Issues Created
+
+- #46 — Audit mobile responsiveness of current web app
+- #47 — Evaluate mobile app strategy: native, React Native, or KMP
+
+---
+
+*Last updated: 2026-03-22*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*~422 tests passing (350 backend + 60 frontend unit + 182 Playwright E2E assertions)*
+*~450 tests passing (443 backend + 64 frontend unit + Playwright E2E)*
 *Live at: https://mockhub-production.up.railway.app*
