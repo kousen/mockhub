@@ -60,7 +60,7 @@ command -v gh &> /dev/null && echo "gh: $(gh --version 2>&1 | head -1)"
 if [ -d "$PROJECT_DIR/frontend" ]; then
   echo "Installing frontend dependencies..."
   cd "$PROJECT_DIR/frontend"
-  npm install --prefer-offline --no-audit --no-fund 2>&1 | tail -1
+  npm ci --prefer-offline --no-audit --no-fund 2>&1 | tail -1
 fi
 
 # ──────────────────────────────────────────────
