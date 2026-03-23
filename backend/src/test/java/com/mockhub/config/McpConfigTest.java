@@ -9,6 +9,7 @@ import org.springframework.ai.tool.ToolCallbackProvider;
 
 import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
+import com.mockhub.mcp.tools.MandateTools;
 import com.mockhub.mcp.tools.OrderTools;
 import com.mockhub.mcp.tools.PricingTools;
 
@@ -29,13 +30,16 @@ class McpConfigTest {
     @Mock
     private OrderTools orderTools;
 
+    @Mock
+    private MandateTools mandateTools;
+
     @Test
     @DisplayName("mcpToolCallbackProvider - creates provider with all tool objects")
     void mcpToolCallbackProvider_createsProviderWithAllToolObjects() {
         McpConfig config = new McpConfig();
 
         ToolCallbackProvider provider = config.mcpToolCallbackProvider(
-                eventTools, pricingTools, cartTools, orderTools);
+                eventTools, pricingTools, cartTools, orderTools, mandateTools);
 
         assertNotNull(provider, "ToolCallbackProvider should not be null");
     }

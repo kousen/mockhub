@@ -118,12 +118,33 @@ The codebase uses Java DOP patterns where they add value:
 - **Endpoints:** `POST /api/v1/listings`, `GET /api/v1/my/listings`, `PUT /api/v1/listings/{id}/price`, `DELETE /api/v1/listings/{id}`, `GET /api/v1/my/earnings`
 - **Frontend:** 3 pages (SellPage with 3-step form, MyListingsPage with tab filtering, EarningsPage dashboard), seller API + hooks, nav links visible when authenticated.
 
-### Agentic Support
+### Agentic Commerce
 
-- **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints for AI agents (including seller endpoints)
-- **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors
-- **MCP server** — 13 tools registered (EventTools, PricingTools, CartTools, OrderTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. **SSE transport returns 500 — needs investigation** (may need different transport for Spring AI M3).
-- **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens
+- **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
+- **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
+- **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
+- **MCP server** — 22 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. **SSE transport returns 500 — needs investigation** (may need different transport for Spring AI M3).
+- **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
+- **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
+- **`findTickets` compound tool** — single-call search with query, category, city, price range, section filter, returning matching listings sorted by price. Reduces agent round-trips from 3 to 1.
+- **`SpendingLimitCondition`** — WARNING eval condition when cart exceeds configurable limit (`mockhub.eval.max-cart-total`, default $500).
+
+### Agent Mandates
+
+- **Authorization model for agents.** A `Mandate` record defines what an agent can do on behalf of a user: scope (BROWSE/PURCHASE), spending limits (per-transaction + cumulative), category/event restrictions, expiration.
+- **`MandateCondition`** — CRITICAL eval condition that blocks agent actions without a valid mandate. Checks scope, spending limits, and category/event constraints.
+- **MandateTools** — 4 MCP tools for mandate lifecycle: `createMandate`, `revokeMandate`, `listMandates`, `validateMandate`.
+- **Mandate entity** in `com.mockhub.mandate` package. Flyway migration `V22__create_mandates_table.sql`.
+- **Inspired by AP2** (Google's Agent Payments Protocol) — mandates are MockHub's implementation of AP2's digitally signed authorization concept, enforced through the eval conditions framework.
+- **PURCHASE scope subsumes BROWSE** — an agent authorized to buy can also browse.
+
+### ACP (Agentic Commerce Protocol)
+
+- **ACP-compatible endpoints** at `/acp/v1/` — RESTful checkout API compatible with the Stripe+OpenAI Agentic Commerce Protocol.
+- **Six endpoints:** `POST /checkout` (create), `GET /checkout/{id}` (status), `PUT /checkout/{id}` (update), `POST /checkout/{id}/complete`, `POST /checkout/{id}/cancel`, `GET /catalog` (product discovery).
+- **Pure adapter layer** — wraps existing CartService + OrderService. No business logic was modified.
+- **API key auth** via `AcpApiKeyFilter` — same `mockhub.mcp.api-key` property as MCP, independent filter.
+- **SPA exclusion** — `/acp/**` added to `SpaForwardingConfig` exclusion list.
 
 ### Frontend
 
@@ -182,7 +203,7 @@ The codebase uses Java DOP patterns where they add value:
 - **URL:** https://mockhub-production.up.railway.app
 - **Architecture:** Single Docker container serves both Spring Boot API and React SPA (no CORS needed)
 - **Dockerfile:** Root `Dockerfile` builds frontend (Node), bundles into Spring Boot jar, runs on JRE Alpine
-- **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `api/`, `actuator/`, `mcp/`, `swagger-ui/`, `v3/` paths
+- **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `api/`, `actuator/`, `mcp/`, `acp/`, `swagger-ui/`, `v3/` paths
 - **Security:** Static frontend routes (`/`, `/events/**`, `/sell`, `/my/**`, etc.) are `permitAll()` in SecurityConfig. CORS allows the Railway production domain.
 - **Ephemeral filesystem:** Seed images are restored from classpath on every container startup via `restoreSeedImages()` in `EventSeeder`
 - **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend` — production datasource, Anthropic AI, mock payment, real SMS and email
@@ -204,6 +225,7 @@ The codebase uses Java DOP patterns where they add value:
 - `backend/src/main/resources/application-prod.yml` — Production profile (Railway datasource, PORT binding)
 - `backend/src/main/resources/static/llms.txt` — API description for AI agent discovery
 - `docs/evaluation-conditions.md` — Eval conditions concept, Design by Contract mapping, architecture, how to add conditions
+- `docs/agentic-commerce.md` — Agentic commerce architecture: MCP tools, mandates, ACP endpoints, protocol landscape, teaching connections
 
 ## What NOT to Do
 

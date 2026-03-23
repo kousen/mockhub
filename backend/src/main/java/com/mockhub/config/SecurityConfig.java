@@ -65,6 +65,8 @@ public class SecurityConfig {
                         .requestMatchers("/llms.txt").permitAll()
                         // MCP server endpoints (API key filter handles auth)
                         .requestMatchers("/mcp/**").permitAll()
+                        // ACP endpoints (API key filter handles auth)
+                        .requestMatchers("/acp/**").permitAll()
                         // Static frontend resources and SPA routes (React served from classpath:/static/)
                         .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/favicon.svg").permitAll()
                         .requestMatchers("/login", "/register", "/events/**", "/sell", "/my/**",

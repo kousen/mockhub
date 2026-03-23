@@ -70,6 +70,13 @@ public class ListingService {
     }
 
     @Transactional(readOnly = true)
+    public ListingDto getListingById(Long listingId) {
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Listing", "id", listingId));
+        return toListingDto(listing);
+    }
+
+    @Transactional(readOnly = true)
     public List<ListingDto> getActiveListingsByEventId(Long eventId) {
         List<Listing> listings = listingRepository.findByEventIdAndStatus(eventId, STATUS_ACTIVE);
         return listings.stream()

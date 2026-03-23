@@ -1,5 +1,8 @@
 package com.mockhub.mcp.tools;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -104,6 +107,89 @@ public class EventTools {
         } catch (Exception e) {
             log.error("Error getting featured events: {}", e.getMessage(), e);
             return errorJson("Failed to get featured events: " + e.getMessage());
+        }
+    }
+
+    @Tool(description = "Get details for a specific ticket listing by its ID. "
+            + "Returns listing details including section, row, seat, price, status, and seller info.")
+    public String getListingDetail(
+            @ToolParam(description = "ID of the listing to retrieve", required = true) Long listingId) {
+        try {
+            if (listingId == null) {
+                return errorJson("Listing ID is required");
+            }
+            ListingDto listing = listingService.getListingById(listingId);
+            return objectMapper.writeValueAsString(listing);
+        } catch (Exception e) {
+            log.error("Error getting listing detail for ID {}: {}", listingId, e.getMessage(), e);
+            return errorJson("Failed to get listing detail: " + e.getMessage());
+        }
+    }
+
+    @Tool(description = "Search for ticket listings across events with filters. "
+            + "Combines event search with listing filtering in one call. "
+            + "Returns matching listings sorted by price ascending.")
+    public String findTickets(
+            @ToolParam(description = "Search query text to match event name or artist",
+                    required = false) String query,
+            @ToolParam(description = "Category slug to filter by (e.g. 'rock', 'pop', 'jazz')",
+                    required = false) String category,
+            @ToolParam(description = "City name to filter events by location",
+                    required = false) String city,
+            @ToolParam(description = "Minimum ticket price filter",
+                    required = false) BigDecimal minPrice,
+            @ToolParam(description = "Maximum ticket price filter",
+                    required = false) BigDecimal maxPrice,
+            @ToolParam(description = "Section name filter (e.g. 'Orchestra', 'Balcony')",
+                    required = false) String section,
+            @ToolParam(description = "Maximum number of results to return (default 10, max 50)",
+                    required = false) Integer maxResults) {
+        try {
+            int limit = (maxResults == null || maxResults <= 0) ? 10 : Math.min(maxResults, 50);
+
+            EventSearchRequest request = new EventSearchRequest(
+                    query, category, null, city,
+                    null, null, minPrice, maxPrice,
+                    "ACTIVE", "eventDate",
+                    0, 100);
+
+            PagedResponse<EventSummaryDto> eventsResponse = eventService.listEvents(request);
+            List<ListingDto> allListings = new ArrayList<>();
+
+            for (EventSummaryDto eventSummary : eventsResponse.content()) {
+                List<ListingDto> eventListings = listingService.getActiveListingsByEventSlug(
+                        eventSummary.slug());
+
+                for (ListingDto listing : eventListings) {
+                    boolean matchesPrice = true;
+                    if (minPrice != null && listing.computedPrice().compareTo(minPrice) < 0) {
+                        matchesPrice = false;
+                    }
+                    if (maxPrice != null && listing.computedPrice().compareTo(maxPrice) > 0) {
+                        matchesPrice = false;
+                    }
+
+                    boolean matchesSection = true;
+                    if (section != null && !section.isBlank()
+                            && !section.strip().equalsIgnoreCase(listing.sectionName())) {
+                        matchesSection = false;
+                    }
+
+                    if (matchesPrice && matchesSection) {
+                        allListings.add(listing);
+                    }
+                }
+            }
+
+            List<ListingDto> sortedListings = allListings.stream()
+                    .sorted(Comparator.comparing(ListingDto::computedPrice))
+                    .limit(limit)
+                    .toList();
+
+            return objectMapper.writeValueAsString(sortedListings);
+        } catch (Exception e) {
+            log.error("Error finding tickets: {}", e.getMessage(), e);
+            return errorJson("Failed to find tickets: " + e.getMessage());
         }
     }
 

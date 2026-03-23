@@ -80,8 +80,19 @@ public class CartTools {
             }
 
             User user = resolveUser(userEmail);
-            CartDto cart = cartService.addToCart(user, listingId);
-            return objectMapper.writeValueAsString(cart);
+            CartDto cartDto = cartService.addToCart(user, listingId);
+
+            EvalContext cartContext = EvalContext.forCart(cartDto);
+            EvalSummary cartEval = evalRunner.evaluate(cartContext);
+            if (!cartEval.allPassed()) {
+                String warnings = cartEval.failures().stream()
+                        .map(r -> r.conditionName() + ": " + r.message())
+                        .collect(java.util.stream.Collectors.joining("; "));
+                String cartJson = objectMapper.writeValueAsString(cartDto);
+                return "{\"cart\": " + cartJson + ", \"warnings\": \"" + warnings.replace("\"", "'") + "\"}";
+            }
+
+            return objectMapper.writeValueAsString(cartDto);
         } catch (Exception e) {
             log.error("Error adding listing {} to cart for '{}': {}", listingId, userEmail, e.getMessage(), e);
             return errorJson("Failed to add to cart: " + e.getMessage());
