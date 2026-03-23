@@ -62,7 +62,7 @@ class AiControllerTest {
         @DisplayName("given valid message - returns 200 with AI response")
         void givenValidMessage_returns200() throws Exception {
             ChatResponse response = new ChatResponse(null, "Here are some events...", Instant.now());
-            when(chatService.chat(any())).thenReturn(response);
+            when(chatService.chat(any(), any())).thenReturn(response);
 
             mockMvc.perform(post("/api/v1/chat")
                             .contentType(MediaType.APPLICATION_JSON)

@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
 import com.mockhub.ai.dto.ChatRequest;
 import com.mockhub.ai.dto.ChatResponse;
 import com.mockhub.ai.dto.PricePredictionDto;
@@ -21,6 +23,7 @@ import com.mockhub.ai.dto.RecommendationDto;
 import com.mockhub.ai.service.ChatService;
 import com.mockhub.ai.service.PricePredictionService;
 import com.mockhub.ai.service.RecommendationService;
+import com.mockhub.auth.security.SecurityUser;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -47,11 +50,13 @@ public class AiController {
     @Operation(summary = "Chat with AI assistant", description = "Ask questions about events and get AI-powered responses")
     @ApiResponse(responseCode = "200", description = "AI response returned")
     @ApiResponse(responseCode = "503", description = "AI provider not configured")
-    public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
+    public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request,
+                                               @AuthenticationPrincipal SecurityUser securityUser) {
         if (chatService.isEmpty()) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
-        return ResponseEntity.ok(chatService.get().chat(request));
+        String userEmail = securityUser != null ? securityUser.getEmail() : null;
+        return ResponseEntity.ok(chatService.get().chat(request, userEmail));
     }
 
     @GetMapping("/recommendations")
