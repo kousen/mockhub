@@ -33,7 +33,7 @@ class AiControllerServiceUnavailableTest {
     void chat_givenNoChatServiceConfigured_returns503() {
         ChatRequest request = new ChatRequest("What concerts are available?", null);
 
-        ResponseEntity<ChatResponse> response = controller.chat(request);
+        ResponseEntity<ChatResponse> response = controller.chat(request, null);
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode(),
                 "Should return 503 when ChatService is not configured");

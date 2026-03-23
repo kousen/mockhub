@@ -30,13 +30,18 @@ public class ChatService {
         this.evalRunner = evalRunner;
     }
 
-    public ChatResponse chat(ChatRequest request) {
+    public ChatResponse chat(ChatRequest request, String userEmail) {
         String conversationId = request.conversationId() != null
                 ? String.valueOf(request.conversationId())
                 : DEFAULT_CONVERSATION_ID;
 
+        String userMessage = request.message();
+        if (userEmail != null && !userEmail.isBlank()) {
+            userMessage = "[User context: logged in as " + userEmail + "]\n\n" + userMessage;
+        }
+
         String aiResponse = chatClient.prompt()
-                .user(request.message())
+                .user(userMessage)
                 .advisors(advisorSpec -> advisorSpec.param(
                         CONVERSATION_ID_KEY, conversationId))
                 .call()

@@ -68,7 +68,7 @@ class ChatServiceTest {
         stubChatClient("Here are some upcoming concerts in New York...");
         stubEvalRunnerPassing();
 
-        ChatResponse response = chatService.chat(request);
+        ChatResponse response = chatService.chat(request, null);
 
         assertNotNull(response, "Response should not be null");
         assertEquals("Here are some upcoming concerts in New York...", response.message());
@@ -82,7 +82,7 @@ class ChatServiceTest {
         stubChatClient("Sure, here's more detail...");
         stubEvalRunnerPassing();
 
-        ChatResponse response = chatService.chat(request);
+        ChatResponse response = chatService.chat(request, null);
 
         assertEquals(42L, response.conversationId());
     }
@@ -94,7 +94,7 @@ class ChatServiceTest {
         stubChatClient("Here are some events...");
         stubEvalRunnerPassing();
 
-        chatService.chat(request);
+        chatService.chat(request, null);
 
         verify(evalRunner).evaluate(any(EvalContext.class));
     }
@@ -109,9 +109,45 @@ class ChatServiceTest {
                         EvalResult.fail("grounding",
                                 com.mockhub.eval.dto.EvalSeverity.WARNING, "Fabricated data"))));
 
-        ChatResponse response = chatService.chat(request);
+        ChatResponse response = chatService.chat(request, null);
 
         assertNotNull(response);
         assertEquals("Here are some events...", response.message());
+    }
+
+    @Test
+    @DisplayName("chat - given user email - prepends user context to message")
+    void chat_givenUserEmail_prependsUserContext() {
+        ChatRequest request = new ChatRequest("Buy me a ticket", null);
+        stubChatClient("I'll help you purchase a ticket...");
+        stubEvalRunnerPassing();
+
+        chatService.chat(request, "ken@example.com");
+
+        verify(requestSpec).user("[User context: logged in as ken@example.com]\n\nBuy me a ticket");
+    }
+
+    @Test
+    @DisplayName("chat - given null user email - sends original message unchanged")
+    void chat_givenNullUserEmail_sendsOriginalMessage() {
+        ChatRequest request = new ChatRequest("What concerts are available?", null);
+        stubChatClient("Here are the concerts...");
+        stubEvalRunnerPassing();
+
+        chatService.chat(request, null);
+
+        verify(requestSpec).user("What concerts are available?");
+    }
+
+    @Test
+    @DisplayName("chat - given blank user email - sends original message unchanged")
+    void chat_givenBlankUserEmail_sendsOriginalMessage() {
+        ChatRequest request = new ChatRequest("Show me events", null);
+        stubChatClient("Here are the events...");
+        stubEvalRunnerPassing();
+
+        chatService.chat(request, "   ");
+
+        verify(requestSpec).user("Show me events");
     }
 }
