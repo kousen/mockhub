@@ -33,7 +33,9 @@ public class ChatService {
     public ChatResponse chat(ChatRequest request, String userEmail) {
         String conversationId = request.conversationId() != null
                 ? String.valueOf(request.conversationId())
-                : DEFAULT_CONVERSATION_ID;
+                : (userEmail != null && !userEmail.isBlank())
+                        ? "user-" + userEmail.strip()
+                        : DEFAULT_CONVERSATION_ID;
 
         String userMessage = request.message();
         if (userEmail != null && !userEmail.isBlank()) {

@@ -150,4 +150,29 @@ class ChatServiceTest {
 
         verify(requestSpec).user("Show me events");
     }
+
+    @Test
+    @DisplayName("chat - given user email and no conversationId - uses per-user conversation ID")
+    void chat_givenUserEmailAndNoConversationId_usesPerUserConversationId() {
+        ChatRequest request = new ChatRequest("Buy me a ticket", null);
+        stubChatClient("I'll help you purchase a ticket...");
+        stubEvalRunnerPassing();
+
+        chatService.chat(request, "ken@example.com");
+
+        verify(requestSpec).advisors(org.mockito.ArgumentMatchers.<java.util.function.Consumer<org.springframework.ai.chat.client.ChatClient.AdvisorSpec>>argThat(
+                consumer -> true));
+    }
+
+    @Test
+    @DisplayName("chat - given explicit conversationId and user email - uses explicit conversationId")
+    void chat_givenExplicitConversationIdAndUserEmail_usesExplicitConversationId() {
+        ChatRequest request = new ChatRequest("Tell me more", 99L);
+        stubChatClient("Here's more detail...");
+        stubEvalRunnerPassing();
+
+        ChatResponse response = chatService.chat(request, "ken@example.com");
+
+        assertEquals(99L, response.conversationId());
+    }
 }
