@@ -102,6 +102,8 @@ public class OrderTools {
             }
             User user = resolveUser(userEmail);
             String trimmedOrderNumber = orderNumber.strip();
+            // Verify ownership before confirming — getOrder throws UnauthorizedException if mismatch
+            orderService.getOrder(user, trimmedOrderNumber);
             orderService.confirmOrder(trimmedOrderNumber);
             OrderDto order = orderService.getOrder(user, trimmedOrderNumber);
             return objectMapper.writeValueAsString(order);

@@ -47,7 +47,7 @@ An agent can now execute a full purchase on behalf of a user:
 
 2. addToCart(userEmail="buyer@example.com", listingId=42)
    → Eval conditions check: event in future, listing active
-   → Spending limit warning if cart exceeds $500
+   → Spending limit warning if cart exceeds $2,000
    → Returns cart with any warnings
 
 3. checkout(userEmail="buyer@example.com", paymentMethod="mock")
@@ -86,7 +86,7 @@ Every `addToCart` call passes through the eval conditions framework:
 |---|---|---|
 | `EventInFutureCondition` | CRITICAL | Event hasn't occurred, status is ACTIVE |
 | `ListingActiveCondition` | CRITICAL | Listing status is ACTIVE |
-| `SpendingLimitCondition` | WARNING | Cart subtotal ≤ $500 (configurable) |
+| `SpendingLimitCondition` | WARNING | Cart subtotal ≤ $2,000 (configurable) |
 | `PricePlausibilityCondition` | WARNING | Price isn't anomalously high/low |
 | `MandateCondition` | CRITICAL | Agent has authorization (Layer 2) |
 

@@ -16,7 +16,7 @@ public class SpendingLimitCondition implements EvalCondition {
     private final BigDecimal maxCartTotal;
 
     public SpendingLimitCondition(
-            @Value("${mockhub.eval.max-cart-total:500}") BigDecimal maxCartTotal) {
+            @Value("${mockhub.eval.max-cart-total:2000}") BigDecimal maxCartTotal) {
         this.maxCartTotal = maxCartTotal;
     }
 

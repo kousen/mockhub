@@ -1,7 +1,5 @@
 package com.mockhub.acp.service;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -30,6 +28,7 @@ import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
 import com.mockhub.order.service.OrderService;
 
+
 @Service
 public class AcpCheckoutService {
 
@@ -55,20 +54,20 @@ public class AcpCheckoutService {
     public AcpCheckoutResponse createCheckout(AcpCheckoutRequest request) {
         User user = resolveUser(request.buyerEmail());
 
-        // Clear any existing cart
-        cartService.clearCart(user);
+        String paymentMethod = request.paymentMethod() != null ? request.paymentMethod() : "mock";
 
-        // Add each line item to cart
+        // Note: On idempotent retries, cart mutations below are harmless —
+        // OrderService.checkout() returns the existing order before reading the cart.
+        cartService.clearCart(user);
         for (AcpLineItem lineItem : request.lineItems()) {
             cartService.addToCart(user, lineItem.listingId());
         }
 
-        // Create order via existing checkout flow
-        String paymentMethod = request.paymentMethod() != null ? request.paymentMethod() : "mock";
+        // Create order via existing checkout flow (returns existing order on idempotent retry)
         CheckoutRequest checkoutRequest = new CheckoutRequest(paymentMethod);
         OrderDto orderDto = orderService.checkout(user, checkoutRequest, request.idempotencyKey());
 
-        log.info("ACP checkout created: {} for buyer {}", orderDto.orderNumber(), request.buyerEmail());
+        log.info("ACP checkout created: {}", orderDto.orderNumber());
 
         return toAcpCheckoutResponse(orderDto, request.buyerEmail());
     }
@@ -91,23 +90,26 @@ public class AcpCheckoutService {
                             + ". Only PENDING checkouts can be updated. Create a new checkout instead.");
         }
 
+        // Collect listing IDs to remove
+        java.util.Set<Long> removeIds = new java.util.HashSet<>();
+        if (request.removeListingIds() != null) {
+            removeIds.addAll(request.removeListingIds());
+        }
+
+        // Preserve existing items minus removals, then add new items
+        List<Long> keepListingIds = orderDto.items().stream()
+                .map(OrderItemDto::listingId)
+                .filter(id -> !removeIds.contains(id))
+                .toList();
+
         // Cancel the existing order (releases tickets)
         orderService.failOrder(checkoutId);
 
-        // Build new line items: start with existing, apply adds/removes
-        List<Long> currentListingIds = new ArrayList<>();
-        for (OrderItemDto item : orderDto.items()) {
-            currentListingIds.add(item.id());
-        }
-
-        // Note: OrderItemDto.id() is the order item ID, not the listing ID.
-        // We need to work with listing IDs from the original order items.
-        // Since we don't have listing IDs in OrderItemDto, we rebuild from scratch
-        // using the requested changes.
-
-        // Clear cart and add remaining + new items
+        // Rebuild cart with kept items + new items
         cartService.clearCart(user);
-
+        for (Long listingId : keepListingIds) {
+            cartService.addToCart(user, listingId);
+        }
         if (request.addItems() != null) {
             for (AcpLineItem lineItem : request.addItems()) {
                 cartService.addToCart(user, lineItem.listingId());
@@ -118,8 +120,7 @@ public class AcpCheckoutService {
         CheckoutRequest checkoutRequest = new CheckoutRequest("mock");
         OrderDto newOrderDto = orderService.checkout(user, checkoutRequest, null);
 
-        log.info("ACP checkout updated: old={} new={} for buyer {}",
-                checkoutId, newOrderDto.orderNumber(), buyerEmail);
+        log.info("ACP checkout updated: old={} new={}", checkoutId, newOrderDto.orderNumber());
 
         return toAcpCheckoutResponse(newOrderDto, buyerEmail);
     }
@@ -134,7 +135,7 @@ public class AcpCheckoutService {
 
         OrderDto confirmedOrder = orderService.getOrder(user, checkoutId);
 
-        log.info("ACP checkout completed: {} for buyer {}", checkoutId, buyerEmail);
+        log.info("ACP checkout completed: {}", checkoutId);
 
         return toAcpCheckoutResponse(confirmedOrder, buyerEmail);
     }
@@ -147,13 +148,13 @@ public class AcpCheckoutService {
 
         orderService.failOrder(checkoutId);
 
-        log.info("ACP checkout cancelled: {} for buyer {}", checkoutId, buyerEmail);
+        log.info("ACP checkout cancelled: {}", checkoutId);
 
         // Return response with CANCELLED status (failOrder sets FAILED internally,
         // but ACP uses CANCELLED terminology)
         List<AcpLineItemResponse> lineItems = orderDto.items().stream()
                 .map(item -> new AcpLineItemResponse(
-                        item.id(),
+                        item.listingId(),
                         item.eventName(),
                         item.eventSlug(),
                         item.sectionName(),
@@ -227,7 +228,7 @@ public class AcpCheckoutService {
     private AcpCheckoutResponse toAcpCheckoutResponse(OrderDto orderDto, String buyerEmail) {
         List<AcpLineItemResponse> lineItems = orderDto.items().stream()
                 .map(item -> new AcpLineItemResponse(
-                        item.id(),
+                        item.listingId(),
                         item.eventName(),
                         item.eventSlug(),
                         item.sectionName(),

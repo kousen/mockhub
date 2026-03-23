@@ -127,7 +127,7 @@ The codebase uses Java DOP patterns where they add value:
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
 - **`findTickets` compound tool** — single-call search with query, category, city, price range, section filter, returning matching listings sorted by price. Reduces agent round-trips from 3 to 1.
-- **`SpendingLimitCondition`** — WARNING eval condition when cart exceeds configurable limit (`mockhub.eval.max-cart-total`, default $500).
+- **`SpendingLimitCondition`** — WARNING eval condition when cart exceeds configurable limit (`mockhub.eval.max-cart-total`, default $2000).
 
 ### Agent Mandates
 

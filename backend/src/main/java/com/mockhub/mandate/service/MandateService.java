@@ -23,6 +23,7 @@ import com.mockhub.mandate.repository.MandateRepository;
 public class MandateService {
 
     private static final Logger log = LoggerFactory.getLogger(MandateService.class);
+    private static final String STATUS_ACTIVE = "ACTIVE";
 
     private final MandateRepository mandateRepository;
 
@@ -42,7 +43,7 @@ public class MandateService {
         mandate.setTotalSpent(BigDecimal.ZERO);
         mandate.setAllowedCategories(request.allowedCategories());
         mandate.setAllowedEvents(request.allowedEvents());
-        mandate.setStatus("ACTIVE");
+        mandate.setStatus(STATUS_ACTIVE);
         mandate.setExpiresAt(request.expiresAt());
 
         Mandate saved = mandateRepository.save(mandate);
@@ -63,7 +64,7 @@ public class MandateService {
 
     @Transactional(readOnly = true)
     public List<MandateDto> listMandates(String userEmail) {
-        List<Mandate> mandates = mandateRepository.findByUserEmailAndStatus(userEmail, "ACTIVE");
+        List<Mandate> mandates = mandateRepository.findByUserEmailAndStatus(userEmail, STATUS_ACTIVE);
         return mandates.stream()
                 .map(this::toDto)
                 .toList();
@@ -72,7 +73,7 @@ public class MandateService {
     @Transactional(readOnly = true)
     public Mandate getActiveMandate(String agentId, String userEmail) {
         List<Mandate> mandates = mandateRepository.findByAgentIdAndUserEmailAndStatus(
-                agentId, userEmail, "ACTIVE");
+                agentId, userEmail, STATUS_ACTIVE);
 
         Instant now = Instant.now();
         return mandates.stream()
@@ -91,14 +92,29 @@ public class MandateService {
         log.info("Recorded spend of {} on mandate {}, new total: {}", amount, mandateId, newTotal);
     }
 
+    @Transactional(readOnly = true)
     public boolean validateAction(String agentId, String userEmail, String requiredScope,
                                   BigDecimal amount, String categorySlug, String eventSlug) {
-        Mandate mandate = getActiveMandate(agentId, userEmail);
+        List<Mandate> mandates = mandateRepository.findByAgentIdAndUserEmailAndStatus(
+                agentId, userEmail, STATUS_ACTIVE);
+
+        Instant now = Instant.now();
+        Mandate mandate = mandates.stream()
+                .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
+                .findFirst()
+                .orElse(null);
+
         if (mandate == null) {
             log.warn("No active mandate for agent '{}' and user '{}'", agentId, userEmail);
             return false;
         }
 
+        return validateMandateConstraints(mandate, requiredScope, amount, categorySlug, eventSlug);
+    }
+
+    private boolean validateMandateConstraints(Mandate mandate, String requiredScope,
+                                                BigDecimal amount, String categorySlug,
+                                                String eventSlug) {
         if (!scopeCovers(mandate.getScope(), requiredScope)) {
             log.warn("Mandate {} scope '{}' does not cover required scope '{}'",
                     mandate.getMandateId(), mandate.getScope(), requiredScope);
@@ -112,31 +128,25 @@ public class MandateService {
             return false;
         }
 
-        if (amount != null && mandate.getMaxSpendTotal() != null) {
-            BigDecimal projectedTotal = mandate.getTotalSpent().add(amount);
-            if (projectedTotal.compareTo(mandate.getMaxSpendTotal()) > 0) {
-                log.warn("Mandate {} projected total {} exceeds total spend limit {}",
-                        mandate.getMandateId(), projectedTotal, mandate.getMaxSpendTotal());
-                return false;
-            }
+        if (amount != null && mandate.getMaxSpendTotal() != null
+                && mandate.getTotalSpent().add(amount).compareTo(mandate.getMaxSpendTotal()) > 0) {
+            log.warn("Mandate {} projected total exceeds total spend limit {}",
+                    mandate.getMandateId(), mandate.getMaxSpendTotal());
+            return false;
         }
 
-        if (categorySlug != null && mandate.getAllowedCategories() != null) {
-            Set<String> allowed = parseCommaSeparated(mandate.getAllowedCategories());
-            if (!allowed.contains(categorySlug)) {
-                log.warn("Mandate {} does not allow category '{}'",
-                        mandate.getMandateId(), categorySlug);
-                return false;
-            }
+        if (categorySlug != null && mandate.getAllowedCategories() != null
+                && !parseCommaSeparated(mandate.getAllowedCategories()).contains(categorySlug)) {
+            log.warn("Mandate {} does not allow category '{}'",
+                    mandate.getMandateId(), categorySlug);
+            return false;
         }
 
-        if (eventSlug != null && mandate.getAllowedEvents() != null) {
-            Set<String> allowed = parseCommaSeparated(mandate.getAllowedEvents());
-            if (!allowed.contains(eventSlug)) {
-                log.warn("Mandate {} does not allow event '{}'",
-                        mandate.getMandateId(), eventSlug);
-                return false;
-            }
+        if (eventSlug != null && mandate.getAllowedEvents() != null
+                && !parseCommaSeparated(mandate.getAllowedEvents()).contains(eventSlug)) {
+            log.warn("Mandate {} does not allow event '{}'",
+                    mandate.getMandateId(), eventSlug);
+            return false;
         }
 
         return true;

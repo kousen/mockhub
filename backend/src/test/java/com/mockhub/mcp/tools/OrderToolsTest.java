@@ -23,6 +23,7 @@ import com.mockhub.order.service.OrderService;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -138,7 +139,8 @@ class OrderToolsTest {
             String result = orderTools.confirmOrder("buyer@example.com", "MH-20260319-0001");
 
             verify(orderService).confirmOrder("MH-20260319-0001");
-            verify(orderService).getOrder(testUser, "MH-20260319-0001");
+            // getOrder called twice: once for ownership check, once to return the confirmed order
+            verify(orderService, times(2)).getOrder(testUser, "MH-20260319-0001");
             assertTrue(!result.contains("\"error\""), "Result should not contain error field");
         }
 
@@ -171,7 +173,7 @@ class OrderToolsTest {
             orderTools.confirmOrder("buyer@example.com", "  MH-20260319-0001  ");
 
             verify(orderService).confirmOrder("MH-20260319-0001");
-            verify(orderService).getOrder(testUser, "MH-20260319-0001");
+            verify(orderService, times(2)).getOrder(testUser, "MH-20260319-0001");
         }
 
         @Test

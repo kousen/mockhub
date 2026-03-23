@@ -161,21 +161,7 @@ public class EventTools {
                         eventSummary.slug());
 
                 for (ListingDto listing : eventListings) {
-                    boolean matchesPrice = true;
-                    if (minPrice != null && listing.computedPrice().compareTo(minPrice) < 0) {
-                        matchesPrice = false;
-                    }
-                    if (maxPrice != null && listing.computedPrice().compareTo(maxPrice) > 0) {
-                        matchesPrice = false;
-                    }
-
-                    boolean matchesSection = true;
-                    if (section != null && !section.isBlank()
-                            && !section.strip().equalsIgnoreCase(listing.sectionName())) {
-                        matchesSection = false;
-                    }
-
-                    if (matchesPrice && matchesSection) {
+                    if (matchesFilters(listing, minPrice, maxPrice, section)) {
                         allListings.add(listing);
                     }
                 }
@@ -191,6 +177,21 @@ public class EventTools {
             log.error("Error finding tickets: {}", e.getMessage(), e);
             return errorJson("Failed to find tickets: " + e.getMessage());
         }
+    }
+
+    private boolean matchesFilters(ListingDto listing, BigDecimal minPrice,
+                                   BigDecimal maxPrice, String section) {
+        if (minPrice != null && listing.computedPrice().compareTo(minPrice) < 0) {
+            return false;
+        }
+        if (maxPrice != null && listing.computedPrice().compareTo(maxPrice) > 0) {
+            return false;
+        }
+        if (section != null && !section.isBlank()
+                && !section.strip().equalsIgnoreCase(listing.sectionName())) {
+            return false;
+        }
+        return true;
     }
 
     private String errorJson(String message) {

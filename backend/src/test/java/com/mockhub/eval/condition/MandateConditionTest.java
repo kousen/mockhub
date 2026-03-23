@@ -141,17 +141,18 @@ class MandateConditionTest {
     @Test
     @DisplayName("evaluate determines BROWSE scope when orderTotal is null")
     void evaluate_givenNullOrderTotal_usesBrowseScope() {
-        EvalContext context = EvalContext.forAgentAction("agent-1", "user@example.com",
+        EvalContext context = EvalContext.forAgentAction("agent-2", "other@example.com",
                 null, null, null, null);
         Mandate mandate = new Mandate();
-        mandate.setMandateId("m1");
+        mandate.setMandateId("m2");
         mandate.setScope("BROWSE");
-        when(mandateService.getActiveMandate("agent-1", "user@example.com")).thenReturn(mandate);
-        when(mandateService.validateAction(eq("agent-1"), eq("user@example.com"),
+        when(mandateService.getActiveMandate("agent-2", "other@example.com")).thenReturn(mandate);
+        when(mandateService.validateAction(eq("agent-2"), eq("other@example.com"),
                 eq("BROWSE"), any(), any(), any())).thenReturn(true);
 
         EvalResult result = condition.evaluate(context);
 
         assertThat(result.passed()).isTrue();
+        assertThat(result.conditionName()).isEqualTo("mandate-authorization");
     }
 }

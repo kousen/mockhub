@@ -39,6 +39,7 @@ public class ListingService {
     private static final String STATUS_CANCELLED = "CANCELLED";
     private static final String TICKET_AVAILABLE = "AVAILABLE";
     private static final String TICKET_LISTED = "LISTED";
+    private static final String LISTING_RESOURCE = "Listing";
 
     private final ListingRepository listingRepository;
     private final TicketRepository ticketRepository;
@@ -72,7 +73,7 @@ public class ListingService {
     @Transactional(readOnly = true)
     public ListingDto getListingById(Long listingId) {
         Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new ResourceNotFoundException("Listing", "id", listingId));
+                .orElseThrow(() -> new ResourceNotFoundException(LISTING_RESOURCE, "id", listingId));
         return toListingDto(listing);
     }
 

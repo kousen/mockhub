@@ -21,6 +21,7 @@ import com.mockhub.event.service.EventService;
 import com.mockhub.ticket.dto.ListingDto;
 import com.mockhub.ticket.service.ListingService;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -358,7 +359,7 @@ class EventToolsTest {
 
         String result = eventTools.findTickets("nonexistent", null, null, null, null, null, null);
 
-        assertTrue(result.equals("[]"), "Result should be an empty JSON array");
+        assertEquals("[]", result, "Result should be an empty JSON array");
     }
 
     @Test

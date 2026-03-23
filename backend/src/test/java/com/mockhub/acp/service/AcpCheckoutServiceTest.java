@@ -66,7 +66,7 @@ class AcpCheckoutServiceTest {
         testUser.setEmail("buyer@test.com");
 
         List<OrderItemDto> orderItems = List.of(
-                new OrderItemDto(1L, 100L, "Test Concert", "test-concert",
+                new OrderItemDto(1L, 10L, 100L, "Test Concert", "test-concert",
                         "Floor", "A", "1", "GENERAL", new BigDecimal("50.00"))
         );
 
@@ -96,7 +96,7 @@ class AcpCheckoutServiceTest {
         );
 
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
-        when(cartService.addToCart(eq(testUser), eq(10L))).thenReturn(
+        when(cartService.addToCart(testUser, 10L)).thenReturn(
                 new CartDto(1L, 1L, List.of(), BigDecimal.ZERO, 1, null));
         when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), eq("idem-123")))
                 .thenReturn(testOrderDto);

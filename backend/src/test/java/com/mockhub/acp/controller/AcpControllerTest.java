@@ -14,7 +14,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.mockhub.acp.AcpApiKeyFilter;
-import com.mockhub.acp.dto.AcpCatalogItem;
 import com.mockhub.acp.dto.AcpCheckoutResponse;
 import com.mockhub.acp.dto.AcpLineItemResponse;
 import com.mockhub.acp.dto.AcpPricing;
@@ -23,20 +22,13 @@ import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
-import com.mockhub.common.dto.PagedResponse;
-import com.mockhub.common.exception.ConflictException;
-import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.config.SecurityConfig;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AcpController.class)
@@ -58,8 +50,6 @@ class AcpControllerTest {
     @MockitoBean
     private UserDetailsServiceImpl userDetailsService;
 
-    private static final String API_KEY = "";
-
     @Test
     @DisplayName("POST /acp/v1/checkout - missing API key - returns 401")
     void createCheckout_missingApiKey_returns401() throws Exception {
@@ -75,15 +65,12 @@ class AcpControllerTest {
     }
 
     @Test
-    @DisplayName("POST /acp/v1/checkout - valid request - returns 201")
-    void createCheckout_validRequest_returns201() throws Exception {
+    @DisplayName("POST /acp/v1/checkout - valid request - returns 401 (API key not configured)")
+    void createCheckout_validRequest_returns401() throws Exception {
         AcpCheckoutResponse response = createTestResponse("CREATED");
 
         when(acpCheckoutService.createCheckout(any())).thenReturn(response);
 
-        // Note: AcpApiKeyFilter requires a configured key. Since we inject it with
-        // empty default, unauthenticated requests return 401. This test verifies
-        // that the controller is wired correctly by expecting 401 (API key not configured).
         mockMvc.perform(post("/acp/v1/checkout")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
