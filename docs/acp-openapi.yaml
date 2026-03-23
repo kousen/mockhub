@@ -1,0 +1,402 @@
+openapi: 3.1.0
+info:
+  title: MockHub ACP (Agentic Commerce Protocol)
+  description: |
+    ACP-compatible checkout API for MockHub, a secondary concert ticket marketplace.
+    Enables AI agents to discover events, create checkouts, and complete purchases
+    on behalf of users.
+
+    Authentication: All endpoints require an API key via the `X-API-Key` header.
+  version: 1.0.0
+  contact:
+    name: Kenneth Kousen
+    url: https://kousenit.com
+
+servers:
+  - url: https://mockhub-production.up.railway.app/acp/v1
+    description: Production
+  - url: http://localhost:8080/acp/v1
+    description: Local development
+
+security:
+  - apiKey: []
+
+paths:
+  /catalog:
+    get:
+      operationId: getCatalog
+      summary: Browse available events
+      description: |
+        Search and filter the event catalog. Returns events with pricing,
+        availability, and venue information. Use this to discover what
+        tickets are available before creating a checkout.
+      parameters:
+        - name: query
+          in: query
+          description: Search text to match event name or artist
+          schema:
+            type: string
+          example: jazz
+        - name: category
+          in: query
+          description: Category slug to filter by
+          schema:
+            type: string
+          example: jazz
+        - name: city
+          in: query
+          description: City name to filter by
+          schema:
+            type: string
+          example: Hartford
+        - name: page
+          in: query
+          description: Page number (0-based)
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: Page size
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated catalog of available events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPage'
+        '401':
+          description: Missing or invalid API key
+
+  /checkout:
+    post:
+      operationId: createCheckout
+      summary: Create a new checkout
+      description: |
+        Initialize a checkout session by selecting ticket listings to purchase.
+        This clears the buyer's cart, adds the specified listings, and creates
+        a pending order. The checkout must be completed or cancelled separately.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+            example:
+              buyerEmail: buyer@example.com
+              lineItems:
+                - listingId: 42
+                  quantity: 1
+              paymentMethod: mock
+      responses:
+        '201':
+          description: Checkout created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+        '401':
+          description: Missing or invalid API key
+        '404':
+          description: Buyer email not found or listing not found
+
+  /checkout/{checkoutId}:
+    get:
+      operationId: getCheckout
+      summary: Get checkout status
+      description: Retrieve the current state of a checkout by its ID (order number).
+      parameters:
+        - $ref: '#/components/parameters/checkoutId'
+        - $ref: '#/components/parameters/buyerEmail'
+      responses:
+        '200':
+          description: Checkout details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+        '401':
+          description: Missing or invalid API key
+        '403':
+          description: Buyer does not own this checkout
+        '404':
+          description: Checkout not found
+
+    put:
+      operationId: updateCheckout
+      summary: Update a pending checkout
+      description: |
+        Modify a PENDING checkout by adding or removing line items.
+        Only works on checkouts with status CREATED (PENDING internally).
+        The existing order is cancelled and a new one is created with
+        the updated items.
+      parameters:
+        - $ref: '#/components/parameters/checkoutId'
+        - $ref: '#/components/parameters/buyerEmail'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRequest'
+      responses:
+        '200':
+          description: Checkout updated (new checkout ID in response)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+        '401':
+          description: Missing or invalid API key
+        '409':
+          description: Checkout is not in PENDING status
+
+  /checkout/{checkoutId}/complete:
+    post:
+      operationId: completeCheckout
+      summary: Complete a checkout
+      description: |
+        Finalize payment and confirm the order. Tickets are marked as SOLD,
+        and the buyer receives SMS and email notifications with scannable
+        QR code tickets.
+      parameters:
+        - $ref: '#/components/parameters/checkoutId'
+        - $ref: '#/components/parameters/buyerEmail'
+      responses:
+        '200':
+          description: Checkout completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+        '401':
+          description: Missing or invalid API key
+        '404':
+          description: Checkout not found
+
+  /checkout/{checkoutId}/cancel:
+    post:
+      operationId: cancelCheckout
+      summary: Cancel a checkout
+      description: |
+        Abort the checkout and release all reserved tickets back to
+        available inventory.
+      parameters:
+        - $ref: '#/components/parameters/checkoutId'
+        - $ref: '#/components/parameters/buyerEmail'
+      responses:
+        '200':
+          description: Checkout cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+        '401':
+          description: Missing or invalid API key
+        '404':
+          description: Checkout not found
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for agent authentication
+
+  parameters:
+    checkoutId:
+      name: checkoutId
+      in: path
+      required: true
+      description: Checkout ID (order number, e.g. MH-20260323-0001)
+      schema:
+        type: string
+      example: MH-20260323-0001
+    buyerEmail:
+      name: X-Buyer-Email
+      in: header
+      required: true
+      description: Email address of the buyer
+      schema:
+        type: string
+        format: email
+      example: buyer@example.com
+
+  schemas:
+    CheckoutRequest:
+      type: object
+      required:
+        - buyerEmail
+        - lineItems
+      properties:
+        buyerEmail:
+          type: string
+          format: email
+          description: Email of the registered buyer
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+          minItems: 1
+        paymentMethod:
+          type: string
+          description: Payment method (default "mock")
+          default: mock
+        idempotencyKey:
+          type: string
+          description: Unique key to prevent duplicate checkouts
+        mandateId:
+          type: string
+          description: Optional mandate ID for authorized agent purchases
+
+    LineItem:
+      type: object
+      required:
+        - listingId
+      properties:
+        listingId:
+          type: integer
+          format: int64
+          description: ID of the ticket listing to purchase
+        quantity:
+          type: integer
+          default: 1
+          description: Always 1 for tickets
+
+    UpdateRequest:
+      type: object
+      properties:
+        addItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItem'
+          description: Listings to add to the checkout
+        removeListingIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+          description: Listing IDs to remove from the checkout
+
+    CheckoutResponse:
+      type: object
+      properties:
+        checkoutId:
+          type: string
+          description: Checkout identifier (order number)
+          example: MH-20260323-0001
+        status:
+          type: string
+          enum: [CREATED, COMPLETED, CANCELLED]
+          description: |
+            CREATED = pending payment,
+            COMPLETED = paid and confirmed,
+            CANCELLED = aborted
+        buyerEmail:
+          type: string
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemResponse'
+        pricing:
+          $ref: '#/components/schemas/Pricing'
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    LineItemResponse:
+      type: object
+      properties:
+        listingId:
+          type: integer
+          format: int64
+        eventName:
+          type: string
+        eventSlug:
+          type: string
+        section:
+          type: string
+        row:
+          type: string
+          nullable: true
+        seat:
+          type: string
+          nullable: true
+        unitPrice:
+          type: number
+          format: decimal
+        quantity:
+          type: integer
+
+    Pricing:
+      type: object
+      properties:
+        subtotal:
+          type: number
+          format: decimal
+        serviceFee:
+          type: number
+          format: decimal
+          description: 10% service fee
+        total:
+          type: number
+          format: decimal
+        currency:
+          type: string
+          default: USD
+
+    CatalogItem:
+      type: object
+      properties:
+        productId:
+          type: string
+          description: Event slug (unique identifier)
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        venue:
+          type: string
+        city:
+          type: string
+        eventDate:
+          type: string
+          format: date-time
+        minPrice:
+          type: number
+          format: decimal
+        maxPrice:
+          type: number
+          format: decimal
+        availableTickets:
+          type: integer
+        url:
+          type: string
+          description: Relative URL to event page
+
+    CatalogPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogItem'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
