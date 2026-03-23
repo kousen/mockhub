@@ -52,7 +52,20 @@ if [ -d /usr/lib/jvm/java-25-openjdk-amd64 ]; then
 fi
 
 echo "Java: $(java -version 2>&1 | grep -oP 'openjdk version \"\K[^"]+')"
-command -v gh &> /dev/null && echo "gh: $(gh --version 2>&1 | head -1)"
+
+# Authenticate gh if a token is available and gh is not already logged in
+if command -v gh &> /dev/null; then
+  if ! gh auth status &> /dev/null; then
+    GH_AUTH_TOKEN="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+    if [ -n "$GH_AUTH_TOKEN" ]; then
+      echo "$GH_AUTH_TOKEN" | gh auth login --with-token 2>/dev/null && echo "gh: authenticated" || echo "gh: auth failed (non-fatal)"
+    else
+      echo "gh: installed but no GITHUB_TOKEN or GH_TOKEN found for auth"
+    fi
+  else
+    echo "gh: already authenticated"
+  fi
+fi
 
 # ──────────────────────────────────────────────
 # 3. Frontend dependencies
