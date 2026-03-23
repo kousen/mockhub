@@ -152,7 +152,7 @@ class CartToolsTest {
             CartDto cartDto = new CartDto(null, null, null, null, 0, null);
             when(cartService.addToCart(testUser, 42L)).thenReturn(cartDto);
 
-            String result = cartTools.addToCart("buyer@example.com", 42L);
+            String result = cartTools.addToCart("buyer@example.com", 42L, null);
 
             verify(cartService).addToCart(testUser, 42L);
             assertTrue(!result.contains("\"error\""), "Result should not contain error field");
@@ -161,7 +161,7 @@ class CartToolsTest {
         @Test
         @DisplayName("given null listing ID - returns error JSON")
         void givenNullListingId_returnsErrorJson() {
-            String result = cartTools.addToCart("buyer@example.com", null);
+            String result = cartTools.addToCart("buyer@example.com", null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Listing ID is required"), "Result should indicate listing ID is required");
@@ -174,7 +174,7 @@ class CartToolsTest {
             when(evalRunner.evaluate(any(EvalContext.class)))
                     .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
 
-            String result = cartTools.addToCart(null, 42L);
+            String result = cartTools.addToCart(null, 42L, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
         }
@@ -189,7 +189,7 @@ class CartToolsTest {
             when(cartService.addToCart(testUser, 42L))
                     .thenThrow(new RuntimeException("Listing already in cart"));
 
-            String result = cartTools.addToCart("buyer@example.com", 42L);
+            String result = cartTools.addToCart("buyer@example.com", 42L, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to add to cart"), "Result should contain failure message");
@@ -204,7 +204,7 @@ class CartToolsTest {
                             EvalResult.fail("event-in-future", EvalSeverity.CRITICAL,
                                     "Event has already occurred"))));
 
-            String result = cartTools.addToCart("buyer@example.com", 42L);
+            String result = cartTools.addToCart("buyer@example.com", 42L, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Cannot add to cart"), "Result should indicate eval blocked the action");

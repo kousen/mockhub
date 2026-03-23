@@ -90,6 +90,29 @@ public class OrderTools {
         }
     }
 
+    @Tool(description = "Confirm a pending order, completing the purchase. "
+            + "In mock-payment mode, this transitions the order from PENDING to CONFIRMED. "
+            + "Returns the updated order with confirmation details.")
+    public String confirmOrder(
+            @ToolParam(description = "User's email address", required = true) String userEmail,
+            @ToolParam(description = "Order number (e.g. 'MH-20260319-0001')", required = true) String orderNumber) {
+        try {
+            if (orderNumber == null || orderNumber.isBlank()) {
+                return errorJson("Order number is required");
+            }
+            User user = resolveUser(userEmail);
+            String trimmedOrderNumber = orderNumber.strip();
+            // Verify ownership before confirming — getOrder throws UnauthorizedException if mismatch
+            orderService.getOrder(user, trimmedOrderNumber);
+            orderService.confirmOrder(trimmedOrderNumber);
+            OrderDto order = orderService.getOrder(user, trimmedOrderNumber);
+            return objectMapper.writeValueAsString(order);
+        } catch (Exception e) {
+            log.error("Error confirming order '{}' for '{}': {}", orderNumber, userEmail, e.getMessage(), e);
+            return errorJson("Failed to confirm order: " + e.getMessage());
+        }
+    }
+
     private User resolveUser(String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("User email is required");

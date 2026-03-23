@@ -39,6 +39,7 @@ public class ListingService {
     private static final String STATUS_CANCELLED = "CANCELLED";
     private static final String TICKET_AVAILABLE = "AVAILABLE";
     private static final String TICKET_LISTED = "LISTED";
+    private static final String LISTING_RESOURCE = "Listing";
 
     private final ListingRepository listingRepository;
     private final TicketRepository ticketRepository;
@@ -67,6 +68,13 @@ public class ListingService {
         return listings.stream()
                 .map(this::toListingDto)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ListingDto getListingById(Long listingId) {
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ResourceNotFoundException(LISTING_RESOURCE, "id", listingId));
+        return toListingDto(listing);
     }
 
     @Transactional(readOnly = true)
@@ -192,7 +200,7 @@ public class ListingService {
         User seller = resolveUser(userEmail);
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Listing", "id", listingId));
+                        LISTING_RESOURCE, "id", listingId));
 
         verifyOwnership(listing, seller);
 
@@ -216,7 +224,7 @@ public class ListingService {
         User seller = resolveUser(userEmail);
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Listing", "id", listingId));
+                        LISTING_RESOURCE, "id", listingId));
 
         verifyOwnership(listing, seller);
 

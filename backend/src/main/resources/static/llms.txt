@@ -75,6 +75,44 @@ Deterministic checks verify domain invariants (event in future, listing active, 
 AI-as-judge checks verify response grounding (no fabricated events, prices, or dates).
 Eval results are logged for observability. Critical eval failures may block agent actions.
 
+## MCP Tools (requires API key: X-API-Key header)
+MockHub exposes MCP tools for AI agents at /mcp/**:
+- searchEvents(query, category, city, page, size) — search and filter events
+- getEventDetail(slug) — full event details
+- getEventListings(slug) — active listings for an event
+- getFeaturedEvents() — curated featured events
+- getListingDetail(listingId) — single listing by ID
+- findTickets(query, category, city, minPrice, maxPrice, section, maxResults) — compound search returning matching listings across events
+- getPriceHistory(eventSlug) — historical price snapshots
+- getPricePrediction(eventSlug) — AI price forecast (requires AI provider)
+- getCart(userEmail) — current cart contents
+- addToCart(userEmail, listingId) — add listing to cart (eval-gated)
+- removeFromCart(userEmail, itemId) — remove cart item
+- clearCart(userEmail) — empty cart
+- checkout(userEmail, paymentMethod) — create order from cart
+- confirmOrder(userEmail, orderNumber) — confirm a pending order
+- getOrder(userEmail, orderNumber) — order details
+- listOrders(userEmail, page, size) — order history
+- createMandate(agentId, userEmail, scope, maxSpendPerTransaction, maxSpendTotal, allowedCategories, allowedEvents, expiresAt) — authorize agent actions
+- revokeMandate(mandateId) — revoke agent authorization
+- listMandates(userEmail) — list active mandates
+- validateMandate(agentId, userEmail, scope, amount) — check if action is authorized
+
+## ACP Endpoints (Agentic Commerce Protocol, requires API key: X-API-Key header)
+ACP-compatible checkout endpoints at /acp/v1/:
+POST /acp/v1/checkout — Create checkout. JSON body: {"buyerEmail", "lineItems": [{"listingId", "quantity"}], "paymentMethod", "idempotencyKey", "mandateId"}
+GET /acp/v1/checkout/{checkoutId} — Get checkout status. Header: X-Buyer-Email
+PUT /acp/v1/checkout/{checkoutId} — Update checkout (PENDING only). JSON body: {"addItems", "removeListingIds"}. Header: X-Buyer-Email
+POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. Header: X-Buyer-Email
+POST /acp/v1/checkout/{checkoutId}/cancel — Cancel checkout. Header: X-Buyer-Email
+GET /acp/v1/catalog — Browse product catalog. Query params: query, category, city, page, size
+
+## Agent Mandates
+Mandates define what an agent is authorized to do on behalf of a user.
+Scope: BROWSE (read-only) or PURCHASE (can buy, subsumes BROWSE).
+Limits: per-transaction max, cumulative total budget, category/event restrictions, expiration.
+Managed via MCP MandateTools or directly via mandate service.
+
 ## Content Types
 Request: application/json
 Response: application/json

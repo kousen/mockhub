@@ -23,6 +23,7 @@ import com.mockhub.order.service.OrderService;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -120,6 +121,91 @@ class OrderToolsTest {
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to checkout"), "Result should contain failure message");
+        }
+    }
+
+    @Nested
+    @DisplayName("confirmOrder")
+    class ConfirmOrder {
+
+        @Test
+        @DisplayName("given valid email and order number - confirms and returns order JSON")
+        void givenValidEmailAndOrderNumber_confirmsAndReturnsOrderJson() {
+            stubUserLookup("buyer@example.com");
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
+
+            String result = orderTools.confirmOrder("buyer@example.com", "MH-20260319-0001");
+
+            verify(orderService).confirmOrder("MH-20260319-0001");
+            // getOrder called twice: once for ownership check, once to return the confirmed order
+            verify(orderService, times(2)).getOrder(testUser, "MH-20260319-0001");
+            assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given null order number - returns error JSON")
+        void givenNullOrderNumber_returnsErrorJson() {
+            String result = orderTools.confirmOrder("buyer@example.com", null);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Order number is required"),
+                    "Result should indicate order number is required");
+        }
+
+        @Test
+        @DisplayName("given blank order number - returns error JSON")
+        void givenBlankOrderNumber_returnsErrorJson() {
+            String result = orderTools.confirmOrder("buyer@example.com", "   ");
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+        }
+
+        @Test
+        @DisplayName("given order number with whitespace - strips whitespace before lookup")
+        void givenOrderNumberWithWhitespace_stripsWhitespace() {
+            stubUserLookup("buyer@example.com");
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
+
+            orderTools.confirmOrder("buyer@example.com", "  MH-20260319-0001  ");
+
+            verify(orderService).confirmOrder("MH-20260319-0001");
+            verify(orderService, times(2)).getOrder(testUser, "MH-20260319-0001");
+        }
+
+        @Test
+        @DisplayName("given null email - returns error JSON")
+        void givenNullEmail_returnsErrorJson() {
+            String result = orderTools.confirmOrder(null, "MH-20260319-0001");
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+        }
+
+        @Test
+        @DisplayName("given unknown user email - returns error JSON")
+        void givenUnknownUserEmail_returnsErrorJson() {
+            when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+            String result = orderTools.confirmOrder("unknown@example.com", "MH-20260319-0001");
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Failed to confirm order"), "Result should contain failure message");
+        }
+
+        @Test
+        @DisplayName("given service throws exception - returns error JSON")
+        void givenServiceThrowsException_returnsErrorJson() {
+            stubUserLookup("buyer@example.com");
+            org.mockito.Mockito.doThrow(new RuntimeException("Order not found"))
+                    .when(orderService).confirmOrder("MH-INVALID");
+
+            String result = orderTools.confirmOrder("buyer@example.com", "MH-INVALID");
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Failed to confirm order"), "Result should contain failure message");
         }
     }
 

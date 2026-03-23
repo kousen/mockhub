@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 
 import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
+import com.mockhub.mcp.tools.MandateTools;
 import com.mockhub.mcp.tools.OrderTools;
 import com.mockhub.mcp.tools.PricingTools;
 
@@ -19,9 +20,10 @@ public class McpConfig {
     public ToolCallbackProvider mcpToolCallbackProvider(EventTools eventTools,
                                                        PricingTools pricingTools,
                                                        CartTools cartTools,
-                                                       OrderTools orderTools) {
+                                                       OrderTools orderTools,
+                                                       MandateTools mandateTools) {
         return MethodToolCallbackProvider.builder()
-                .toolObjects(eventTools, pricingTools, cartTools, orderTools)
+                .toolObjects(eventTools, pricingTools, cartTools, orderTools, mandateTools)
                 .build();
     }
 }

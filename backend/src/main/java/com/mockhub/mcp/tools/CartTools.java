@@ -56,10 +56,13 @@ public class CartTools {
     }
 
     @Tool(description = "Add a ticket listing to a user's shopping cart. "
-            + "The listing must be active and not already in the cart. Cart expires after 15 minutes.")
+            + "The listing must be active and not already in the cart. Cart expires after 15 minutes. "
+            + "If agentId is provided, mandate authorization is checked.")
     public String addToCart(
             @ToolParam(description = "User's email address", required = true) String userEmail,
-            @ToolParam(description = "ID of the listing to add to cart", required = true) Long listingId) {
+            @ToolParam(description = "ID of the listing to add to cart", required = true) Long listingId,
+            @ToolParam(description = "Agent ID for mandate authorization (optional)",
+                    required = false) String agentId) {
         try {
             if (listingId == null) {
                 return errorJson("Listing ID is required");
@@ -68,7 +71,15 @@ public class CartTools {
             java.util.Optional<Listing> listingOpt = listingRepository.findById(listingId);
             if (listingOpt.isPresent()) {
                 Listing listing = listingOpt.get();
-                EvalContext evalContext = EvalContext.forEventAndListing(listing.getEvent(), listing);
+                EvalContext evalContext;
+                if (agentId != null && !agentId.isBlank()) {
+                    String categorySlug = listing.getEvent().getCategory() != null
+                            ? listing.getEvent().getCategory().getSlug() : null;
+                    evalContext = EvalContext.forAgentAction(agentId.strip(), userEmail,
+                            listing.getEvent(), listing, listing.getComputedPrice(), categorySlug);
+                } else {
+                    evalContext = EvalContext.forEventAndListing(listing.getEvent(), listing);
+                }
                 EvalSummary evalSummary = evalRunner.evaluate(evalContext);
                 if (evalSummary.hasCriticalFailure()) {
                     String failureMessage = evalSummary.failures().stream()
@@ -80,8 +91,19 @@ public class CartTools {
             }
 
             User user = resolveUser(userEmail);
-            CartDto cart = cartService.addToCart(user, listingId);
-            return objectMapper.writeValueAsString(cart);
+            CartDto cartDto = cartService.addToCart(user, listingId);
+
+            EvalContext cartContext = EvalContext.forCart(cartDto);
+            EvalSummary cartEval = evalRunner.evaluate(cartContext);
+            if (!cartEval.allPassed()) {
+                String warnings = cartEval.failures().stream()
+                        .map(r -> r.conditionName() + ": " + r.message())
+                        .collect(java.util.stream.Collectors.joining("; "));
+                String cartJson = objectMapper.writeValueAsString(cartDto);
+                return "{\"cart\": " + cartJson + ", \"warnings\": \"" + warnings.replace("\"", "'") + "\"}";
+            }
+
+            return objectMapper.writeValueAsString(cartDto);
         } catch (Exception e) {
             log.error("Error adding listing {} to cart for '{}': {}", listingId, userEmail, e.getMessage(), e);
             return errorJson("Failed to add to cart: " + e.getMessage());
