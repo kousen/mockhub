@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.mockhub.acp.dto.AcpCatalogItem;
 import com.mockhub.acp.dto.AcpCheckoutRequest;
 import com.mockhub.acp.dto.AcpCheckoutResponse;
 import com.mockhub.acp.dto.AcpLineItem;
@@ -21,8 +22,11 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
 import com.mockhub.cart.service.CartService;
+import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
+import com.mockhub.event.dto.EventSearchRequest;
+import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
@@ -35,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -245,5 +250,271 @@ class AcpCheckoutServiceTest {
         assertEquals("MH-20260323-0001", response.checkoutId());
         assertEquals("CREATED", response.status());
         assertEquals("buyer@test.com", response.buyerEmail());
+    }
+
+    @Test
+    @DisplayName("updateCheckout - pending order with add and remove - preserves kept items and adds new")
+    void updateCheckout_pendingOrderWithAddAndRemove_preservesKeptItemsAndAddsNew() {
+        List<OrderItemDto> existingItems = List.of(
+                new OrderItemDto(1L, 10L, 100L, "Concert A", "concert-a",
+                        "Floor", "A", "1", "GENERAL", new BigDecimal("50.00")),
+                new OrderItemDto(2L, 20L, 200L, "Concert B", "concert-b",
+                        "Balcony", "B", "2", "GENERAL", new BigDecimal("60.00"))
+        );
+        OrderDto pendingOrder = new OrderDto(
+                1L, "MH-20260323-0001", "PENDING",
+                new BigDecimal("110.00"), new BigDecimal("11.00"), new BigDecimal("121.00"),
+                "mock", null, Instant.now(), existingItems);
+
+        OrderDto newOrder = new OrderDto(
+                2L, "MH-20260323-0002", "PENDING",
+                new BigDecimal("80.00"), new BigDecimal("8.00"), new BigDecimal("88.00"),
+                "mock", null, Instant.now(), List.of(
+                new OrderItemDto(1L, 10L, 100L, "Concert A", "concert-a",
+                        "Floor", "A", "1", "GENERAL", new BigDecimal("50.00")),
+                new OrderItemDto(3L, 30L, 300L, "Concert C", "concert-c",
+                        "VIP", "C", "3", "GENERAL", new BigDecimal("30.00"))
+        ));
+
+        AcpUpdateRequest updateRequest = new AcpUpdateRequest(
+                List.of(new AcpLineItem(30L, 1)),
+                List.of(20L)
+        );
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(pendingOrder);
+        when(cartService.addToCart(eq(testUser), any(Long.class))).thenReturn(
+                new CartDto(1L, 1L, List.of(), BigDecimal.ZERO, 2, null));
+        when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), eq(null)))
+                .thenReturn(newOrder);
+
+        AcpCheckoutResponse response = acpCheckoutService.updateCheckout(
+                "MH-20260323-0001", updateRequest, "buyer@test.com");
+
+        assertNotNull(response);
+        assertEquals("MH-20260323-0002", response.checkoutId());
+        verify(orderService).failOrder("MH-20260323-0001");
+        verify(cartService).clearCart(testUser);
+        // Kept listing 10L (not in removeListingIds), removed listing 20L
+        verify(cartService).addToCart(testUser, 10L);
+        // Added new listing 30L
+        verify(cartService).addToCart(testUser, 30L);
+    }
+
+    @Test
+    @DisplayName("updateCheckout - pending order with null removeListingIds - keeps all existing items")
+    void updateCheckout_pendingOrderWithNullRemoveListingIds_keepsAllExistingItems() {
+        AcpUpdateRequest updateRequest = new AcpUpdateRequest(
+                List.of(new AcpLineItem(30L, 1)),
+                null
+        );
+
+        OrderDto newOrder = new OrderDto(
+                2L, "MH-20260323-0002", "PENDING",
+                new BigDecimal("100.00"), new BigDecimal("10.00"), new BigDecimal("110.00"),
+                "mock", null, Instant.now(), testOrderDto.items());
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
+        when(cartService.addToCart(eq(testUser), any(Long.class))).thenReturn(
+                new CartDto(1L, 1L, List.of(), BigDecimal.ZERO, 2, null));
+        when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), eq(null)))
+                .thenReturn(newOrder);
+
+        AcpCheckoutResponse response = acpCheckoutService.updateCheckout(
+                "MH-20260323-0001", updateRequest, "buyer@test.com");
+
+        assertNotNull(response);
+        verify(orderService).failOrder("MH-20260323-0001");
+        // Original item 10L is kept
+        verify(cartService).addToCart(testUser, 10L);
+        // New item 30L is added
+        verify(cartService).addToCart(testUser, 30L);
+    }
+
+    @Test
+    @DisplayName("updateCheckout - pending order with null addItems - only keeps existing items minus removals")
+    void updateCheckout_pendingOrderWithNullAddItems_onlyKeepsExistingItems() {
+        AcpUpdateRequest updateRequest = new AcpUpdateRequest(null, null);
+
+        OrderDto newOrder = new OrderDto(
+                2L, "MH-20260323-0002", "PENDING",
+                new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
+                "mock", null, Instant.now(), testOrderDto.items());
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
+        when(cartService.addToCart(eq(testUser), any(Long.class))).thenReturn(
+                new CartDto(1L, 1L, List.of(), BigDecimal.ZERO, 1, null));
+        when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), eq(null)))
+                .thenReturn(newOrder);
+
+        AcpCheckoutResponse response = acpCheckoutService.updateCheckout(
+                "MH-20260323-0001", updateRequest, "buyer@test.com");
+
+        assertNotNull(response);
+        verify(cartService).addToCart(testUser, 10L);
+    }
+
+    @Test
+    @DisplayName("getCatalog - given events exist - returns catalog items")
+    void getCatalog_givenEventsExist_returnsCatalogItems() {
+        EventSummaryDto event = new EventSummaryDto(
+                1L, "Rock Festival", "rock-festival", "Band A",
+                "Madison Square Garden", "NYC", Instant.now(),
+                new BigDecimal("75.00"), 50, null, "rock", true);
+        PagedResponse<EventSummaryDto> eventPage = new PagedResponse<>(
+                List.of(event), 0, 20, 1, 1);
+
+        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventPage);
+
+        PagedResponse<AcpCatalogItem> result = acpCheckoutService.getCatalog(
+                "rock", "rock", "NYC", 0, 20);
+
+        assertNotNull(result);
+        assertEquals(1, result.content().size());
+        AcpCatalogItem item = result.content().getFirst();
+        assertEquals("rock-festival", item.productId());
+        assertEquals("Rock Festival", item.name());
+        assertEquals("Band A", item.description());
+        assertEquals("rock", item.category());
+        assertEquals("Madison Square Garden", item.venue());
+        assertEquals("NYC", item.city());
+        assertEquals(new BigDecimal("75.00"), item.minPrice());
+        assertEquals(50, item.availableTickets());
+        assertEquals("/events/rock-festival", item.url());
+    }
+
+    @Test
+    @DisplayName("getCatalog - given no events - returns empty catalog")
+    void getCatalog_givenNoEvents_returnsEmptyCatalog() {
+        PagedResponse<EventSummaryDto> emptyPage = new PagedResponse<>(
+                List.of(), 0, 20, 0, 0);
+
+        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(emptyPage);
+
+        PagedResponse<AcpCatalogItem> result = acpCheckoutService.getCatalog(
+                null, null, null, 0, 20);
+
+        assertNotNull(result);
+        assertEquals(0, result.content().size());
+        assertEquals(0, result.totalElements());
+    }
+
+    @Test
+    @DisplayName("getCatalog - given event with null artistName - uses event name as description")
+    void getCatalog_givenEventWithNullArtistName_usesEventNameAsDescription() {
+        EventSummaryDto event = new EventSummaryDto(
+                1L, "Sports Game", "sports-game", null,
+                "Stadium", "Chicago", Instant.now(),
+                new BigDecimal("100.00"), 200, null, "sports", false);
+        PagedResponse<EventSummaryDto> eventPage = new PagedResponse<>(
+                List.of(event), 0, 20, 1, 1);
+
+        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventPage);
+
+        PagedResponse<AcpCatalogItem> result = acpCheckoutService.getCatalog(
+                null, null, null, 0, 20);
+
+        assertNotNull(result);
+        assertEquals("Sports Game", result.content().getFirst().description());
+    }
+
+    @Test
+    @DisplayName("resolveUser - given null email - throws IllegalArgumentException")
+    void resolveUser_givenNullEmail_throwsIllegalArgumentException() {
+        AcpCheckoutRequest request = new AcpCheckoutRequest(
+                null,
+                List.of(new AcpLineItem(10L, 1)),
+                null, null, null);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                acpCheckoutService.createCheckout(request));
+    }
+
+    @Test
+    @DisplayName("resolveUser - given blank email - throws IllegalArgumentException")
+    void resolveUser_givenBlankEmail_throwsIllegalArgumentException() {
+        AcpCheckoutRequest request = new AcpCheckoutRequest(
+                "   ",
+                List.of(new AcpLineItem(10L, 1)),
+                null, null, null);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                acpCheckoutService.createCheckout(request));
+    }
+
+    @Test
+    @DisplayName("cancelCheckout - returns correct line item details")
+    void cancelCheckout_returnsCorrectLineItemDetails() {
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
+
+        AcpCheckoutResponse response = acpCheckoutService.cancelCheckout(
+                "MH-20260323-0001", "buyer@test.com");
+
+        assertEquals(1, response.lineItems().size());
+        assertEquals(10L, response.lineItems().getFirst().listingId());
+        assertEquals("Test Concert", response.lineItems().getFirst().eventName());
+        assertEquals("test-concert", response.lineItems().getFirst().eventSlug());
+        assertEquals("Floor", response.lineItems().getFirst().section());
+        assertEquals("A", response.lineItems().getFirst().row());
+        assertEquals("1", response.lineItems().getFirst().seat());
+        assertEquals(new BigDecimal("50.00"), response.lineItems().getFirst().unitPrice());
+        assertEquals(new BigDecimal("55.00"), response.pricing().total());
+        assertEquals("USD", response.pricing().currency());
+    }
+
+    @Test
+    @DisplayName("completeCheckout - maps CONFIRMED status to COMPLETED")
+    void completeCheckout_mapsConfirmedStatusToCompleted() {
+        OrderDto confirmedOrder = new OrderDto(
+                1L, "MH-20260323-0001", "CONFIRMED",
+                new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
+                "mock", Instant.now(), Instant.now(), testOrderDto.items());
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001"))
+                .thenReturn(testOrderDto)
+                .thenReturn(confirmedOrder);
+
+        AcpCheckoutResponse response = acpCheckoutService.completeCheckout(
+                "MH-20260323-0001", "buyer@test.com");
+
+        assertEquals("COMPLETED", response.status());
+    }
+
+    @Test
+    @DisplayName("getCheckout - maps FAILED status to CANCELLED")
+    void getCheckout_mapsFailedStatusToCancelled() {
+        OrderDto failedOrder = new OrderDto(
+                1L, "MH-20260323-0001", "FAILED",
+                new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
+                "mock", null, Instant.now(), testOrderDto.items());
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(failedOrder);
+
+        AcpCheckoutResponse response = acpCheckoutService.getCheckout(
+                "MH-20260323-0001", "buyer@test.com");
+
+        assertEquals("CANCELLED", response.status());
+    }
+
+    @Test
+    @DisplayName("getCheckout - maps unknown status directly")
+    void getCheckout_mapsUnknownStatusDirectly() {
+        OrderDto unknownOrder = new OrderDto(
+                1L, "MH-20260323-0001", "PROCESSING",
+                new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
+                "mock", null, Instant.now(), testOrderDto.items());
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(unknownOrder);
+
+        AcpCheckoutResponse response = acpCheckoutService.getCheckout(
+                "MH-20260323-0001", "buyer@test.com");
+
+        assertEquals("PROCESSING", response.status());
     }
 }
