@@ -227,7 +227,7 @@ public class OrderService {
         }
 
         orderRepository.save(order);
-        log.info("Confirmed order {}", orderNumber);
+        log.info("Confirmed order {}", order.getOrderNumber());
 
         // Send order confirmation notification
         notificationService.createNotification(
@@ -312,7 +312,7 @@ public class OrderService {
         }
 
         orderRepository.save(order);
-        log.info("Failed order {}, released {} tickets", orderNumber, order.getItems().size());
+        log.info("Failed order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
     }
 
     @Transactional(readOnly = true)
