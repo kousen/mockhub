@@ -31,6 +31,7 @@ public class MandateTools {
     @Tool(description = "Create a new mandate granting an agent permission to act on behalf of a user. "
             + "Scope can be BROWSE (read-only) or PURCHASE (can buy tickets). "
             + "Spending limits and category/event restrictions are optional.")
+    @SuppressWarnings("java:S107") // MCP tool methods require separate params for each tool argument
     public String createMandate(
             @ToolParam(description = "ID of the agent being granted the mandate", required = true) String agentId,
             @ToolParam(description = "Email of the user granting the mandate", required = true) String userEmail,

@@ -120,7 +120,7 @@ public class AcpCheckoutService {
         CheckoutRequest checkoutRequest = new CheckoutRequest("mock");
         OrderDto newOrderDto = orderService.checkout(user, checkoutRequest, null);
 
-        log.info("ACP checkout updated: old={} new={}", checkoutId, newOrderDto.orderNumber());
+        log.info("ACP checkout updated, new order: {}", newOrderDto.orderNumber());
 
         return toAcpCheckoutResponse(newOrderDto, buyerEmail);
     }
@@ -135,7 +135,7 @@ public class AcpCheckoutService {
 
         OrderDto confirmedOrder = orderService.getOrder(user, checkoutId);
 
-        log.info("ACP checkout completed: {}", checkoutId);
+        log.info("ACP checkout completed: {}", confirmedOrder.orderNumber());
 
         return toAcpCheckoutResponse(confirmedOrder, buyerEmail);
     }
@@ -148,7 +148,7 @@ public class AcpCheckoutService {
 
         orderService.failOrder(checkoutId);
 
-        log.info("ACP checkout cancelled: {}", checkoutId);
+        log.info("ACP checkout cancelled: {}", orderDto.orderNumber());
 
         // Return response with CANCELLED status (failOrder sets FAILED internally,
         // but ACP uses CANCELLED terminology)

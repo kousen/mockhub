@@ -181,17 +181,11 @@ public class EventTools {
 
     private boolean matchesFilters(ListingDto listing, BigDecimal minPrice,
                                    BigDecimal maxPrice, String section) {
-        if (minPrice != null && listing.computedPrice().compareTo(minPrice) < 0) {
-            return false;
-        }
-        if (maxPrice != null && listing.computedPrice().compareTo(maxPrice) > 0) {
-            return false;
-        }
-        if (section != null && !section.isBlank()
-                && !section.strip().equalsIgnoreCase(listing.sectionName())) {
-            return false;
-        }
-        return true;
+        boolean priceAboveMin = minPrice == null || listing.computedPrice().compareTo(minPrice) >= 0;
+        boolean priceBelowMax = maxPrice == null || listing.computedPrice().compareTo(maxPrice) <= 0;
+        boolean sectionMatches = section == null || section.isBlank()
+                || section.strip().equalsIgnoreCase(listing.sectionName());
+        return priceAboveMin && priceBelowMax && sectionMatches;
     }
 
     private String errorJson(String message) {

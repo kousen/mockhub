@@ -200,7 +200,7 @@ public class ListingService {
         User seller = resolveUser(userEmail);
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Listing", "id", listingId));
+                        LISTING_RESOURCE, "id", listingId));
 
         verifyOwnership(listing, seller);
 
@@ -224,7 +224,7 @@ public class ListingService {
         User seller = resolveUser(userEmail);
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Listing", "id", listingId));
+                        LISTING_RESOURCE, "id", listingId));
 
         verifyOwnership(listing, seller);
 
