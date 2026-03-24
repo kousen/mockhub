@@ -7,7 +7,12 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.eval.dto.EvalResult;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
@@ -80,7 +85,7 @@ public class OrderTools {
             if (evalSummary.hasCriticalFailure()) {
                 String failureMessage = evalSummary.failures().stream()
                         .map(result -> result.conditionName() + ": " + result.message())
-                        .collect(java.util.stream.Collectors.joining("; "));
+                        .collect(Collectors.joining("; "));
                 return errorJson("Cannot checkout: " + failureMessage);
             }
             CheckoutRequest request = new CheckoutRequest(paymentMethod.strip());
@@ -162,34 +167,12 @@ public class OrderTools {
             if (evalSummary.hasCriticalFailure()) {
                 String failureMessage = evalSummary.failures().stream()
                         .map(result -> result.conditionName() + ": " + result.message())
-                        .collect(java.util.stream.Collectors.joining("; "));
+                        .collect(Collectors.joining("; "));
                 return errorJson("Cannot confirm order: " + failureMessage);
             }
 
-            String normalizedPaymentIntentId = normalize(paymentIntentId);
-            if (normalizedPaymentIntentId != null) {
-                order.setPaymentIntentId(normalizedPaymentIntentId);
-            }
-
-            String orderPaymentMethod = normalize(order.getPaymentMethod());
-            if ("mock".equalsIgnoreCase(orderPaymentMethod)) {
-                if (normalize(order.getPaymentIntentId()) == null) {
-                    PaymentIntentDto createdIntent = paymentService.createPaymentIntent(order);
-                    normalizedPaymentIntentId = createdIntent.paymentIntentId();
-                } else {
-                    normalizedPaymentIntentId = order.getPaymentIntentId();
-                }
-            } else {
-                if (normalizedPaymentIntentId == null) {
-                    normalizedPaymentIntentId = normalize(order.getPaymentIntentId());
-                }
-                if (normalizedPaymentIntentId == null) {
-                    throw new ConflictException(
-                            "Payment intent ID is required to confirm non-mock payment orders");
-                }
-            }
-
-            paymentService.confirmPayment(normalizedPaymentIntentId);
+            String resolvedPaymentIntentId = resolvePaymentIntentId(order, paymentIntentId);
+            paymentService.confirmPayment(resolvedPaymentIntentId);
             OrderDto confirmedOrder = orderService.getOrder(user, trimmedOrderNumber);
             return objectMapper.writeValueAsString(confirmedOrder);
         } catch (Exception e) {
@@ -226,9 +209,34 @@ public class OrderTools {
         return value.strip();
     }
 
+    private String resolvePaymentIntentId(Order order, String paymentIntentId) {
+        String normalizedPaymentIntentId = normalize(paymentIntentId);
+        if (normalizedPaymentIntentId != null) {
+            order.setPaymentIntentId(normalizedPaymentIntentId);
+        }
+
+        String orderPaymentMethod = normalize(order.getPaymentMethod());
+        if ("mock".equalsIgnoreCase(orderPaymentMethod)) {
+            if (normalize(order.getPaymentIntentId()) == null) {
+                PaymentIntentDto createdIntent = paymentService.createPaymentIntent(order);
+                return createdIntent.paymentIntentId();
+            }
+            return order.getPaymentIntentId();
+        }
+
+        if (normalizedPaymentIntentId == null) {
+            normalizedPaymentIntentId = normalize(order.getPaymentIntentId());
+        }
+        if (normalizedPaymentIntentId == null) {
+            throw new ConflictException(
+                    "Payment intent ID is required to confirm non-mock payment orders");
+        }
+        return normalizedPaymentIntentId;
+    }
+
     private EvalSummary revalidateOrderForConfirmation(Order order, String userEmail,
                                                        String agentId, String mandateId) {
-        java.util.List<com.mockhub.eval.dto.EvalResult> failures = new java.util.ArrayList<>();
+        List<EvalResult> failures = new ArrayList<>();
 
         for (OrderItem item : order.getItems()) {
             String categorySlug = item.getListing().getEvent().getCategory() != null

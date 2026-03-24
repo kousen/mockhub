@@ -95,8 +95,8 @@ public class OrderService {
         this.smsOrderBaseUrl = smsOrderBaseUrl;
     }
 
-    @Transactional
     public OrderDto checkout(User user, CheckoutRequest request, String idempotencyKey) {
+        // Delegates to the full overload — no @Transactional needed since the target method has it
         return checkout(user, request, idempotencyKey, null, null);
     }
 
@@ -334,7 +334,8 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
         if (STATUS_FAILED.equals(order.getStatus())) {
-            log.info("Order {} is already failed; skipping duplicate failure handling", orderNumber);
+            log.info("Order {} is already failed; skipping duplicate failure handling",
+                    order.getOrderNumber());
             return;
         }
 

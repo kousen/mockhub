@@ -3,7 +3,11 @@ package com.mockhub.acp.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +54,8 @@ public class AcpCheckoutService {
 
     private static final Logger log = LoggerFactory.getLogger(AcpCheckoutService.class);
     private static final String CURRENCY_USD = "USD";
+    private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String STATUS_CANCELLED = "CANCELLED";
 
     private final UserRepository userRepository;
     private final CartService cartService;
@@ -125,7 +131,7 @@ public class AcpCheckoutService {
         ensureOrderStillAuthorizedForConfirmation(order, user.getEmail(), request.agentId(), request.mandateId());
 
         // Collect listing IDs to remove
-        java.util.Set<Long> removeIds = new java.util.HashSet<>();
+        Set<Long> removeIds = new HashSet<>();
         if (request.removeListingIds() != null) {
             removeIds.addAll(request.removeListingIds());
         }
@@ -172,6 +178,15 @@ public class AcpCheckoutService {
         validateStoredAgentContext(order, request.agentId(), request.mandateId());
 
         String paymentIntentId = request.paymentIntentId();
+
+        // Prevent cross-checkout payment intent swapping: if the order already has a stored
+        // payment intent, the caller-supplied one must match it
+        String storedIntent = order.getPaymentIntentId();
+        if (storedIntent != null && paymentIntentId != null && !paymentIntentId.isBlank()
+                && !storedIntent.equals(paymentIntentId.strip())) {
+            throw new ConflictException("Payment intent does not belong to this checkout");
+        }
+
         if (paymentIntentId != null && !paymentIntentId.isBlank()) {
             order.setPaymentIntentId(paymentIntentId.strip());
         }
@@ -234,7 +249,7 @@ public class AcpCheckoutService {
 
         return new AcpCheckoutResponse(
                 orderDto.orderNumber(),
-                "CANCELLED",
+                STATUS_CANCELLED,
                 buyerEmail,
                 lineItems,
                 pricing,
@@ -247,7 +262,7 @@ public class AcpCheckoutService {
     public PagedResponse<AcpCatalogItem> getCatalog(String query, String category,
                                                      String city, int page, int size) {
         EventSearchRequest searchRequest = new EventSearchRequest(
-                query, category, null, city, null, null, null, null, "ACTIVE", "eventDate", page, size
+                query, category, null, city, null, null, null, null, STATUS_ACTIVE, "eventDate", page, size
         );
 
         PagedResponse<EventSummaryDto> eventPage = eventService.listEvents(searchRequest);
@@ -285,14 +300,14 @@ public class AcpCheckoutService {
         EventSearchRequest searchRequest = new EventSearchRequest(
                 query, category, null, city,
                 dateFrom, dateTo, minPrice, maxPrice,
-                "ACTIVE", "eventDate", 0, 100
+                STATUS_ACTIVE, "eventDate", 0, 100
         );
 
         PagedResponse<EventSummaryDto> eventPage = eventService.listEvents(searchRequest);
         List<AcpListingItem> allListings = new ArrayList<>();
 
         for (EventSummaryDto event : eventPage.content()) {
-            List<Listing> eventListings = listingRepository.findByEventIdAndStatus(event.id(), "ACTIVE");
+            List<Listing> eventListings = listingRepository.findByEventIdAndStatus(event.id(), STATUS_ACTIVE);
             for (Listing listing : eventListings) {
                 if (!matchesFilters(listing, minPrice, maxPrice, section)) {
                     continue;
@@ -325,7 +340,7 @@ public class AcpCheckoutService {
         }
 
         List<AcpListingItem> sortedListings = allListings.stream()
-                .sorted(java.util.Comparator.comparing(AcpListingItem::price))
+                .sorted(Comparator.comparing(AcpListingItem::price))
                 .toList();
 
         int safePage = Math.max(page, 0);
@@ -365,7 +380,7 @@ public class AcpCheckoutService {
         if (evalSummary.hasCriticalFailure()) {
             String failureMessage = evalSummary.failures().stream()
                     .map(result -> result.conditionName() + ": " + result.message())
-                    .collect(java.util.stream.Collectors.joining("; "));
+                    .collect(Collectors.joining("; "));
             throw new ConflictException("ACP listing validation failed: " + failureMessage);
         }
     }
@@ -378,7 +393,7 @@ public class AcpCheckoutService {
         if (evalSummary.hasCriticalFailure()) {
             String failureMessage = evalSummary.failures().stream()
                     .map(result -> result.conditionName() + ": " + result.message())
-                    .collect(java.util.stream.Collectors.joining("; "));
+                    .collect(Collectors.joining("; "));
             throw new ConflictException("ACP cart validation failed: " + failureMessage);
         }
     }
@@ -426,7 +441,7 @@ public class AcpCheckoutService {
         if (!failures.isEmpty()) {
             String failureMessage = failures.stream()
                     .map(result -> result.conditionName() + ": " + result.message())
-                    .collect(java.util.stream.Collectors.joining("; "));
+                    .collect(Collectors.joining("; "));
             throw new ConflictException("ACP confirmation validation failed: " + failureMessage);
         }
     }
@@ -469,7 +484,7 @@ public class AcpCheckoutService {
         return switch (orderStatus) {
             case "PENDING" -> "CREATED";
             case "CONFIRMED" -> "COMPLETED";
-            case "FAILED", "CANCELLED" -> "CANCELLED";
+            case "FAILED", "CANCELLED" -> STATUS_CANCELLED;
             default -> orderStatus;
         };
     }

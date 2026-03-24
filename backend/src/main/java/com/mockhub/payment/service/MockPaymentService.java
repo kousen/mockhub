@@ -22,6 +22,7 @@ import com.mockhub.payment.repository.TransactionLogRepository;
 public class MockPaymentService implements PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(MockPaymentService.class);
+    private static final String STATUS_SUCCEEDED = "SUCCEEDED";
 
     private final TransactionLogRepository transactionLogRepository;
     private final OrderService orderService;
@@ -77,7 +78,7 @@ public class MockPaymentService implements PaymentService {
         if ("CONFIRMED".equals(order.getStatus())) {
             paymentIntentToOrder.remove(paymentIntentId);
             log.info("Mock payment {} already confirmed for order {}", paymentIntentId, orderNumber);
-            return new PaymentConfirmation(paymentIntentId, "SUCCEEDED", orderNumber);
+            return new PaymentConfirmation(paymentIntentId, STATUS_SUCCEEDED, orderNumber);
         }
 
         if ("FAILED".equals(order.getStatus()) || "CANCELLED".equals(order.getStatus())) {
@@ -101,7 +102,7 @@ public class MockPaymentService implements PaymentService {
         txnLog.setCurrency("USD");
         txnLog.setProvider("MOCK");
         txnLog.setProviderReference(paymentIntentId);
-        txnLog.setStatus("SUCCEEDED");
+        txnLog.setStatus(STATUS_SUCCEEDED);
         transactionLogRepository.save(txnLog);
 
         // Confirm the order

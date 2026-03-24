@@ -266,6 +266,24 @@ class AcpCheckoutServiceTest {
     }
 
     @Test
+    @DisplayName("completeCheckout - mismatched payment intent - throws ConflictException")
+    void completeCheckout_mismatchedPaymentIntent_throwsConflictException() {
+        Order order = createAgentOrder("MH-20260323-0001", "stripe");
+        order.setPaymentIntentId("pi_original");
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
+        when(orderService.getOrderEntity("MH-20260323-0001")).thenReturn(order);
+
+        assertThrows(ConflictException.class, () ->
+                acpCheckoutService.completeCheckout(
+                        "MH-20260323-0001", "buyer@test.com",
+                        new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, "pi_different")));
+
+        verify(paymentService, never()).confirmPayment(any());
+    }
+
+    @Test
     @DisplayName("cancelCheckout - pending order - returns CANCELLED response")
     void cancelCheckout_pendingOrder_returnsCancelledResponse() {
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));

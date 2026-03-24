@@ -24,6 +24,8 @@ public class MandateService {
 
     private static final Logger log = LoggerFactory.getLogger(MandateService.class);
     private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String MANDATE_RESOURCE = "Mandate";
+    private static final String MANDATE_ID_FIELD = "mandateId";
 
     private final MandateRepository mandateRepository;
 
@@ -55,7 +57,7 @@ public class MandateService {
     @Transactional
     public void revokeMandate(String mandateId) {
         Mandate mandate = mandateRepository.findByMandateId(mandateId)
-                .orElseThrow(() -> new ResourceNotFoundException("Mandate", "mandateId", mandateId));
+                .orElseThrow(() -> new ResourceNotFoundException(MANDATE_RESOURCE, MANDATE_ID_FIELD, mandateId));
         mandate.setStatus("REVOKED");
         mandate.setRevokedAt(Instant.now());
         mandateRepository.save(mandate);
@@ -70,8 +72,8 @@ public class MandateService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     public Mandate getActiveMandate(String agentId, String userEmail) {
+        // Delegates to the full overload — no @Transactional needed since the target method has it
         return getActiveMandate(agentId, userEmail, null);
     }
 
@@ -91,7 +93,7 @@ public class MandateService {
     @Transactional
     public void recordSpend(String mandateId, BigDecimal amount) {
         Mandate mandate = mandateRepository.findByMandateIdForUpdate(mandateId)
-                .orElseThrow(() -> new ResourceNotFoundException("Mandate", "mandateId", mandateId));
+                .orElseThrow(() -> new ResourceNotFoundException(MANDATE_RESOURCE, MANDATE_ID_FIELD, mandateId));
         BigDecimal newTotal = mandate.getTotalSpent().add(amount);
         mandate.setTotalSpent(newTotal);
         mandateRepository.save(mandate);
@@ -101,7 +103,7 @@ public class MandateService {
     @Transactional
     public void reverseSpend(String mandateId, BigDecimal amount) {
         Mandate mandate = mandateRepository.findByMandateIdForUpdate(mandateId)
-                .orElseThrow(() -> new ResourceNotFoundException("Mandate", "mandateId", mandateId));
+                .orElseThrow(() -> new ResourceNotFoundException(MANDATE_RESOURCE, MANDATE_ID_FIELD, mandateId));
         BigDecimal newTotal = mandate.getTotalSpent().subtract(amount);
         if (newTotal.compareTo(BigDecimal.ZERO) < 0) {
             newTotal = BigDecimal.ZERO;
@@ -111,9 +113,9 @@ public class MandateService {
         log.info("Reversed spend of {} on mandate {}, new total: {}", amount, mandateId, newTotal);
     }
 
-    @Transactional(readOnly = true)
     public boolean validateAction(String agentId, String userEmail, String requiredScope,
                                   BigDecimal amount, String categorySlug, String eventSlug) {
+        // Delegates to the full overload — no @Transactional needed since the target method has it
         return validateAction(agentId, userEmail, requiredScope, amount, categorySlug, eventSlug, null);
     }
 
