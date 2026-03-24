@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 
 import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
+import com.mockhub.mcp.tools.MandateTools;
 import com.mockhub.mcp.tools.OrderTools;
 import com.mockhub.mcp.tools.PricingTools;
 
@@ -34,7 +35,8 @@ public class AiConfig {
                                   EventTools eventTools,
                                   PricingTools pricingTools,
                                   CartTools cartTools,
-                                  OrderTools orderTools) {
+                                  OrderTools orderTools,
+                                  MandateTools mandateTools) {
         return ChatClient.builder(anthropicChatModel)
                 .defaultSystem("""
                         You are a helpful assistant for MockHub, \
@@ -48,9 +50,16 @@ public class AiConfig {
                         complete purchases.
 
                         When a user asks to buy tickets, use findTickets to \
-                        search, addToCart to add the listing, checkout to \
-                        create the order, and confirmOrder to complete it. \
-                        The user's email is available from their login session.
+                        search, then use mandate tools before any purchase \
+                        mutation. For website chat purchases, the fixed agentId \
+                        is `mockhub-web-chat`. First check listMandates for the \
+                        user's email. If no suitable PURCHASE mandate exists for \
+                        `mockhub-web-chat`, create one with a conservative \
+                        spend limit that fits the user's request, or a $2000 \
+                        default when the user did not specify a budget. Then use \
+                        addToCart with both agentId and mandateId, checkout to \
+                        create the order, and confirmOrder to complete it. The \
+                        user's email is available from their login session.
 
                         When mentioning events, always include a markdown link \
                         using the event's URL slug. The format is: \
@@ -62,7 +71,7 @@ public class AiConfig {
                         Keep responses concise and helpful.""")
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .defaultToolCallbacks(ToolCallbacks.from(eventTools, pricingTools,
-                        cartTools, orderTools))
+                        cartTools, orderTools, mandateTools))
                 .build();
     }
 }

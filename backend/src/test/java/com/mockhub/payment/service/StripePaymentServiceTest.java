@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -129,7 +130,7 @@ class StripePaymentServiceTest {
         when(mockIntent.getStatus()).thenReturn("succeeded");
         when(mockIntent.getMetadata()).thenReturn(Map.of("order_number", "MH-20260319-0001"));
 
-        when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(testOrder);
+        when(orderService.getOrderEntityForUpdate("MH-20260319-0001")).thenReturn(testOrder);
         when(transactionLogRepository.save(any(TransactionLog.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -148,13 +149,50 @@ class StripePaymentServiceTest {
     }
 
     @Test
+    @DisplayName("confirmPayment - given duplicate succeeded payment - returns existing success without reprocessing")
+    void confirmPayment_givenDuplicateSucceededPayment_returnsExistingSuccessWithoutReprocessing() {
+        PaymentIntent mockIntent = mock(PaymentIntent.class);
+        when(mockIntent.getStatus()).thenReturn("succeeded");
+        when(mockIntent.getMetadata()).thenReturn(Map.of("order_number", "MH-20260319-0001"));
+
+        Order confirmedOrder = new Order();
+        confirmedOrder.setId(101L);
+        confirmedOrder.setOrderNumber("MH-20260319-0001");
+        confirmedOrder.setUser(testUser);
+        confirmedOrder.setSubtotal(new BigDecimal("150.00"));
+        confirmedOrder.setServiceFee(new BigDecimal("15.00"));
+        confirmedOrder.setTotal(new BigDecimal("165.00"));
+        confirmedOrder.setStatus("CONFIRMED");
+        confirmedOrder.setPaymentMethod("STRIPE");
+
+        when(orderService.getOrderEntityForUpdate("MH-20260319-0001"))
+                .thenReturn(testOrder)
+                .thenReturn(confirmedOrder);
+        when(transactionLogRepository.save(any(TransactionLog.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<PaymentIntent> paymentIntentMock = mockStatic(PaymentIntent.class)) {
+            paymentIntentMock.when(() -> PaymentIntent.retrieve("pi_test_123"))
+                    .thenReturn(mockIntent);
+
+            var first = stripePaymentService.confirmPayment("pi_test_123");
+            var second = stripePaymentService.confirmPayment("pi_test_123");
+
+            assertEquals("SUCCEEDED", first.status());
+            assertEquals("SUCCEEDED", second.status());
+            verify(orderService, times(1)).confirmOrder("MH-20260319-0001");
+            verify(transactionLogRepository, times(1)).save(any(TransactionLog.class));
+        }
+    }
+
+    @Test
     @DisplayName("confirmPayment - given failed payment - fails order and returns FAILED")
     void confirmPayment_givenFailedPayment_failsOrderAndReturnsFailed() {
         PaymentIntent mockIntent = mock(PaymentIntent.class);
         when(mockIntent.getStatus()).thenReturn("requires_payment_method");
         when(mockIntent.getMetadata()).thenReturn(Map.of("order_number", "MH-20260319-0001"));
 
-        when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(testOrder);
+        when(orderService.getOrderEntityForUpdate("MH-20260319-0001")).thenReturn(testOrder);
         when(transactionLogRepository.save(any(TransactionLog.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -166,6 +204,43 @@ class StripePaymentServiceTest {
 
             assertEquals("FAILED", result.status());
             verify(orderService).failOrder("MH-20260319-0001");
+        }
+    }
+
+    @Test
+    @DisplayName("confirmPayment - given duplicate failed payment - returns existing failure without reprocessing")
+    void confirmPayment_givenDuplicateFailedPayment_returnsExistingFailureWithoutReprocessing() {
+        PaymentIntent mockIntent = mock(PaymentIntent.class);
+        when(mockIntent.getStatus()).thenReturn("requires_payment_method");
+        when(mockIntent.getMetadata()).thenReturn(Map.of("order_number", "MH-20260319-0001"));
+
+        Order failedOrder = new Order();
+        failedOrder.setId(102L);
+        failedOrder.setOrderNumber("MH-20260319-0001");
+        failedOrder.setUser(testUser);
+        failedOrder.setSubtotal(new BigDecimal("150.00"));
+        failedOrder.setServiceFee(new BigDecimal("15.00"));
+        failedOrder.setTotal(new BigDecimal("165.00"));
+        failedOrder.setStatus("FAILED");
+        failedOrder.setPaymentMethod("STRIPE");
+
+        when(orderService.getOrderEntityForUpdate("MH-20260319-0001"))
+                .thenReturn(testOrder)
+                .thenReturn(failedOrder);
+        when(transactionLogRepository.save(any(TransactionLog.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        try (MockedStatic<PaymentIntent> paymentIntentMock = mockStatic(PaymentIntent.class)) {
+            paymentIntentMock.when(() -> PaymentIntent.retrieve("pi_test_123"))
+                    .thenReturn(mockIntent);
+
+            var first = stripePaymentService.confirmPayment("pi_test_123");
+            var second = stripePaymentService.confirmPayment("pi_test_123");
+
+            assertEquals("FAILED", first.status());
+            assertEquals("FAILED", second.status());
+            verify(orderService, times(1)).failOrder("MH-20260319-0001");
+            verify(transactionLogRepository, times(1)).save(any(TransactionLog.class));
         }
     }
 

@@ -68,8 +68,8 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket", "id", ticketId));
 
-        if (!"RESERVED".equals(ticket.getStatus())) {
-            throw new ConflictException("Ticket is not in reserved state");
+        if (!"RESERVED".equals(ticket.getStatus()) && !"SOLD".equals(ticket.getStatus())) {
+            throw new ConflictException("Ticket is not in reserved or sold state");
         }
 
         ticket.setStatus(STATUS_AVAILABLE);

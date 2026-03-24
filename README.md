@@ -90,7 +90,7 @@ Any authenticated user can both buy and sell tickets.
 - **AI chat assistant** — ask questions about events and pricing (function-calling enabled)
 - **AI recommendations** — personalized event suggestions with relevance scores
 - **AI price predictions** — trend analysis on event detail pages
-- **MCP server** — 13 tools for AI agent integration (events, cart, orders, pricing)
+- **MCP server** — 20 tools for AI agent integration (events, cart, orders, pricing, mandates)
 - **Agent discovery** — `llms.txt` at `/llms.txt` describes all API endpoints
 
 ### Seller Flow

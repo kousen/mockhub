@@ -46,6 +46,12 @@ public class Order extends BaseEntity {
     @Column(name = "payment_method", nullable = false, length = 30)
     private String paymentMethod;
 
+    @Column(name = "agent_id")
+    private String agentId;
+
+    @Column(name = "mandate_id", length = 36)
+    private String mandateId;
+
     @Column(name = "confirmed_at")
     private Instant confirmedAt;
 
@@ -120,6 +126,22 @@ public class Order extends BaseEntity {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    public String getAgentId() {
+        return agentId;
+    }
+
+    public void setAgentId(String agentId) {
+        this.agentId = agentId;
+    }
+
+    public String getMandateId() {
+        return mandateId;
+    }
+
+    public void setMandateId(String mandateId) {
+        this.mandateId = mandateId;
     }
 
     public Instant getConfirmedAt() {

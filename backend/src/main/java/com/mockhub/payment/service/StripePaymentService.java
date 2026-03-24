@@ -28,6 +28,8 @@ import com.stripe.param.PaymentIntentCreateParams;
 public class StripePaymentService implements PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(StripePaymentService.class);
+    private static final String STATUS_SUCCEEDED = "SUCCEEDED";
+    private static final String STATUS_FAILED = "FAILED";
     private static final String METADATA_ORDER_NUMBER = "order_number";
     private static final String PROVIDER = "STRIPE";
     private static final String CURRENCY = "USD";
@@ -103,7 +105,17 @@ public class StripePaymentService implements PaymentService {
                 throw new PaymentException("No order number found in payment intent metadata");
             }
 
-            Order order = orderService.getOrderEntity(orderNumber);
+            Order order = orderService.getOrderEntityForUpdate(orderNumber);
+
+            if ("CONFIRMED".equals(order.getStatus())) {
+                log.info("Stripe payment {} already confirmed for order {}", paymentIntentId, orderNumber);
+                return new PaymentConfirmation(paymentIntentId, STATUS_SUCCEEDED, orderNumber);
+            }
+
+            if (STATUS_FAILED.equals(order.getStatus()) || "CANCELLED".equals(order.getStatus())) {
+                log.info("Stripe payment {} rejected for {} order {}", paymentIntentId, order.getStatus().toLowerCase(), orderNumber);
+                return new PaymentConfirmation(paymentIntentId, STATUS_FAILED, orderNumber);
+            }
 
             if ("succeeded".equals(status)) {
                 TransactionLog txnLog = new TransactionLog();
@@ -114,12 +126,12 @@ public class StripePaymentService implements PaymentService {
                 txnLog.setCurrency(CURRENCY);
                 txnLog.setProvider(PROVIDER);
                 txnLog.setProviderReference(paymentIntentId);
-                txnLog.setStatus("SUCCEEDED");
+                txnLog.setStatus(STATUS_SUCCEEDED);
                 transactionLogRepository.save(txnLog);
 
                 orderService.confirmOrder(orderNumber);
 
-                return new PaymentConfirmation(paymentIntentId, "SUCCEEDED", orderNumber);
+                return new PaymentConfirmation(paymentIntentId, STATUS_SUCCEEDED, orderNumber);
             } else {
                 TransactionLog txnLog = new TransactionLog();
                 txnLog.setOrder(order);
@@ -129,12 +141,12 @@ public class StripePaymentService implements PaymentService {
                 txnLog.setCurrency(CURRENCY);
                 txnLog.setProvider(PROVIDER);
                 txnLog.setProviderReference(paymentIntentId);
-                txnLog.setStatus("FAILED");
+                txnLog.setStatus(STATUS_FAILED);
                 transactionLogRepository.save(txnLog);
 
                 orderService.failOrder(orderNumber);
 
-                return new PaymentConfirmation(paymentIntentId, "FAILED", orderNumber);
+                return new PaymentConfirmation(paymentIntentId, STATUS_FAILED, orderNumber);
             }
         } catch (StripeException e) {
             throw new PaymentException("Failed to confirm payment: " + e.getMessage(), e);

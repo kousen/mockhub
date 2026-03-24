@@ -24,6 +24,8 @@ public class MandateService {
 
     private static final Logger log = LoggerFactory.getLogger(MandateService.class);
     private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String MANDATE_RESOURCE = "Mandate";
+    private static final String MANDATE_ID_FIELD = "mandateId";
 
     private final MandateRepository mandateRepository;
 
@@ -55,7 +57,7 @@ public class MandateService {
     @Transactional
     public void revokeMandate(String mandateId) {
         Mandate mandate = mandateRepository.findByMandateId(mandateId)
-                .orElseThrow(() -> new ResourceNotFoundException("Mandate", "mandateId", mandateId));
+                .orElseThrow(() -> new ResourceNotFoundException(MANDATE_RESOURCE, MANDATE_ID_FIELD, mandateId));
         mandate.setStatus("REVOKED");
         mandate.setRevokedAt(Instant.now());
         mandateRepository.save(mandate);
@@ -71,12 +73,19 @@ public class MandateService {
     }
 
     @Transactional(readOnly = true)
+    @SuppressWarnings("java:S6809") // Self-invocation is intentional — simple delegation to the full overload
     public Mandate getActiveMandate(String agentId, String userEmail) {
+        return getActiveMandate(agentId, userEmail, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Mandate getActiveMandate(String agentId, String userEmail, String mandateId) {
         List<Mandate> mandates = mandateRepository.findByAgentIdAndUserEmailAndStatus(
                 agentId, userEmail, STATUS_ACTIVE);
 
         Instant now = Instant.now();
         return mandates.stream()
+                .filter(m -> mandateId == null || mandateId.isBlank() || mandateId.equals(m.getMandateId()))
                 .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
                 .findFirst()
                 .orElse(null);
@@ -84,28 +93,43 @@ public class MandateService {
 
     @Transactional
     public void recordSpend(String mandateId, BigDecimal amount) {
-        Mandate mandate = mandateRepository.findByMandateId(mandateId)
-                .orElseThrow(() -> new ResourceNotFoundException("Mandate", "mandateId", mandateId));
+        Mandate mandate = mandateRepository.findByMandateIdForUpdate(mandateId)
+                .orElseThrow(() -> new ResourceNotFoundException(MANDATE_RESOURCE, MANDATE_ID_FIELD, mandateId));
         BigDecimal newTotal = mandate.getTotalSpent().add(amount);
         mandate.setTotalSpent(newTotal);
         mandateRepository.save(mandate);
         log.info("Recorded spend of {} on mandate {}, new total: {}", amount, mandateId, newTotal);
     }
 
+    @Transactional
+    public void reverseSpend(String mandateId, BigDecimal amount) {
+        Mandate mandate = mandateRepository.findByMandateIdForUpdate(mandateId)
+                .orElseThrow(() -> new ResourceNotFoundException(MANDATE_RESOURCE, MANDATE_ID_FIELD, mandateId));
+        BigDecimal newTotal = mandate.getTotalSpent().subtract(amount);
+        if (newTotal.compareTo(BigDecimal.ZERO) < 0) {
+            newTotal = BigDecimal.ZERO;
+        }
+        mandate.setTotalSpent(newTotal);
+        mandateRepository.save(mandate);
+        log.info("Reversed spend of {} on mandate {}, new total: {}", amount, mandateId, newTotal);
+    }
+
     @Transactional(readOnly = true)
+    @SuppressWarnings("java:S6809") // Self-invocation is intentional — simple delegation to the full overload
     public boolean validateAction(String agentId, String userEmail, String requiredScope,
                                   BigDecimal amount, String categorySlug, String eventSlug) {
-        List<Mandate> mandates = mandateRepository.findByAgentIdAndUserEmailAndStatus(
-                agentId, userEmail, STATUS_ACTIVE);
+        return validateAction(agentId, userEmail, requiredScope, amount, categorySlug, eventSlug, null);
+    }
 
-        Instant now = Instant.now();
-        Mandate mandate = mandates.stream()
-                .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
-                .findFirst()
-                .orElse(null);
+    @Transactional(readOnly = true)
+    public boolean validateAction(String agentId, String userEmail, String requiredScope,
+                                  BigDecimal amount, String categorySlug,
+                                  String eventSlug, String mandateId) {
+        Mandate mandate = getActiveMandate(agentId, userEmail, mandateId);
 
         if (mandate == null) {
-            log.warn("No active mandate for agent '{}' and user '{}'", agentId, userEmail);
+            log.warn("No active mandate for agent '{}' and user '{}' matching mandate '{}'",
+                    agentId, userEmail, mandateId);
             return false;
         }
 

@@ -1,6 +1,7 @@
 package com.mockhub.mcp.tools;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -18,6 +19,7 @@ import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
 import com.mockhub.ticket.dto.ListingDto;
+import com.mockhub.ticket.dto.TicketSearchResultDto;
 import com.mockhub.ticket.service.ListingService;
 
 @Component
@@ -136,6 +138,10 @@ public class EventTools {
                     required = false) String category,
             @ToolParam(description = "City name to filter events by location",
                     required = false) String city,
+            @ToolParam(description = "Only include events on or after this ISO-8601 timestamp",
+                    required = false) Instant dateFrom,
+            @ToolParam(description = "Only include events on or before this ISO-8601 timestamp",
+                    required = false) Instant dateTo,
             @ToolParam(description = "Minimum ticket price filter",
                     required = false) BigDecimal minPrice,
             @ToolParam(description = "Maximum ticket price filter",
@@ -149,12 +155,12 @@ public class EventTools {
 
             EventSearchRequest request = new EventSearchRequest(
                     query, category, null, city,
-                    null, null, minPrice, maxPrice,
+                    dateFrom, dateTo, minPrice, maxPrice,
                     "ACTIVE", "eventDate",
                     0, 100);
 
             PagedResponse<EventSummaryDto> eventsResponse = eventService.listEvents(request);
-            List<ListingDto> allListings = new ArrayList<>();
+            List<TicketSearchResultDto> allListings = new ArrayList<>();
 
             for (EventSummaryDto eventSummary : eventsResponse.content()) {
                 List<ListingDto> eventListings = listingService.getActiveListingsByEventSlug(
@@ -162,13 +168,29 @@ public class EventTools {
 
                 for (ListingDto listing : eventListings) {
                     if (matchesFilters(listing, minPrice, maxPrice, section)) {
-                        allListings.add(listing);
+                        allListings.add(new TicketSearchResultDto(
+                                listing.id(),
+                                listing.ticketId(),
+                                eventSummary.name(),
+                                eventSummary.slug(),
+                                eventSummary.artistName(),
+                                eventSummary.categoryName(),
+                                eventSummary.venueName(),
+                                eventSummary.city(),
+                                eventSummary.eventDate(),
+                                listing.sectionName(),
+                                listing.rowLabel(),
+                                listing.seatNumber(),
+                                listing.ticketType(),
+                                listing.computedPrice(),
+                                listing.sellerDisplayName()
+                        ));
                     }
                 }
             }
 
-            List<ListingDto> sortedListings = allListings.stream()
-                    .sorted(Comparator.comparing(ListingDto::computedPrice))
+            List<TicketSearchResultDto> sortedListings = allListings.stream()
+                    .sorted(Comparator.comparing(TicketSearchResultDto::price))
                     .limit(limit)
                     .toList();
 

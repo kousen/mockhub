@@ -120,7 +120,7 @@ class MockPaymentServiceTest {
         PaymentIntentDto intent = mockPaymentService.createPaymentIntent(testOrder);
         String paymentIntentId = intent.paymentIntentId();
 
-        when(orderService.getOrderEntity("ORD-20260318-001")).thenReturn(testOrder);
+        when(orderService.getOrderEntityForUpdate("ORD-20260318-001")).thenReturn(testOrder);
 
         PaymentConfirmation confirmation = mockPaymentService.confirmPayment(paymentIntentId);
 
@@ -132,6 +132,37 @@ class MockPaymentServiceTest {
         assertEquals("ORD-20260318-001", confirmation.orderNumber(),
                 "Confirmation should contain the order number");
         verify(orderService).confirmOrder("ORD-20260318-001");
+    }
+
+    @Test
+    @DisplayName("confirmPayment - duplicate confirmation returns success without reprocessing")
+    void confirmPayment_givenDuplicatePaymentIntent_returnsSuccessWithoutReprocessing() {
+        when(transactionLogRepository.save(any(TransactionLog.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PaymentIntentDto intent = mockPaymentService.createPaymentIntent(testOrder);
+        String paymentIntentId = intent.paymentIntentId();
+
+        Order confirmedOrder = new Order();
+        confirmedOrder.setId(100L);
+        confirmedOrder.setOrderNumber("ORD-20260318-001");
+        confirmedOrder.setUser(testUser);
+        confirmedOrder.setSubtotal(new BigDecimal("150.00"));
+        confirmedOrder.setServiceFee(new BigDecimal("15.00"));
+        confirmedOrder.setTotal(new BigDecimal("165.00"));
+        confirmedOrder.setStatus("CONFIRMED");
+        confirmedOrder.setPaymentMethod("MOCK");
+
+        when(orderService.getOrderEntityForUpdate("ORD-20260318-001")).thenReturn(testOrder);
+        when(orderService.getOrderEntityByPaymentIntentIdForUpdate(paymentIntentId)).thenReturn(confirmedOrder);
+
+        PaymentConfirmation first = mockPaymentService.confirmPayment(paymentIntentId);
+        PaymentConfirmation second = mockPaymentService.confirmPayment(paymentIntentId);
+
+        assertEquals("SUCCEEDED", first.status());
+        assertEquals("SUCCEEDED", second.status());
+        verify(orderService).confirmOrder("ORD-20260318-001");
+        verify(transactionLogRepository, org.mockito.Mockito.times(2)).save(any(TransactionLog.class));
     }
 
     @Test

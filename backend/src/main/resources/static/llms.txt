@@ -82,15 +82,15 @@ MockHub exposes MCP tools for AI agents at /mcp/**:
 - getEventListings(slug) — active listings for an event
 - getFeaturedEvents() — curated featured events
 - getListingDetail(listingId) — single listing by ID
-- findTickets(query, category, city, minPrice, maxPrice, section, maxResults) — compound search returning matching listings across events
+- findTickets(query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, maxResults) — compound search returning matching listings with event/date metadata
 - getPriceHistory(eventSlug) — historical price snapshots
 - getPricePrediction(eventSlug) — AI price forecast (requires AI provider)
 - getCart(userEmail) — current cart contents
-- addToCart(userEmail, listingId) — add listing to cart (eval-gated)
+- addToCart(userEmail, listingId, agentId, mandateId) — add listing to cart for an autonomous agent action (eval-gated)
 - removeFromCart(userEmail, itemId) — remove cart item
 - clearCart(userEmail) — empty cart
-- checkout(userEmail, paymentMethod) — create order from cart
-- confirmOrder(userEmail, orderNumber) — confirm a pending order
+- checkout(userEmail, paymentMethod, agentId, mandateId) — create order from cart for an autonomous agent action
+- confirmOrder(userEmail, orderNumber, agentId, mandateId, paymentIntentId) — complete payment for a pending order; non-mock payments require a paymentIntentId
 - getOrder(userEmail, orderNumber) — order details
 - listOrders(userEmail, page, size) — order history
 - createMandate(agentId, userEmail, scope, maxSpendPerTransaction, maxSpendTotal, allowedCategories, allowedEvents, expiresAt) — authorize agent actions
@@ -100,18 +100,40 @@ MockHub exposes MCP tools for AI agents at /mcp/**:
 
 ## ACP Endpoints (Agentic Commerce Protocol, requires API key: X-API-Key header)
 ACP-compatible checkout endpoints at /acp/v1/:
-POST /acp/v1/checkout — Create checkout. JSON body: {"buyerEmail", "lineItems": [{"listingId", "quantity"}], "paymentMethod", "idempotencyKey", "mandateId"}
+POST /acp/v1/checkout — Create checkout. JSON body: {"buyerEmail", "lineItems": [{"listingId", "quantity"}], "agentId", "mandateId", "paymentMethod", "idempotencyKey"}
 GET /acp/v1/checkout/{checkoutId} — Get checkout status. Header: X-Buyer-Email
-PUT /acp/v1/checkout/{checkoutId} — Update checkout (PENDING only). JSON body: {"addItems", "removeListingIds"}. Header: X-Buyer-Email
-POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. Header: X-Buyer-Email
-POST /acp/v1/checkout/{checkoutId}/cancel — Cancel checkout. Header: X-Buyer-Email
+PUT /acp/v1/checkout/{checkoutId} — Update checkout (PENDING only). JSON body: {"agentId", "mandateId", "addItems", "removeListingIds"}. Header: X-Buyer-Email
+POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. JSON body: {"agentId", "mandateId", "paymentIntentId"}. Header: X-Buyer-Email
+POST /acp/v1/checkout/{checkoutId}/cancel — Cancel checkout. JSON body: {"agentId", "mandateId"}. Header: X-Buyer-Email
 GET /acp/v1/catalog — Browse product catalog. Query params: query, category, city, page, size
+GET /acp/v1/listings — Browse actionable ticket offers. Query params: query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, page, size
 
 ## Agent Mandates
+
 Mandates define what an agent is authorized to do on behalf of a user.
 Scope: BROWSE (read-only) or PURCHASE (can buy, subsumes BROWSE).
 Limits: per-transaction max, cumulative total budget, category/event restrictions, expiration.
+Autonomous purchase actions require both agent identity and mandate proof.
 Managed via MCP MandateTools or directly via mandate service.
+
+### Mandate Lifecycle
+
+1. Create — User grants agent a mandate via createMandate tool. Defines scope, spending limits, allowed categories/events, and optional expiration.
+2. Validate — Every agent purchase action (addToCart, checkout, confirmOrder) triggers MandateCondition (CRITICAL severity). Checks: mandate active, not expired, scope covers action, within spending limits, allowed category/event.
+3. Spend Tracking — On order confirmation, the order total is recorded against the mandate's cumulative spend (totalSpent). Remaining budget = maxSpendTotal - totalSpent.
+4. Spend Reversal — If a confirmed order is cancelled via cancelOrder, the order total is reversed (subtracted from totalSpent), restoring available budget.
+5. Revoke — User revokes mandate via revokeMandate tool. Status set to REVOKED. Subsequent agent actions using this mandate are blocked.
+
+### Purchase Flow with Mandates
+
+findTickets(query, filters) → addToCart(userEmail, listingId, agentId, mandateId) → checkout(userEmail, paymentMethod, agentId, mandateId) → confirmOrder(userEmail, orderNumber, agentId, mandateId)
+
+Each step validates the mandate via eval conditions. Spend is recorded on confirmation. If the order is later cancelled, spend is reversed.
+
+### Eval Conditions
+
+- MandateCondition (CRITICAL): Blocks actions without a valid mandate. Checks scope, per-transaction and cumulative spending limits, category/event restrictions.
+- SpendingLimitCondition (WARNING): Advisory alert when cart total exceeds $2000 (configurable). Does not block — mandate per-transaction limits are the hard stop.
 
 ## Content Types
 Request: application/json

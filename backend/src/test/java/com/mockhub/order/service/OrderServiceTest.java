@@ -31,7 +31,9 @@ import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.common.exception.UnauthorizedException;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
+import com.mockhub.mandate.service.MandateService;
 import com.mockhub.notification.service.EmailDeliveryService;
+import com.mockhub.notification.entity.NotificationType;
 import com.mockhub.notification.service.NotificationService;
 import com.mockhub.notification.service.SmsDeliveryService;
 import com.mockhub.ticket.service.TicketSigningService;
@@ -53,6 +55,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -86,6 +90,9 @@ class OrderServiceTest {
     @Mock
     private TicketSigningService ticketSigningService;
 
+    @Mock
+    private MandateService mandateService;
+
     private OrderService orderService;
 
     private User testUser;
@@ -99,7 +106,7 @@ class OrderServiceTest {
     void setUp() {
         orderService = new OrderService(orderRepository, cartRepository, cartService,
                 ticketService, eventRepository, notificationService,
-                smsDeliveryService, emailDeliveryService, ticketSigningService,
+                smsDeliveryService, emailDeliveryService, ticketSigningService, mandateService,
                 "http://localhost:5173");
 
         Role buyerRole = new Role("ROLE_BUYER");
@@ -119,6 +126,7 @@ class OrderServiceTest {
         testEvent.setId(1L);
         testEvent.setName("Test Event");
         testEvent.setSlug("test-event");
+        testEvent.setAvailableTickets(10);
 
         Section testSection = new Section();
         testSection.setId(1L);
@@ -271,6 +279,72 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("confirmOrder - duplicate confirmation is idempotent")
+    void confirmOrder_givenDuplicateConfirmation_isIdempotent() {
+        testOrder.setMandateId("mandate-123");
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.confirmOrder("MH-20260317-0001");
+        orderService.confirmOrder("MH-20260317-0001");
+
+        assertEquals("CONFIRMED", testOrder.getStatus());
+        assertNotNull(testOrder.getConfirmedAt());
+        verify(notificationService, times(1)).createNotification(
+                anyLong(),
+                org.mockito.ArgumentMatchers.eq(NotificationType.ORDER_CONFIRMED),
+                anyString(),
+                anyString(),
+                anyString());
+        verify(eventRepository, times(1)).save(any(Event.class));
+        verify(mandateService, times(1)).recordSpend("mandate-123", new BigDecimal("82.50"));
+    }
+
+    @Test
+    @DisplayName("failOrder - duplicate failure is idempotent")
+    void failOrder_givenDuplicateFailure_isIdempotent() {
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.failOrder("MH-20260317-0001");
+        orderService.failOrder("MH-20260317-0001");
+
+        assertEquals("FAILED", testOrder.getStatus());
+        verify(ticketService, times(1)).releaseTicket(1L);
+        verify(orderRepository, times(1)).save(testOrder);
+    }
+
+    @Test
+    @DisplayName("confirmOrder - failed order cannot be confirmed")
+    void confirmOrder_givenFailedOrder_throwsConflictException() {
+        testOrder.setStatus("FAILED");
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        assertThrows(ConflictException.class,
+                () -> orderService.confirmOrder("MH-20260317-0001"));
+
+        verify(notificationService, org.mockito.Mockito.never())
+                .createNotification(anyLong(), org.mockito.ArgumentMatchers.any(NotificationType.class),
+                        anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("failOrder - confirmed order cannot be failed")
+    void failOrder_givenConfirmedOrder_throwsConflictException() {
+        testOrder.setStatus("CONFIRMED");
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        assertThrows(ConflictException.class,
+                () -> orderService.failOrder("MH-20260317-0001"));
+
+        verify(ticketService, org.mockito.Mockito.never()).releaseTicket(anyLong());
+    }
+
+    @Test
     @DisplayName("getOrder - given own order number - returns order DTO")
     void getOrder_givenOwnOrderNumber_returnsOrderDto() {
         when(orderRepository.findByOrderNumber("MH-20260317-0001"))
@@ -301,6 +375,72 @@ class OrderServiceTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> orderService.getOrder(testUser, "NONEXISTENT"),
                 "Should throw ResourceNotFoundException for unknown order");
+    }
+
+    @Test
+    @DisplayName("cancelOrder - given confirmed order with mandate - reverses spend and releases tickets")
+    void cancelOrder_givenConfirmedOrderWithMandate_reversesSpendAndReleasesTickets() {
+        testOrder.setStatus("CONFIRMED");
+        testOrder.setMandateId("mandate-123");
+        Event event = testOrder.getItems().getFirst().getListing().getEvent();
+        int originalAvailable = event.getAvailableTickets();
+
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.cancelOrder("MH-20260317-0001");
+
+        assertEquals("CANCELLED", testOrder.getStatus());
+        verify(ticketService).releaseTicket(1L);
+        verify(eventRepository).save(event);
+        assertEquals(originalAvailable + 1, event.getAvailableTickets());
+        verify(mandateService).reverseSpend("mandate-123", new BigDecimal("82.50"));
+    }
+
+    @Test
+    @DisplayName("cancelOrder - given confirmed order without mandate - releases tickets only")
+    void cancelOrder_givenConfirmedOrderWithoutMandate_releasesTicketsOnly() {
+        testOrder.setStatus("CONFIRMED");
+        testOrder.setMandateId(null);
+
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.cancelOrder("MH-20260317-0001");
+
+        assertEquals("CANCELLED", testOrder.getStatus());
+        verify(ticketService).releaseTicket(1L);
+        verify(mandateService, never()).reverseSpend(anyString(), any(BigDecimal.class));
+    }
+
+    @Test
+    @DisplayName("cancelOrder - given pending order - throws ConflictException")
+    void cancelOrder_givenPendingOrder_throwsConflictException() {
+        testOrder.setStatus("PENDING");
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        assertThrows(ConflictException.class,
+                () -> orderService.cancelOrder("MH-20260317-0001"));
+
+        verify(ticketService, never()).releaseTicket(anyLong());
+    }
+
+    @Test
+    @DisplayName("cancelOrder - given already cancelled order - skips idempotently")
+    void cancelOrder_givenAlreadyCancelledOrder_skipsIdempotently() {
+        testOrder.setStatus("CANCELLED");
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        orderService.cancelOrder("MH-20260317-0001");
+
+        assertEquals("CANCELLED", testOrder.getStatus());
+        verify(ticketService, never()).releaseTicket(anyLong());
+        verify(mandateService, never()).reverseSpend(anyString(), any(BigDecimal.class));
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     @Test

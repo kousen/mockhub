@@ -277,11 +277,12 @@ class EventToolsTest {
         when(listingService.getActiveListingsByEventSlug("rock-show"))
                 .thenReturn(List.of(listing1, listing2));
 
-        String result = eventTools.findTickets("rock", null, null, null, null, null, null);
+        String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null);
 
         assertTrue(result.startsWith("["), "Result should be a JSON array");
-        assertTrue(result.contains("\"id\":2"), "Result should contain cheaper listing");
-        assertTrue(result.contains("\"id\":1"), "Result should contain both listings");
+        assertTrue(result.contains("\"listingId\":2"), "Result should contain cheaper listing");
+        assertTrue(result.contains("\"listingId\":1"), "Result should contain both listings");
+        assertTrue(result.contains("\"eventName\":\"Rock Show\""), "Result should include event metadata");
     }
 
     @Test
@@ -300,10 +301,10 @@ class EventToolsTest {
                 .thenReturn(List.of(cheapListing, expensiveListing));
 
         String result = eventTools.findTickets(
-                null, null, null, new BigDecimal("50.00"), new BigDecimal("250.00"), null, null);
+                null, null, null, null, null, new BigDecimal("50.00"), new BigDecimal("250.00"), null, null);
 
-        assertTrue(result.contains("\"id\":2"), "Result should contain listing within price range");
-        assertTrue(!result.contains("\"id\":1"), "Result should not contain listing below min price");
+        assertTrue(result.contains("\"listingId\":2"), "Result should contain listing within price range");
+        assertTrue(!result.contains("\"listingId\":1"), "Result should not contain listing below min price");
     }
 
     @Test
@@ -321,10 +322,10 @@ class EventToolsTest {
         when(listingService.getActiveListingsByEventSlug("pop-show"))
                 .thenReturn(List.of(orchestraListing, balconyListing));
 
-        String result = eventTools.findTickets(null, null, null, null, null, "Orchestra", null);
+        String result = eventTools.findTickets(null, null, null, null, null, null, null, "Orchestra", null);
 
-        assertTrue(result.contains("\"id\":1"), "Result should contain Orchestra listing");
-        assertTrue(!result.contains("\"id\":2"), "Result should not contain Balcony listing");
+        assertTrue(result.contains("\"listingId\":1"), "Result should contain Orchestra listing");
+        assertTrue(!result.contains("\"listingId\":2"), "Result should not contain Balcony listing");
     }
 
     @Test
@@ -343,11 +344,11 @@ class EventToolsTest {
         when(listingService.getActiveListingsByEventSlug("big-show"))
                 .thenReturn(List.of(listing1, listing2, listing3));
 
-        String result = eventTools.findTickets(null, null, null, null, null, null, 2);
+        String result = eventTools.findTickets(null, null, null, null, null, null, null, null, 2);
 
-        assertTrue(result.contains("\"id\":1"), "Result should contain first listing");
-        assertTrue(result.contains("\"id\":2"), "Result should contain second listing");
-        assertTrue(!result.contains("\"id\":3"), "Result should not contain third listing (over limit)");
+        assertTrue(result.contains("\"listingId\":1"), "Result should contain first listing");
+        assertTrue(result.contains("\"listingId\":2"), "Result should contain second listing");
+        assertTrue(!result.contains("\"listingId\":3"), "Result should not contain third listing (over limit)");
     }
 
     @Test
@@ -357,7 +358,7 @@ class EventToolsTest {
                 List.of(), 0, 100, 0, 0);
         when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventsResponse);
 
-        String result = eventTools.findTickets("nonexistent", null, null, null, null, null, null);
+        String result = eventTools.findTickets("nonexistent", null, null, null, null, null, null, null, null);
 
         assertEquals("[]", result, "Result should be an empty JSON array");
     }
@@ -368,7 +369,7 @@ class EventToolsTest {
         when(eventService.listEvents(any(EventSearchRequest.class)))
                 .thenThrow(new RuntimeException("Search failed"));
 
-        String result = eventTools.findTickets("rock", null, null, null, null, null, null);
+        String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to find tickets"), "Result should contain failure message");

@@ -37,6 +37,7 @@ import com.mockhub.notification.entity.NotificationType;
 import com.mockhub.notification.service.NotificationService;
 import com.mockhub.notification.service.EmailDeliveryService;
 import com.mockhub.notification.service.SmsDeliveryService;
+import com.mockhub.mandate.service.MandateService;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.repository.OrderRepository;
@@ -53,6 +54,10 @@ public class OrderService {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final String ORDER_RESOURCE = "Order";
     private static final String ORDER_NUMBER_FIELD = "orderNumber";
+    private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_CONFIRMED = "CONFIRMED";
+    private static final String STATUS_FAILED = "FAILED";
+    private static final String STATUS_CANCELLED = "CANCELLED";
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
@@ -63,6 +68,7 @@ public class OrderService {
     private final SmsDeliveryService smsDeliveryService;
     private final EmailDeliveryService emailDeliveryService;
     private final TicketSigningService ticketSigningService;
+    private final MandateService mandateService;
     private final String smsOrderBaseUrl;
 
     public OrderService(OrderRepository orderRepository,
@@ -74,6 +80,7 @@ public class OrderService {
                         SmsDeliveryService smsDeliveryService,
                         EmailDeliveryService emailDeliveryService,
                         TicketSigningService ticketSigningService,
+                        MandateService mandateService,
                         @org.springframework.beans.factory.annotation.Value("${mockhub.sms.order-base-url}") String smsOrderBaseUrl) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
@@ -84,11 +91,19 @@ public class OrderService {
         this.smsDeliveryService = smsDeliveryService;
         this.emailDeliveryService = emailDeliveryService;
         this.ticketSigningService = ticketSigningService;
+        this.mandateService = mandateService;
         this.smsOrderBaseUrl = smsOrderBaseUrl;
     }
 
     @Transactional
+    @SuppressWarnings("java:S6809") // Self-invocation is intentional — simple delegation to the full overload
     public OrderDto checkout(User user, CheckoutRequest request, String idempotencyKey) {
+        return checkout(user, request, idempotencyKey, null, null);
+    }
+
+    @Transactional
+    public OrderDto checkout(User user, CheckoutRequest request, String idempotencyKey,
+                             String agentId, String mandateId) {
         // Idempotency check: if a key was provided and an order already exists, return it
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Optional<Order> existingOrder = orderRepository.findByIdempotencyKey(idempotencyKey);
@@ -140,11 +155,13 @@ public class OrderService {
         Order order = new Order();
         order.setUser(user);
         order.setOrderNumber(orderNumber);
-        order.setStatus("PENDING");
+        order.setStatus(STATUS_PENDING);
         order.setSubtotal(subtotal);
         order.setServiceFee(serviceFee);
         order.setTotal(total);
         order.setPaymentMethod(request.paymentMethod());
+        order.setAgentId(normalize(agentId));
+        order.setMandateId(normalize(mandateId));
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             order.setIdempotencyKey(idempotencyKey);
         }
@@ -210,10 +227,19 @@ public class OrderService {
 
     @Transactional
     public void confirmOrder(String orderNumber) {
-        Order order = orderRepository.findByOrderNumber(orderNumber)
+        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
-        order.setStatus("CONFIRMED");
+        if (STATUS_CONFIRMED.equals(order.getStatus())) {
+            log.info("Order {} is already confirmed; skipping duplicate confirmation", orderNumber);
+            return;
+        }
+
+        if (STATUS_FAILED.equals(order.getStatus()) || STATUS_CANCELLED.equals(order.getStatus())) {
+            throw new ConflictException("Cannot confirm " + order.getStatus().toLowerCase() + " order " + orderNumber);
+        }
+
+        order.setStatus(STATUS_CONFIRMED);
         order.setConfirmedAt(Instant.now());
 
         // Update ticket statuses to SOLD and decrement event available tickets
@@ -228,6 +254,10 @@ public class OrderService {
 
         orderRepository.save(order);
         log.info("Confirmed order {}", order.getOrderNumber());
+
+        if (order.getMandateId() != null && !order.getMandateId().isBlank()) {
+            mandateService.recordSpend(order.getMandateId(), order.getTotal());
+        }
 
         // Send order confirmation notification
         notificationService.createNotification(
@@ -301,10 +331,20 @@ public class OrderService {
 
     @Transactional
     public void failOrder(String orderNumber) {
-        Order order = orderRepository.findByOrderNumber(orderNumber)
+        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
-        order.setStatus("FAILED");
+        if (STATUS_FAILED.equals(order.getStatus())) {
+            log.info("Order {} is already failed; skipping duplicate failure handling",
+                    order.getOrderNumber());
+            return;
+        }
+
+        if (STATUS_CONFIRMED.equals(order.getStatus())) {
+            throw new ConflictException("Cannot fail confirmed order " + orderNumber);
+        }
+
+        order.setStatus(STATUS_FAILED);
 
         // Release reserved tickets back to AVAILABLE
         for (OrderItem item : order.getItems()) {
@@ -315,10 +355,62 @@ public class OrderService {
         log.info("Failed order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
     }
 
+    @Transactional
+    public void cancelOrder(String orderNumber) {
+        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+
+        if (STATUS_CANCELLED.equals(order.getStatus())) {
+            log.info("Order {} is already cancelled; skipping duplicate cancellation", orderNumber);
+            return;
+        }
+
+        if (!STATUS_CONFIRMED.equals(order.getStatus())) {
+            throw new ConflictException("Can only cancel confirmed orders");
+        }
+
+        order.setStatus(STATUS_CANCELLED);
+
+        // Release tickets back to AVAILABLE and restore event availability
+        for (OrderItem item : order.getItems()) {
+            ticketService.releaseTicket(item.getTicket().getId());
+
+            Event event = item.getListing().getEvent();
+            event.setAvailableTickets(event.getAvailableTickets() + 1);
+            eventRepository.save(event);
+        }
+
+        // Reverse mandate spend if this was an agent-initiated order
+        if (order.getMandateId() != null && !order.getMandateId().isBlank()) {
+            mandateService.reverseSpend(order.getMandateId(), order.getTotal());
+        }
+
+        orderRepository.save(order);
+        log.info("Cancelled order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
+    }
+
     @Transactional(readOnly = true)
     public Order getOrderEntity(String orderNumber) {
         return orderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+    }
+
+    @Transactional
+    public Order getOrderEntityByPaymentIntentId(String paymentIntentId) {
+        return orderRepository.findByPaymentIntentId(paymentIntentId)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, "paymentIntentId", paymentIntentId));
+    }
+
+    @Transactional
+    public Order getOrderEntityForUpdate(String orderNumber) {
+        return orderRepository.findByOrderNumberForUpdate(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+    }
+
+    @Transactional
+    public Order getOrderEntityByPaymentIntentIdForUpdate(String paymentIntentId) {
+        return orderRepository.findByPaymentIntentIdForUpdate(paymentIntentId)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, "paymentIntentId", paymentIntentId));
     }
 
     private String generateOrderNumber() {
@@ -333,6 +425,13 @@ public class OrderService {
                 .orElse(1L);
 
         return String.format("%s%04d", prefix, sequence);
+    }
+
+    private String normalize(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.strip();
     }
 
     private OrderDto toOrderDto(Order order) {
