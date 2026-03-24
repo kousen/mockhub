@@ -274,6 +274,38 @@ class MandateServiceTest {
     }
 
     @Test
+    @DisplayName("validateAction treats empty allowedCategories as unrestricted")
+    void validateAction_givenEmptyAllowedCategories_treatsAsUnrestricted() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setScope("PURCHASE");
+        mandate.setAllowedCategories("");
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        boolean result = mandateService.validateAction(
+                "agent-1", "user@example.com", "PURCHASE",
+                null, "classical-music", null);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    @DisplayName("validateAction treats empty allowedEvents as unrestricted")
+    void validateAction_givenEmptyAllowedEvents_treatsAsUnrestricted() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setScope("PURCHASE");
+        mandate.setAllowedEvents("");
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        boolean result = mandateService.validateAction(
+                "agent-1", "user@example.com", "PURCHASE",
+                null, null, "yo-yo-ma-bach");
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
     @DisplayName("validateAction returns false when no active mandate")
     void validateAction_givenNoActiveMandate_returnsFalse() {
         when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))

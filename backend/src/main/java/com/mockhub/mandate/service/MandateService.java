@@ -160,6 +160,7 @@ public class MandateService {
         }
 
         if (categorySlug != null && mandate.getAllowedCategories() != null
+                && !mandate.getAllowedCategories().isBlank()
                 && !parseCommaSeparated(mandate.getAllowedCategories()).contains(categorySlug)) {
             log.warn("Mandate {} does not allow category '{}'",
                     mandate.getMandateId(), categorySlug);
@@ -167,6 +168,7 @@ public class MandateService {
         }
 
         if (eventSlug != null && mandate.getAllowedEvents() != null
+                && !mandate.getAllowedEvents().isBlank()
                 && !parseCommaSeparated(mandate.getAllowedEvents()).contains(eventSlug)) {
             log.warn("Mandate {} does not allow event '{}'",
                     mandate.getMandateId(), eventSlug);
