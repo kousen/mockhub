@@ -391,7 +391,7 @@ class OrderServiceTest {
 
         orderService.cancelOrder("MH-20260317-0001");
 
-        assertEquals("FAILED", testOrder.getStatus());
+        assertEquals("CANCELLED", testOrder.getStatus());
         verify(ticketService).releaseTicket(1L);
         verify(eventRepository).save(event);
         assertEquals(originalAvailable + 1, event.getAvailableTickets());
@@ -410,7 +410,7 @@ class OrderServiceTest {
 
         orderService.cancelOrder("MH-20260317-0001");
 
-        assertEquals("FAILED", testOrder.getStatus());
+        assertEquals("CANCELLED", testOrder.getStatus());
         verify(ticketService).releaseTicket(1L);
         verify(mandateService, never()).reverseSpend(anyString(), any(BigDecimal.class));
     }

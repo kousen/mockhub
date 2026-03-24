@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.auth.entity.User;
@@ -21,6 +22,7 @@ import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
@@ -129,6 +131,7 @@ public class OrderTools {
     @Tool(description = "Confirm a pending order, completing the purchase. "
             + "In mock-payment mode, this transitions the order from PENDING to CONFIRMED. "
             + "Returns the updated order with confirmation details.")
+    @Transactional
     public String confirmOrder(
             @ToolParam(description = "User's email address", required = true) String userEmail,
             @ToolParam(description = "Order number (e.g. 'MH-20260319-0001')", required = true) String orderNumber,
@@ -155,8 +158,7 @@ public class OrderTools {
             validateStoredAgentContext(order, agentId, mandateId);
 
             // Re-evaluate mandate authorization at confirmation time
-            EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forAgentAction(
-                    agentId.strip(), user.getEmail(), null, null, order.getTotal(), null, mandateId.strip()));
+            EvalSummary evalSummary = revalidateOrderForConfirmation(order, user.getEmail(), agentId, mandateId);
             if (evalSummary.hasCriticalFailure()) {
                 String failureMessage = evalSummary.failures().stream()
                         .map(result -> result.conditionName() + ": " + result.message())
@@ -222,5 +224,24 @@ public class OrderTools {
             return null;
         }
         return value.strip();
+    }
+
+    private EvalSummary revalidateOrderForConfirmation(Order order, String userEmail,
+                                                       String agentId, String mandateId) {
+        java.util.List<com.mockhub.eval.dto.EvalResult> failures = new java.util.ArrayList<>();
+
+        for (OrderItem item : order.getItems()) {
+            String categorySlug = item.getListing().getEvent().getCategory() != null
+                    ? item.getListing().getEvent().getCategory().getSlug()
+                    : null;
+            EvalSummary itemSummary = evalRunner.evaluate(EvalContext.forAgentAction(
+                    agentId.strip(), userEmail, item.getListing().getEvent(), item.getListing(),
+                    order.getTotal(), categorySlug, mandateId.strip()));
+            if (itemSummary.hasCriticalFailure()) {
+                failures.addAll(itemSummary.failures());
+            }
+        }
+
+        return new EvalSummary(failures);
     }
 }

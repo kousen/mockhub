@@ -90,7 +90,7 @@ public class MandateService {
 
     @Transactional
     public void recordSpend(String mandateId, BigDecimal amount) {
-        Mandate mandate = mandateRepository.findByMandateId(mandateId)
+        Mandate mandate = mandateRepository.findByMandateIdForUpdate(mandateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mandate", "mandateId", mandateId));
         BigDecimal newTotal = mandate.getTotalSpent().add(amount);
         mandate.setTotalSpent(newTotal);
@@ -100,7 +100,7 @@ public class MandateService {
 
     @Transactional
     public void reverseSpend(String mandateId, BigDecimal amount) {
-        Mandate mandate = mandateRepository.findByMandateId(mandateId)
+        Mandate mandate = mandateRepository.findByMandateIdForUpdate(mandateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mandate", "mandateId", mandateId));
         BigDecimal newTotal = mandate.getTotalSpent().subtract(amount);
         if (newTotal.compareTo(BigDecimal.ZERO) < 0) {

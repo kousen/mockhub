@@ -290,7 +290,7 @@ class MandateServiceTest {
     void recordSpend_givenExistingMandate_incrementsTotalSpent() {
         Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
         mandate.setTotalSpent(new BigDecimal("100.00"));
-        when(mandateRepository.findByMandateId("m1")).thenReturn(Optional.of(mandate));
+        when(mandateRepository.findByMandateIdForUpdate("m1")).thenReturn(Optional.of(mandate));
         when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         mandateService.recordSpend("m1", new BigDecimal("50.00"));
@@ -302,7 +302,7 @@ class MandateServiceTest {
     @Test
     @DisplayName("recordSpend throws when mandate not found")
     void recordSpend_givenNonexistentMandate_throwsResourceNotFound() {
-        when(mandateRepository.findByMandateId("nonexistent")).thenReturn(Optional.empty());
+        when(mandateRepository.findByMandateIdForUpdate("nonexistent")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> mandateService.recordSpend("nonexistent", BigDecimal.TEN))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -313,7 +313,7 @@ class MandateServiceTest {
     void reverseSpend_givenExistingMandate_decrementsTotalSpent() {
         Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
         mandate.setTotalSpent(new BigDecimal("150.00"));
-        when(mandateRepository.findByMandateId("m1")).thenReturn(Optional.of(mandate));
+        when(mandateRepository.findByMandateIdForUpdate("m1")).thenReturn(Optional.of(mandate));
         when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         mandateService.reverseSpend("m1", new BigDecimal("50.00"));
@@ -327,7 +327,7 @@ class MandateServiceTest {
     void reverseSpend_givenAmountExceedingTotalSpent_floorsAtZero() {
         Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
         mandate.setTotalSpent(new BigDecimal("30.00"));
-        when(mandateRepository.findByMandateId("m1")).thenReturn(Optional.of(mandate));
+        when(mandateRepository.findByMandateIdForUpdate("m1")).thenReturn(Optional.of(mandate));
         when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         mandateService.reverseSpend("m1", new BigDecimal("50.00"));
@@ -339,7 +339,7 @@ class MandateServiceTest {
     @Test
     @DisplayName("reverseSpend throws when mandate not found")
     void reverseSpend_givenNonexistentMandate_throwsResourceNotFoundException() {
-        when(mandateRepository.findByMandateId("nonexistent")).thenReturn(Optional.empty());
+        when(mandateRepository.findByMandateIdForUpdate("nonexistent")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> mandateService.reverseSpend("nonexistent", BigDecimal.TEN))
                 .isInstanceOf(ResourceNotFoundException.class);

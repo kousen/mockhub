@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.auth.entity.User;
@@ -58,6 +59,7 @@ public class CartTools {
     @Tool(description = "Add a ticket listing to a user's shopping cart. "
             + "The listing must be active and not already in the cart. Cart expires after 15 minutes. "
             + "Autonomous agent actions must include both agentId and mandateId.")
+    @Transactional
     public String addToCart(
             @ToolParam(description = "User's email address", required = true) String userEmail,
             @ToolParam(description = "ID of the listing to add to cart", required = true) Long listingId,

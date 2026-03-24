@@ -57,6 +57,7 @@ public class OrderService {
     private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_CONFIRMED = "CONFIRMED";
     private static final String STATUS_FAILED = "FAILED";
+    private static final String STATUS_CANCELLED = "CANCELLED";
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
@@ -357,8 +358,8 @@ public class OrderService {
         Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
-        if (STATUS_FAILED.equals(order.getStatus())) {
-            log.info("Order {} is already failed; skipping duplicate cancellation", orderNumber);
+        if (STATUS_CANCELLED.equals(order.getStatus())) {
+            log.info("Order {} is already cancelled; skipping duplicate cancellation", orderNumber);
             return;
         }
 
@@ -366,7 +367,7 @@ public class OrderService {
             throw new ConflictException("Can only cancel confirmed orders");
         }
 
-        order.setStatus(STATUS_FAILED);
+        order.setStatus(STATUS_CANCELLED);
 
         // Release tickets back to AVAILABLE and restore event availability
         for (OrderItem item : order.getItems()) {

@@ -25,9 +25,14 @@ import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.ticket.entity.Listing;
+import com.mockhub.ticket.entity.Ticket;
+import com.mockhub.event.entity.Event;
+import com.mockhub.event.entity.Category;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -79,6 +84,42 @@ class OrderToolsTest {
 
     private void stubPassingEval() {
         when(evalRunner.evaluate(any())).thenReturn(new EvalSummary(List.of(EvalResult.pass("mandate"))));
+    }
+
+    private Order createAgentOrderEntity(String orderNumber) {
+        Order order = new Order();
+        order.setOrderNumber(orderNumber);
+        order.setAgentId(AGENT_ID);
+        order.setMandateId(MANDATE_ID);
+        order.setPaymentMethod("mock");
+        order.setTotal(java.math.BigDecimal.TEN);
+
+        Event event = new Event();
+        event.setName("Test Event");
+        event.setSlug("test-event");
+        event.setStatus("ACTIVE");
+        event.setEventDate(java.time.Instant.now().plusSeconds(3600));
+        Category category = new Category();
+        category.setSlug("concerts");
+        event.setCategory(category);
+
+        Listing listing = new Listing();
+        listing.setEvent(event);
+        listing.setStatus("ACTIVE");
+        listing.setComputedPrice(java.math.BigDecimal.TEN);
+
+        Ticket ticket = new Ticket();
+        ticket.setEvent(event);
+        listing.setTicket(ticket);
+
+        OrderItem orderItem = new OrderItem();
+        orderItem.setOrder(order);
+        orderItem.setListing(listing);
+        orderItem.setTicket(ticket);
+        orderItem.setPricePaid(java.math.BigDecimal.TEN);
+        order.setItems(List.of(orderItem));
+
+        return order;
     }
 
     @Nested
@@ -163,11 +204,7 @@ class OrderToolsTest {
         @DisplayName("given valid email and order number - confirms and returns order JSON")
         void givenValidEmailAndOrderNumber_confirmsAndReturnsOrderJson() {
             stubUserLookup("buyer@example.com");
-            Order orderEntity = new Order();
-            orderEntity.setOrderNumber("MH-20260319-0001");
-            orderEntity.setAgentId(AGENT_ID);
-            orderEntity.setMandateId(MANDATE_ID);
-            orderEntity.setPaymentMethod("mock");
+            Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
             OrderDto orderDto = new OrderDto(
                     null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
@@ -207,11 +244,7 @@ class OrderToolsTest {
         @DisplayName("given order number with whitespace - strips whitespace before lookup")
         void givenOrderNumberWithWhitespace_stripsWhitespace() {
             stubUserLookup("buyer@example.com");
-            Order orderEntity = new Order();
-            orderEntity.setOrderNumber("MH-20260319-0001");
-            orderEntity.setAgentId(AGENT_ID);
-            orderEntity.setMandateId(MANDATE_ID);
-            orderEntity.setPaymentMethod("mock");
+            Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
             OrderDto orderDto = new OrderDto(
                     null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
@@ -249,11 +282,7 @@ class OrderToolsTest {
         @DisplayName("given service throws exception - returns error JSON")
         void givenServiceThrowsException_returnsErrorJson() {
             stubUserLookup("buyer@example.com");
-            Order orderEntity = new Order();
-            orderEntity.setOrderNumber("MH-INVALID");
-            orderEntity.setAgentId(AGENT_ID);
-            orderEntity.setMandateId(MANDATE_ID);
-            orderEntity.setPaymentMethod("mock");
+            Order orderEntity = createAgentOrderEntity("MH-INVALID");
             when(orderService.getOrder(testUser, "MH-INVALID")).thenReturn(
                     new OrderDto(null, null, null, null, null, null, null, null, null, null));
             when(orderService.getOrderEntity("MH-INVALID")).thenReturn(orderEntity);
@@ -272,11 +301,7 @@ class OrderToolsTest {
         @DisplayName("given critical eval failure - returns error and does not confirm")
         void confirmOrder_givenCriticalEvalFailure_returnsErrorAndDoesNotConfirm() {
             stubUserLookup("buyer@example.com");
-            Order orderEntity = new Order();
-            orderEntity.setOrderNumber("MH-20260319-0001");
-            orderEntity.setAgentId(AGENT_ID);
-            orderEntity.setMandateId(MANDATE_ID);
-            orderEntity.setPaymentMethod("mock");
+            Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
             OrderDto orderDto = new OrderDto(
                     null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);

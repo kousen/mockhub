@@ -34,6 +34,7 @@ import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
 import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
@@ -121,6 +122,7 @@ public class AcpCheckoutService {
 
         Order order = orderService.getOrderEntity(checkoutId);
         validateStoredAgentContext(order, request.agentId(), request.mandateId());
+        ensureOrderStillAuthorizedForConfirmation(order, user.getEmail(), request.agentId(), request.mandateId());
 
         // Collect listing IDs to remove
         java.util.Set<Long> removeIds = new java.util.HashSet<>();
@@ -209,8 +211,7 @@ public class AcpCheckoutService {
 
         log.info("ACP checkout cancelled: {}", orderDto.orderNumber());
 
-        // Return response with CANCELLED status (failOrder sets FAILED internally,
-        // but ACP uses CANCELLED terminology)
+        // Return response with CANCELLED status for explicit checkout cancellation.
         List<AcpLineItemResponse> lineItems = orderDto.items().stream()
                 .map(item -> new AcpLineItemResponse(
                         item.listingId(),
@@ -406,6 +407,30 @@ public class AcpCheckoutService {
         }
     }
 
+    private void ensureOrderStillAuthorizedForConfirmation(Order order, String userEmail,
+                                                           String agentId, String mandateId) {
+        List<com.mockhub.eval.dto.EvalResult> failures = new ArrayList<>();
+
+        for (OrderItem item : order.getItems()) {
+            String categorySlug = item.getListing().getEvent().getCategory() != null
+                    ? item.getListing().getEvent().getCategory().getSlug()
+                    : null;
+            EvalSummary summary = evalRunner.evaluate(EvalContext.forAgentAction(
+                    agentId.strip(), userEmail, item.getListing().getEvent(), item.getListing(),
+                    order.getTotal(), categorySlug, mandateId.strip()));
+            if (summary.hasCriticalFailure()) {
+                failures.addAll(summary.failures());
+            }
+        }
+
+        if (!failures.isEmpty()) {
+            String failureMessage = failures.stream()
+                    .map(result -> result.conditionName() + ": " + result.message())
+                    .collect(java.util.stream.Collectors.joining("; "));
+            throw new ConflictException("ACP confirmation validation failed: " + failureMessage);
+        }
+    }
+
     private AcpCheckoutResponse toAcpCheckoutResponse(OrderDto orderDto, String buyerEmail) {
         List<AcpLineItemResponse> lineItems = orderDto.items().stream()
                 .map(item -> new AcpLineItemResponse(
@@ -444,7 +469,7 @@ public class AcpCheckoutService {
         return switch (orderStatus) {
             case "PENDING" -> "CREATED";
             case "CONFIRMED" -> "COMPLETED";
-            case "FAILED" -> "CANCELLED";
+            case "FAILED", "CANCELLED" -> "CANCELLED";
             default -> orderStatus;
         };
     }
