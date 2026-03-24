@@ -10,7 +10,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
+import com.mockhub.mcp.tools.OrderTools;
 import com.mockhub.mcp.tools.PricingTools;
 
 @Configuration
@@ -30,18 +32,25 @@ public class AiConfig {
     public ChatClient chatClient(AnthropicChatModel anthropicChatModel,
                                   ChatMemory chatMemory,
                                   EventTools eventTools,
-                                  PricingTools pricingTools) {
+                                  PricingTools pricingTools,
+                                  CartTools cartTools,
+                                  OrderTools orderTools) {
         return ChatClient.builder(anthropicChatModel)
                 .defaultSystem("""
                         You are a helpful assistant for MockHub, \
                         a secondary concert ticket marketplace. \
                         Help users find events, understand pricing, \
-                        and navigate the platform.
+                        and purchase tickets on behalf of users.
 
                         You have access to tools that can search events, \
-                        get event details, list ticket prices, and check \
-                        price history. Use these tools to answer questions \
-                        with real data from the platform.
+                        get event details, list ticket prices, check \
+                        price history, manage shopping carts, and \
+                        complete purchases.
+
+                        When a user asks to buy tickets, use findTickets to \
+                        search, addToCart to add the listing, checkout to \
+                        create the order, and confirmOrder to complete it. \
+                        The user's email is available from their login session.
 
                         When mentioning events, always include a markdown link \
                         using the event's URL slug. The format is: \
@@ -52,7 +61,8 @@ public class AiConfig {
                         When mentioning the events page, link to [Browse Events](/events). \
                         Keep responses concise and helpful.""")
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
-                .defaultToolCallbacks(ToolCallbacks.from(eventTools, pricingTools))
+                .defaultToolCallbacks(ToolCallbacks.from(eventTools, pricingTools,
+                        cartTools, orderTools))
                 .build();
     }
 }
