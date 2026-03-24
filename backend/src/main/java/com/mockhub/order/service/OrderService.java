@@ -95,8 +95,9 @@ public class OrderService {
         this.smsOrderBaseUrl = smsOrderBaseUrl;
     }
 
+    @Transactional
+    @SuppressWarnings("java:S6809") // Self-invocation is intentional — simple delegation to the full overload
     public OrderDto checkout(User user, CheckoutRequest request, String idempotencyKey) {
-        // Delegates to the full overload — no @Transactional needed since the target method has it
         return checkout(user, request, idempotencyKey, null, null);
     }
 

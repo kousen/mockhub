@@ -72,8 +72,9 @@ public class MandateService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    @SuppressWarnings("java:S6809") // Self-invocation is intentional — simple delegation to the full overload
     public Mandate getActiveMandate(String agentId, String userEmail) {
-        // Delegates to the full overload — no @Transactional needed since the target method has it
         return getActiveMandate(agentId, userEmail, null);
     }
 
@@ -113,9 +114,10 @@ public class MandateService {
         log.info("Reversed spend of {} on mandate {}, new total: {}", amount, mandateId, newTotal);
     }
 
+    @Transactional(readOnly = true)
+    @SuppressWarnings("java:S6809") // Self-invocation is intentional — simple delegation to the full overload
     public boolean validateAction(String agentId, String userEmail, String requiredScope,
                                   BigDecimal amount, String categorySlug, String eventSlug) {
-        // Delegates to the full overload — no @Transactional needed since the target method has it
         return validateAction(agentId, userEmail, requiredScope, amount, categorySlug, eventSlug, null);
     }
 
