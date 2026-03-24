@@ -352,6 +352,40 @@ public class OrderService {
         log.info("Failed order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
     }
 
+    @Transactional
+    public void cancelOrder(String orderNumber) {
+        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+
+        if (STATUS_FAILED.equals(order.getStatus())) {
+            log.info("Order {} is already failed; skipping duplicate cancellation", orderNumber);
+            return;
+        }
+
+        if (!STATUS_CONFIRMED.equals(order.getStatus())) {
+            throw new ConflictException("Can only cancel confirmed orders");
+        }
+
+        order.setStatus(STATUS_FAILED);
+
+        // Release tickets back to AVAILABLE and restore event availability
+        for (OrderItem item : order.getItems()) {
+            ticketService.releaseTicket(item.getTicket().getId());
+
+            Event event = item.getListing().getEvent();
+            event.setAvailableTickets(event.getAvailableTickets() + 1);
+            eventRepository.save(event);
+        }
+
+        // Reverse mandate spend if this was an agent-initiated order
+        if (order.getMandateId() != null && !order.getMandateId().isBlank()) {
+            mandateService.reverseSpend(order.getMandateId(), order.getTotal());
+        }
+
+        orderRepository.save(order);
+        log.info("Cancelled order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
+    }
+
     @Transactional(readOnly = true)
     public Order getOrderEntity(String orderNumber) {
         return orderRepository.findByOrderNumber(orderNumber)

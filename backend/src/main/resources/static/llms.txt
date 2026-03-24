@@ -109,11 +109,31 @@ GET /acp/v1/catalog — Browse product catalog. Query params: query, category, c
 GET /acp/v1/listings — Browse actionable ticket offers. Query params: query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, page, size
 
 ## Agent Mandates
+
 Mandates define what an agent is authorized to do on behalf of a user.
 Scope: BROWSE (read-only) or PURCHASE (can buy, subsumes BROWSE).
 Limits: per-transaction max, cumulative total budget, category/event restrictions, expiration.
 Autonomous purchase actions require both agent identity and mandate proof.
 Managed via MCP MandateTools or directly via mandate service.
+
+### Mandate Lifecycle
+
+1. Create — User grants agent a mandate via createMandate tool. Defines scope, spending limits, allowed categories/events, and optional expiration.
+2. Validate — Every agent purchase action (addToCart, checkout, confirmOrder) triggers MandateCondition (CRITICAL severity). Checks: mandate active, not expired, scope covers action, within spending limits, allowed category/event.
+3. Spend Tracking — On order confirmation, the order total is recorded against the mandate's cumulative spend (totalSpent). Remaining budget = maxSpendTotal - totalSpent.
+4. Spend Reversal — If a confirmed order is cancelled via cancelOrder, the order total is reversed (subtracted from totalSpent), restoring available budget.
+5. Revoke — User revokes mandate via revokeMandate tool. Status set to REVOKED. Subsequent agent actions using this mandate are blocked.
+
+### Purchase Flow with Mandates
+
+findTickets(query, filters) → addToCart(userEmail, listingId, agentId, mandateId) → checkout(userEmail, paymentMethod, agentId, mandateId) → confirmOrder(userEmail, orderNumber, agentId, mandateId)
+
+Each step validates the mandate via eval conditions. Spend is recorded on confirmation. If the order is later cancelled, spend is reversed.
+
+### Eval Conditions
+
+- MandateCondition (CRITICAL): Blocks actions without a valid mandate. Checks scope, per-transaction and cumulative spending limits, category/event restrictions.
+- SpendingLimitCondition (WARNING): Advisory alert when cart total exceeds $2000 (configurable). Does not block — mandate per-transaction limits are the hard stop.
 
 ## Content Types
 Request: application/json

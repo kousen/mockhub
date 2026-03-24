@@ -55,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -374,6 +375,57 @@ class OrderServiceTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> orderService.getOrder(testUser, "NONEXISTENT"),
                 "Should throw ResourceNotFoundException for unknown order");
+    }
+
+    @Test
+    @DisplayName("cancelOrder - given confirmed order with mandate - reverses spend and releases tickets")
+    void cancelOrder_givenConfirmedOrderWithMandate_reversesSpendAndReleasesTickets() {
+        testOrder.setStatus("CONFIRMED");
+        testOrder.setMandateId("mandate-123");
+        Event event = testOrder.getItems().getFirst().getListing().getEvent();
+        int originalAvailable = event.getAvailableTickets();
+
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.cancelOrder("MH-20260317-0001");
+
+        assertEquals("FAILED", testOrder.getStatus());
+        verify(ticketService).releaseTicket(1L);
+        verify(eventRepository).save(event);
+        assertEquals(originalAvailable + 1, event.getAvailableTickets());
+        verify(mandateService).reverseSpend("mandate-123", new BigDecimal("82.50"));
+    }
+
+    @Test
+    @DisplayName("cancelOrder - given confirmed order without mandate - releases tickets only")
+    void cancelOrder_givenConfirmedOrderWithoutMandate_releasesTicketsOnly() {
+        testOrder.setStatus("CONFIRMED");
+        testOrder.setMandateId(null);
+
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.cancelOrder("MH-20260317-0001");
+
+        assertEquals("FAILED", testOrder.getStatus());
+        verify(ticketService).releaseTicket(1L);
+        verify(mandateService, never()).reverseSpend(anyString(), any(BigDecimal.class));
+    }
+
+    @Test
+    @DisplayName("cancelOrder - given pending order - throws ConflictException")
+    void cancelOrder_givenPendingOrder_throwsConflictException() {
+        testOrder.setStatus("PENDING");
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        assertThrows(ConflictException.class,
+                () -> orderService.cancelOrder("MH-20260317-0001"));
+
+        verify(ticketService, never()).releaseTicket(anyLong());
     }
 
     @Test

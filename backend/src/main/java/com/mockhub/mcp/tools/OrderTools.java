@@ -154,6 +154,16 @@ public class OrderTools {
             Order order = orderService.getOrderEntity(trimmedOrderNumber);
             validateStoredAgentContext(order, agentId, mandateId);
 
+            // Re-evaluate mandate authorization at confirmation time
+            EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forAgentAction(
+                    agentId.strip(), user.getEmail(), null, null, order.getTotal(), null, mandateId.strip()));
+            if (evalSummary.hasCriticalFailure()) {
+                String failureMessage = evalSummary.failures().stream()
+                        .map(result -> result.conditionName() + ": " + result.message())
+                        .collect(java.util.stream.Collectors.joining("; "));
+                return errorJson("Cannot confirm order: " + failureMessage);
+            }
+
             String normalizedPaymentIntentId = normalize(paymentIntentId);
             if (normalizedPaymentIntentId != null) {
                 order.setPaymentIntentId(normalizedPaymentIntentId);

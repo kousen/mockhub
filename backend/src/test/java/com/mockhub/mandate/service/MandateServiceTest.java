@@ -308,6 +308,43 @@ class MandateServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    @Test
+    @DisplayName("reverseSpend decrements total spent")
+    void reverseSpend_givenExistingMandate_decrementsTotalSpent() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setTotalSpent(new BigDecimal("150.00"));
+        when(mandateRepository.findByMandateId("m1")).thenReturn(Optional.of(mandate));
+        when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        mandateService.reverseSpend("m1", new BigDecimal("50.00"));
+
+        assertThat(mandate.getTotalSpent()).isEqualByComparingTo(new BigDecimal("100.00"));
+        verify(mandateRepository).save(mandate);
+    }
+
+    @Test
+    @DisplayName("reverseSpend floors at zero when amount exceeds total spent")
+    void reverseSpend_givenAmountExceedingTotalSpent_floorsAtZero() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setTotalSpent(new BigDecimal("30.00"));
+        when(mandateRepository.findByMandateId("m1")).thenReturn(Optional.of(mandate));
+        when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        mandateService.reverseSpend("m1", new BigDecimal("50.00"));
+
+        assertThat(mandate.getTotalSpent()).isEqualByComparingTo(BigDecimal.ZERO);
+        verify(mandateRepository).save(mandate);
+    }
+
+    @Test
+    @DisplayName("reverseSpend throws when mandate not found")
+    void reverseSpend_givenNonexistentMandate_throwsResourceNotFoundException() {
+        when(mandateRepository.findByMandateId("nonexistent")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> mandateService.reverseSpend("nonexistent", BigDecimal.TEN))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
     private Mandate createActiveMandate(String mandateId, String agentId, String userEmail) {
         Mandate mandate = new Mandate();
         mandate.setMandateId(mandateId);

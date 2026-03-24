@@ -18,6 +18,7 @@ import com.mockhub.cart.dto.CartDto;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.eval.dto.EvalResult;
+import com.mockhub.eval.dto.EvalSeverity;
 import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.order.dto.CheckoutRequest;
@@ -171,6 +172,7 @@ class OrderToolsTest {
                     null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
             when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
+            stubPassingEval();
             when(paymentService.createPaymentIntent(orderEntity))
                     .thenReturn(new PaymentIntentDto("pi_test", "secret", java.math.BigDecimal.TEN, "USD"));
 
@@ -214,6 +216,7 @@ class OrderToolsTest {
                     null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
             when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
+            stubPassingEval();
             when(paymentService.createPaymentIntent(orderEntity))
                     .thenReturn(new PaymentIntentDto("pi_test", "secret", java.math.BigDecimal.TEN, "USD"));
 
@@ -254,6 +257,7 @@ class OrderToolsTest {
             when(orderService.getOrder(testUser, "MH-INVALID")).thenReturn(
                     new OrderDto(null, null, null, null, null, null, null, null, null, null));
             when(orderService.getOrderEntity("MH-INVALID")).thenReturn(orderEntity);
+            stubPassingEval();
             when(paymentService.createPaymentIntent(orderEntity))
                     .thenReturn(new PaymentIntentDto("pi_invalid", "secret", java.math.BigDecimal.TEN, "USD"));
             org.mockito.Mockito.doThrow(new RuntimeException("Payment failed"))
@@ -263,6 +267,30 @@ class OrderToolsTest {
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to confirm order"), "Result should contain failure message");
+        }
+        @Test
+        @DisplayName("given critical eval failure - returns error and does not confirm")
+        void confirmOrder_givenCriticalEvalFailure_returnsErrorAndDoesNotConfirm() {
+            stubUserLookup("buyer@example.com");
+            Order orderEntity = new Order();
+            orderEntity.setOrderNumber("MH-20260319-0001");
+            orderEntity.setAgentId(AGENT_ID);
+            orderEntity.setMandateId(MANDATE_ID);
+            orderEntity.setPaymentMethod("mock");
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
+            when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
+            when(evalRunner.evaluate(any())).thenReturn(new EvalSummary(List.of(
+                    EvalResult.fail("mandate", EvalSeverity.CRITICAL, "Mandate has been revoked"))));
+
+            String result = orderTools.confirmOrder(
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Cannot confirm order"), "Result should contain eval failure message");
+            assertTrue(result.contains("Mandate has been revoked"), "Result should contain specific failure reason");
+            verify(paymentService, org.mockito.Mockito.never()).confirmPayment(any());
         }
     }
 

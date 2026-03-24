@@ -98,6 +98,19 @@ public class MandateService {
         log.info("Recorded spend of {} on mandate {}, new total: {}", amount, mandateId, newTotal);
     }
 
+    @Transactional
+    public void reverseSpend(String mandateId, BigDecimal amount) {
+        Mandate mandate = mandateRepository.findByMandateId(mandateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mandate", "mandateId", mandateId));
+        BigDecimal newTotal = mandate.getTotalSpent().subtract(amount);
+        if (newTotal.compareTo(BigDecimal.ZERO) < 0) {
+            newTotal = BigDecimal.ZERO;
+        }
+        mandate.setTotalSpent(newTotal);
+        mandateRepository.save(mandate);
+        log.info("Reversed spend of {} on mandate {}, new total: {}", amount, mandateId, newTotal);
+    }
+
     @Transactional(readOnly = true)
     public boolean validateAction(String agentId, String userEmail, String requiredScope,
                                   BigDecimal amount, String categorySlug, String eventSlug) {
