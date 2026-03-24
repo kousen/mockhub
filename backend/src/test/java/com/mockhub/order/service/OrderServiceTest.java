@@ -429,6 +429,21 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("cancelOrder - given already cancelled order - skips idempotently")
+    void cancelOrder_givenAlreadyCancelledOrder_skipsIdempotently() {
+        testOrder.setStatus("CANCELLED");
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        orderService.cancelOrder("MH-20260317-0001");
+
+        assertEquals("CANCELLED", testOrder.getStatus());
+        verify(ticketService, never()).releaseTicket(anyLong());
+        verify(mandateService, never()).reverseSpend(anyString(), any(BigDecimal.class));
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
     @DisplayName("listOrders - given user with orders - returns paged response")
     void listOrders_givenUserWithOrders_returnsPagedResponse() {
         Page<Order> page = new PageImpl<>(List.of(testOrder));

@@ -622,6 +622,75 @@ class AcpCheckoutServiceTest {
     }
 
     @Test
+    @DisplayName("updateCheckout - given critical eval failure during revalidation - throws ConflictException")
+    void updateCheckout_givenCriticalEvalFailure_throwsConflictException() {
+        Order order = createAgentOrder("MH-20260323-0001", "mock");
+        com.mockhub.order.entity.OrderItem orderItem = new com.mockhub.order.entity.OrderItem();
+        orderItem.setOrder(order);
+        Listing listing = createListing(10L);
+        orderItem.setListing(listing);
+        com.mockhub.ticket.entity.Ticket ticket = new com.mockhub.ticket.entity.Ticket();
+        ticket.setSection(listing.getTicket().getSection());
+        orderItem.setTicket(ticket);
+        orderItem.setPricePaid(new BigDecimal("50.00"));
+        order.setItems(List.of(orderItem));
+        order.setTotal(new BigDecimal("55.00"));
+
+        AcpUpdateRequest updateRequest = createUpdateRequest(null, null);
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
+        when(orderService.getOrderEntity("MH-20260323-0001")).thenReturn(order);
+        when(evalRunner.evaluate(any())).thenReturn(new EvalSummary(List.of(
+                EvalResult.fail("mandate", com.mockhub.eval.dto.EvalSeverity.CRITICAL, "Mandate expired"))));
+
+        assertThrows(ConflictException.class, () ->
+                acpCheckoutService.updateCheckout("MH-20260323-0001", updateRequest, "buyer@test.com"));
+
+        verify(orderService, never()).failOrder(any());
+    }
+
+    @Test
+    @DisplayName("getListings - given filters - returns filtered results")
+    void getListings_givenFilters_returnsFilteredResults() {
+        EventSummaryDto event = new EventSummaryDto(
+                1L, "Rock Festival", "rock-festival", "Band A",
+                "Madison Square Garden", "NYC", Instant.now(),
+                new BigDecimal("50.00"), 100, null, "rock", true);
+        PagedResponse<EventSummaryDto> eventPage = new PagedResponse<>(
+                List.of(event), 0, 100, 1, 1);
+
+        // Create listing at $80 in "Floor" section
+        Listing floorListing = createListing(10L);
+        floorListing.setComputedPrice(new BigDecimal("80.00"));
+
+        // Create listing at $200 in "VIP" section (should be filtered out by maxPrice)
+        Listing vipListing = createListing(20L);
+        vipListing.setComputedPrice(new BigDecimal("200.00"));
+        com.mockhub.venue.entity.Section vipSection = new com.mockhub.venue.entity.Section();
+        vipSection.setName("VIP");
+        vipListing.getTicket().setSection(vipSection);
+
+        // Create listing at $30 in "Floor" section (should be filtered out by minPrice)
+        Listing cheapListing = createListing(30L);
+        cheapListing.setComputedPrice(new BigDecimal("30.00"));
+
+        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventPage);
+        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE"))
+                .thenReturn(List.of(floorListing, vipListing, cheapListing));
+
+        PagedResponse<com.mockhub.acp.dto.AcpListingItem> result = acpCheckoutService.getListings(
+                "rock", "rock", "NYC", null, null,
+                new BigDecimal("50.00"), new BigDecimal("150.00"), "Floor", 0, 20);
+
+        assertNotNull(result);
+        assertEquals(1, result.content().size(), "Only the $80 Floor listing should match all filters");
+        assertEquals(10L, result.content().getFirst().listingId());
+        assertEquals(new BigDecimal("80.00"), result.content().getFirst().price());
+        assertEquals("Floor", result.content().getFirst().sectionName());
+    }
+
+    @Test
     @DisplayName("getCheckout - maps unknown status directly")
     void getCheckout_mapsUnknownStatusDirectly() {
         OrderDto unknownOrder = new OrderDto(

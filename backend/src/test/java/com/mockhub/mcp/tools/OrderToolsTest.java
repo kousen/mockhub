@@ -298,6 +298,48 @@ class OrderToolsTest {
             assertTrue(result.contains("Failed to confirm order"), "Result should contain failure message");
         }
         @Test
+        @DisplayName("given mock payment with existing intent - reuses stored intent")
+        void confirmOrder_givenMockPaymentWithExistingIntent_reusesStoredIntent() {
+            stubUserLookup("buyer@example.com");
+            Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
+            orderEntity.setPaymentIntentId("pi_existing");
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
+            when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
+            stubPassingEval();
+
+            String result = orderTools.confirmOrder(
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null);
+
+            verify(paymentService, org.mockito.Mockito.never()).createPaymentIntent(any());
+            verify(paymentService).confirmPayment("pi_existing");
+            assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given non-mock payment with no intent anywhere - throws ConflictException and returns error")
+        void confirmOrder_givenNonMockPaymentWithNoIntent_throwsConflictException() {
+            stubUserLookup("buyer@example.com");
+            Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
+            orderEntity.setPaymentMethod("stripe");
+            orderEntity.setPaymentIntentId(null);
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
+            when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
+            stubPassingEval();
+
+            String result = orderTools.confirmOrder(
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Payment intent ID is required"),
+                    "Result should indicate payment intent is required for non-mock payment");
+            verify(paymentService, org.mockito.Mockito.never()).confirmPayment(any());
+        }
+
+        @Test
         @DisplayName("given critical eval failure - returns error and does not confirm")
         void confirmOrder_givenCriticalEvalFailure_returnsErrorAndDoesNotConfirm() {
             stubUserLookup("buyer@example.com");
