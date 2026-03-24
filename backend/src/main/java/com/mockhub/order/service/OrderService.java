@@ -234,8 +234,8 @@ public class OrderService {
             return;
         }
 
-        if (STATUS_FAILED.equals(order.getStatus())) {
-            throw new ConflictException("Cannot confirm failed order " + orderNumber);
+        if (STATUS_FAILED.equals(order.getStatus()) || STATUS_CANCELLED.equals(order.getStatus())) {
+            throw new ConflictException("Cannot confirm " + order.getStatus().toLowerCase() + " order " + orderNumber);
         }
 
         order.setStatus(STATUS_CONFIRMED);

@@ -80,8 +80,8 @@ public class MockPaymentService implements PaymentService {
             return new PaymentConfirmation(paymentIntentId, "SUCCEEDED", orderNumber);
         }
 
-        if ("FAILED".equals(order.getStatus())) {
-            throw new PaymentException("Cannot confirm payment for failed order " + orderNumber);
+        if ("FAILED".equals(order.getStatus()) || "CANCELLED".equals(order.getStatus())) {
+            throw new PaymentException("Cannot confirm payment for " + order.getStatus().toLowerCase() + " order " + orderNumber);
         }
 
         // Simulate processing delay

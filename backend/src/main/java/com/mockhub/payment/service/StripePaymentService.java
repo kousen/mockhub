@@ -110,8 +110,8 @@ public class StripePaymentService implements PaymentService {
                 return new PaymentConfirmation(paymentIntentId, "SUCCEEDED", orderNumber);
             }
 
-            if ("FAILED".equals(order.getStatus())) {
-                log.info("Stripe payment {} already failed for order {}", paymentIntentId, orderNumber);
+            if ("FAILED".equals(order.getStatus()) || "CANCELLED".equals(order.getStatus())) {
+                log.info("Stripe payment {} already {} for order {}", paymentIntentId, order.getStatus().toLowerCase(), orderNumber);
                 return new PaymentConfirmation(paymentIntentId, "FAILED", orderNumber);
             }
 
