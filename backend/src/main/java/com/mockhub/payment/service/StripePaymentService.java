@@ -103,7 +103,17 @@ public class StripePaymentService implements PaymentService {
                 throw new PaymentException("No order number found in payment intent metadata");
             }
 
-            Order order = orderService.getOrderEntity(orderNumber);
+            Order order = orderService.getOrderEntityForUpdate(orderNumber);
+
+            if ("CONFIRMED".equals(order.getStatus())) {
+                log.info("Stripe payment {} already confirmed for order {}", paymentIntentId, orderNumber);
+                return new PaymentConfirmation(paymentIntentId, "SUCCEEDED", orderNumber);
+            }
+
+            if ("FAILED".equals(order.getStatus())) {
+                log.info("Stripe payment {} already failed for order {}", paymentIntentId, orderNumber);
+                return new PaymentConfirmation(paymentIntentId, "FAILED", orderNumber);
+            }
 
             if ("succeeded".equals(status)) {
                 TransactionLog txnLog = new TransactionLog();

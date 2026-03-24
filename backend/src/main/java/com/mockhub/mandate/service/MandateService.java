@@ -72,11 +72,17 @@ public class MandateService {
 
     @Transactional(readOnly = true)
     public Mandate getActiveMandate(String agentId, String userEmail) {
+        return getActiveMandate(agentId, userEmail, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Mandate getActiveMandate(String agentId, String userEmail, String mandateId) {
         List<Mandate> mandates = mandateRepository.findByAgentIdAndUserEmailAndStatus(
                 agentId, userEmail, STATUS_ACTIVE);
 
         Instant now = Instant.now();
         return mandates.stream()
+                .filter(m -> mandateId == null || mandateId.isBlank() || mandateId.equals(m.getMandateId()))
                 .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
                 .findFirst()
                 .orElse(null);
@@ -95,17 +101,18 @@ public class MandateService {
     @Transactional(readOnly = true)
     public boolean validateAction(String agentId, String userEmail, String requiredScope,
                                   BigDecimal amount, String categorySlug, String eventSlug) {
-        List<Mandate> mandates = mandateRepository.findByAgentIdAndUserEmailAndStatus(
-                agentId, userEmail, STATUS_ACTIVE);
+        return validateAction(agentId, userEmail, requiredScope, amount, categorySlug, eventSlug, null);
+    }
 
-        Instant now = Instant.now();
-        Mandate mandate = mandates.stream()
-                .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
-                .findFirst()
-                .orElse(null);
+    @Transactional(readOnly = true)
+    public boolean validateAction(String agentId, String userEmail, String requiredScope,
+                                  BigDecimal amount, String categorySlug,
+                                  String eventSlug, String mandateId) {
+        Mandate mandate = getActiveMandate(agentId, userEmail, mandateId);
 
         if (mandate == null) {
-            log.warn("No active mandate for agent '{}' and user '{}'", agentId, userEmail);
+            log.warn("No active mandate for agent '{}' and user '{}' matching mandate '{}'",
+                    agentId, userEmail, mandateId);
             return false;
         }
 

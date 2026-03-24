@@ -44,7 +44,7 @@ class MandateConditionTest {
     @DisplayName("appliesTo returns true when agentId is present")
     void appliesTo_givenAgentIdPresent_returnsTrue() {
         EvalContext context = EvalContext.forAgentAction("agent-1", "user@example.com",
-                null, null, null, null);
+                null, null, null, null, null);
 
         assertThat(condition.appliesTo(context)).isTrue();
     }
@@ -61,7 +61,7 @@ class MandateConditionTest {
     @DisplayName("evaluate fails with CRITICAL when userEmail is null")
     void evaluate_givenNullUserEmail_failsCritical() {
         EvalContext context = EvalContext.forAgentAction("agent-1", null,
-                null, null, null, null);
+                null, null, null, null, null);
 
         EvalResult result = condition.evaluate(context);
 
@@ -74,8 +74,8 @@ class MandateConditionTest {
     @DisplayName("evaluate fails with CRITICAL when no active mandate found")
     void evaluate_givenNoActiveMandate_failsCritical() {
         EvalContext context = EvalContext.forAgentAction("agent-1", "user@example.com",
-                null, null, null, null);
-        when(mandateService.getActiveMandate("agent-1", "user@example.com")).thenReturn(null);
+                null, null, null, null, null);
+        when(mandateService.getActiveMandate("agent-1", "user@example.com", null)).thenReturn(null);
 
         EvalResult result = condition.evaluate(context);
 
@@ -89,13 +89,13 @@ class MandateConditionTest {
     @DisplayName("evaluate passes when mandate authorizes the action")
     void evaluate_givenValidMandate_passes() {
         EvalContext context = EvalContext.forAgentAction("agent-1", "user@example.com",
-                null, null, null, null);
+                null, null, null, null, null);
         Mandate mandate = new Mandate();
         mandate.setMandateId("m1");
         mandate.setScope("BROWSE");
-        when(mandateService.getActiveMandate("agent-1", "user@example.com")).thenReturn(mandate);
+        when(mandateService.getActiveMandate("agent-1", "user@example.com", null)).thenReturn(mandate);
         when(mandateService.validateAction(eq("agent-1"), eq("user@example.com"),
-                eq("BROWSE"), any(), any(), any())).thenReturn(true);
+                eq("BROWSE"), any(), any(), any(), eq(null))).thenReturn(true);
 
         EvalResult result = condition.evaluate(context);
 
@@ -106,13 +106,13 @@ class MandateConditionTest {
     @DisplayName("evaluate fails when mandate does not authorize the action")
     void evaluate_givenUnauthorizedAction_failsCritical() {
         EvalContext context = EvalContext.forAgentAction("agent-1", "user@example.com",
-                null, null, new BigDecimal("500.00"), null);
+                null, null, new BigDecimal("500.00"), null, "m1");
         Mandate mandate = new Mandate();
         mandate.setMandateId("m1");
         mandate.setScope("PURCHASE");
-        when(mandateService.getActiveMandate("agent-1", "user@example.com")).thenReturn(mandate);
+        when(mandateService.getActiveMandate("agent-1", "user@example.com", "m1")).thenReturn(mandate);
         when(mandateService.validateAction(eq("agent-1"), eq("user@example.com"),
-                eq("PURCHASE"), any(), any(), any())).thenReturn(false);
+                eq("PURCHASE"), any(), any(), any(), eq("m1"))).thenReturn(false);
 
         EvalResult result = condition.evaluate(context);
 
@@ -125,13 +125,13 @@ class MandateConditionTest {
     @DisplayName("evaluate determines PURCHASE scope when orderTotal is positive")
     void evaluate_givenPositiveOrderTotal_usesPurchaseScope() {
         EvalContext context = EvalContext.forAgentAction("agent-1", "user@example.com",
-                null, null, new BigDecimal("99.00"), null);
+                null, null, new BigDecimal("99.00"), null, "m1");
         Mandate mandate = new Mandate();
         mandate.setMandateId("m1");
         mandate.setScope("PURCHASE");
-        when(mandateService.getActiveMandate("agent-1", "user@example.com")).thenReturn(mandate);
+        when(mandateService.getActiveMandate("agent-1", "user@example.com", "m1")).thenReturn(mandate);
         when(mandateService.validateAction(eq("agent-1"), eq("user@example.com"),
-                eq("PURCHASE"), eq(new BigDecimal("99.00")), any(), any())).thenReturn(true);
+                eq("PURCHASE"), eq(new BigDecimal("99.00")), any(), any(), eq("m1"))).thenReturn(true);
 
         EvalResult result = condition.evaluate(context);
 
@@ -142,17 +142,30 @@ class MandateConditionTest {
     @DisplayName("evaluate determines BROWSE scope when orderTotal is null")
     void evaluate_givenNullOrderTotal_usesBrowseScope() {
         EvalContext context = EvalContext.forAgentAction("agent-2", "other@example.com",
-                null, null, null, null);
+                null, null, null, null, null);
         Mandate mandate = new Mandate();
         mandate.setMandateId("m2");
         mandate.setScope("BROWSE");
-        when(mandateService.getActiveMandate("agent-2", "other@example.com")).thenReturn(mandate);
+        when(mandateService.getActiveMandate("agent-2", "other@example.com", null)).thenReturn(mandate);
         when(mandateService.validateAction(eq("agent-2"), eq("other@example.com"),
-                eq("BROWSE"), any(), any(), any())).thenReturn(true);
+                eq("BROWSE"), any(), any(), any(), eq(null))).thenReturn(true);
 
         EvalResult result = condition.evaluate(context);
 
         assertThat(result.passed()).isTrue();
         assertThat(result.conditionName()).isEqualTo("mandate-authorization");
+    }
+
+    @Test
+    @DisplayName("evaluate fails when purchase action is missing mandateId")
+    void evaluate_givenPurchaseWithoutMandateId_failsCritical() {
+        EvalContext context = EvalContext.forAgentAction("agent-1", "user@example.com",
+                null, null, new BigDecimal("99.00"), null, null);
+
+        EvalResult result = condition.evaluate(context);
+
+        assertThat(result.passed()).isFalse();
+        assertThat(result.severity()).isEqualTo(EvalSeverity.CRITICAL);
+        assertThat(result.message()).contains("Mandate ID is required");
     }
 }

@@ -57,29 +57,31 @@ public class CartTools {
 
     @Tool(description = "Add a ticket listing to a user's shopping cart. "
             + "The listing must be active and not already in the cart. Cart expires after 15 minutes. "
-            + "If agentId is provided, mandate authorization is checked.")
+            + "Autonomous agent actions must include both agentId and mandateId.")
     public String addToCart(
             @ToolParam(description = "User's email address", required = true) String userEmail,
             @ToolParam(description = "ID of the listing to add to cart", required = true) Long listingId,
-            @ToolParam(description = "Agent ID for mandate authorization (optional)",
-                    required = false) String agentId) {
+            @ToolParam(description = "Agent ID performing the purchase action", required = true) String agentId,
+            @ToolParam(description = "Active mandate ID authorizing the purchase action",
+                    required = true) String mandateId) {
         try {
             if (listingId == null) {
                 return errorJson("Listing ID is required");
+            }
+            if (agentId == null || agentId.isBlank()) {
+                return errorJson("Agent ID is required");
+            }
+            if (mandateId == null || mandateId.isBlank()) {
+                return errorJson("Mandate ID is required");
             }
 
             java.util.Optional<Listing> listingOpt = listingRepository.findById(listingId);
             if (listingOpt.isPresent()) {
                 Listing listing = listingOpt.get();
-                EvalContext evalContext;
-                if (agentId != null && !agentId.isBlank()) {
-                    String categorySlug = listing.getEvent().getCategory() != null
-                            ? listing.getEvent().getCategory().getSlug() : null;
-                    evalContext = EvalContext.forAgentAction(agentId.strip(), userEmail,
-                            listing.getEvent(), listing, listing.getComputedPrice(), categorySlug);
-                } else {
-                    evalContext = EvalContext.forEventAndListing(listing.getEvent(), listing);
-                }
+                String categorySlug = listing.getEvent().getCategory() != null
+                        ? listing.getEvent().getCategory().getSlug() : null;
+                EvalContext evalContext = EvalContext.forAgentAction(agentId.strip(), userEmail,
+                        listing.getEvent(), listing, listing.getComputedPrice(), categorySlug, mandateId.strip());
                 EvalSummary evalSummary = evalRunner.evaluate(evalContext);
                 if (evalSummary.hasCriticalFailure()) {
                     String failureMessage = evalSummary.failures().stream()

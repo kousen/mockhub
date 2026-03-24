@@ -1,17 +1,12 @@
 package com.mockhub.acp.dto;
 
-import java.util.List;
-
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 
-public record AcpUpdateRequest(
+public record AcpCompleteRequest(
         @NotBlank(message = "Agent ID is required")
         String agentId,
         @NotBlank(message = "Mandate ID is required")
         String mandateId,
-        @Valid
-        List<AcpLineItem> addItems,
-        List<Long> removeListingIds
+        String paymentIntentId
 ) {
 }

@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.mockhub.acp.AcpApiKeyFilter;
 import com.mockhub.acp.dto.AcpCatalogItem;
 import com.mockhub.acp.dto.AcpCheckoutResponse;
+import com.mockhub.acp.dto.AcpListingItem;
 import com.mockhub.acp.dto.AcpLineItemResponse;
 import com.mockhub.acp.dto.AcpPricing;
 import com.mockhub.acp.service.AcpCheckoutService;
@@ -64,6 +65,8 @@ class AcpControllerTest {
                         .content("""
                                 {
                                     "buyerEmail": "buyer@test.com",
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123",
                                     "lineItems": [{"listingId": 1, "quantity": 1}]
                                 }
                                 """))
@@ -83,6 +86,8 @@ class AcpControllerTest {
                         .content("""
                                 {
                                     "buyerEmail": "buyer@test.com",
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123",
                                     "lineItems": [{"listingId": 1, "quantity": 1}],
                                     "paymentMethod": "mock"
                                 }
@@ -138,6 +143,8 @@ class AcpControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123",
                                     "addItems": [{"listingId": 2, "quantity": 1}]
                                 }
                                 """))
@@ -178,6 +185,8 @@ class AcpControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123",
                                     "addItems": [{"listingId": 2, "quantity": 1}]
                                 }
                                 """))
@@ -189,11 +198,18 @@ class AcpControllerTest {
     @DisplayName("POST /acp/v1/checkout/{id}/complete - valid key - returns 200")
     void completeCheckout_validKey_returns200() throws Exception {
         AcpCheckoutResponse response = createTestResponse("COMPLETED");
-        when(acpCheckoutService.completeCheckout("MH-20260323-0001", "buyer@test.com")).thenReturn(response);
+        when(acpCheckoutService.completeCheckout(eq("MH-20260323-0001"), eq("buyer@test.com"), any())).thenReturn(response);
 
         mockMvc.perform(post("/acp/v1/checkout/MH-20260323-0001/complete")
                         .header("X-API-Key", "test-api-key")
-                        .header("X-Buyer-Email", "buyer@test.com"))
+                        .header("X-Buyer-Email", "buyer@test.com")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123"
+                                }
+                                """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
     }
@@ -202,11 +218,18 @@ class AcpControllerTest {
     @DisplayName("POST /acp/v1/checkout/{id}/cancel - valid key - returns 200")
     void cancelCheckout_validKey_returns200() throws Exception {
         AcpCheckoutResponse response = createTestResponse("CANCELLED");
-        when(acpCheckoutService.cancelCheckout("MH-20260323-0001", "buyer@test.com")).thenReturn(response);
+        when(acpCheckoutService.cancelCheckout(eq("MH-20260323-0001"), eq("buyer@test.com"), any())).thenReturn(response);
 
         mockMvc.perform(post("/acp/v1/checkout/MH-20260323-0001/cancel")
                         .header("X-API-Key", "test-api-key")
-                        .header("X-Buyer-Email", "buyer@test.com"))
+                        .header("X-Buyer-Email", "buyer@test.com")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123"
+                                }
+                                """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
@@ -245,6 +268,25 @@ class AcpControllerTest {
                         .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    @DisplayName("GET /acp/v1/listings - valid key - returns 200")
+    void getListings_validKey_returns200() throws Exception {
+        PagedResponse<AcpListingItem> listingsResponse = new PagedResponse<>(
+                List.of(new AcpListingItem(
+                        10L, "test-concert", "Test Concert", "test-concert", "Test Concert",
+                        "rock", "Test Venue", "NYC", Instant.now(),
+                        "Floor", "A", "1", new BigDecimal("50.00"), "/events/test-concert")),
+                0, 20, 1, 1);
+        when(acpCheckoutService.getListings(null, null, null, null, null, null, null, null, 0, 20))
+                .thenReturn(listingsResponse);
+
+        mockMvc.perform(get("/acp/v1/listings")
+                        .header("X-API-Key", "test-api-key"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].listingId").value(10))
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test

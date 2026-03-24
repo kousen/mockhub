@@ -71,12 +71,18 @@ public class MockPaymentService implements PaymentService {
     @Override
     @Transactional
     public PaymentConfirmation confirmPayment(String paymentIntentId) {
-        String orderNumber = paymentIntentToOrder.get(paymentIntentId);
-        if (orderNumber == null) {
-            throw new PaymentException("Unknown payment intent: " + paymentIntentId);
+        Order order = resolveOrderForUpdate(paymentIntentId);
+        String orderNumber = order.getOrderNumber();
+
+        if ("CONFIRMED".equals(order.getStatus())) {
+            paymentIntentToOrder.remove(paymentIntentId);
+            log.info("Mock payment {} already confirmed for order {}", paymentIntentId, orderNumber);
+            return new PaymentConfirmation(paymentIntentId, "SUCCEEDED", orderNumber);
         }
 
-        Order order = orderService.getOrderEntity(orderNumber);
+        if ("FAILED".equals(order.getStatus())) {
+            throw new PaymentException("Cannot confirm payment for failed order " + orderNumber);
+        }
 
         // Simulate processing delay
         try {
@@ -109,6 +115,22 @@ public class MockPaymentService implements PaymentService {
                 "SUCCEEDED",
                 orderNumber
         );
+    }
+
+    private Order resolveOrderForUpdate(String paymentIntentId) {
+        String orderNumber = paymentIntentToOrder.get(paymentIntentId);
+        Order order;
+        if (orderNumber != null) {
+            order = orderService.getOrderEntityForUpdate(orderNumber);
+        } else {
+            order = orderService.getOrderEntityByPaymentIntentIdForUpdate(paymentIntentId);
+        }
+
+        if (order == null) {
+            throw new PaymentException("Unknown payment intent: " + paymentIntentId);
+        }
+
+        return order;
     }
 
     @Override

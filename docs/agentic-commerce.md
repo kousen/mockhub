@@ -27,7 +27,7 @@ Agentic commerce in MockHub is organized into three layers, each independently v
 
 ### Tool Inventory
 
-MockHub exposes 22 MCP tools across 5 tool classes:
+MockHub exposes 20 MCP tools across 5 tool classes:
 
 | Tool Class | Tools | Purpose |
 |---|---|---|
@@ -42,21 +42,26 @@ MockHub exposes 22 MCP tools across 5 tool classes:
 An agent can now execute a full purchase on behalf of a user:
 
 ```
-1. findTickets(query="Taylor Swift", city="NYC", maxPrice=200)
-   → Returns matching listings across events, sorted by price
+1. findTickets(query="Taylor Swift", city="NYC", dateFrom="2026-04-01T00:00:00Z",
+               dateTo="2026-04-30T23:59:59Z", maxPrice=200)
+   → Returns matching listings with event/date metadata, sorted by price
 
-2. addToCart(userEmail="buyer@example.com", listingId=42)
+2. addToCart(userEmail="buyer@example.com", listingId=42,
+             agentId="shopping-agent-1", mandateId="abc-123")
    → Eval conditions check: event in future, listing active
-   → Spending limit warning if cart exceeds $2,000
+   → MandateCondition checks agent identity, mandate proof, and purchase authority
    → Returns cart with any warnings
 
-3. checkout(userEmail="buyer@example.com", paymentMethod="mock")
+3. checkout(userEmail="buyer@example.com", paymentMethod="mock",
+            agentId="shopping-agent-1", mandateId="abc-123")
    → Validates listings, reserves tickets, creates PENDING order
    → Returns OrderDto with order number
 
-4. confirmOrder(userEmail="buyer@example.com", orderNumber="MH-20260323-0001")
-   → Marks order CONFIRMED, updates ticket status to SOLD
-   → Triggers SMS + email notifications
+4. confirmOrder(userEmail="buyer@example.com", orderNumber="MH-20260323-0001",
+                agentId="shopping-agent-1", mandateId="abc-123")
+   → Routes through PaymentService
+   → Marks order CONFIRMED only after successful payment confirmation
+   → Records mandate spend once, updates ticket status to SOLD, triggers SMS + email
    → Returns confirmed OrderDto
 ```
 
@@ -69,6 +74,8 @@ findTickets(
     query: "jazz",           // text search on event name/artist
     category: "jazz",        // category filter
     city: "New York",        // venue city
+    dateFrom: "2026-04-01T00:00:00Z",
+    dateTo: "2026-04-30T23:59:59Z",
     minPrice: 50,            // price floor
     maxPrice: 150,           // price ceiling
     section: "Orchestra",    // section name filter
@@ -130,11 +137,12 @@ A **mandate** is a record of what an agent is authorized to do on behalf of a sp
 
 `MandateCondition` is an `EvalCondition` that activates when `agentId` is present in the `EvalContext`:
 
-1. Look up active, non-expired mandate for the agent+user pair
-2. Check the scope matches the action (BROWSE for reads, PURCHASE for buys)
-3. Check per-transaction spending limit
-4. Check cumulative spending limit (tracks `totalSpent`)
-5. Check category and event restrictions
+1. Require explicit `agentId` for autonomous actions and `mandateId` for purchase actions
+2. Look up the specific active, non-expired mandate for the agent+user+mandate tuple
+3. Check the scope matches the action (BROWSE for reads, PURCHASE for buys)
+4. Check per-transaction spending limit
+5. Check cumulative spending limit (tracks `totalSpent`)
+6. Check category and event restrictions
 
 If any check fails, the condition returns a CRITICAL failure — the action is blocked.
 
@@ -182,6 +190,7 @@ MockHub exposes ACP-compatible endpoints at `/acp/v1/`:
 | `/acp/v1/checkout/{id}/complete` | POST | Complete Checkout | Confirm order |
 | `/acp/v1/checkout/{id}/cancel` | POST | Cancel Checkout | Fail order (releases tickets) |
 | `/acp/v1/catalog` | GET | Product Catalog | Search events |
+| `/acp/v1/listings` | GET | Offer Search | Search actionable ticket offers |
 
 ### Authentication
 
@@ -190,14 +199,18 @@ ACP endpoints use the same API key authentication as MCP (`X-API-Key` header, co
 ### ACP Checkout Flow
 
 ```
-1. Agent discovers products
+1. Agent discovers products and offers
    GET /acp/v1/catalog?query=jazz&city=NYC
-   → Returns AcpCatalogItem[] with event details and pricing
+   → Returns AcpCatalogItem[] with event-level discovery data
+   GET /acp/v1/listings?query=yo-yo%20ma&city=New%20York&dateFrom=2026-04-01T00:00:00Z&dateTo=2026-04-30T23:59:59Z
+   → Returns AcpListingItem[] with actionable listings sorted by price
 
 2. Agent creates checkout
    POST /acp/v1/checkout
    {
      "buyerEmail": "buyer@example.com",
+     "agentId": "shopping-agent-1",
+     "mandateId": "abc-123",
      "lineItems": [{"listingId": 42, "quantity": 1}],
      "paymentMethod": "mock"
    }
@@ -206,6 +219,10 @@ ACP endpoints use the same API key authentication as MCP (`X-API-Key` header, co
 3. Agent completes checkout
    POST /acp/v1/checkout/MH-20260323-0001/complete
    X-Buyer-Email: buyer@example.com
+   {
+     "agentId": "shopping-agent-1",
+     "mandateId": "abc-123"
+   }
    → Returns AcpCheckoutResponse with status COMPLETED
 ```
 
@@ -218,11 +235,13 @@ ACP createCheckout  →  CartService.clearCart()
                     →  CartService.addToCart() × N
                     →  OrderService.checkout()
 
-ACP completeCheckout →  OrderService.confirmOrder()
+ACP completeCheckout →  PaymentService.createPaymentIntent() [mock or pre-existing intent]
+                    →  PaymentService.confirmPayment()
 
 ACP cancelCheckout   →  OrderService.failOrder()
 
 ACP getCatalog      →  EventService.listEvents()
+ACP getListings     →  EventService.listEvents() + ListingRepository.findByEventIdAndStatus()
 ```
 
 No existing service was modified. The ACP controller and service wrap the same business logic that the MCP tools and REST API use.
@@ -237,6 +256,17 @@ ACP is one of several emerging standards for agentic commerce:
 | **AP2** | Trust & authorization | Google | Conceptually implemented via mandates (Layer 2) |
 | **UCP** | Cross-vertical coordination | Google | Not implemented (orchestration layer) |
 | **x402** | Machine-to-machine micropayments | Coinbase | Not applicable (ticket sales, not API micropayments) |
+
+## Success Conditions
+
+The implementation is considered working when all of the following are true:
+
+1. An autonomous purchase cannot proceed without both `agentId` and a valid `mandateId`.
+2. `findTickets` and `GET /acp/v1/listings` can answer a time-bounded query like "Yo-Yo Ma in New York next month" with actionable offers.
+3. ACP and MCP purchase completion routes through `PaymentService`, not direct order confirmation.
+4. Duplicate confirm/cancel/payment callbacks do not double-sell inventory, double-send notifications, or double-record mandate spend.
+5. Successful confirmation increments mandate `totalSpent` exactly once.
+6. `cd backend && ./gradlew test` passes.
 
 ---
 
