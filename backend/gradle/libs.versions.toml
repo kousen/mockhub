@@ -1,0 +1,98 @@
+[versions]
+# Plugins
+spring-boot = "4.0.3"
+spring-dependency-management = "1.1.7"
+sonarqube = "7.2.3.7755"
+spotless = "7.0.2"
+
+# Spring AI BOM
+spring-ai = "2.0.0-M3"
+
+# Security - JWT
+jjwt = "0.12.6"
+
+# API Documentation
+springdoc = "2.8.6"
+
+# Payments
+stripe = "28.3.0"
+
+# Image processing
+thumbnailator = "0.4.20"
+
+# PDF generation and QR codes
+pdfbox = "3.0.4"
+zxing = "3.5.3"
+
+# SMS delivery
+twilio = "10.9.2"
+
+# Data generation
+datafaker = "2.4.2"
+
+# Code quality
+checkstyle = "10.21.4"
+google-java-format = "1.25.2"
+
+[libraries]
+# Core Spring Boot starters (versions managed by Spring BOM)
+spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-starter-webmvc" }
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
+spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
+spring-boot-starter-cache = { module = "org.springframework.boot:spring-boot-starter-cache" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
+spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
+
+# Spring AI (versions managed by Spring AI BOM)
+spring-ai-starter-anthropic = { module = "org.springframework.ai:spring-ai-starter-model-anthropic" }
+spring-ai-starter-openai = { module = "org.springframework.ai:spring-ai-starter-model-openai" }
+spring-ai-starter-ollama = { module = "org.springframework.ai:spring-ai-starter-model-ollama" }
+spring-ai-starter-mcp-server = { module = "org.springframework.ai:spring-ai-starter-mcp-server-webmvc" }
+
+# Database
+postgresql = { module = "org.postgresql:postgresql" }
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+
+# Security - JWT
+jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
+jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
+jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
+
+# API Documentation
+springdoc-openapi = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+
+# Payments
+stripe = { module = "com.stripe:stripe-java", version.ref = "stripe" }
+
+# Image processing
+thumbnailator = { module = "net.coobird:thumbnailator", version.ref = "thumbnailator" }
+
+# PDF generation and QR codes
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+zxing-javase = { module = "com.google.zxing:javase", version.ref = "zxing" }
+
+# SMS delivery
+twilio = { module = "com.twilio.sdk:twilio", version.ref = "twilio" }
+
+# Data generation
+datafaker = { module = "net.datafaker:datafaker", version.ref = "datafaker" }
+
+# Testing (versions managed by Spring BOM)
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
+spring-boot-starter-data-jpa-test = { module = "org.springframework.boot:spring-boot-starter-data-jpa-test" }
+spring-boot-starter-security-test = { module = "org.springframework.boot:spring-boot-starter-security-test" }
+spring-boot-resttestclient = { module = "org.springframework.boot:spring-boot-resttestclient" }
+spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
