@@ -6,6 +6,7 @@ import type { Notification, NotificationType } from '@/types/notification';
 interface NotificationItemProps {
   notification: Notification;
   onMarkAsRead: (id: number) => void;
+  onNavigate?: (link: string) => void;
 }
 
 const typeIcons: Record<NotificationType, React.ElementType> = {
@@ -26,15 +27,23 @@ const typeColors: Record<NotificationType, string> = {
 
 /**
  * A single notification row with icon, title, message, timestamp,
- * and read/unread styling. Clicking marks it as read.
+ * and read/unread styling. Clicking marks it as read and navigates
+ * to the notification's link if one exists.
  */
-export function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
+export function NotificationItem({
+  notification,
+  onMarkAsRead,
+  onNavigate,
+}: NotificationItemProps) {
   const Icon = typeIcons[notification.type] ?? Bell;
   const iconColor = typeColors[notification.type] ?? 'text-muted-foreground';
 
   const handleClick = () => {
     if (!notification.isRead) {
       onMarkAsRead(notification.id);
+    }
+    if (notification.link && onNavigate) {
+      onNavigate(notification.link);
     }
   };
 
@@ -45,6 +54,7 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
       className={cn(
         'flex w-full items-start gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/50',
         !notification.isRead && 'bg-muted/30',
+        notification.link && 'cursor-pointer',
       )}
     >
       <div className={cn('mt-0.5 shrink-0', iconColor)}>

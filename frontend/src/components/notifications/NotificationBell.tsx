@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -13,8 +15,11 @@ import {
 /**
  * Bell icon button with unread count badge.
  * Opens a popover showing recent notifications with a "Mark all as read" action.
+ * Clicking a notification with a link navigates to that page and closes the popover.
  */
 export function NotificationBell() {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
   const { data: unreadCount = 0 } = useUnreadCount();
   const { data: notificationsPage } = useNotifications(0, 5);
   const markAsRead = useMarkAsRead();
@@ -22,8 +27,13 @@ export function NotificationBell() {
 
   const notifications = notificationsPage?.content ?? [];
 
+  const handleNavigate = (link: string) => {
+    setOpen(false);
+    navigate(link);
+  };
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="h-5 w-5" />
@@ -58,6 +68,7 @@ export function NotificationBell() {
                   key={notification.id}
                   notification={notification}
                   onMarkAsRead={(id) => markAsRead.mutate(id)}
+                  onNavigate={handleNavigate}
                 />
               ))}
             </div>

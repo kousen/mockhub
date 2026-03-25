@@ -70,8 +70,8 @@ export function useMarkAsRead() {
         queryClient.setQueryData(['notifications', 'unread-count'], context.previousCount);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
     },
   });
 }
