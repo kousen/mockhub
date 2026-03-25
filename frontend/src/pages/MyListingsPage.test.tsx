@@ -18,7 +18,7 @@ vi.mock('@/hooks/use-seller', () => ({
   })),
 }));
 
-import { useMyListings, useUpdatePrice, useDeactivateListing } from '@/hooks/use-seller';
+import { useMyListings } from '@/hooks/use-seller';
 
 const mockListings: SellerListing[] = [
   {
