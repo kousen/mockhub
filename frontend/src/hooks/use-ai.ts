@@ -17,9 +17,9 @@ export function useChat() {
  * Uses a longer stale time since recommendations change infrequently.
  */
 export function useRecommendations() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
   return useQuery({
-    queryKey: ['ai', 'recommendations', isAuthenticated],
+    queryKey: ['ai', 'recommendations', user?.id ?? 'anonymous'],
     queryFn: () => aiApi.getRecommendations(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false, // Don't retry if AI is unavailable

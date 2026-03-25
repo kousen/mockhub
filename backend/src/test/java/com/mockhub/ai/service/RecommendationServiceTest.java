@@ -165,7 +165,7 @@ class RecommendationServiceTest {
         when(eventRepository.findFeaturedEvents()).thenReturn(featuredEvents);
 
         Event favEvent = createTestEvent(10L, "Blues Night", "blues-night", "Jazz Club", "Chicago", "Concerts", "B.B. King");
-        when(favoriteRepository.findByUserId(42L)).thenReturn(List.of(createFavorite(favEvent)));
+        when(favoriteRepository.findByUserIdWithEventDetails(42L)).thenReturn(List.of(createFavorite(favEvent)));
         when(orderItemRepository.findDistinctPurchasedEventsByUserId(42L)).thenReturn(List.of());
 
         stubChatClient(AI_RESPONSE);
@@ -190,7 +190,7 @@ class RecommendationServiceTest {
         when(eventRepository.findFeaturedEvents()).thenReturn(featuredEvents);
 
         Event purchasedEvent = createTestEvent(20L, "Yo-Yo Ma", "yo-yo-ma", "Symphony Hall", "Boston", "Classical", "Yo-Yo Ma");
-        when(favoriteRepository.findByUserId(42L)).thenReturn(List.of());
+        when(favoriteRepository.findByUserIdWithEventDetails(42L)).thenReturn(List.of());
         when(orderItemRepository.findDistinctPurchasedEventsByUserId(42L)).thenReturn(List.of(purchasedEvent));
 
         stubChatClient("""
@@ -218,7 +218,7 @@ class RecommendationServiceTest {
 
         Event favEvent = createTestEvent(10L, "Jazz Night", "jazz-night", "Jazz Club", "Chicago", "Concerts", "Miles Davis");
         Event purchasedEvent = createTestEvent(20L, "Yo-Yo Ma", "yo-yo-ma", "Symphony Hall", "Boston", "Classical", "Yo-Yo Ma");
-        when(favoriteRepository.findByUserId(42L)).thenReturn(List.of(createFavorite(favEvent)));
+        when(favoriteRepository.findByUserIdWithEventDetails(42L)).thenReturn(List.of(createFavorite(favEvent)));
         when(orderItemRepository.findDistinctPurchasedEventsByUserId(42L)).thenReturn(List.of(purchasedEvent));
 
         stubChatClient("""
@@ -243,7 +243,7 @@ class RecommendationServiceTest {
                 createTestEvent(1L, "Rock Festival", "rock-festival", "MSG", "New York")
         );
         when(eventRepository.findFeaturedEvents()).thenReturn(events);
-        when(favoriteRepository.findByUserId(42L)).thenReturn(List.of());
+        when(favoriteRepository.findByUserIdWithEventDetails(42L)).thenReturn(List.of());
         when(orderItemRepository.findDistinctPurchasedEventsByUserId(42L)).thenReturn(List.of());
 
         stubChatClient("""

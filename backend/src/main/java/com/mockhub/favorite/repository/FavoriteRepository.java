@@ -14,6 +14,15 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
 
     List<Favorite> findByUserId(Long userId);
 
+    @Query("""
+            SELECT f FROM Favorite f
+            JOIN FETCH f.event e
+            LEFT JOIN FETCH e.category
+            LEFT JOIN FETCH e.venue
+            WHERE f.user.id = :userId
+            """)
+    List<Favorite> findByUserIdWithEventDetails(@Param("userId") Long userId);
+
     boolean existsByUserIdAndEventId(Long userId, Long eventId);
 
     void deleteByUserIdAndEventId(Long userId, Long eventId);

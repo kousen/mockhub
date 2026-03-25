@@ -90,7 +90,7 @@ public class RecommendationService {
         Set<String> artists = new LinkedHashSet<>();
         Set<String> cities = new LinkedHashSet<>();
 
-        List<Favorite> favorites = favoriteRepository.findByUserId(userId);
+        List<Favorite> favorites = favoriteRepository.findByUserIdWithEventDetails(userId);
         for (Favorite favorite : favorites) {
             Event event = favorite.getEvent();
             if (event.getCategory() != null) {
