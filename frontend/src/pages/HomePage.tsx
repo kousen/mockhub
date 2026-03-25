@@ -75,6 +75,9 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* AI Recommendations */}
+      <RecommendationsSection />
+
       {/* Featured Events Section */}
       <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -90,9 +93,6 @@ export function HomePage() {
           <EventGrid events={featuredEvents ?? []} isLoading={isLoading} />
         </div>
       </section>
-
-      {/* AI Recommendations */}
-      <RecommendationsSection />
 
       {/* Browse All CTA */}
       <section className="border-t bg-muted/30 py-12">

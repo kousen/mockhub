@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import * as aiApi from '@/api/ai';
 import type { ChatRequest } from '@/types/ai';
+import { useAuthStore } from '@/stores/auth-store';
 
 /**
  * Mutation hook for sending chat messages to the AI assistant.
@@ -16,8 +17,9 @@ export function useChat() {
  * Uses a longer stale time since recommendations change infrequently.
  */
 export function useRecommendations() {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
-    queryKey: ['ai', 'recommendations'],
+    queryKey: ['ai', 'recommendations', user?.id ?? 'anonymous'],
     queryFn: () => aiApi.getRecommendations(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false, // Don't retry if AI is unavailable

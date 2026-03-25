@@ -43,7 +43,7 @@ class AiControllerServiceUnavailableTest {
     @Test
     @DisplayName("getRecommendations - given no RecommendationService configured - returns 503 SERVICE_UNAVAILABLE")
     void getRecommendations_givenNoRecommendationServiceConfigured_returns503() {
-        ResponseEntity<List<RecommendationDto>> response = controller.getRecommendations();
+        ResponseEntity<List<RecommendationDto>> response = controller.getRecommendations(null);
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode(),
                 "Should return 503 when RecommendationService is not configured");

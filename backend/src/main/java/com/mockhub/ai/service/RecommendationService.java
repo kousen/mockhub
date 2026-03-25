@@ -1,8 +1,10 @@
 package com.mockhub.ai.service;
 
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -21,6 +23,9 @@ import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
+import com.mockhub.favorite.entity.Favorite;
+import com.mockhub.favorite.repository.FavoriteRepository;
+import com.mockhub.order.repository.OrderItemRepository;
 
 @Service
 @ConditionalOnProperty(name = "spring.ai.anthropic.api-key")
@@ -32,15 +37,21 @@ public class RecommendationService {
     private final ChatClient chatClient;
     private final EventRepository eventRepository;
     private final EvalRunner evalRunner;
+    private final FavoriteRepository favoriteRepository;
+    private final OrderItemRepository orderItemRepository;
 
-    public RecommendationService(ChatClient chatClient, EventRepository eventRepository, EvalRunner evalRunner) {
+    public RecommendationService(ChatClient chatClient, EventRepository eventRepository,
+                                  EvalRunner evalRunner, FavoriteRepository favoriteRepository,
+                                  OrderItemRepository orderItemRepository) {
         this.chatClient = chatClient;
         this.eventRepository = eventRepository;
         this.evalRunner = evalRunner;
+        this.favoriteRepository = favoriteRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     @Transactional(readOnly = true)
-    public List<RecommendationDto> getRecommendations() {
+    public List<RecommendationDto> getRecommendations(Long userId) {
         List<Event> events = eventRepository.findFeaturedEvents();
         if (events.isEmpty()) {
             return Collections.emptyList();
@@ -55,20 +66,8 @@ public class RecommendationService {
                         e.getMinPrice()))
                 .collect(Collectors.joining("\n"));
 
-        String prompt = String.format(
-                """
-                Rank these events by general appeal and provide a reason for each.
-
-                Events:
-                %s
-
-                Respond with ONLY a JSON array (no markdown, no explanation):
-                [{"eventId": <id>, "relevanceScore": <0.0-1.0>, "reason": "<short reason>"}]
-
-                Return all events, sorted by relevanceScore descending.
-                """,
-                eventList
-        );
+        String userContext = userId != null ? buildUserContext(userId) : "";
+        String prompt = buildPrompt(eventList, userContext);
 
         String aiResponse = chatClient.prompt()
                 .user(prompt)
@@ -84,6 +83,89 @@ public class RecommendationService {
         }
 
         return recommendations;
+    }
+
+    private String buildUserContext(Long userId) {
+        Set<String> categories = new LinkedHashSet<>();
+        Set<String> artists = new LinkedHashSet<>();
+        Set<String> cities = new LinkedHashSet<>();
+
+        List<Favorite> favorites = favoriteRepository.findByUserIdWithEventDetails(userId);
+        for (Favorite favorite : favorites) {
+            Event event = favorite.getEvent();
+            if (event.getCategory() != null) {
+                categories.add(event.getCategory().getName());
+            }
+            if (event.getArtistName() != null && !event.getArtistName().isBlank()) {
+                artists.add(event.getArtistName());
+            }
+            if (event.getVenue() != null && event.getVenue().getCity() != null) {
+                cities.add(event.getVenue().getCity());
+            }
+        }
+
+        List<Event> purchasedEvents = orderItemRepository.findDistinctPurchasedEventsByUserId(userId);
+        for (Event event : purchasedEvents) {
+            if (event.getCategory() != null) {
+                categories.add(event.getCategory().getName());
+            }
+            if (event.getArtistName() != null && !event.getArtistName().isBlank()) {
+                artists.add(event.getArtistName());
+            }
+            if (event.getVenue() != null && event.getVenue().getCity() != null) {
+                cities.add(event.getVenue().getCity());
+            }
+        }
+
+        if (categories.isEmpty() && artists.isEmpty() && cities.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder context = new StringBuilder();
+        if (!categories.isEmpty()) {
+            context.append("The user's favorite categories are: ").append(String.join(", ", categories)).append(".\n");
+        }
+        if (!artists.isEmpty()) {
+            context.append("Artists they like: ").append(String.join(", ", artists)).append(".\n");
+        }
+        if (!cities.isEmpty()) {
+            context.append("Cities they attend events in: ").append(String.join(", ", cities)).append(".\n");
+        }
+        return context.toString();
+    }
+
+    private String buildPrompt(String eventList, String userContext) {
+        if (userContext.isEmpty()) {
+            return String.format(
+                    """
+                    Rank these events by general appeal and provide a reason for each.
+
+                    Events:
+                    %s
+
+                    Respond with ONLY a JSON array (no markdown, no explanation):
+                    [{"eventId": <id>, "relevanceScore": <0.0-1.0>, "reason": "<short reason>"}]
+
+                    Return all events, sorted by relevanceScore descending.
+                    """,
+                    eventList
+            );
+        }
+
+        return String.format(
+                """
+                %sRank these events by relevance to this user's preferences and provide a reason for each.
+
+                Events:
+                %s
+
+                Respond with ONLY a JSON array (no markdown, no explanation):
+                [{"eventId": <id>, "relevanceScore": <0.0-1.0>, "reason": "<short reason>"}]
+
+                Return all events, sorted by relevanceScore descending.
+                """,
+                userContext, eventList
+        );
     }
 
     private List<RecommendationDto> parseRecommendations(String aiResponse, List<Event> events) {
