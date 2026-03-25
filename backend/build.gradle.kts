@@ -1,10 +1,10 @@
 plugins {
     java
     jacoco
-    id("org.springframework.boot") version "4.0.3"
-    id("io.spring.dependency-management") version "1.1.7"
-    id("org.sonarqube") version "7.2.3.7755"
-    id("com.diffplug.spotless") version "7.0.2"
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.sonarqube)
+    alias(libs.plugins.spotless)
     checkstyle
 }
 
@@ -24,68 +24,68 @@ repositories {
 
 dependencyManagement {
     imports {
-        mavenBom("org.springframework.ai:spring-ai-bom:2.0.0-M3")
+        mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
     }
 }
 
 dependencies {
     // Core Spring Boot starters
-    implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-cache")
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation(libs.spring.boot.starter.webmvc)
+    implementation(libs.spring.boot.starter.data.jpa)
+    implementation(libs.spring.boot.starter.security)
+    implementation(libs.spring.boot.starter.validation)
+    implementation(libs.spring.boot.starter.cache)
+    implementation(libs.spring.boot.starter.actuator)
 
     // Spring AI
-    implementation("org.springframework.ai:spring-ai-starter-model-anthropic")
-    implementation("org.springframework.ai:spring-ai-starter-model-openai")
-    implementation("org.springframework.ai:spring-ai-starter-model-ollama")
-    implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
+    implementation(libs.spring.ai.starter.anthropic)
+    implementation(libs.spring.ai.starter.openai)
+    implementation(libs.spring.ai.starter.ollama)
+    implementation(libs.spring.ai.starter.mcp.server)
 
     // Database
-    runtimeOnly("org.postgresql:postgresql")
-    implementation("org.springframework.boot:spring-boot-starter-flyway")
-    implementation("org.flywaydb:flyway-database-postgresql")
+    runtimeOnly(libs.postgresql)
+    implementation(libs.spring.boot.starter.flyway)
+    implementation(libs.flyway.postgresql)
 
     // Security - JWT
-    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+    implementation(libs.jjwt.api)
+    runtimeOnly(libs.jjwt.impl)
+    runtimeOnly(libs.jjwt.jackson)
 
     // API Documentation
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6")
+    implementation(libs.springdoc.openapi)
 
     // Payments
-    implementation("com.stripe:stripe-java:28.3.0")
+    implementation(libs.stripe)
 
     // Image processing
-    implementation("net.coobird:thumbnailator:0.4.20")
+    implementation(libs.thumbnailator)
 
     // PDF generation and QR codes
-    implementation("org.apache.pdfbox:pdfbox:3.0.4")
-    implementation("com.google.zxing:core:3.5.3")
-    implementation("com.google.zxing:javase:3.5.3")
+    implementation(libs.pdfbox)
+    implementation(libs.zxing.core)
+    implementation(libs.zxing.javase)
 
     // SMS delivery
-    implementation("com.twilio.sdk:twilio:10.9.2")
+    implementation(libs.twilio)
 
     // Email delivery
-    implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation(libs.spring.boot.starter.mail)
 
     // Data generation
-    implementation("net.datafaker:datafaker:2.4.2")
+    implementation(libs.datafaker)
 
     // Testing
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-security-test")
-    testImplementation("org.springframework.boot:spring-boot-resttestclient")
-    testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
-    testImplementation("org.testcontainers:testcontainers-postgresql")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.boot.starter.webmvc.test)
+    testImplementation(libs.spring.boot.starter.data.jpa.test)
+    testImplementation(libs.spring.boot.starter.security.test)
+    testImplementation(libs.spring.boot.resttestclient)
+    testImplementation(libs.spring.boot.testcontainers)
+    testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.testcontainers.postgresql)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 sonar {
@@ -124,13 +124,13 @@ sonar {
 
 spotless {
     java {
-        googleJavaFormat("1.25.2")
+        googleJavaFormat(libs.versions.google.java.format.get())
         targetExclude("build/**")
     }
 }
 
 checkstyle {
-    toolVersion = "10.21.4"
+    toolVersion = libs.versions.checkstyle.get()
     maxWarnings = 0
     configFile = file("config/checkstyle/checkstyle.xml")
 }
