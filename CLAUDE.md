@@ -124,7 +124,7 @@ The codebase uses Java DOP patterns where they add value:
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
 <<<<<<< HEAD
-- **MCP server** — 22 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Claude Desktop config: `{"url": "https://mockhub-production.up.railway.app/mcp", "headers": {"X-API-Key": "..."}}`.
+- **MCP server** — 22 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Claude Desktop config: `{"url": "https://mockhub.kousenit.com/mcp", "headers": {"X-API-Key": "..."}}`.
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
 - **`findTickets` compound tool** — single-call search with query, category, city, price range, section filter, returning matching listings sorted by price. Reduces agent round-trips from 3 to 1.
@@ -201,7 +201,7 @@ The codebase uses Java DOP patterns where they add value:
 ## Deployment
 
 - **Platform:** Railway (Hobby plan, $5/mo minimum)
-- **URL:** https://mockhub-production.up.railway.app
+- **URL:** https://mockhub.kousenit.com
 - **Architecture:** Single Docker container serves both Spring Boot API and React SPA (no CORS needed)
 - **Dockerfile:** Root `Dockerfile` builds frontend (Node), bundles into Spring Boot jar, runs on JRE Alpine
 - **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `api/`, `actuator/`, `mcp/`, `acp/`, `swagger-ui/`, `v3/` paths

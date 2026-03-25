@@ -4,7 +4,7 @@ A secondary concert ticket marketplace built as a teaching platform for AI integ
 
 MockHub mimics the functionality of sites like StubHub and TicketNetwork — registration, event browsing, seat selection, dynamic pricing, and checkout — providing a realistic, full-featured codebase for students to build AI features on top of.
 
-**Live demo:** [mockhub-production.up.railway.app](https://mockhub-production.up.railway.app) — log in with `buyer@mockhub.com` / `buyer123`
+**Live demo:** [mockhub.kousenit.com](https://mockhub.kousenit.com) — log in with `buyer@mockhub.com` / `buyer123`
 
 ![Homepage with search and featured events](docs/screenshots/homepage.png)
 

@@ -677,7 +677,7 @@ Naming convention: `methodName_givenCondition_expectedResult`
 
 ### Railway (Production)
 
-- **URL:** https://mockhub-production.up.railway.app
+- **URL:** https://mockhub.kousenit.com
 - **Architecture:** Single Docker container serves both Spring Boot API and React SPA (no CORS needed)
 - **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `/api/`, `/actuator/`, `/mcp/`, `/swagger-ui/`, `/v3/` paths
 - **Ephemeral filesystem:** Seed images restored from classpath on every startup
