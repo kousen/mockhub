@@ -114,8 +114,7 @@ public class OrderService {
             }
         }
 
-        List<CartItem> cartItems = validateCartAndListings(user);
-        reserveTickets(cartItems);
+        List<CartItem> cartItems = validateAndReserveTickets(user);
         Order order = createOrder(user, request, cartItems, idempotencyKey, agentId, mandateId);
 
         Order savedOrder = orderRepository.save(order);
@@ -264,7 +263,7 @@ public class OrderService {
 
     // ── Checkout helpers ───────────────────────────────────────────────
 
-    private List<CartItem> validateCartAndListings(User user) {
+    private List<CartItem> validateAndReserveTickets(User user) {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new ConflictException("No cart found"));
 
@@ -273,6 +272,7 @@ public class OrderService {
             throw new ConflictException("Cart is empty");
         }
 
+        // Validate and reserve each item in the same loop to minimize TOCTOU window
         for (CartItem cartItem : cartItems) {
             Listing listing = cartItem.getListing();
             if (!"ACTIVE".equals(listing.getStatus())) {
@@ -285,15 +285,11 @@ public class OrderService {
                 throw new ConflictException(
                         "Ticket for " + listing.getEvent().getName() + " is no longer available");
             }
+
+            ticketService.reserveTicket(ticket.getId());
         }
 
         return cartItems;
-    }
-
-    private void reserveTickets(List<CartItem> cartItems) {
-        for (CartItem cartItem : cartItems) {
-            ticketService.reserveTicket(cartItem.getListing().getTicket().getId());
-        }
     }
 
     private Order createOrder(User user, CheckoutRequest request, List<CartItem> cartItems,
