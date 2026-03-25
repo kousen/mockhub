@@ -114,78 +114,91 @@ public class OrderService {
             }
         }
 
-        Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() -> new ConflictException("No cart found"));
-
-        List<CartItem> cartItems = cart.getItems();
-        if (cartItems.isEmpty()) {
-            throw new ConflictException("Cart is empty");
-        }
-
-        // Validate all listings are still ACTIVE and reserve tickets
-        for (CartItem cartItem : cartItems) {
-            Listing listing = cartItem.getListing();
-            if (!"ACTIVE".equals(listing.getStatus())) {
-                throw new ConflictException(
-                        "Listing for " + listing.getEvent().getName() + " is no longer available");
-            }
-
-            Ticket ticket = listing.getTicket();
-            if (!"AVAILABLE".equals(ticket.getStatus()) && !"LISTED".equals(ticket.getStatus())) {
-                throw new ConflictException(
-                        "Ticket for " + listing.getEvent().getName() + " is no longer available");
-            }
-
-            // Reserve the ticket
-            ticketService.reserveTicket(ticket.getId());
-        }
-
-        // Calculate pricing
-        BigDecimal subtotal = BigDecimal.ZERO;
-        for (CartItem cartItem : cartItems) {
-            subtotal = subtotal.add(cartItem.getListing().getComputedPrice());
-        }
-        BigDecimal serviceFee = subtotal.multiply(SERVICE_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = subtotal.add(serviceFee);
-
-        // Generate order number
-        String orderNumber = generateOrderNumber();
-
-        // Create order
-        Order order = new Order();
-        order.setUser(user);
-        order.setOrderNumber(orderNumber);
-        order.setStatus(STATUS_PENDING);
-        order.setSubtotal(subtotal);
-        order.setServiceFee(serviceFee);
-        order.setTotal(total);
-        order.setPaymentMethod(request.paymentMethod());
-        order.setAgentId(normalize(agentId));
-        order.setMandateId(normalize(mandateId));
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            order.setIdempotencyKey(idempotencyKey);
-        }
-
-        // Create order items
-        List<OrderItem> orderItems = new ArrayList<>();
-        for (CartItem cartItem : cartItems) {
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrder(order);
-            orderItem.setListing(cartItem.getListing());
-            orderItem.setTicket(cartItem.getListing().getTicket());
-            orderItem.setPricePaid(cartItem.getListing().getComputedPrice());
-            orderItems.add(orderItem);
-        }
-        order.setItems(orderItems);
+        List<CartItem> cartItems = validateCartAndListings(user);
+        reserveTickets(cartItems);
+        Order order = createOrder(user, request, cartItems, idempotencyKey, agentId, mandateId);
 
         Order savedOrder = orderRepository.save(order);
         log.info("Created order {} for user {} with {} items, total={}",
-                orderNumber, user.getId(), orderItems.size(), total);
+                order.getOrderNumber(), user.getId(), order.getItems().size(), order.getTotal());
 
-        // Clear the cart
         cartService.clearCart(user);
 
         return toOrderDto(savedOrder);
+    }
+
+    @Transactional
+    public void confirmOrder(String orderNumber) {
+        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+
+        if (STATUS_CONFIRMED.equals(order.getStatus())) {
+            log.info("Order {} is already confirmed; skipping duplicate confirmation", orderNumber);
+            return;
+        }
+
+        if (STATUS_FAILED.equals(order.getStatus()) || STATUS_CANCELLED.equals(order.getStatus())) {
+            throw new ConflictException("Cannot confirm " + order.getStatus().toLowerCase() + " order " + orderNumber);
+        }
+
+        order.setStatus(STATUS_CONFIRMED);
+        order.setConfirmedAt(Instant.now());
+        markTicketsAsSold(order);
+        orderRepository.save(order);
+        log.info("Confirmed order {}", order.getOrderNumber());
+
+        if (order.getMandateId() != null && !order.getMandateId().isBlank()) {
+            mandateService.recordSpend(order.getMandateId(), order.getTotal());
+        }
+
+        sendConfirmationNotifications(order);
+    }
+
+    @Transactional
+    public void failOrder(String orderNumber) {
+        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+
+        if (STATUS_FAILED.equals(order.getStatus())) {
+            log.info("Order {} is already failed; skipping duplicate failure handling",
+                    order.getOrderNumber());
+            return;
+        }
+
+        if (STATUS_CONFIRMED.equals(order.getStatus())) {
+            throw new ConflictException("Cannot fail confirmed order " + orderNumber);
+        }
+
+        order.setStatus(STATUS_FAILED);
+        releaseOrderTickets(order);
+        orderRepository.save(order);
+        log.info("Failed order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
+    }
+
+    @Transactional
+    public void cancelOrder(String orderNumber) {
+        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+
+        if (STATUS_CANCELLED.equals(order.getStatus())) {
+            log.info("Order {} is already cancelled; skipping duplicate cancellation", orderNumber);
+            return;
+        }
+
+        if (!STATUS_CONFIRMED.equals(order.getStatus())) {
+            throw new ConflictException("Can only cancel confirmed orders");
+        }
+
+        order.setStatus(STATUS_CANCELLED);
+        releaseOrderTickets(order);
+        restoreEventAvailability(order);
+
+        if (order.getMandateId() != null && !order.getMandateId().isBlank()) {
+            mandateService.reverseSpend(order.getMandateId(), order.getTotal());
+        }
+
+        orderRepository.save(order);
+        log.info("Cancelled order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
     }
 
     @Transactional(readOnly = true)
@@ -225,41 +238,116 @@ public class OrderService {
         );
     }
 
-    @Transactional
-    public void confirmOrder(String orderNumber) {
-        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
+    @Transactional(readOnly = true)
+    public Order getOrderEntity(String orderNumber) {
+        return orderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+    }
 
-        if (STATUS_CONFIRMED.equals(order.getStatus())) {
-            log.info("Order {} is already confirmed; skipping duplicate confirmation", orderNumber);
-            return;
+    @Transactional
+    public Order getOrderEntityByPaymentIntentId(String paymentIntentId) {
+        return orderRepository.findByPaymentIntentId(paymentIntentId)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, "paymentIntentId", paymentIntentId));
+    }
+
+    @Transactional
+    public Order getOrderEntityForUpdate(String orderNumber) {
+        return orderRepository.findByOrderNumberForUpdate(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+    }
+
+    @Transactional
+    public Order getOrderEntityByPaymentIntentIdForUpdate(String paymentIntentId) {
+        return orderRepository.findByPaymentIntentIdForUpdate(paymentIntentId)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, "paymentIntentId", paymentIntentId));
+    }
+
+    // ── Checkout helpers ───────────────────────────────────────────────
+
+    private List<CartItem> validateCartAndListings(User user) {
+        Cart cart = cartRepository.findByUser(user)
+                .orElseThrow(() -> new ConflictException("No cart found"));
+
+        List<CartItem> cartItems = cart.getItems();
+        if (cartItems.isEmpty()) {
+            throw new ConflictException("Cart is empty");
         }
 
-        if (STATUS_FAILED.equals(order.getStatus()) || STATUS_CANCELLED.equals(order.getStatus())) {
-            throw new ConflictException("Cannot confirm " + order.getStatus().toLowerCase() + " order " + orderNumber);
+        for (CartItem cartItem : cartItems) {
+            Listing listing = cartItem.getListing();
+            if (!"ACTIVE".equals(listing.getStatus())) {
+                throw new ConflictException(
+                        "Listing for " + listing.getEvent().getName() + " is no longer available");
+            }
+
+            Ticket ticket = listing.getTicket();
+            if (!"AVAILABLE".equals(ticket.getStatus()) && !"LISTED".equals(ticket.getStatus())) {
+                throw new ConflictException(
+                        "Ticket for " + listing.getEvent().getName() + " is no longer available");
+            }
         }
 
-        order.setStatus(STATUS_CONFIRMED);
-        order.setConfirmedAt(Instant.now());
+        return cartItems;
+    }
 
-        // Update ticket statuses to SOLD and decrement event available tickets
+    private void reserveTickets(List<CartItem> cartItems) {
+        for (CartItem cartItem : cartItems) {
+            ticketService.reserveTicket(cartItem.getListing().getTicket().getId());
+        }
+    }
+
+    private Order createOrder(User user, CheckoutRequest request, List<CartItem> cartItems,
+                               String idempotencyKey, String agentId, String mandateId) {
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (CartItem cartItem : cartItems) {
+            subtotal = subtotal.add(cartItem.getListing().getComputedPrice());
+        }
+        BigDecimal serviceFee = subtotal.multiply(SERVICE_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total = subtotal.add(serviceFee);
+
+        Order order = new Order();
+        order.setUser(user);
+        order.setOrderNumber(generateOrderNumber());
+        order.setStatus(STATUS_PENDING);
+        order.setSubtotal(subtotal);
+        order.setServiceFee(serviceFee);
+        order.setTotal(total);
+        order.setPaymentMethod(request.paymentMethod());
+        order.setAgentId(normalize(agentId));
+        order.setMandateId(normalize(mandateId));
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            order.setIdempotencyKey(idempotencyKey);
+        }
+
+        List<OrderItem> orderItems = new ArrayList<>();
+        for (CartItem cartItem : cartItems) {
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order);
+            orderItem.setListing(cartItem.getListing());
+            orderItem.setTicket(cartItem.getListing().getTicket());
+            orderItem.setPricePaid(cartItem.getListing().getComputedPrice());
+            orderItems.add(orderItem);
+        }
+        order.setItems(orderItems);
+
+        return order;
+    }
+
+    // ── Confirmation helpers ───────────────────────────────────────────
+
+    private void markTicketsAsSold(Order order) {
         for (OrderItem item : order.getItems()) {
-            Ticket ticket = item.getTicket();
-            ticket.setStatus("SOLD");
+            item.getTicket().setStatus("SOLD");
 
             Event event = item.getListing().getEvent();
             event.setAvailableTickets(Math.max(0, event.getAvailableTickets() - 1));
             eventRepository.save(event);
         }
+    }
 
-        orderRepository.save(order);
-        log.info("Confirmed order {}", order.getOrderNumber());
+    private void sendConfirmationNotifications(Order order) {
+        String orderNumber = order.getOrderNumber();
 
-        if (order.getMandateId() != null && !order.getMandateId().isBlank()) {
-            mandateService.recordSpend(order.getMandateId(), order.getTotal());
-        }
-
-        // Send order confirmation notification
         notificationService.createNotification(
                 order.getUser().getId(),
                 NotificationType.ORDER_CONFIRMED,
@@ -269,40 +357,49 @@ public class OrderService {
                 "/orders/" + orderNumber
         );
 
-        // Send SMS confirmation if user has a phone number
+        sendSmsConfirmation(order);
+        sendEmailConfirmation(order);
+    }
+
+    private void sendSmsConfirmation(Order order) {
         String phone = order.getUser().getPhone();
-        if (phone != null && !phone.isBlank()) {
+        if (phone == null || phone.isBlank()) {
+            return;
+        }
+
+        String eventName = order.getItems().stream()
+                .findFirst()
+                .map(item -> item.getListing().getEvent().getName())
+                .orElse("your event");
+        String orderViewToken = ticketSigningService.generateOrderViewToken(order.getOrderNumber());
+        String orderUrl = smsOrderBaseUrl + "/tickets/view?token=" + orderViewToken;
+        String smsMessage = String.format(
+                "MockHub: Your tickets for %s are confirmed! View your tickets: %s",
+                eventName, orderUrl);
+        smsDeliveryService.sendSms(phone, smsMessage);
+    }
+
+    private void sendEmailConfirmation(Order order) {
+        String email = order.getUser().getEmail();
+        if (email == null || email.isBlank()) {
+            return;
+        }
+
+        try {
             String eventName = order.getItems().stream()
                     .findFirst()
                     .map(item -> item.getListing().getEvent().getName())
                     .orElse("your event");
-            String orderViewToken = ticketSigningService.generateOrderViewToken(orderNumber);
-            String orderUrl = smsOrderBaseUrl + "/tickets/view?token=" + orderViewToken;
-            String smsMessage = String.format(
-                    "MockHub: Your tickets for %s are confirmed! View your tickets: %s",
-                    eventName, orderUrl);
-            smsDeliveryService.sendSms(phone, smsMessage);
-        }
+            String emailToken = ticketSigningService.generateOrderViewToken(order.getOrderNumber());
+            String ticketUrl = smsOrderBaseUrl + "/tickets/view?token=" + emailToken;
 
-        // Send email confirmation (caught separately — never break checkout)
-        String email = order.getUser().getEmail();
-        if (email != null && !email.isBlank()) {
-            try {
-                String emailEventName = order.getItems().stream()
-                        .findFirst()
-                        .map(item -> item.getListing().getEvent().getName())
-                        .orElse("your event");
-                String emailToken = ticketSigningService.generateOrderViewToken(orderNumber);
-                String ticketUrl = smsOrderBaseUrl + "/tickets/view?token=" + emailToken;
-
-                String htmlBody = buildConfirmationEmail(orderNumber, emailEventName,
-                        order.getTotal().toPlainString(), order.getItems().size(), ticketUrl);
-                emailDeliveryService.sendEmail(email,
-                        "Your MockHub tickets for " + emailEventName, htmlBody);
-            } catch (Exception exception) {
-                log.error("Failed to send confirmation email for order {}: {}",
-                        orderNumber, exception.getMessage());
-            }
+            String htmlBody = buildConfirmationEmail(order.getOrderNumber(), eventName,
+                    order.getTotal().toPlainString(), order.getItems().size(), ticketUrl);
+            emailDeliveryService.sendEmail(email,
+                    "Your MockHub tickets for " + eventName, htmlBody);
+        } catch (Exception exception) {
+            log.error("Failed to send confirmation email for order {}: {}",
+                    order.getOrderNumber(), exception.getMessage());
         }
     }
 
@@ -329,88 +426,20 @@ public class OrderService {
                 ticketCount == 1 ? "" : "s", total, ticketUrl);
     }
 
-    @Transactional
-    public void failOrder(String orderNumber) {
-        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+    // ── Shared helpers ─────────────────────────────────────────────────
 
-        if (STATUS_FAILED.equals(order.getStatus())) {
-            log.info("Order {} is already failed; skipping duplicate failure handling",
-                    order.getOrderNumber());
-            return;
-        }
-
-        if (STATUS_CONFIRMED.equals(order.getStatus())) {
-            throw new ConflictException("Cannot fail confirmed order " + orderNumber);
-        }
-
-        order.setStatus(STATUS_FAILED);
-
-        // Release reserved tickets back to AVAILABLE
+    private void releaseOrderTickets(Order order) {
         for (OrderItem item : order.getItems()) {
             ticketService.releaseTicket(item.getTicket().getId());
         }
-
-        orderRepository.save(order);
-        log.info("Failed order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
     }
 
-    @Transactional
-    public void cancelOrder(String orderNumber) {
-        Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
-
-        if (STATUS_CANCELLED.equals(order.getStatus())) {
-            log.info("Order {} is already cancelled; skipping duplicate cancellation", orderNumber);
-            return;
-        }
-
-        if (!STATUS_CONFIRMED.equals(order.getStatus())) {
-            throw new ConflictException("Can only cancel confirmed orders");
-        }
-
-        order.setStatus(STATUS_CANCELLED);
-
-        // Release tickets back to AVAILABLE and restore event availability
+    private void restoreEventAvailability(Order order) {
         for (OrderItem item : order.getItems()) {
-            ticketService.releaseTicket(item.getTicket().getId());
-
             Event event = item.getListing().getEvent();
             event.setAvailableTickets(event.getAvailableTickets() + 1);
             eventRepository.save(event);
         }
-
-        // Reverse mandate spend if this was an agent-initiated order
-        if (order.getMandateId() != null && !order.getMandateId().isBlank()) {
-            mandateService.reverseSpend(order.getMandateId(), order.getTotal());
-        }
-
-        orderRepository.save(order);
-        log.info("Cancelled order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
-    }
-
-    @Transactional(readOnly = true)
-    public Order getOrderEntity(String orderNumber) {
-        return orderRepository.findByOrderNumber(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
-    }
-
-    @Transactional
-    public Order getOrderEntityByPaymentIntentId(String paymentIntentId) {
-        return orderRepository.findByPaymentIntentId(paymentIntentId)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, "paymentIntentId", paymentIntentId));
-    }
-
-    @Transactional
-    public Order getOrderEntityForUpdate(String orderNumber) {
-        return orderRepository.findByOrderNumberForUpdate(orderNumber)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
-    }
-
-    @Transactional
-    public Order getOrderEntityByPaymentIntentIdForUpdate(String paymentIntentId) {
-        return orderRepository.findByPaymentIntentIdForUpdate(paymentIntentId)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, "paymentIntentId", paymentIntentId));
     }
 
     private String generateOrderNumber() {
