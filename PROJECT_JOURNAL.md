@@ -725,4 +725,4 @@ bc4e9ab Fix checkout page flash during mock payment processing
 *Last updated: 2026-03-22*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
 *~450 tests passing (443 backend + 64 frontend unit + Playwright E2E)*
-*Live at: https://mockhub-production.up.railway.app*
+*Live at: https://mockhub.kousenit.com*
