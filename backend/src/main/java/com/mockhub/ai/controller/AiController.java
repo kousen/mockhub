@@ -60,14 +60,16 @@ public class AiController {
     }
 
     @GetMapping("/recommendations")
-    @Operation(summary = "Get AI recommendations", description = "AI-ranked event recommendations based on popularity and appeal")
+    @Operation(summary = "Get AI recommendations", description = "AI-ranked event recommendations personalized to user preferences when authenticated")
     @ApiResponse(responseCode = "200", description = "Recommendations returned")
     @ApiResponse(responseCode = "503", description = "AI provider not configured")
-    public ResponseEntity<List<RecommendationDto>> getRecommendations() {
+    public ResponseEntity<List<RecommendationDto>> getRecommendations(
+            @AuthenticationPrincipal SecurityUser securityUser) {
         if (recommendationService.isEmpty()) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
-        return ResponseEntity.ok(recommendationService.get().getRecommendations());
+        Long userId = securityUser != null ? securityUser.getId() : null;
+        return ResponseEntity.ok(recommendationService.get().getRecommendations(userId));
     }
 
     @GetMapping("/events/{slug}/predicted-price")

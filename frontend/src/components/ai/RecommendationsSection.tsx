@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Calendar, MapPin, Sparkles, Star } from 'lucide-react';
+import { Calendar, MapPin, Sparkles, Star, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,11 +35,6 @@ export function RecommendationsSection() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { data: recommendations, isLoading } = useRecommendations();
 
-  // Only show recommendations for logged-in users
-  if (!isAuthenticated) {
-    return null;
-  }
-
   // Hide if no recommendations or AI unavailable
   if (!isLoading && (!recommendations || recommendations.length === 0)) {
     return null;
@@ -49,8 +44,14 @@ export function RecommendationsSection() {
     <section className="py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Recommended for You</h2>
+          {isAuthenticated ? (
+            <Sparkles className="h-5 w-5 text-primary" />
+          ) : (
+            <TrendingUp className="h-5 w-5 text-primary" />
+          )}
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            {isAuthenticated ? 'Recommended for You' : 'Trending Events'}
+          </h2>
         </div>
 
         {isLoading ? (

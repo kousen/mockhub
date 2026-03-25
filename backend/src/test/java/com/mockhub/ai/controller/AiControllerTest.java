@@ -95,7 +95,7 @@ class AiControllerTest {
             RecommendationDto rec = new RecommendationDto(
                     1L, "Rock Festival", "rock-festival", "MSG", "New York",
                     Instant.now(), new BigDecimal("75.00"), 0.95, "Popular event");
-            when(recommendationService.getRecommendations()).thenReturn(List.of(rec));
+            when(recommendationService.getRecommendations(any())).thenReturn(List.of(rec));
 
             mockMvc.perform(get("/api/v1/recommendations"))
                     .andExpect(status().isOk())

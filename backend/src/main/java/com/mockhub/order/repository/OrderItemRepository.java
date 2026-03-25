@@ -9,10 +9,22 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.mockhub.event.entity.Event;
 import com.mockhub.order.entity.OrderItem;
 
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
+
+    @Query("""
+            SELECT DISTINCT e FROM OrderItem oi
+            JOIN oi.order o
+            JOIN oi.listing l
+            JOIN l.event e
+            LEFT JOIN FETCH e.category
+            LEFT JOIN FETCH e.venue
+            WHERE o.user.id = :userId AND o.status IN ('CONFIRMED', 'COMPLETED')
+            """)
+    List<Event> findDistinctPurchasedEventsByUserId(@Param("userId") Long userId);
 
     List<OrderItem> findByOrderId(Long orderId);
 
