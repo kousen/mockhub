@@ -13,13 +13,13 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 | Layer | Technology |
 |-------|-----------|
 | Backend | Spring Boot 4, Java 25, Gradle 9.4.0 (Kotlin DSL) |
-| Database | PostgreSQL 17 + pgvector, H2 (dev profile) |
+| Database | PostgreSQL 17 (tsvector full-text search) |
 | AI | Spring AI 2.0.0-M3 (Anthropic, OpenAI, Ollama profiles) |
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui |
 | State Management | TanStack React Query (server), Zustand (client) |
 | Payments | Stripe test mode + mock fallback via Spring profiles |
 | Testing | JUnit 5, Mockito, Testcontainers, Vitest, React Testing Library, MSW, Playwright |
-| Infrastructure | Docker Compose, nginx, GitHub Actions CI, SonarCloud |
+| Infrastructure | Docker, Railway, GitHub Actions CI, SonarCloud |
 
 ---
 
@@ -722,7 +722,69 @@ bc4e9ab Fix checkout page flash during mock payment processing
 
 ---
 
-*Last updated: 2026-03-22*
+## Session: 2026-03-25 — Personalized Recommendations, Testing, and Housekeeping
+
+### What Got Done
+
+**Features:**
+- Personalized AI recommendations (#31) — RecommendationService now uses favorites + purchase history to enrich the AI prompt. Anonymous users see "Trending Events", authenticated users see "Recommended for You". Recommendations section moved above featured events on homepage.
+- Notification click-to-read fix (#52) — Fixed race condition where onSettled invalidation overwrote optimistic mark-as-read update.
+- Notification click navigates to order (#60) — Clicking an order notification now closes the popover and navigates to the order detail page.
+
+**Infrastructure & Refactoring:**
+- Gradle version catalogs (#48) — Migrated all 33 dependencies from inline versions to gradle/libs.versions.toml.
+- .env.example (#71) — Documented all 25+ environment variables grouped by feature.
+- OrderService decomposition (#72) — Extracted checkout() and confirmOrder() into focused helper methods. Fixed TOCTOU gap flagged by Codex review.
+- .gitignore fix for youtube symlink — Trailing slash pattern only matches directories, not symlinks.
+- Removed GitHub branch protection on main.
+
+**Testing:**
+- Frontend test coverage: 76 → 114 tests (#73) — Added tests for CheckoutPage, OrderHistoryPage, OrderConfirmationPage, SellPage, MyListingsPage, EarningsPage.
+- Fixed two SellPage tests that weren't exercising the code paths they claimed to test (flagged by Codex review).
+
+**Issues Created:**
+- #69 — Implement reviews and ratings system
+- #70 — Add scheduled job to auto-deactivate expired listings
+- #71 — Add .env.example (completed same session)
+- #72 — Decompose OrderService.checkout() (completed same session)
+- #73 — Frontend component tests for critical flows (completed same session)
+- #74 — Authorization bypass tests
+
+### PRs Merged
+- #66 — Personalized recommendations
+- #67 — Notification click fixes
+- #68 — Gradle version catalogs
+- #75 — .env.example
+- #76 — OrderService decomposition
+- #77 — Frontend tests for critical flows
+
+### Challenges
+- Agent teams: frontend agent completed work but timed out before reporting back. Backend agent was never spawned due to conversation interruption. Recovered by checking git status and continuing manually.
+- Codex PR reviews caught real issues: cache key leak between users (#66), N+1 on favorites (#66), TOCTOU gap in checkout decomposition (#76), two no-op test cases (#77), and optimistic update not rolled back on error (#67).
+- GitGuardian false positive on .env.example placeholder values — resolved by telling GitGuardian to ignore the file.
+
+### Commits (2026-03-25)
+```
+93c8d45 Fix .gitignore to ignore youtube symlink, not just directory
+d562c24 Add personalized recommendations based on user favorites and purchase history
+bd421d3 Fix recommendation cache key leak and N+1 on favorites
+288f69b Fix notification click: mark-as-read visual update and navigate to order
+5c1590b Roll back optimistic mark-as-read on error
+31ad1aa Migrate to Gradle version catalogs
+2d9d242 Add .env.example documenting all environment variables
+cae9189 Address review: warn about default MCP key, fix upload dir documentation
+901f8b4 Decompose OrderService checkout and confirmation into focused methods
+1995ad1 Merge validate and reserve into single loop to avoid TOCTOU gap
+484573b Add frontend tests for checkout, orders, sell, listings, and earnings
+72c80f3 Fix SellPage tests: actually exercise search and pending UI paths
+63ef95b Remove unused imports in MyListingsPage test
+```
+
+### Issues Closed: #31, #34, #48, #52, #60, #71, #72, #73
+
+---
+
+*Last updated: 2026-03-25*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*~450 tests passing (443 backend + 64 frontend unit + Playwright E2E)*
+*~470 tests passing (443 backend + 114 frontend unit + Playwright E2E)*
 *Live at: https://mockhub.kousenit.com*

@@ -7,7 +7,7 @@ This document describes MockHub's architecture for students and contributors who
 ```
 mockhub/
 ├── backend/                    # Spring Boot 4 application
-│   ├── build.gradle.kts        # Gradle 9.4.0 (Kotlin DSL)
+│   ├── build.gradle.kts        # Gradle 9.4.0 (Kotlin DSL, version catalog)
 │   └── src/main/java/com/mockhub/
 │       ├── auth/               # JWT authentication, Spring Security
 │       ├── event/              # Events, categories, tags
@@ -20,6 +20,8 @@ mockhub/
 │       ├── favorite/           # User favorites
 │       ├── notification/       # In-app notifications
 │       ├── ai/                 # Chat, recommendations, price predictions
+│       ├── eval/               # Evaluation conditions (Design by Contract for AI)
+│       ├── mandate/            # Agent mandates (authorization for agentic commerce)
 │       ├── admin/              # Admin dashboard
 │       ├── search/             # Full-text search (tsvector)
 │       ├── image/              # Image storage
@@ -36,6 +38,7 @@ mockhub/
 │   │   ├── types/              # TypeScript type definitions
 │   │   └── lib/                # Utilities and formatters
 │   └── e2e/                    # Playwright E2E tests
+├── gradle/libs.versions.toml   # Gradle version catalog (centralized dependency versions)
 ├── Dockerfile                  # Combined frontend+backend production build
 ├── docker-compose.yml          # Full stack (Postgres, backend, frontend)
 └── docker-compose.dev.yml      # Postgres only (for local development)
@@ -404,7 +407,7 @@ No separate seller role — any authenticated user can sell. `listings.seller_id
 | Method | Path | Description | Auth |
 |---|---|---|---|
 | POST | `/chat` | Chat assistant (function-calling enabled) | Authenticated |
-| GET | `/recommendations` | AI-ranked event recommendations | Authenticated |
+| GET | `/recommendations` | Personalized AI-ranked event recommendations | Public (personalized when authenticated) |
 | GET | `/events/{slug}/predicted-price` | Price trend prediction | Public |
 
 ### Admin
@@ -496,6 +499,7 @@ Two implementations controlled by Spring profiles:
 - **Same `@Tool`-annotated classes** serve both the MCP server (external agents) and the chat endpoint (users)
 - **Conditional activation** via `@ConditionalOnProperty(name = "spring.ai.anthropic.api-key")` — not `@ConditionalOnBean` (evaluates before auto-config)
 - **`AiController`** injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active
+- **Personalized recommendations:** `RecommendationService` accepts a nullable `userId` — when provided, enriches the AI prompt with user favorites and purchase history for personalized ranking. Falls back to generic recommendations for anonymous users.
 - **Circular dependency** (MCP tools → PricingTools → PricePredictionService → ChatClient) broken with `@Lazy`
 
 ### SMS Delivery
@@ -638,7 +642,7 @@ Naming convention: `methodName_givenCondition_expectedResult`
 
 | Type | Tool | Location |
 |---|---|---|
-| Component tests | Vitest + React Testing Library | Colocated as `*.test.tsx` |
+| Component tests | Vitest + React Testing Library | Colocated as `*.test.tsx` (114 tests across 19 files) |
 | API mocking | MSW (Mock Service Worker) | `src/test/mocks/` |
 | E2E tests | Playwright (5 browsers) | `e2e/*.spec.ts` |
 | Accessibility | axe-core + Playwright | Included in E2E specs |
@@ -679,9 +683,9 @@ Naming convention: `methodName_givenCondition_expectedResult`
 
 - **URL:** https://mockhub.kousenit.com
 - **Architecture:** Single Docker container serves both Spring Boot API and React SPA (no CORS needed)
-- **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `/api/`, `/actuator/`, `/mcp/`, `/swagger-ui/`, `/v3/` paths
+- **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `/api/`, `/actuator/`, `/mcp/`, `/acp/`, `/swagger-ui/`, `/v3/` paths
 - **Ephemeral filesystem:** Seed images restored from classpath on every startup
-- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-smtp`
+- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend`
 - **Database:** Railway PostgreSQL with `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` (Railway's `DATABASE_URL` format is incompatible with JDBC)
 - **Auto-deploy:** Pushes to `main` trigger automatic deployments
 
