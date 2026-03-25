@@ -24,7 +24,7 @@ mockhub:
   cookie:
     secure: true
   cors:
-    allowed-origins: https://mockhub-production.up.railway.app
+    allowed-origins: https://mockhub.kousenit.com,https://mockhub-production.up.railway.app
 
 logging:
   level:
