@@ -105,7 +105,7 @@ describe('SellPage', () => {
     expect(screen.getByText('Kendrick Lamar')).toBeDefined();
   });
 
-  it('shows no events message when search returns empty', () => {
+  it('shows no events message when search returns empty', async () => {
     const emptyPage: PageResponse<EventSummary> = {
       content: [],
       totalElements: 0,
@@ -116,16 +116,15 @@ describe('SellPage', () => {
       last: true,
     };
 
-    // We need the search query to be >= 2 for the "no events" message,
-    // but since useEvents is mocked, we simulate by setting the data directly.
-    // The component checks searchQuery.length >= 2 and events.length === 0.
-    // We need to render and type to trigger that path.
     setEvents(emptyPage);
 
+    const user = userEvent.setup();
     renderWithProviders(<SellPage />);
 
-    // Initially shows the "type at least 2" message
-    expect(screen.getByText('Type at least 2 characters to search for events.')).toBeDefined();
+    // Type a search query (>= 2 chars) to trigger the "no events" branch
+    await user.type(screen.getByPlaceholderText('Search events...'), 'xyz');
+
+    expect(screen.getByText('No events found. Try a different search term.')).toBeDefined();
   });
 
   it('advances to step 2 when an event is selected', async () => {
@@ -168,23 +167,27 @@ describe('SellPage', () => {
     expect(screen.getByText('Create Listing')).toBeDefined();
   });
 
-  it('shows creating state when listing is being submitted', () => {
+  it('shows creating state when listing is being submitted', async () => {
+    // Set pending state before rendering so it applies when we reach step 3
     vi.mocked(useCreateListing).mockReturnValue({
       mutate: vi.fn(),
       isPending: true,
     } as unknown as ReturnType<typeof useCreateListing>);
 
-    // We need to render at step 3, but the component starts at step 1.
-    // Since isPending is on the mutation, it only affects the submit button text.
-    // We'll just verify the hook mock is set up; the button only shows on step 3.
     setEvents(mockEventsPage);
+
+    const user = userEvent.setup();
     renderWithProviders(<SellPage />);
 
-    // Reset for other tests
-    vi.mocked(useCreateListing).mockReturnValue({
-      mutate: vi.fn(),
-      isPending: false,
-    } as unknown as ReturnType<typeof useCreateListing>);
+    // Navigate to step 3: select event → fill seat details → continue
+    await user.click(screen.getByText('Taylor Swift - Eras Tour'));
+    await user.type(screen.getByLabelText('Section'), 'Floor');
+    await user.type(screen.getByLabelText('Row'), 'A');
+    await user.type(screen.getByLabelText('Seat Number'), '5');
+    await user.click(screen.getByText('Continue'));
+
+    // The submit button should show "Creating..." when isPending
+    expect(screen.getByText('Creating Listing...')).toBeDefined();
   });
 
   it('renders step indicator with 3 steps', () => {
