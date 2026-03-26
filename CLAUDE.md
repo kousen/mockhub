@@ -118,6 +118,23 @@ The codebase uses Java DOP patterns where they add value:
 - **Endpoints:** `POST /api/v1/listings`, `GET /api/v1/my/listings`, `PUT /api/v1/listings/{id}/price`, `DELETE /api/v1/listings/{id}`, `GET /api/v1/my/earnings`
 - **Frontend:** 3 pages (SellPage with 3-step form, MyListingsPage with tab filtering, EarningsPage dashboard), seller API + hooks, nav links visible when authenticated.
 
+### Lifecycle Cleanup
+
+- **`LifecycleCleanupService`** — `@Scheduled` every 15 min (configurable via `mockhub.lifecycle.cleanup-interval`).
+- **Four operations:** (1) Expire ACTIVE listings past `expires_at` → EXPIRED, (2) Expire ACTIVE listings for past events → EXPIRED, (3) Mark past ACTIVE events as COMPLETED, (4) Delete read notifications older than 30 days.
+- **Ticket release:** When listings expire, their tickets are released from LISTED back to AVAILABLE. Uses SELECT + iterate (not bulk UPDATE) because both listing and ticket state must update together.
+- **Listing → SOLD:** `OrderService.markTicketsAsSold()` also sets `listing.status = "SOLD"`.
+- **Cancel re-activates:** `OrderService.releaseOrderTickets()` resets listing status back to ACTIVE alongside ticket release.
+- **MCP session recovery:** `McpSessionRecoveryFilter` converts Spring AI's "Session not found" JSON-RPC errors (HTTP 200) to HTTP 404, enabling `mcp-remote` clients to detect stale sessions after Railway redeploys.
+
+### Calendar Integration
+
+- **RFC 5545 iCalendar** (.ics) file generation via `CalendarService`.
+- **Endpoint:** `GET /api/v1/orders/{orderNumber}/calendar` — authenticated, returns `.ics` file download with event name, date/time, venue address, doors-open time, ticket count, and order number.
+- **MCP tool:** `getCalendarEntry` in `OrderTools` — returns `.ics` content for agent-driven post-purchase flows.
+- **Frontend:** "Add to Calendar" button on `OrderConfirmationPage` (visible for CONFIRMED orders only), triggers blob download.
+- **No external dependencies** — `.ics` is a text format generated with `StringBuilder`. The OS handles import into any calendar app.
+
 ### Agentic Commerce
 
 - **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
@@ -215,6 +232,7 @@ The codebase uses Java DOP patterns where they add value:
 
 - `ARCHITECTURE.md` — Database schema, API design, backend/frontend architecture, key decisions
 - `PROJECT_JOURNAL.md` — Build report with session notes, challenges, metrics, and commit history
+- `docs/demo-transcript-agentic-purchase.md` — Full agentic purchase demo transcript (Claude Desktop + MCP, 2026-03-26)
 - `docs/stripe-test-setup.md` — Stripe test mode API key setup instructions
 - `sonar-project.properties` — SonarCloud configuration for frontend (coverage exclusions, issue suppressions)
 - `backend/build.gradle.kts` — Backend build config including SonarCloud issue exclusions in `sonar {}` block

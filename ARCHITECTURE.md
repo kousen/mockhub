@@ -22,6 +22,7 @@ mockhub/
 │       ├── ai/                 # Chat, recommendations, price predictions
 │       ├── eval/               # Evaluation conditions (Design by Contract for AI)
 │       ├── mandate/            # Agent mandates (authorization for agentic commerce)
+│       ├── lifecycle/          # Scheduled cleanup (expired listings, past events, old notifications)
 │       ├── admin/              # Admin dashboard
 │       ├── search/             # Full-text search (tsvector)
 │       ├── image/              # Image storage

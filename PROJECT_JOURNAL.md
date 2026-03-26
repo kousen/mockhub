@@ -842,30 +842,48 @@ Both required changing from bulk JPQL `UPDATE` queries to `SELECT` + iterate, si
 
 First push had 42% new-code coverage (threshold: 80%). The gap was entirely in the new `ListingService.searchTickets()` method and its `toTicketSearchResultDto()` mapper — zero test coverage. Added 7 targeted tests covering all branches (seat/no-seat, seller/no-seller, blank param normalization, result limiting). Passed on next push.
 
+### MCP Session Recovery
+
+After fixing the N+1, MCP tools were still timing out. Investigation of Claude Desktop logs (`~/Library/Logs/Claude/mcp-server-mockhub.log`) revealed 36 "Session not found" errors — Spring AI 2.0.0-M3 stores MCP sessions in memory, so Railway redeploys wipe them. The `mcp-remote` bridge kept sending stale session IDs.
+
+**Fix:** `McpSessionRecoveryFilter` wraps MCP responses and converts "Session not found" errors from HTTP 200 (JSON-RPC error body) to HTTP 404, per the MCP spec. This enables clients to detect stale sessions and re-initialize.
+
+### Agentic Purchase Demo
+
+Successfully ran a complete end-to-end purchase via Claude Desktop MCP: search → browse 508 listings → find adjacent seats → create scoped mandate → add to cart → checkout → confirm → revoke mandate. Full transcript in `docs/demo-transcript-agentic-purchase.md`.
+
+### Calendar Integration
+
+Added RFC 5545 iCalendar (.ics) file generation:
+- `CalendarService` generates VCALENDAR with event name, date/time, venue address, doors-open time, ticket count, order number
+- `GET /api/v1/orders/{orderNumber}/calendar` — authenticated endpoint
+- `getCalendarEntry` MCP tool for agent workflows
+- "Add to Calendar" button on order confirmation page
+- No external dependencies — just string formatting
+
+### Bug Fixes
+- Notification link pointed to `/orders/{id}` but frontend only has `/orders/{id}/confirmation` — fixed link
+- MCP tool descriptions listed wrong category slugs (`'rock'` vs actual `'concerts'`) — fixed examples
+
 ### Issues Filed
 - #79 — My Orders page should show event details, not just order numbers
 - #81 — Sell page: show user's owned tickets as selectable dropdown
 - #82 — MCP findTickets times out due to N+1 query (fixed same session)
+- #84 — OAuth 2.0 authorization for MCP server
+- #85 — Calendar integration after ticket purchase (completed same session)
+- #86 — Profile and optimize MCP tool response times
 
 ### PRs Merged
 - #78 — Dependabot picomatch security fix (CVE-2026-33671, CVE-2026-33672)
 - #80 — Lifecycle cleanup + N+1 fix + CI dependabot fix
+- #83 — MCP stale session recovery filter
+- #87 — Calendar integration
 
-### Commits (2026-03-26)
-```
-4f00043 Add lifecycle cleanup: expire listings, complete past events, prune notifications
-539045d Skip SonarCloud analysis on dependabot PRs
-39a9a8c Address PR review: release tickets when expiring listings, re-activate on cancel
-b0a47a2 Fix MCP timeout: replace N+1 query loop in findTickets with single query
-9bbb2a9 Remove unused Modifying import from ListingRepository
-93db427 Add tests for ListingService.searchTickets to meet coverage threshold
-```
-
-### Issues Closed: #70, #82
+### Issues Closed: #70, #82, #85
 
 ---
 
 *Last updated: 2026-03-26*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*~612 tests passing (605 backend + 114 frontend unit + Playwright E2E)*
+*~625 tests passing (619 backend + 114 frontend unit + Playwright E2E)*
 *Live at: https://mockhub.kousenit.com*
