@@ -334,6 +334,7 @@ public class OrderService {
     private void markTicketsAsSold(Order order) {
         for (OrderItem item : order.getItems()) {
             item.getTicket().setStatus("SOLD");
+            item.getListing().setStatus("SOLD");
 
             Event event = item.getListing().getEvent();
             event.setAvailableTickets(Math.max(0, event.getAvailableTickets() - 1));

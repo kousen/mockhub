@@ -1,8 +1,10 @@
 package com.mockhub.ticket.repository;
 
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -56,4 +58,20 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     long countBySellerIdAndStatus(Long sellerId, String status);
 
     boolean existsByTicketIdAndStatus(Long ticketId, String status);
+
+    @Modifying
+    @Query("""
+            UPDATE Listing l SET l.status = 'EXPIRED'
+            WHERE l.status = 'ACTIVE' AND l.expiresAt IS NOT NULL AND l.expiresAt < :now
+            """)
+    int expireListingsPastDeadline(@Param("now") Instant now);
+
+    @Modifying
+    @Query("""
+            UPDATE Listing l SET l.status = 'EXPIRED'
+            WHERE l.status = 'ACTIVE' AND l.event.id IN (
+                SELECT e.id FROM Event e WHERE e.eventDate < :now
+            )
+            """)
+    int expireListingsForPastEvents(@Param("now") Instant now);
 }
