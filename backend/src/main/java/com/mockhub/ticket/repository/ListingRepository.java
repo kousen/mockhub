@@ -1,5 +1,7 @@
 package com.mockhub.ticket.repository;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -56,4 +58,49 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     long countBySellerIdAndStatus(Long sellerId, String status);
 
     boolean existsByTicketIdAndStatus(Long ticketId, String status);
+
+    @Query("""
+            SELECT l FROM Listing l
+            JOIN FETCH l.ticket t
+            JOIN FETCH t.section s
+            LEFT JOIN FETCH t.seat seat
+            LEFT JOIN FETCH seat.row r
+            JOIN FETCH l.event e
+            JOIN FETCH e.venue v
+            JOIN FETCH e.category c
+            LEFT JOIN FETCH l.seller seller
+            WHERE l.status = 'ACTIVE'
+            AND (:query IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                 OR LOWER(e.artistName) LIKE LOWER(CONCAT('%', :query, '%')))
+            AND (:categorySlug IS NULL OR c.slug = :categorySlug)
+            AND (:city IS NULL OR LOWER(v.city) = LOWER(:city))
+            AND (:minPrice IS NULL OR l.computedPrice >= :minPrice)
+            AND (:maxPrice IS NULL OR l.computedPrice <= :maxPrice)
+            AND (:section IS NULL OR LOWER(s.name) = LOWER(:section))
+            AND e.eventDate > CURRENT_TIMESTAMP
+            ORDER BY l.computedPrice ASC
+            """)
+    List<Listing> searchActiveListings(
+            @Param("query") String query,
+            @Param("categorySlug") String categorySlug,
+            @Param("city") String city,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice,
+            @Param("section") String section);
+
+    @Query("""
+            SELECT l FROM Listing l
+            JOIN FETCH l.ticket t
+            WHERE l.status = 'ACTIVE' AND l.expiresAt IS NOT NULL AND l.expiresAt < :now
+            """)
+    List<Listing> findActiveListingsPastDeadline(@Param("now") Instant now);
+
+    @Query("""
+            SELECT l FROM Listing l
+            JOIN FETCH l.ticket t
+            WHERE l.status = 'ACTIVE' AND l.event.id IN (
+                SELECT e.id FROM Event e WHERE e.eventDate < :now
+            )
+            """)
+    List<Listing> findActiveListingsForPastEvents(@Param("now") Instant now);
 }

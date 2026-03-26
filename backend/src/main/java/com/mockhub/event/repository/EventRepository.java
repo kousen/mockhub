@@ -1,10 +1,12 @@
 package com.mockhub.event.repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -43,4 +45,8 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
             + "LIMIT 10",
             nativeQuery = true)
     List<String> suggestEvents(@Param("query") String query);
+
+    @Modifying
+    @Query("UPDATE Event e SET e.status = 'COMPLETED' WHERE e.status = 'ACTIVE' AND e.eventDate < :now")
+    int markPastEventsAsCompleted(@Param("now") Instant now);
 }

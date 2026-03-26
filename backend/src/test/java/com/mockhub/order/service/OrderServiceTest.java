@@ -302,6 +302,19 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("confirmOrder - marks listing as SOLD alongside ticket")
+    void confirmOrder_givenPendingOrder_marksListingAsSold() {
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.confirmOrder("MH-20260317-0001");
+
+        assertEquals("SOLD", testTicket.getStatus(), "Ticket should be marked SOLD");
+        assertEquals("SOLD", testListing.getStatus(), "Listing should be marked SOLD");
+    }
+
+    @Test
     @DisplayName("failOrder - duplicate failure is idempotent")
     void failOrder_givenDuplicateFailure_isIdempotent() {
         when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
@@ -382,6 +395,7 @@ class OrderServiceTest {
     void cancelOrder_givenConfirmedOrderWithMandate_reversesSpendAndReleasesTickets() {
         testOrder.setStatus("CONFIRMED");
         testOrder.setMandateId("mandate-123");
+        testListing.setStatus("SOLD");
         Event event = testOrder.getItems().getFirst().getListing().getEvent();
         int originalAvailable = event.getAvailableTickets();
 
@@ -392,6 +406,7 @@ class OrderServiceTest {
         orderService.cancelOrder("MH-20260317-0001");
 
         assertEquals("CANCELLED", testOrder.getStatus());
+        assertEquals("ACTIVE", testListing.getStatus(), "Listing should be re-activated on cancellation");
         verify(ticketService).releaseTicket(1L);
         verify(eventRepository).save(event);
         assertEquals(originalAvailable + 1, event.getAvailableTickets());

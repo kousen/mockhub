@@ -24,6 +24,7 @@ import com.mockhub.ticket.dto.ListingDto;
 import com.mockhub.ticket.dto.SaleDto;
 import com.mockhub.ticket.dto.SellListingRequest;
 import com.mockhub.ticket.dto.SellerListingDto;
+import com.mockhub.ticket.dto.TicketSearchResultDto;
 import com.mockhub.ticket.dto.UpdatePriceRequest;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
@@ -276,6 +277,68 @@ public class ListingService {
                 activeListings,
                 soldListings,
                 recentSales);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketSearchResultDto> searchTickets(String query, String category, String city,
+                                                     BigDecimal minPrice, BigDecimal maxPrice,
+                                                     String section, int limit) {
+        String normalizedQuery = normalizeParam(query);
+        String normalizedCategory = normalizeParam(category);
+        String normalizedCity = normalizeParam(city);
+        String normalizedSection = normalizeParam(section);
+
+        List<Listing> listings = listingRepository.searchActiveListings(
+                normalizedQuery, normalizedCategory, normalizedCity,
+                minPrice, maxPrice, normalizedSection);
+
+        return listings.stream()
+                .limit(limit)
+                .map(this::toTicketSearchResultDto)
+                .toList();
+    }
+
+    private String normalizeParam(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.strip();
+    }
+
+    private TicketSearchResultDto toTicketSearchResultDto(Listing listing) {
+        Ticket ticket = listing.getTicket();
+        Event event = listing.getEvent();
+
+        String rowLabel = null;
+        String seatNumber = null;
+        if (ticket.getSeat() != null) {
+            rowLabel = ticket.getSeat().getRow().getRowLabel();
+            seatNumber = ticket.getSeat().getSeatNumber();
+        }
+
+        String sellerDisplayName = null;
+        if (listing.getSeller() != null) {
+            sellerDisplayName = listing.getSeller().getFirstName() + " "
+                    + listing.getSeller().getLastName().charAt(0) + ".";
+        }
+
+        return new TicketSearchResultDto(
+                listing.getId(),
+                ticket.getId(),
+                event.getName(),
+                event.getSlug(),
+                event.getArtistName(),
+                event.getCategory().getName(),
+                event.getVenue().getName(),
+                event.getVenue().getCity(),
+                event.getEventDate(),
+                ticket.getSection().getName(),
+                rowLabel,
+                seatNumber,
+                ticket.getTicketType(),
+                listing.getComputedPrice(),
+                sellerDisplayName
+        );
     }
 
     // -- Private helpers --
