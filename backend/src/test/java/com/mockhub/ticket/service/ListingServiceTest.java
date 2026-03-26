@@ -20,8 +20,10 @@ import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.order.repository.OrderItemRepository;
+import com.mockhub.event.entity.Category;
 import com.mockhub.ticket.dto.ListingCreateRequest;
 import com.mockhub.ticket.dto.ListingDto;
+import com.mockhub.ticket.dto.TicketSearchResultDto;
 import com.mockhub.auth.entity.User;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
@@ -30,6 +32,7 @@ import com.mockhub.ticket.repository.TicketRepository;
 import com.mockhub.venue.entity.Seat;
 import com.mockhub.venue.entity.SeatRow;
 import com.mockhub.venue.entity.Section;
+import com.mockhub.venue.entity.Venue;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -237,5 +240,159 @@ class ListingServiceTest {
         assertNull(dto.rowLabel(), "Row label should be null when no seat");
         assertNull(dto.seatNumber(), "Seat number should be null when no seat");
         assertNull(dto.sellerDisplayName(), "Seller should be null for platform listing");
+    }
+
+    // --- searchTickets ---
+
+    @Test
+    @DisplayName("searchTickets - given matching listings - returns search result DTOs")
+    void searchTickets_givenMatchingListings_returnsSearchResultDtos() {
+        Listing listing = createFullListing(false, false);
+        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+                .thenReturn(List.of(listing));
+
+        List<TicketSearchResultDto> results = listingService.searchTickets(
+                null, null, null, null, null, null, 10);
+
+        assertEquals(1, results.size());
+        assertEquals("Test Event", results.get(0).eventName());
+        assertEquals("test-event", results.get(0).eventSlug());
+        assertEquals("Floor", results.get(0).sectionName());
+        assertEquals(new BigDecimal("75.00"), results.get(0).price());
+    }
+
+    @Test
+    @DisplayName("searchTickets - given listing with seat - includes row and seat info")
+    void searchTickets_givenListingWithSeat_includesRowAndSeatInfo() {
+        Listing listing = createFullListing(true, false);
+        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+                .thenReturn(List.of(listing));
+
+        List<TicketSearchResultDto> results = listingService.searchTickets(
+                null, null, null, null, null, null, 10);
+
+        assertEquals("A", results.get(0).rowLabel());
+        assertEquals("1", results.get(0).seatNumber());
+    }
+
+    @Test
+    @DisplayName("searchTickets - given listing with seller - includes seller display name")
+    void searchTickets_givenListingWithSeller_includesSellerDisplayName() {
+        Listing listing = createFullListing(false, true);
+        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+                .thenReturn(List.of(listing));
+
+        List<TicketSearchResultDto> results = listingService.searchTickets(
+                null, null, null, null, null, null, 10);
+
+        assertEquals("Jane D.", results.get(0).sellerDisplayName());
+    }
+
+    @Test
+    @DisplayName("searchTickets - given listing without seat or seller - returns nulls for optional fields")
+    void searchTickets_givenListingWithoutSeatOrSeller_returnsNullsForOptionalFields() {
+        Listing listing = createFullListing(false, false);
+        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+                .thenReturn(List.of(listing));
+
+        List<TicketSearchResultDto> results = listingService.searchTickets(
+                null, null, null, null, null, null, 10);
+
+        assertNull(results.get(0).rowLabel());
+        assertNull(results.get(0).seatNumber());
+        assertNull(results.get(0).sellerDisplayName());
+    }
+
+    @Test
+    @DisplayName("searchTickets - given limit - caps results")
+    void searchTickets_givenLimit_capsResults() {
+        Listing listing1 = createFullListing(false, false);
+        Listing listing2 = createFullListing(false, false);
+        listing2.setId(2L);
+        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+                .thenReturn(List.of(listing1, listing2));
+
+        List<TicketSearchResultDto> results = listingService.searchTickets(
+                null, null, null, null, null, null, 1);
+
+        assertEquals(1, results.size());
+    }
+
+    @Test
+    @DisplayName("searchTickets - given blank params - normalizes to null")
+    void searchTickets_givenBlankParams_normalizesToNull() {
+        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+                .thenReturn(List.of());
+
+        List<TicketSearchResultDto> results = listingService.searchTickets(
+                "  ", "  ", "  ", null, null, "  ", 10);
+
+        assertEquals(0, results.size());
+        verify(listingRepository).searchActiveListings(null, null, null, null, null, null);
+    }
+
+    @Test
+    @DisplayName("searchTickets - given no results - returns empty list")
+    void searchTickets_givenNoResults_returnsEmptyList() {
+        when(listingRepository.searchActiveListings("nonexistent", null, null, null, null, null))
+                .thenReturn(List.of());
+
+        List<TicketSearchResultDto> results = listingService.searchTickets(
+                "nonexistent", null, null, null, null, null, 10);
+
+        assertEquals(0, results.size());
+    }
+
+    private Listing createFullListing(boolean withSeat, boolean withSeller) {
+        Venue venue = new Venue();
+        venue.setName("Test Venue");
+        venue.setCity("New York");
+
+        Category category = new Category();
+        category.setName("Rock");
+
+        Event event = new Event();
+        event.setId(1L);
+        event.setName("Test Event");
+        event.setSlug("test-event");
+        event.setArtistName("Test Artist");
+        event.setEventDate(Instant.now().plus(30, ChronoUnit.DAYS));
+        event.setVenue(venue);
+        event.setCategory(category);
+
+        Section section = new Section();
+        section.setId(1L);
+        section.setName("Floor");
+
+        Ticket ticket = new Ticket();
+        ticket.setId(1L);
+        ticket.setEvent(event);
+        ticket.setSection(section);
+        ticket.setTicketType("STANDARD");
+
+        if (withSeat) {
+            SeatRow row = new SeatRow();
+            row.setRowLabel("A");
+            Seat seat = new Seat();
+            seat.setRow(row);
+            seat.setSeatNumber("1");
+            ticket.setSeat(seat);
+        }
+
+        Listing listing = new Listing();
+        listing.setId(1L);
+        listing.setTicket(ticket);
+        listing.setEvent(event);
+        listing.setComputedPrice(new BigDecimal("75.00"));
+        listing.setStatus("ACTIVE");
+
+        if (withSeller) {
+            User seller = new User();
+            seller.setFirstName("Jane");
+            seller.setLastName("Doe");
+            listing.setSeller(seller);
+        }
+
+        return listing;
     }
 }
