@@ -28,6 +28,7 @@ import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
@@ -38,6 +39,7 @@ public class OrderTools {
     private static final Logger log = LoggerFactory.getLogger(OrderTools.class);
 
     private final OrderService orderService;
+    private final CalendarService calendarService;
     private final UserRepository userRepository;
     private final CartService cartService;
     private final EvalRunner evalRunner;
@@ -45,12 +47,14 @@ public class OrderTools {
     private final ObjectMapper objectMapper;
 
     public OrderTools(OrderService orderService,
+                      CalendarService calendarService,
                       UserRepository userRepository,
                       CartService cartService,
                       EvalRunner evalRunner,
                       PaymentService paymentService,
                       ObjectMapper objectMapper) {
         this.orderService = orderService;
+        this.calendarService = calendarService;
         this.userRepository = userRepository;
         this.cartService = cartService;
         this.evalRunner = evalRunner;
@@ -178,6 +182,26 @@ public class OrderTools {
         } catch (Exception e) {
             log.error("Error confirming order '{}' for '{}': {}", orderNumber, userEmail, e.getMessage(), e);
             return errorJson("Failed to confirm order: " + e.getMessage());
+        }
+    }
+
+    @Tool(description = "Get a calendar (.ics) entry for a confirmed order. "
+            + "Returns iCalendar content that can be imported into any calendar app. "
+            + "Includes event name, date, venue address, doors-open time, and ticket details.")
+    public String getCalendarEntry(
+            @ToolParam(description = "User's email address", required = true) String userEmail,
+            @ToolParam(description = "Order number (e.g. 'MH-20260319-0001')", required = true) String orderNumber) {
+        try {
+            if (orderNumber == null || orderNumber.isBlank()) {
+                return errorJson("Order number is required");
+            }
+            User user = resolveUser(userEmail);
+            orderService.getOrder(user, orderNumber.strip()); // auth check
+            Order order = orderService.getOrderEntity(orderNumber.strip());
+            return calendarService.generateIcs(order);
+        } catch (Exception e) {
+            log.error("Error generating calendar for order '{}': {}", orderNumber, e.getMessage(), e);
+            return errorJson("Failed to generate calendar entry: " + e.getMessage());
         }
     }
 

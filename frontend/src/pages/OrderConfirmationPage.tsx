@@ -1,11 +1,12 @@
 import { Link, useParams } from 'react-router';
-import { CheckCircle } from 'lucide-react';
+import { CalendarPlus, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OrderItemRow } from '@/components/orders/OrderItemRow';
 import { useOrder } from '@/hooks/use-orders';
+import { downloadCalendar } from '@/api/orders';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ROUTES } from '@/lib/constants';
 
@@ -16,6 +17,21 @@ import { ROUTES } from '@/lib/constants';
 export function OrderConfirmationPage() {
   const { orderNumber } = useParams<{ orderNumber: string }>();
   const { data: order, isLoading } = useOrder(orderNumber ?? '');
+
+  const handleAddToCalendar = async () => {
+    if (!orderNumber) return;
+    try {
+      const blob = await downloadCalendar(orderNumber);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `mockhub-${orderNumber}.ics`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      // Calendar download is best-effort — don't break the page
+    }
+  };
 
   if (isLoading) {
     return (
@@ -123,6 +139,12 @@ export function OrderConfirmationPage() {
 
       {/* Actions */}
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        {order.status === 'CONFIRMED' && (
+          <Button variant="outline" className="flex-1" onClick={handleAddToCalendar}>
+            <CalendarPlus className="mr-2 h-4 w-4" />
+            Add to Calendar
+          </Button>
+        )}
         <Button className="flex-1" asChild>
           <Link to={ROUTES.ORDERS}>View Order History</Link>
         </Button>

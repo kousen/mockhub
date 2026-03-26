@@ -2,7 +2,9 @@ package com.mockhub.order.controller;
 
 import jakarta.validation.Valid;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +24,7 @@ import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
+import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,11 +37,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class OrderController {
 
     private final OrderService orderService;
+    private final CalendarService calendarService;
     private final UserRepository userRepository;
 
     public OrderController(OrderService orderService,
+                           CalendarService calendarService,
                            UserRepository userRepository) {
         this.orderService = orderService;
+        this.calendarService = calendarService;
         this.userRepository = userRepository;
     }
 
@@ -77,6 +83,26 @@ public class OrderController {
             @PathVariable String orderNumber) {
         User user = resolveUser(securityUser);
         return ResponseEntity.ok(orderService.getOrder(user, orderNumber));
+    }
+
+    @GetMapping("/{orderNumber}/calendar")
+    @Operation(summary = "Download calendar file",
+            description = "Download an .ics calendar file for the event in this order")
+    @ApiResponse(responseCode = "200", description = "Calendar file returned")
+    @ApiResponse(responseCode = "404", description = "Order not found")
+    public ResponseEntity<byte[]> getCalendar(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @PathVariable String orderNumber) {
+        User user = resolveUser(securityUser);
+        orderService.getOrder(user, orderNumber); // auth check — throws if not owner
+        com.mockhub.order.entity.Order orderEntity = orderService.getOrderEntity(orderNumber);
+        String ics = calendarService.generateIcs(orderEntity);
+
+        String filename = "mockhub-" + orderNumber + ".ics";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("text/calendar"))
+                .body(ics.getBytes());
     }
 
     private User resolveUser(SecurityUser securityUser) {

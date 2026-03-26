@@ -14,6 +14,7 @@ import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
 import com.mockhub.config.SecurityConfig;
+import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -29,6 +30,9 @@ class OrderControllerTest {
 
     @MockitoBean
     private OrderService orderService;
+
+    @MockitoBean
+    private CalendarService calendarService;
 
     @MockitoBean
     private UserRepository userRepository;
@@ -61,6 +65,13 @@ class OrderControllerTest {
     @DisplayName("GET /api/v1/orders/{orderNumber} - unauthenticated - returns 401")
     void getOrder_unauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/orders/MH-20260317-0001"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/orders/{orderNumber}/calendar - unauthenticated - returns 401")
+    void getCalendar_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(get("/api/v1/orders/MH-20260317-0001/calendar"))
                 .andExpect(status().isUnauthorized());
     }
 }

@@ -26,6 +26,7 @@ import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
@@ -59,6 +60,9 @@ class OrderToolsTest {
     @Mock
     private PaymentService paymentService;
 
+    @Mock
+    private CalendarService calendarService;
+
     private static final String AGENT_ID = "shopping-agent";
     private static final String MANDATE_ID = "mandate-123";
 
@@ -70,7 +74,7 @@ class OrderToolsTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        orderTools = new OrderTools(orderService, userRepository, cartService,
+        orderTools = new OrderTools(orderService, calendarService, userRepository, cartService,
                 evalRunner, paymentService, objectMapper);
 
         testUser = new User();
