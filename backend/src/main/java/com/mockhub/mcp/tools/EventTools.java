@@ -42,7 +42,7 @@ public class EventTools {
     public String searchEvents(
             @ToolParam(description = "Search query text to match event name or artist",
                     required = false) String query,
-            @ToolParam(description = "Category slug to filter by (e.g. 'rock', 'pop', 'jazz')",
+            @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', 'theater', 'comedy', 'festivals'",
                     required = false) String category,
             @ToolParam(description = "City name to filter events by location",
                     required = false) String city,
@@ -132,7 +132,7 @@ public class EventTools {
     public String findTickets(
             @ToolParam(description = "Search query text to match event name or artist",
                     required = false) String query,
-            @ToolParam(description = "Category slug to filter by (e.g. 'rock', 'pop', 'jazz')",
+            @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', 'theater', 'comedy', 'festivals'",
                     required = false) String category,
             @ToolParam(description = "City name to filter events by location",
                     required = false) String city,
