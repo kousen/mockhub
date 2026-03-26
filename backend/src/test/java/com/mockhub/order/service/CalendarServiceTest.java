@@ -169,4 +169,14 @@ class CalendarServiceTest {
         assertTrue(ics.contains("\r\n"), "Should use CRLF line endings");
         assertFalse(ics.contains("\r\n\n"), "Should not have extra newlines");
     }
+
+    @Test
+    @DisplayName("generateIcs - given venue with null addressLine2 - handles gracefully")
+    void generateIcs_givenVenueWithNullAddressLine2_handlesGracefully() {
+        testEvent.getVenue().setAddressLine1(null);
+
+        String ics = calendarService.generateIcs(testOrder);
+
+        assertTrue(ics.contains("LOCATION:"), "Should still include LOCATION field");
+    }
 }
