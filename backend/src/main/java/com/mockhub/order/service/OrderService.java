@@ -351,7 +351,7 @@ public class OrderService {
                 "Order Confirmed",
                 String.format("Your order %s has been confirmed. Total: $%s",
                         orderNumber, order.getTotal().toPlainString()),
-                "/orders/" + orderNumber
+                "/orders/" + orderNumber + "/confirmation"
         );
 
         sendSmsConfirmation(order);
