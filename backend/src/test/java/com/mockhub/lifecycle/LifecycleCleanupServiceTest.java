@@ -2,6 +2,8 @@ package com.mockhub.lifecycle;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -12,6 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.repository.NotificationRepository;
+import com.mockhub.ticket.entity.Listing;
+import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.ticket.repository.ListingRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,39 +46,47 @@ class LifecycleCleanupServiceTest {
     @Test
     @DisplayName("runCleanup - invokes all four cleanup operations")
     void runCleanup_invokesAllFourCleanupOperations() {
-        when(listingRepository.expireListingsPastDeadline(any(Instant.class))).thenReturn(3);
-        when(listingRepository.expireListingsForPastEvents(any(Instant.class))).thenReturn(5);
-        when(eventRepository.markPastEventsAsCompleted(any(Instant.class))).thenReturn(2);
-        when(notificationRepository.deleteReadNotificationsOlderThan(any(Instant.class))).thenReturn(10);
+        when(listingRepository.findActiveListingsPastDeadline(any(Instant.class)))
+                .thenReturn(Collections.emptyList());
+        when(listingRepository.findActiveListingsForPastEvents(any(Instant.class)))
+                .thenReturn(Collections.emptyList());
+        when(eventRepository.markPastEventsAsCompleted(any(Instant.class))).thenReturn(0);
+        when(notificationRepository.deleteReadNotificationsOlderThan(any(Instant.class))).thenReturn(0);
 
         cleanupService.runCleanup();
 
-        verify(listingRepository).expireListingsPastDeadline(any(Instant.class));
-        verify(listingRepository).expireListingsForPastEvents(any(Instant.class));
+        verify(listingRepository).findActiveListingsPastDeadline(any(Instant.class));
+        verify(listingRepository).findActiveListingsForPastEvents(any(Instant.class));
         verify(eventRepository).markPastEventsAsCompleted(any(Instant.class));
         verify(notificationRepository).deleteReadNotificationsOlderThan(any(Instant.class));
     }
 
     @Test
-    @DisplayName("expireListingsPastDeadline - returns count of expired listings")
-    void expireListingsPastDeadline_returnsExpiredCount() {
+    @DisplayName("expireListingsPastDeadline - expires listings and releases tickets")
+    void expireListingsPastDeadline_expiresListingsAndReleasesTickets() {
         Instant now = Instant.now();
-        when(listingRepository.expireListingsPastDeadline(now)).thenReturn(7);
+        Listing listing = createActiveListingWithTicket();
+        when(listingRepository.findActiveListingsPastDeadline(now)).thenReturn(List.of(listing));
 
         int result = cleanupService.expireListingsPastDeadline(now);
 
-        assertEquals(7, result);
+        assertEquals(1, result);
+        assertEquals("EXPIRED", listing.getStatus());
+        assertEquals("AVAILABLE", listing.getTicket().getStatus());
     }
 
     @Test
-    @DisplayName("expireListingsForPastEvents - returns count of expired listings")
-    void expireListingsForPastEvents_returnsExpiredCount() {
+    @DisplayName("expireListingsForPastEvents - expires listings and releases tickets")
+    void expireListingsForPastEvents_expiresListingsAndReleasesTickets() {
         Instant now = Instant.now();
-        when(listingRepository.expireListingsForPastEvents(now)).thenReturn(12);
+        Listing listing = createActiveListingWithTicket();
+        when(listingRepository.findActiveListingsForPastEvents(now)).thenReturn(List.of(listing));
 
         int result = cleanupService.expireListingsForPastEvents(now);
 
-        assertEquals(12, result);
+        assertEquals(1, result);
+        assertEquals("EXPIRED", listing.getStatus());
+        assertEquals("AVAILABLE", listing.getTicket().getStatus());
     }
 
     @Test
@@ -102,18 +114,23 @@ class LifecycleCleanupServiceTest {
     }
 
     @Test
-    @DisplayName("runCleanup - given nothing to clean - runs silently without logging")
-    void runCleanup_givenNothingToClean_runsSilently() {
-        when(listingRepository.expireListingsPastDeadline(any(Instant.class))).thenReturn(0);
-        when(listingRepository.expireListingsForPastEvents(any(Instant.class))).thenReturn(0);
-        when(eventRepository.markPastEventsAsCompleted(any(Instant.class))).thenReturn(0);
-        when(notificationRepository.deleteReadNotificationsOlderThan(any(Instant.class))).thenReturn(0);
+    @DisplayName("expireListingsPastDeadline - given no expired listings - returns zero")
+    void expireListingsPastDeadline_givenNone_returnsZero() {
+        Instant now = Instant.now();
+        when(listingRepository.findActiveListingsPastDeadline(now)).thenReturn(Collections.emptyList());
 
-        cleanupService.runCleanup();
+        int result = cleanupService.expireListingsPastDeadline(now);
 
-        verify(listingRepository).expireListingsPastDeadline(any(Instant.class));
-        verify(listingRepository).expireListingsForPastEvents(any(Instant.class));
-        verify(eventRepository).markPastEventsAsCompleted(any(Instant.class));
-        verify(notificationRepository).deleteReadNotificationsOlderThan(any(Instant.class));
+        assertEquals(0, result);
+    }
+
+    private Listing createActiveListingWithTicket() {
+        Ticket ticket = new Ticket();
+        ticket.setStatus("LISTED");
+
+        Listing listing = new Listing();
+        listing.setStatus("ACTIVE");
+        listing.setTicket(ticket);
+        return listing;
     }
 }

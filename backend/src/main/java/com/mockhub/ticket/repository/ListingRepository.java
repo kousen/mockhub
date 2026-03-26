@@ -59,19 +59,19 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     boolean existsByTicketIdAndStatus(Long ticketId, String status);
 
-    @Modifying
     @Query("""
-            UPDATE Listing l SET l.status = 'EXPIRED'
+            SELECT l FROM Listing l
+            JOIN FETCH l.ticket t
             WHERE l.status = 'ACTIVE' AND l.expiresAt IS NOT NULL AND l.expiresAt < :now
             """)
-    int expireListingsPastDeadline(@Param("now") Instant now);
+    List<Listing> findActiveListingsPastDeadline(@Param("now") Instant now);
 
-    @Modifying
     @Query("""
-            UPDATE Listing l SET l.status = 'EXPIRED'
+            SELECT l FROM Listing l
+            JOIN FETCH l.ticket t
             WHERE l.status = 'ACTIVE' AND l.event.id IN (
                 SELECT e.id FROM Event e WHERE e.eventDate < :now
             )
             """)
-    int expireListingsForPastEvents(@Param("now") Instant now);
+    List<Listing> findActiveListingsForPastEvents(@Param("now") Instant now);
 }

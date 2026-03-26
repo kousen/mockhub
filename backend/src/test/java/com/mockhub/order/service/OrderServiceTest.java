@@ -395,6 +395,7 @@ class OrderServiceTest {
     void cancelOrder_givenConfirmedOrderWithMandate_reversesSpendAndReleasesTickets() {
         testOrder.setStatus("CONFIRMED");
         testOrder.setMandateId("mandate-123");
+        testListing.setStatus("SOLD");
         Event event = testOrder.getItems().getFirst().getListing().getEvent();
         int originalAvailable = event.getAvailableTickets();
 
@@ -405,6 +406,7 @@ class OrderServiceTest {
         orderService.cancelOrder("MH-20260317-0001");
 
         assertEquals("CANCELLED", testOrder.getStatus());
+        assertEquals("ACTIVE", testListing.getStatus(), "Listing should be re-activated on cancellation");
         verify(ticketService).releaseTicket(1L);
         verify(eventRepository).save(event);
         assertEquals(originalAvailable + 1, event.getAvailableTickets());

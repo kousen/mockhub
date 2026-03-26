@@ -428,6 +428,7 @@ public class OrderService {
     private void releaseOrderTickets(Order order) {
         for (OrderItem item : order.getItems()) {
             ticketService.releaseTicket(item.getTicket().getId());
+            item.getListing().setStatus("ACTIVE");
         }
     }
 
