@@ -784,7 +784,88 @@ cae9189 Address review: warn about default MCP key, fix upload dir documentation
 
 ---
 
-*Last updated: 2026-03-25*
+## Session 7 — 2026-03-26: Lifecycle Cleanup & the N+1 That Only Agents Could Find
+
+### Theme: Database lifecycle gaps and a performance bug invisible to human users
+
+### What We Built
+
+**Lifecycle cleanup service** — a `@Scheduled` job (every 15 min) that handles four previously-missing lifecycle transitions:
+
+1. **Listing → SOLD on order confirmation** (bug fix: the `STATUS_SOLD` constant existed but was never set)
+2. **Expire listings past their `expires_at` deadline** → status EXPIRED, ticket released to AVAILABLE
+3. **Expire listings for past events** → same treatment
+4. **Mark past events as COMPLETED** (stops them appearing in searches/featured)
+5. **Prune read notifications older than 30 days**
+
+**CI fix** — skip SonarCloud on dependabot PRs (they can't access secrets, so the check always failed)
+
+### The N+1 Selects Problem: A Teaching Moment
+
+The most interesting bug of the session was an N+1 query problem in the MCP `findTickets` tool that **only manifested when AI agents used the system, never when humans did.**
+
+**The setup:** `findTickets` was a "compound tool" designed to reduce agent round-trips — one MCP call instead of three (search events → get listings → filter). It worked by:
+
+```java
+// Fetch up to 100 events
+PagedResponse<EventSummaryDto> events = eventService.listEvents(request);
+
+// For EACH event, run a separate listing query
+for (EventSummaryDto event : events.content()) {
+    List<ListingDto> listings = listingService.getActiveListingsByEventSlug(event.slug());
+    // ... filter and collect
+}
+```
+
+**Why humans never triggered it:** The web frontend uses `searchEvents` to browse, then `getEventListings` for one event at a time when a user clicks in. One event = one query = fast.
+
+**Why agents triggered it:** An MCP client asking "find me rock tickets under $100" hits `findTickets`, which fetches 100 events and runs a listing query for *each one*. With ~80 seeded events averaging ~92 listings each:
+- 100 event queries (with lazy-loaded Venue/Category = 200 more)
+- 100 listing queries (each with JOIN FETCH on ticket/section/seat/row)
+- **Total: 300-500+ SQL queries per MCP tool call**
+- Default timeouts: ~20-30 seconds → guaranteed timeout
+
+**The fix:** One single repository query with JOIN FETCH across all six tables, applying all filters (query, category, city, price, section) in SQL. Hundreds of queries → one.
+
+**The lesson for students:** N+1 problems hide in code that *looks* correct. The original code was clean, readable, well-structured, and passed all tests. It only broke under a different access pattern — agents search broadly while humans drill into one event at a time. This is exactly the kind of bug that emerges when you add MCP/agentic access to an existing application: the API contract is the same, but the usage patterns are fundamentally different.
+
+### PR Review Caught Real Bugs
+
+The Codex PR reviewer caught two legitimate issues in the lifecycle cleanup:
+
+1. **P1: Broken inventory on cancel** — `cancelOrder` released tickets but didn't reset listing status back to ACTIVE, leaving inventory in an inconsistent state (ticket=AVAILABLE, listing=SOLD)
+2. **P2: Stranded tickets on expire** — bulk expire queries updated listing status but didn't release the underlying tickets from LISTED, permanently stranding them with no recovery path
+
+Both required changing from bulk JPQL `UPDATE` queries to `SELECT` + iterate, since the fix needed to update two entities (Listing + Ticket) per row.
+
+### SonarCloud Quality Gate
+
+First push had 42% new-code coverage (threshold: 80%). The gap was entirely in the new `ListingService.searchTickets()` method and its `toTicketSearchResultDto()` mapper — zero test coverage. Added 7 targeted tests covering all branches (seat/no-seat, seller/no-seller, blank param normalization, result limiting). Passed on next push.
+
+### Issues Filed
+- #79 — My Orders page should show event details, not just order numbers
+- #81 — Sell page: show user's owned tickets as selectable dropdown
+- #82 — MCP findTickets times out due to N+1 query (fixed same session)
+
+### PRs Merged
+- #78 — Dependabot picomatch security fix (CVE-2026-33671, CVE-2026-33672)
+- #80 — Lifecycle cleanup + N+1 fix + CI dependabot fix
+
+### Commits (2026-03-26)
+```
+4f00043 Add lifecycle cleanup: expire listings, complete past events, prune notifications
+539045d Skip SonarCloud analysis on dependabot PRs
+39a9a8c Address PR review: release tickets when expiring listings, re-activate on cancel
+b0a47a2 Fix MCP timeout: replace N+1 query loop in findTickets with single query
+9bbb2a9 Remove unused Modifying import from ListingRepository
+93db427 Add tests for ListingService.searchTickets to meet coverage threshold
+```
+
+### Issues Closed: #70, #82
+
+---
+
+*Last updated: 2026-03-26*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*~470 tests passing (443 backend + 114 frontend unit + Playwright E2E)*
+*~612 tests passing (605 backend + 114 frontend unit + Playwright E2E)*
 *Live at: https://mockhub.kousenit.com*
