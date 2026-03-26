@@ -26,6 +26,7 @@ import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
@@ -59,6 +60,9 @@ class OrderToolsTest {
     @Mock
     private PaymentService paymentService;
 
+    @Mock
+    private CalendarService calendarService;
+
     private static final String AGENT_ID = "shopping-agent";
     private static final String MANDATE_ID = "mandate-123";
 
@@ -70,7 +74,7 @@ class OrderToolsTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        orderTools = new OrderTools(orderService, userRepository, cartService,
+        orderTools = new OrderTools(orderService, calendarService, userRepository, cartService,
                 evalRunner, paymentService, objectMapper);
 
         testUser = new User();
@@ -501,6 +505,50 @@ class OrderToolsTest {
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to list orders"), "Result should contain failure message");
+        }
+    }
+
+    @Nested
+    @DisplayName("getCalendarEntry")
+    class GetCalendarEntryTests {
+
+        @Test
+        @DisplayName("given valid order - returns ICS content")
+        void givenValidOrder_returnsIcsContent() {
+            stubUserLookup("buyer@example.com");
+            OrderDto orderDto = new OrderDto(
+                    null, "MH-20260326-0001", null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260326-0001")).thenReturn(orderDto);
+            Order order = new Order();
+            order.setOrderNumber("MH-20260326-0001");
+            when(orderService.getOrderEntity("MH-20260326-0001")).thenReturn(order);
+            when(calendarService.generateIcs(order)).thenReturn("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n");
+
+            String result = orderTools.getCalendarEntry("buyer@example.com", "MH-20260326-0001");
+
+            assertTrue(result.contains("BEGIN:VCALENDAR"), "Should return ICS content");
+        }
+
+        @Test
+        @DisplayName("given null order number - returns error JSON")
+        void givenNullOrderNumber_returnsErrorJson() {
+            String result = orderTools.getCalendarEntry("buyer@example.com", null);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Order number is required"), "Should indicate order number required");
+        }
+
+        @Test
+        @DisplayName("given service throws exception - returns error JSON")
+        void givenServiceThrowsException_returnsErrorJson() {
+            stubUserLookup("buyer@example.com");
+            when(orderService.getOrder(testUser, "MH-INVALID"))
+                    .thenThrow(new RuntimeException("Order not found"));
+
+            String result = orderTools.getCalendarEntry("buyer@example.com", "MH-INVALID");
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Failed to generate calendar entry"), "Should contain failure message");
         }
     }
 }

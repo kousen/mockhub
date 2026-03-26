@@ -25,3 +25,10 @@ export async function downloadTicket(orderNumber: string, ticketId: number): Pro
   });
   return response.data as Blob;
 }
+
+export async function downloadCalendar(orderNumber: string): Promise<Blob> {
+  const response = await apiClient.get(`/orders/${orderNumber}/calendar`, {
+    responseType: 'blob',
+  });
+  return response.data as Blob;
+}
