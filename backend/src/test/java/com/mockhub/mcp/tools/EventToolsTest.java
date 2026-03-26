@@ -19,6 +19,7 @@ import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
 import com.mockhub.ticket.dto.ListingDto;
+import com.mockhub.ticket.dto.TicketSearchResultDto;
 import com.mockhub.ticket.service.ListingService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -263,100 +264,52 @@ class EventToolsTest {
     // --- findTickets ---
 
     @Test
-    @DisplayName("findTickets - given matching events and listings - returns sorted listings JSON")
-    void findTickets_givenMatchingEventsAndListings_returnsSortedListingsJson() {
-        EventSummaryDto event1 = new EventSummaryDto(
-                1L, "Rock Show", "rock-show", "Band A", "Venue 1", "NYC",
-                Instant.now(), new BigDecimal("50.00"), 10, null, "rock", false);
-        PagedResponse<EventSummaryDto> eventsResponse = new PagedResponse<>(
-                List.of(event1), 0, 100, 1, 1);
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventsResponse);
-
-        ListingDto listing1 = createListingDto(1L, "rock-show", new BigDecimal("100.00"));
-        ListingDto listing2 = createListingDto(2L, "rock-show", new BigDecimal("50.00"));
-        when(listingService.getActiveListingsByEventSlug("rock-show"))
-                .thenReturn(List.of(listing1, listing2));
+    @DisplayName("findTickets - given matching listings - returns JSON array")
+    void findTickets_givenMatchingListings_returnsJsonArray() {
+        TicketSearchResultDto result1 = createSearchResult(1L, "Rock Show", "rock-show", new BigDecimal("50.00"));
+        TicketSearchResultDto result2 = createSearchResult(2L, "Rock Show", "rock-show", new BigDecimal("100.00"));
+        when(listingService.searchTickets("rock", null, null, null, null, null, 10))
+                .thenReturn(List.of(result1, result2));
 
         String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null);
 
         assertTrue(result.startsWith("["), "Result should be a JSON array");
-        assertTrue(result.contains("\"listingId\":2"), "Result should contain cheaper listing");
-        assertTrue(result.contains("\"listingId\":1"), "Result should contain both listings");
+        assertTrue(result.contains("\"listingId\":1"), "Result should contain first listing");
+        assertTrue(result.contains("\"listingId\":2"), "Result should contain second listing");
         assertTrue(result.contains("\"eventName\":\"Rock Show\""), "Result should include event metadata");
     }
 
     @Test
-    @DisplayName("findTickets - given price filters - filters listings by price")
-    void findTickets_givenPriceFilters_filtersListingsByPrice() {
-        EventSummaryDto event1 = new EventSummaryDto(
-                1L, "Jazz Night", "jazz-night", "Artist B", "Venue 2", "LA",
-                Instant.now(), new BigDecimal("40.00"), 5, null, "jazz", false);
-        PagedResponse<EventSummaryDto> eventsResponse = new PagedResponse<>(
-                List.of(event1), 0, 100, 1, 1);
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventsResponse);
-
-        ListingDto cheapListing = createListingDto(1L, "jazz-night", new BigDecimal("30.00"));
-        ListingDto expensiveListing = createListingDto(2L, "jazz-night", new BigDecimal("200.00"));
-        when(listingService.getActiveListingsByEventSlug("jazz-night"))
-                .thenReturn(List.of(cheapListing, expensiveListing));
+    @DisplayName("findTickets - given filters - passes them to service")
+    void findTickets_givenFilters_passesThemToService() {
+        when(listingService.searchTickets("jazz", "jazz", "LA",
+                new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", 10))
+                .thenReturn(List.of());
 
         String result = eventTools.findTickets(
-                null, null, null, null, null, new BigDecimal("50.00"), new BigDecimal("250.00"), null, null);
+                "jazz", "jazz", "LA", null, null, new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", null);
 
-        assertTrue(result.contains("\"listingId\":2"), "Result should contain listing within price range");
-        assertTrue(!result.contains("\"listingId\":1"), "Result should not contain listing below min price");
+        assertEquals("[]", result, "Result should be empty array when no matches");
+        verify(listingService).searchTickets("jazz", "jazz", "LA",
+                new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", 10);
     }
 
     @Test
-    @DisplayName("findTickets - given section filter - filters listings by section")
-    void findTickets_givenSectionFilter_filtersListingsBySection() {
-        EventSummaryDto event1 = new EventSummaryDto(
-                1L, "Pop Show", "pop-show", "Artist C", "Venue 3", "Chicago",
-                Instant.now(), new BigDecimal("60.00"), 20, null, "pop", false);
-        PagedResponse<EventSummaryDto> eventsResponse = new PagedResponse<>(
-                List.of(event1), 0, 100, 1, 1);
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventsResponse);
+    @DisplayName("findTickets - given maxResults - passes limit to service")
+    void findTickets_givenMaxResults_passesLimitToService() {
+        when(listingService.searchTickets(null, null, null, null, null, null, 5))
+                .thenReturn(List.of());
 
-        ListingDto orchestraListing = createListingDto(1L, "pop-show", new BigDecimal("100.00"), "Orchestra");
-        ListingDto balconyListing = createListingDto(2L, "pop-show", new BigDecimal("50.00"), "Balcony");
-        when(listingService.getActiveListingsByEventSlug("pop-show"))
-                .thenReturn(List.of(orchestraListing, balconyListing));
+        eventTools.findTickets(null, null, null, null, null, null, null, null, 5);
 
-        String result = eventTools.findTickets(null, null, null, null, null, null, null, "Orchestra", null);
-
-        assertTrue(result.contains("\"listingId\":1"), "Result should contain Orchestra listing");
-        assertTrue(!result.contains("\"listingId\":2"), "Result should not contain Balcony listing");
+        verify(listingService).searchTickets(null, null, null, null, null, null, 5);
     }
 
     @Test
-    @DisplayName("findTickets - given maxResults - limits number of results")
-    void findTickets_givenMaxResults_limitsNumberOfResults() {
-        EventSummaryDto event1 = new EventSummaryDto(
-                1L, "Big Show", "big-show", "Artist D", "Venue 4", "Boston",
-                Instant.now(), new BigDecimal("40.00"), 50, null, "rock", false);
-        PagedResponse<EventSummaryDto> eventsResponse = new PagedResponse<>(
-                List.of(event1), 0, 100, 1, 1);
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventsResponse);
-
-        ListingDto listing1 = createListingDto(1L, "big-show", new BigDecimal("50.00"));
-        ListingDto listing2 = createListingDto(2L, "big-show", new BigDecimal("60.00"));
-        ListingDto listing3 = createListingDto(3L, "big-show", new BigDecimal("70.00"));
-        when(listingService.getActiveListingsByEventSlug("big-show"))
-                .thenReturn(List.of(listing1, listing2, listing3));
-
-        String result = eventTools.findTickets(null, null, null, null, null, null, null, null, 2);
-
-        assertTrue(result.contains("\"listingId\":1"), "Result should contain first listing");
-        assertTrue(result.contains("\"listingId\":2"), "Result should contain second listing");
-        assertTrue(!result.contains("\"listingId\":3"), "Result should not contain third listing (over limit)");
-    }
-
-    @Test
-    @DisplayName("findTickets - given no matching events - returns empty array")
-    void findTickets_givenNoMatchingEvents_returnsEmptyArray() {
-        PagedResponse<EventSummaryDto> eventsResponse = new PagedResponse<>(
-                List.of(), 0, 100, 0, 0);
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventsResponse);
+    @DisplayName("findTickets - given no matching listings - returns empty array")
+    void findTickets_givenNoMatchingListings_returnsEmptyArray() {
+        when(listingService.searchTickets("nonexistent", null, null, null, null, null, 10))
+                .thenReturn(List.of());
 
         String result = eventTools.findTickets("nonexistent", null, null, null, null, null, null, null, null);
 
@@ -366,13 +319,24 @@ class EventToolsTest {
     @Test
     @DisplayName("findTickets - given service throws exception - returns error JSON")
     void findTickets_givenServiceThrowsException_returnsErrorJson() {
-        when(eventService.listEvents(any(EventSearchRequest.class)))
+        when(listingService.searchTickets(any(), any(), any(), any(), any(), any(), any(int.class)))
                 .thenThrow(new RuntimeException("Search failed"));
 
         String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to find tickets"), "Result should contain failure message");
+    }
+
+    @Test
+    @DisplayName("findTickets - given maxResults over 50 - caps at 50")
+    void findTickets_givenMaxResultsOver50_capsAt50() {
+        when(listingService.searchTickets(null, null, null, null, null, null, 50))
+                .thenReturn(List.of());
+
+        eventTools.findTickets(null, null, null, null, null, null, null, null, 100);
+
+        verify(listingService).searchTickets(null, null, null, null, null, null, 50);
     }
 
     // --- Helper methods ---
@@ -386,5 +350,14 @@ class EventToolsTest {
                 id, id, eventSlug, section, "Row 1", "Seat " + id,
                 "STANDARD", price, price, BigDecimal.ONE,
                 "ACTIVE", Instant.now(), null);
+    }
+
+    private TicketSearchResultDto createSearchResult(Long listingId, String eventName,
+                                                      String eventSlug, BigDecimal price) {
+        return new TicketSearchResultDto(
+                listingId, listingId, eventName, eventSlug, "Artist",
+                "rock", "Venue", "NYC", Instant.now(),
+                "Section A", "Row 1", "Seat " + listingId,
+                "STANDARD", price, null);
     }
 }

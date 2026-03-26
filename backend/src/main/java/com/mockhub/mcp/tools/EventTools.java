@@ -2,8 +2,6 @@ package com.mockhub.mcp.tools;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -153,61 +151,14 @@ public class EventTools {
         try {
             int limit = (maxResults == null || maxResults <= 0) ? 10 : Math.min(maxResults, 50);
 
-            EventSearchRequest request = new EventSearchRequest(
-                    query, category, null, city,
-                    dateFrom, dateTo, minPrice, maxPrice,
-                    "ACTIVE", "eventDate",
-                    0, 100);
+            List<TicketSearchResultDto> results = listingService.searchTickets(
+                    query, category, city, minPrice, maxPrice, section, limit);
 
-            PagedResponse<EventSummaryDto> eventsResponse = eventService.listEvents(request);
-            List<TicketSearchResultDto> allListings = new ArrayList<>();
-
-            for (EventSummaryDto eventSummary : eventsResponse.content()) {
-                List<ListingDto> eventListings = listingService.getActiveListingsByEventSlug(
-                        eventSummary.slug());
-
-                for (ListingDto listing : eventListings) {
-                    if (matchesFilters(listing, minPrice, maxPrice, section)) {
-                        allListings.add(new TicketSearchResultDto(
-                                listing.id(),
-                                listing.ticketId(),
-                                eventSummary.name(),
-                                eventSummary.slug(),
-                                eventSummary.artistName(),
-                                eventSummary.categoryName(),
-                                eventSummary.venueName(),
-                                eventSummary.city(),
-                                eventSummary.eventDate(),
-                                listing.sectionName(),
-                                listing.rowLabel(),
-                                listing.seatNumber(),
-                                listing.ticketType(),
-                                listing.computedPrice(),
-                                listing.sellerDisplayName()
-                        ));
-                    }
-                }
-            }
-
-            List<TicketSearchResultDto> sortedListings = allListings.stream()
-                    .sorted(Comparator.comparing(TicketSearchResultDto::price))
-                    .limit(limit)
-                    .toList();
-
-            return objectMapper.writeValueAsString(sortedListings);
+            return objectMapper.writeValueAsString(results);
         } catch (Exception e) {
             log.error("Error finding tickets: {}", e.getMessage(), e);
             return errorJson("Failed to find tickets: " + e.getMessage());
         }
-    }
-
-    private boolean matchesFilters(ListingDto listing, BigDecimal minPrice,
-                                   BigDecimal maxPrice, String section) {
-        boolean priceAboveMin = minPrice == null || listing.computedPrice().compareTo(minPrice) >= 0;
-        boolean priceBelowMax = maxPrice == null || listing.computedPrice().compareTo(maxPrice) <= 0;
-        boolean sectionMatches = section == null || section.isBlank()
-                || section.strip().equalsIgnoreCase(listing.sectionName());
-        return priceAboveMin && priceBelowMax && sectionMatches;
     }
 
     private String errorJson(String message) {
