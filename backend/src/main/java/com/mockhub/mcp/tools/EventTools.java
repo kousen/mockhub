@@ -2,6 +2,7 @@ package com.mockhub.mcp.tools;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -136,10 +137,10 @@ public class EventTools {
                     required = false) String category,
             @ToolParam(description = "City name to filter events by location",
                     required = false) String city,
-            @ToolParam(description = "Only include events on or after this ISO-8601 timestamp",
-                    required = false) Instant dateFrom,
-            @ToolParam(description = "Only include events on or before this ISO-8601 timestamp",
-                    required = false) Instant dateTo,
+            @ToolParam(description = "Only include events on or after this date (ISO-8601, e.g. '2026-04-01T00:00:00Z')",
+                    required = false) String dateFrom,
+            @ToolParam(description = "Only include events on or before this date (ISO-8601, e.g. '2026-05-01T00:00:00Z')",
+                    required = false) String dateTo,
             @ToolParam(description = "Minimum ticket price filter",
                     required = false) BigDecimal minPrice,
             @ToolParam(description = "Maximum ticket price filter",
@@ -150,14 +151,29 @@ public class EventTools {
                     required = false) Integer maxResults) {
         try {
             int limit = (maxResults == null || maxResults <= 0) ? 10 : Math.min(maxResults, 50);
+            Instant parsedDateFrom = parseInstant(dateFrom);
+            Instant parsedDateTo = parseInstant(dateTo);
 
             List<TicketSearchResultDto> results = listingService.searchTickets(
-                    query, category, city, minPrice, maxPrice, section, limit);
+                    query, category, city, minPrice, maxPrice, section,
+                    parsedDateFrom, parsedDateTo, limit);
 
             return objectMapper.writeValueAsString(results);
         } catch (Exception e) {
             log.error("Error finding tickets: {}", e.getMessage(), e);
             return errorJson("Failed to find tickets: " + e.getMessage());
+        }
+    }
+
+    private Instant parseInstant(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Instant.parse(value.strip());
+        } catch (DateTimeParseException e) {
+            log.warn("Could not parse date '{}': {}", value, e.getMessage());
+            return null;
         }
     }
 

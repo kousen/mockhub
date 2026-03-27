@@ -77,7 +77,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             AND (:minPrice IS NULL OR l.computedPrice >= :minPrice)
             AND (:maxPrice IS NULL OR l.computedPrice <= :maxPrice)
             AND (:section IS NULL OR LOWER(s.name) = LOWER(:section))
-            AND e.eventDate > CURRENT_TIMESTAMP
+            AND e.eventDate > :dateFrom
+            AND (:dateTo IS NULL OR e.eventDate <= :dateTo)
             ORDER BY l.computedPrice ASC
             """)
     List<Listing> searchActiveListings(
@@ -86,7 +87,9 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             @Param("city") String city,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
-            @Param("section") String section);
+            @Param("section") String section,
+            @Param("dateFrom") Instant dateFrom,
+            @Param("dateTo") Instant dateTo);
 
     @Query("""
             SELECT l FROM Listing l

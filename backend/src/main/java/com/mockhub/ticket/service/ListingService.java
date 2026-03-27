@@ -282,15 +282,18 @@ public class ListingService {
     @Transactional(readOnly = true)
     public List<TicketSearchResultDto> searchTickets(String query, String category, String city,
                                                      BigDecimal minPrice, BigDecimal maxPrice,
-                                                     String section, int limit) {
+                                                     String section, Instant dateFrom,
+                                                     Instant dateTo, int limit) {
         String normalizedQuery = normalizeParam(query);
         String normalizedCategory = normalizeParam(category);
         String normalizedCity = normalizeParam(city);
         String normalizedSection = normalizeParam(section);
+        Instant effectiveDateFrom = (dateFrom != null) ? dateFrom : Instant.now();
 
         List<Listing> listings = listingRepository.searchActiveListings(
                 normalizedQuery, normalizedCategory, normalizedCity,
-                minPrice, maxPrice, normalizedSection);
+                minPrice, maxPrice, normalizedSection,
+                effectiveDateFrom, dateTo);
 
         return listings.stream()
                 .limit(limit)

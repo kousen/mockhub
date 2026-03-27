@@ -39,6 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -248,11 +250,11 @@ class ListingServiceTest {
     @DisplayName("searchTickets - given matching listings - returns search result DTOs")
     void searchTickets_givenMatchingListings_returnsSearchResultDtos() {
         Listing listing = createFullListing(false, false);
-        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull()))
                 .thenReturn(List.of(listing));
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
-                null, null, null, null, null, null, 10);
+                null, null, null, null, null, null, null, null, 10);
 
         assertEquals(1, results.size());
         assertEquals("Test Event", results.get(0).eventName());
@@ -265,11 +267,11 @@ class ListingServiceTest {
     @DisplayName("searchTickets - given listing with seat - includes row and seat info")
     void searchTickets_givenListingWithSeat_includesRowAndSeatInfo() {
         Listing listing = createFullListing(true, false);
-        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull()))
                 .thenReturn(List.of(listing));
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
-                null, null, null, null, null, null, 10);
+                null, null, null, null, null, null, null, null, 10);
 
         assertEquals("A", results.get(0).rowLabel());
         assertEquals("1", results.get(0).seatNumber());
@@ -279,11 +281,11 @@ class ListingServiceTest {
     @DisplayName("searchTickets - given listing with seller - includes seller display name")
     void searchTickets_givenListingWithSeller_includesSellerDisplayName() {
         Listing listing = createFullListing(false, true);
-        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull()))
                 .thenReturn(List.of(listing));
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
-                null, null, null, null, null, null, 10);
+                null, null, null, null, null, null, null, null, 10);
 
         assertEquals("Jane D.", results.get(0).sellerDisplayName());
     }
@@ -292,11 +294,11 @@ class ListingServiceTest {
     @DisplayName("searchTickets - given listing without seat or seller - returns nulls for optional fields")
     void searchTickets_givenListingWithoutSeatOrSeller_returnsNullsForOptionalFields() {
         Listing listing = createFullListing(false, false);
-        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull()))
                 .thenReturn(List.of(listing));
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
-                null, null, null, null, null, null, 10);
+                null, null, null, null, null, null, null, null, 10);
 
         assertNull(results.get(0).rowLabel());
         assertNull(results.get(0).seatNumber());
@@ -309,11 +311,11 @@ class ListingServiceTest {
         Listing listing1 = createFullListing(false, false);
         Listing listing2 = createFullListing(false, false);
         listing2.setId(2L);
-        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull()))
                 .thenReturn(List.of(listing1, listing2));
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
-                null, null, null, null, null, null, 1);
+                null, null, null, null, null, null, null, null, 1);
 
         assertEquals(1, results.size());
     }
@@ -321,24 +323,24 @@ class ListingServiceTest {
     @Test
     @DisplayName("searchTickets - given blank params - normalizes to null")
     void searchTickets_givenBlankParams_normalizesToNull() {
-        when(listingRepository.searchActiveListings(null, null, null, null, null, null))
+        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull()))
                 .thenReturn(List.of());
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
-                "  ", "  ", "  ", null, null, "  ", 10);
+                "  ", "  ", "  ", null, null, "  ", null, null, 10);
 
         assertEquals(0, results.size());
-        verify(listingRepository).searchActiveListings(null, null, null, null, null, null);
+        verify(listingRepository).searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull());
     }
 
     @Test
     @DisplayName("searchTickets - given no results - returns empty list")
     void searchTickets_givenNoResults_returnsEmptyList() {
-        when(listingRepository.searchActiveListings("nonexistent", null, null, null, null, null))
+        when(listingRepository.searchActiveListings(eq("nonexistent"), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull()))
                 .thenReturn(List.of());
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
-                "nonexistent", null, null, null, null, null, 10);
+                "nonexistent", null, null, null, null, null, null, null, 10);
 
         assertEquals(0, results.size());
     }
