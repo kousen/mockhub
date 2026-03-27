@@ -24,6 +24,7 @@ public record EventDto(
         VenueSummaryDto venue,
         CategoryDto category,
         List<TagDto> tags,
-        String primaryImageUrl
+        String primaryImageUrl,
+        String spotifyArtistId
 ) {
 }

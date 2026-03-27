@@ -34,6 +34,7 @@ export interface EventDetail {
   category: Category;
   tags: Tag[];
   primaryImageUrl: string | null;
+  spotifyArtistId: string | null;
 }
 
 export interface EventSearchParams {

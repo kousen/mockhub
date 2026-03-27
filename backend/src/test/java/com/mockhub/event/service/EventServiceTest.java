@@ -165,7 +165,7 @@ class EventServiceTest {
                 Instant.now().plus(60, ChronoUnit.DAYS),
                 new BigDecimal("50.00"),
                 "A new concert", "New Artist",
-                null, null, false);
+                null, null, false, null);
 
         when(venueRepository.findById(1L)).thenReturn(Optional.of(testVenue));
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
@@ -189,7 +189,7 @@ class EventServiceTest {
                 "New Concert", 999L, 1L,
                 Instant.now().plus(60, ChronoUnit.DAYS),
                 new BigDecimal("50.00"),
-                null, null, null, null, null);
+                null, null, null, null, null, null);
 
         when(venueRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -204,7 +204,7 @@ class EventServiceTest {
         EventCreateRequest request = new EventCreateRequest(
                 "Updated Name", null, null, null,
                 null, "Updated description", null,
-                null, null, null);
+                null, null, null, null);
 
         when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
         when(eventRepository.save(any(Event.class))).thenReturn(testEvent);
@@ -216,11 +216,27 @@ class EventServiceTest {
     }
 
     @Test
+    @DisplayName("updateEvent - given spotify artist ID - updates the field")
+    void updateEvent_givenSpotifyArtistId_updatesTheField() {
+        EventCreateRequest request = new EventCreateRequest(
+                null, null, null, null,
+                null, null, null,
+                null, null, null, "06HL4z0CvFAxyc27GXpf02");
+
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(eventRepository.save(any(Event.class))).thenReturn(testEvent);
+
+        eventService.updateEvent(1L, request);
+
+        verify(eventRepository).save(any(Event.class));
+    }
+
+    @Test
     @DisplayName("updateEvent - given nonexistent event - throws ResourceNotFoundException")
     void updateEvent_givenNonexistentEvent_throwsResourceNotFoundException() {
         EventCreateRequest request = new EventCreateRequest(
                 "Updated", null, null, null, null,
-                null, null, null, null, null);
+                null, null, null, null, null, null);
 
         when(eventRepository.findById(999L)).thenReturn(Optional.empty());
 

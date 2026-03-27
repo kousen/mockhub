@@ -41,6 +41,8 @@ public record EventCreateRequest(
         @Schema(description = "Tag IDs to associate")
         List<Long> tagIds,
         @Schema(description = "Whether this event is featured on the homepage")
-        Boolean isFeatured
+        Boolean isFeatured,
+        @Schema(description = "Spotify artist ID for 'Listen on Spotify' link", example = "06HL4z0CvFAxyc27GXpf02")
+        String spotifyArtistId
 ) {
 }

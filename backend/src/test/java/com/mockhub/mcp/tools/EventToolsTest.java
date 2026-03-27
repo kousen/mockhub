@@ -97,7 +97,7 @@ class EventToolsTest {
     void getEventDetail_givenValidSlug_returnsEventJson() {
         EventDto eventDto = new EventDto(
                 1L, "Rock Festival", "rock-festival", "A great show",
-                null, null, null, null, null, null, null, 0, 0, false, null, null, null, null);
+                null, null, null, null, null, null, null, 0, 0, false, null, null, null, null, null);
         when(eventService.getBySlug("rock-festival")).thenReturn(eventDto);
 
         String result = eventTools.getEventDetail("rock-festival");
@@ -111,7 +111,7 @@ class EventToolsTest {
     void getEventDetail_givenSlugWithWhitespace_stripsWhitespace() {
         EventDto eventDto = new EventDto(
                 1L, "Rock Festival", "rock-festival", "A great show",
-                null, null, null, null, null, null, null, 0, 0, false, null, null, null, null);
+                null, null, null, null, null, null, null, 0, 0, false, null, null, null, null, null);
         when(eventService.getBySlug("rock-festival")).thenReturn(eventDto);
 
         String result = eventTools.getEventDetail("  rock-festival  ");

@@ -78,7 +78,7 @@ class EventControllerTest {
                 "The Rockers", Instant.now().plus(30, ChronoUnit.DAYS), null,
                 "ACTIVE", new BigDecimal("75.00"), new BigDecimal("75.00"),
                 new BigDecimal("150.00"), 1000, 500, true,
-                venue, category, List.of(), null);
+                venue, category, List.of(), null, null);
     }
 
     @Test

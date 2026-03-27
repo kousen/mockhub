@@ -115,6 +115,7 @@ public class EventService {
         event.setTotalTickets(0);
         event.setAvailableTickets(0);
         event.setFeatured(request.isFeatured() != null && request.isFeatured());
+        event.setSpotifyArtistId(request.spotifyArtistId());
         event.setVenue(venue);
         event.setCategory(category);
 
@@ -154,6 +155,9 @@ public class EventService {
         }
         if (request.isFeatured() != null) {
             event.setFeatured(request.isFeatured());
+        }
+        if (request.spotifyArtistId() != null) {
+            event.setSpotifyArtistId(request.spotifyArtistId());
         }
 
         if (request.venueId() != null) {
@@ -289,7 +293,8 @@ public class EventService {
                 venueSummary,
                 categoryDto,
                 tagDtos,
-                event.getPrimaryImageUrl()
+                event.getPrimaryImageUrl(),
+                event.getSpotifyArtistId()
         );
     }
 
