@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,6 +25,21 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             ORDER BY s.name ASC, r.rowLabel ASC, seat.seatNumber ASC
             """)
     List<Listing> findByEventIdAndStatus(Long eventId, String status);
+
+    @Query("""
+            SELECT l FROM Listing l
+            JOIN FETCH l.ticket t
+            JOIN FETCH t.section s
+            LEFT JOIN FETCH t.seat seat
+            LEFT JOIN FETCH seat.row r
+            LEFT JOIN FETCH l.seller seller
+            WHERE l.event.id = :eventId AND l.status = :status
+            ORDER BY l.computedPrice ASC
+            """)
+    List<Listing> findByEventIdAndStatusOrderByPrice(
+            @Param("eventId") Long eventId,
+            @Param("status") String status,
+            Pageable pageable);
 
     List<Listing> findByEventId(Long eventId);
 
@@ -54,6 +70,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             ORDER BY l.createdAt DESC
             """)
     List<Listing> findBySellerId(@Param("sellerId") Long sellerId);
+
+    long countByEventIdAndStatus(Long eventId, String status);
 
     long countBySellerIdAndStatus(Long sellerId, String status);
 

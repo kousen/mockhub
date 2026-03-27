@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.data.domain.PageRequest;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -69,6 +71,25 @@ public class ListingService {
         return listings.stream()
                 .map(this::toListingDto)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ListingDto> getActiveListingsByEventSlugPaginated(String eventSlug, int page, int size) {
+        Event event = eventRepository.findBySlug(eventSlug)
+                .orElseThrow(() -> new ResourceNotFoundException("Event", "slug", eventSlug));
+
+        List<Listing> listings = listingRepository.findByEventIdAndStatusOrderByPrice(
+                event.getId(), STATUS_ACTIVE, PageRequest.of(page, size));
+        return listings.stream()
+                .map(this::toListingDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public long countActiveListingsByEventSlug(String eventSlug) {
+        Event event = eventRepository.findBySlug(eventSlug)
+                .orElseThrow(() -> new ResourceNotFoundException("Event", "slug", eventSlug));
+        return listingRepository.countByEventIdAndStatus(event.getId(), STATUS_ACTIVE);
     }
 
     @Transactional(readOnly = true)
