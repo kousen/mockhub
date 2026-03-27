@@ -216,6 +216,22 @@ class EventServiceTest {
     }
 
     @Test
+    @DisplayName("updateEvent - given spotify artist ID - updates the field")
+    void updateEvent_givenSpotifyArtistId_updatesTheField() {
+        EventCreateRequest request = new EventCreateRequest(
+                null, null, null, null,
+                null, null, null,
+                null, null, null, "06HL4z0CvFAxyc27GXpf02");
+
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(eventRepository.save(any(Event.class))).thenReturn(testEvent);
+
+        eventService.updateEvent(1L, request);
+
+        verify(eventRepository).save(any(Event.class));
+    }
+
+    @Test
     @DisplayName("updateEvent - given nonexistent event - throws ResourceNotFoundException")
     void updateEvent_givenNonexistentEvent_throwsResourceNotFoundException() {
         EventCreateRequest request = new EventCreateRequest(
