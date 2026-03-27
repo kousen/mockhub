@@ -71,6 +71,9 @@ public class Event extends BaseEntity {
     @Column(name = "primary_image_url", length = 512)
     private String primaryImageUrl;
 
+    @Column(name = "spotify_artist_id", length = 30)
+    private String spotifyArtistId;
+
     @Column(name = "search_vector", insertable = false, updatable = false,
             columnDefinition = "TSVECTOR")
     private String searchVector;
@@ -212,6 +215,14 @@ public class Event extends BaseEntity {
 
     public void setPrimaryImageUrl(String primaryImageUrl) {
         this.primaryImageUrl = primaryImageUrl;
+    }
+
+    public String getSpotifyArtistId() {
+        return spotifyArtistId;
+    }
+
+    public void setSpotifyArtistId(String spotifyArtistId) {
+        this.spotifyArtistId = spotifyArtistId;
     }
 
     public String getSearchVector() {
