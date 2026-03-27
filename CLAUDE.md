@@ -140,10 +140,12 @@ The codebase uses Java DOP patterns where they add value:
 - **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
-- **MCP server** — 20 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Claude Desktop requires `mcp-remote` bridge for auth headers: `{"command": "npx", "args": ["-y", "mcp-remote", "https://mockhub.kousenit.com/mcp", "--header", "X-API-Key: <key>"]}`.
+- **MCP server** — 21 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Claude Desktop requires `mcp-remote` bridge for auth headers: `{"command": "npx", "args": ["-y", "mcp-remote", "https://mockhub.kousenit.com/mcp", "--header", "X-API-Key: <key>"]}`.
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
-- **`findTickets` compound tool** — single-call search with query, category, city, price range, section filter, returning matching listings sorted by price. Reduces agent round-trips from 3 to 1.
+- **`findTickets` compound tool** — single-call search with query, category, city, date range, price range, section filter, returning matching listings sorted by price. Date parameters are `String` (not `Instant`) because Spring AI MCP can't deserialize ISO-8601 to `Instant`. Reduces agent round-trips from 3 to 1.
+- **`getEventListings` paginated** — accepts `page`/`size` params (default 20, max 50), returns `{ listings, page, size, totalListings }`. Without pagination, popular events (500+ listings) exceeded MCP context limits.
+- **`getCalendarEntry` tool** — returns RFC 5545 .ics content for a confirmed order.
 - **`SpendingLimitCondition`** — WARNING eval condition when cart exceeds configurable limit (`mockhub.eval.max-cart-total`, default $2000).
 
 ### Agent Mandates

@@ -883,7 +883,47 @@ Added RFC 5545 iCalendar (.ics) file generation:
 
 ---
 
-*Last updated: 2026-03-26*
+## Session 8 — 2026-03-27: MCP Client Feedback & Agent-Friendliness
+
+### Theme: Real-world MCP client testing reveals API design gaps
+
+### What Happened
+
+A Claude Code MCP client tested the MockHub MCP tools and reported four issues. Three were fixed immediately; the fourth (genre search) revealed a deeper design question.
+
+### Fixes
+
+**findTickets date parsing error (#88)** — Spring AI 2.0.0-M3's tool parameter deserializer can't convert ISO-8601 strings to `Instant`. Changed `dateFrom`/`dateTo` from `Instant` to `String` type, added manual parsing with `Instant.parse()`, graceful fallback on invalid dates. Also wired date params through to the repository query — they were declared but never actually used.
+
+**getEventListings pagination (#90)** — Tool was returning all 506 listings in one payload, exceeding MCP context size limits. Added `page`/`size` parameters (default 20, max 50), response now includes `totalListings` count, sorted by price ascending.
+
+**Price field clarity (#91)** — Updated tool description to explain that `computedPrice` is the current price to show users, `listedPrice` is the seller's original asking price, `priceMultiplier` is the dynamic pricing factor.
+
+### Design Discussion: Genre Search (#89)
+
+Searching "classical" returned zero results despite Yo-Yo Ma being tagged "Classical". This surfaced three distinct concerns:
+
+1. **Search criteria builder** — `searchActiveListings` has 8+ parameters and growing. Each new filter adds another null. Need a criteria record or builder pattern.
+2. **Tag-based search** — Tags exist (many-to-many) but aren't queryable. Search only matches event name and artist name.
+3. **Tag taxonomy** — Tags serve multiple roles (genre, venue features, marketing). Whether genre should be a first-class field, who populates tags, and how they interact with recommendations is an architectural decision.
+
+Decision: address in phases — refactor search params first (code quality), make tags searchable second, design taxonomy later based on real usage.
+
+### Issues Filed
+- #88 — findTickets Jackson parsing error on ISO-8601 dates (fixed same session)
+- #89 — Event search should support genre/style matching (design discussion, deferred)
+- #90 — getEventListings needs pagination (fixed same session)
+- #91 — Clarify listing price fields for agents (fixed same session)
+
+### PRs Merged
+- #92 — Fix findTickets date parsing and wire date filtering
+- #93 — Add pagination to getEventListings MCP tool
+
+### Issues Closed: #88, #90, #91
+
+---
+
+*Last updated: 2026-03-27*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*~625 tests passing (619 backend + 114 frontend unit + Playwright E2E)*
+*~630 tests passing (625 backend + 114 frontend unit + Playwright E2E)*
 *Live at: https://mockhub.kousenit.com*
