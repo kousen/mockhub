@@ -83,16 +83,32 @@ public class EventTools {
         }
     }
 
-    @Tool(description = "Get all active ticket listings for a specific event. "
-            + "Returns listing details including section, row, seat, price, and status.")
+    @Tool(description = "Get active ticket listings for a specific event with pagination. "
+            + "Returns listing details including section, row, seat, price, and status, "
+            + "sorted by price ascending. Also returns totalListings count.")
     public String getEventListings(
-            @ToolParam(description = "Event URL slug to get listings for", required = true) String slug) {
+            @ToolParam(description = "Event URL slug to get listings for", required = true) String slug,
+            @ToolParam(description = "Page number (0-based), defaults to 0", required = false) Integer page,
+            @ToolParam(description = "Page size (1-50), defaults to 20", required = false) Integer size) {
         try {
             if (slug == null || slug.isBlank()) {
                 return errorJson("Event slug is required");
             }
-            List<ListingDto> listings = listingService.getActiveListingsByEventSlug(slug.strip());
-            return objectMapper.writeValueAsString(listings);
+            int pageNum = (page == null || page < 0) ? 0 : page;
+            int pageSize = (size == null || size <= 0) ? 20 : Math.min(size, 50);
+            String trimmedSlug = slug.strip();
+
+            List<ListingDto> listings = listingService.getActiveListingsByEventSlugPaginated(
+                    trimmedSlug, pageNum, pageSize);
+            long totalListings = listingService.countActiveListingsByEventSlug(trimmedSlug);
+
+            java.util.Map<String, Object> response = java.util.Map.of(
+                    "listings", listings,
+                    "page", pageNum,
+                    "size", pageSize,
+                    "totalListings", totalListings
+            );
+            return objectMapper.writeValueAsString(response);
         } catch (Exception e) {
             log.error("Error getting listings for slug '{}': {}", slug, e.getMessage(), e);
             return errorJson("Failed to get event listings: " + e.getMessage());

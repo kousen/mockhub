@@ -152,21 +152,49 @@ class EventToolsTest {
     // --- getEventListings ---
 
     @Test
-    @DisplayName("getEventListings - given valid slug - returns listings JSON")
-    void getEventListings_givenValidSlug_returnsListingsJson() {
-        List<ListingDto> listings = List.of();
-        when(listingService.getActiveListingsByEventSlug("rock-festival")).thenReturn(listings);
+    @DisplayName("getEventListings - given valid slug - returns paginated response with total")
+    void getEventListings_givenValidSlug_returnsPaginatedResponse() {
+        when(listingService.getActiveListingsByEventSlugPaginated("rock-festival", 0, 20))
+                .thenReturn(List.of());
+        when(listingService.countActiveListingsByEventSlug("rock-festival")).thenReturn(506L);
 
-        String result = eventTools.getEventListings("rock-festival");
+        String result = eventTools.getEventListings("rock-festival", null, null);
 
-        assertTrue(result.startsWith("["), "Result should be a JSON array");
-        verify(listingService).getActiveListingsByEventSlug("rock-festival");
+        assertTrue(result.contains("\"listings\""), "Result should contain listings field");
+        assertTrue(result.contains("\"totalListings\":506"), "Result should contain total count");
+        assertTrue(result.contains("\"page\":0"), "Result should contain page number");
+        assertTrue(result.contains("\"size\":20"), "Result should contain page size");
+    }
+
+    @Test
+    @DisplayName("getEventListings - given page and size - uses provided values")
+    void getEventListings_givenPageAndSize_usesProvidedValues() {
+        when(listingService.getActiveListingsByEventSlugPaginated("rock-festival", 2, 10))
+                .thenReturn(List.of());
+        when(listingService.countActiveListingsByEventSlug("rock-festival")).thenReturn(506L);
+
+        String result = eventTools.getEventListings("rock-festival", 2, 10);
+
+        assertTrue(result.contains("\"page\":2"), "Result should use provided page");
+        assertTrue(result.contains("\"size\":10"), "Result should use provided size");
+    }
+
+    @Test
+    @DisplayName("getEventListings - given size over 50 - caps at 50")
+    void getEventListings_givenSizeOver50_capsAt50() {
+        when(listingService.getActiveListingsByEventSlugPaginated("rock-festival", 0, 50))
+                .thenReturn(List.of());
+        when(listingService.countActiveListingsByEventSlug("rock-festival")).thenReturn(0L);
+
+        eventTools.getEventListings("rock-festival", 0, 200);
+
+        verify(listingService).getActiveListingsByEventSlugPaginated("rock-festival", 0, 50);
     }
 
     @Test
     @DisplayName("getEventListings - given null slug - returns error JSON")
     void getEventListings_givenNullSlug_returnsErrorJson() {
-        String result = eventTools.getEventListings(null);
+        String result = eventTools.getEventListings(null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Event slug is required"), "Result should indicate slug is required");
@@ -175,7 +203,7 @@ class EventToolsTest {
     @Test
     @DisplayName("getEventListings - given blank slug - returns error JSON")
     void getEventListings_givenBlankSlug_returnsErrorJson() {
-        String result = eventTools.getEventListings("");
+        String result = eventTools.getEventListings("", null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
     }
@@ -183,10 +211,10 @@ class EventToolsTest {
     @Test
     @DisplayName("getEventListings - given service throws exception - returns error JSON")
     void getEventListings_givenServiceThrowsException_returnsErrorJson() {
-        when(listingService.getActiveListingsByEventSlug("bad-slug"))
+        when(listingService.getActiveListingsByEventSlugPaginated("bad-slug", 0, 20))
                 .thenThrow(new RuntimeException("Not found"));
 
-        String result = eventTools.getEventListings("bad-slug");
+        String result = eventTools.getEventListings("bad-slug", null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to get event listings"), "Result should contain failure message");

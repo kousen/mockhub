@@ -115,6 +115,30 @@ class ListingServiceTest {
     }
 
     @Test
+    @DisplayName("getActiveListingsByEventSlugPaginated - given valid slug - returns paginated listings")
+    void getActiveListingsByEventSlugPaginated_givenValidSlug_returnsPaginatedListings() {
+        when(eventRepository.findBySlug("test-event")).thenReturn(Optional.of(testEvent));
+        when(listingRepository.findByEventIdAndStatusOrderByPrice(eq(1L), eq("ACTIVE"), any()))
+                .thenReturn(List.of(testListing));
+
+        List<ListingDto> result = listingService.getActiveListingsByEventSlugPaginated("test-event", 0, 20);
+
+        assertEquals(1, result.size());
+        assertEquals("Floor", result.get(0).sectionName());
+    }
+
+    @Test
+    @DisplayName("countActiveListingsByEventSlug - given valid slug - returns count")
+    void countActiveListingsByEventSlug_givenValidSlug_returnsCount() {
+        when(eventRepository.findBySlug("test-event")).thenReturn(Optional.of(testEvent));
+        when(listingRepository.countByEventIdAndStatus(1L, "ACTIVE")).thenReturn(42L);
+
+        long count = listingService.countActiveListingsByEventSlug("test-event");
+
+        assertEquals(42L, count);
+    }
+
+    @Test
     @DisplayName("getActiveListingsByEventSlug - given unknown event slug - throws ResourceNotFoundException")
     void getActiveListingsByEventSlug_givenUnknownSlug_throwsResourceNotFoundException() {
         when(eventRepository.findBySlug("nonexistent")).thenReturn(Optional.empty());
