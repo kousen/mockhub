@@ -85,7 +85,9 @@ public class EventTools {
 
     @Tool(description = "Get active ticket listings for a specific event with pagination. "
             + "Returns listing details including section, row, seat, price, and status, "
-            + "sorted by price ascending. Also returns totalListings count.")
+            + "sorted by price ascending. Also returns totalListings count. "
+            + "Price fields: 'computedPrice' is the current price to show users (after dynamic pricing), "
+            + "'listedPrice' is the seller's original asking price, 'priceMultiplier' is the dynamic factor.")
     public String getEventListings(
             @ToolParam(description = "Event URL slug to get listings for", required = true) String slug,
             @ToolParam(description = "Page number (0-based), defaults to 0", required = false) Integer page,
