@@ -25,6 +25,8 @@ import com.mockhub.ticket.service.ListingService;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -268,7 +270,7 @@ class EventToolsTest {
     void findTickets_givenMatchingListings_returnsJsonArray() {
         TicketSearchResultDto result1 = createSearchResult(1L, "Rock Show", "rock-show", new BigDecimal("50.00"));
         TicketSearchResultDto result2 = createSearchResult(2L, "Rock Show", "rock-show", new BigDecimal("100.00"));
-        when(listingService.searchTickets("rock", null, null, null, null, null, 10))
+        when(listingService.searchTickets(eq("rock"), any(), any(), any(), any(), any(), any(), any(), eq(10)))
                 .thenReturn(List.of(result1, result2));
 
         String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null);
@@ -282,33 +284,64 @@ class EventToolsTest {
     @Test
     @DisplayName("findTickets - given filters - passes them to service")
     void findTickets_givenFilters_passesThemToService() {
-        when(listingService.searchTickets("jazz", "jazz", "LA",
-                new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", 10))
+        when(listingService.searchTickets(eq("jazz"), eq("jazz"), eq("LA"),
+                eq(new BigDecimal("50.00")), eq(new BigDecimal("200.00")), eq("Orchestra"),
+                any(), any(), eq(10)))
                 .thenReturn(List.of());
 
         String result = eventTools.findTickets(
                 "jazz", "jazz", "LA", null, null, new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", null);
 
         assertEquals("[]", result, "Result should be empty array when no matches");
-        verify(listingService).searchTickets("jazz", "jazz", "LA",
-                new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", 10);
+    }
+
+    @Test
+    @DisplayName("findTickets - given ISO-8601 dates - parses and passes to service")
+    void findTickets_givenIsoDates_parsesAndPassesToService() {
+        Instant expectedFrom = Instant.parse("2026-04-01T00:00:00Z");
+        Instant expectedTo = Instant.parse("2026-05-01T00:00:00Z");
+        when(listingService.searchTickets(any(), any(), any(), any(), any(), any(),
+                eq(expectedFrom), eq(expectedTo), eq(10)))
+                .thenReturn(List.of());
+
+        String result = eventTools.findTickets(
+                null, null, null, "2026-04-01T00:00:00Z", "2026-05-01T00:00:00Z",
+                null, null, null, null);
+
+        assertEquals("[]", result);
+        verify(listingService).searchTickets(any(), any(), any(), any(), any(), any(),
+                eq(expectedFrom), eq(expectedTo), eq(10));
+    }
+
+    @Test
+    @DisplayName("findTickets - given invalid date string - treats as null")
+    void findTickets_givenInvalidDate_treatsAsNull() {
+        when(listingService.searchTickets(any(), any(), any(), any(), any(), any(),
+                isNull(), isNull(), eq(10)))
+                .thenReturn(List.of());
+
+        String result = eventTools.findTickets(
+                null, null, null, "not-a-date", "also-not-a-date",
+                null, null, null, null);
+
+        assertEquals("[]", result);
     }
 
     @Test
     @DisplayName("findTickets - given maxResults - passes limit to service")
     void findTickets_givenMaxResults_passesLimitToService() {
-        when(listingService.searchTickets(null, null, null, null, null, null, 5))
+        when(listingService.searchTickets(any(), any(), any(), any(), any(), any(), any(), any(), eq(5)))
                 .thenReturn(List.of());
 
         eventTools.findTickets(null, null, null, null, null, null, null, null, 5);
 
-        verify(listingService).searchTickets(null, null, null, null, null, null, 5);
+        verify(listingService).searchTickets(any(), any(), any(), any(), any(), any(), any(), any(), eq(5));
     }
 
     @Test
     @DisplayName("findTickets - given no matching listings - returns empty array")
     void findTickets_givenNoMatchingListings_returnsEmptyArray() {
-        when(listingService.searchTickets("nonexistent", null, null, null, null, null, 10))
+        when(listingService.searchTickets(eq("nonexistent"), any(), any(), any(), any(), any(), any(), any(), eq(10)))
                 .thenReturn(List.of());
 
         String result = eventTools.findTickets("nonexistent", null, null, null, null, null, null, null, null);
@@ -319,7 +352,7 @@ class EventToolsTest {
     @Test
     @DisplayName("findTickets - given service throws exception - returns error JSON")
     void findTickets_givenServiceThrowsException_returnsErrorJson() {
-        when(listingService.searchTickets(any(), any(), any(), any(), any(), any(), any(int.class)))
+        when(listingService.searchTickets(any(), any(), any(), any(), any(), any(), any(), any(), any(int.class)))
                 .thenThrow(new RuntimeException("Search failed"));
 
         String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null);
@@ -331,12 +364,12 @@ class EventToolsTest {
     @Test
     @DisplayName("findTickets - given maxResults over 50 - caps at 50")
     void findTickets_givenMaxResultsOver50_capsAt50() {
-        when(listingService.searchTickets(null, null, null, null, null, null, 50))
+        when(listingService.searchTickets(any(), any(), any(), any(), any(), any(), any(), any(), eq(50)))
                 .thenReturn(List.of());
 
         eventTools.findTickets(null, null, null, null, null, null, null, null, 100);
 
-        verify(listingService).searchTickets(null, null, null, null, null, null, 50);
+        verify(listingService).searchTickets(any(), any(), any(), any(), any(), any(), any(), any(), eq(50));
     }
 
     // --- Helper methods ---
