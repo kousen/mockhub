@@ -470,4 +470,26 @@ class OrderServiceTest {
         assertNotNull(result, "Paged response should not be null");
         assertEquals(1, result.content().size(), "Should contain one order");
     }
+
+    @Test
+    @DisplayName("getOrderEntityWithItems - given existing order - returns order")
+    void getOrderEntityWithItems_givenExistingOrder_returnsOrder() {
+        when(orderRepository.findByOrderNumberWithItems("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        Order result = orderService.getOrderEntityWithItems("MH-20260317-0001");
+
+        assertNotNull(result);
+        assertEquals("MH-20260317-0001", result.getOrderNumber());
+    }
+
+    @Test
+    @DisplayName("getOrderEntityWithItems - given missing order - throws ResourceNotFoundException")
+    void getOrderEntityWithItems_givenMissingOrder_throwsResourceNotFoundException() {
+        when(orderRepository.findByOrderNumberWithItems("MH-MISSING"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> orderService.getOrderEntityWithItems("MH-MISSING"));
+    }
 }

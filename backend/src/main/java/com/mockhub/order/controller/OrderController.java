@@ -95,7 +95,7 @@ public class OrderController {
             @PathVariable String orderNumber) {
         User user = resolveUser(securityUser);
         orderService.getOrder(user, orderNumber); // auth check — throws if not owner
-        com.mockhub.order.entity.Order orderEntity = orderService.getOrderEntity(orderNumber);
+        com.mockhub.order.entity.Order orderEntity = orderService.getOrderEntityWithItems(orderNumber);
         String ics = calendarService.generateIcs(orderEntity);
 
         String filename = "mockhub-" + orderNumber + ".ics";

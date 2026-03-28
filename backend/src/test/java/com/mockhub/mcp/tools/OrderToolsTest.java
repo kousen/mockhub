@@ -521,7 +521,7 @@ class OrderToolsTest {
             when(orderService.getOrder(testUser, "MH-20260326-0001")).thenReturn(orderDto);
             Order order = new Order();
             order.setOrderNumber("MH-20260326-0001");
-            when(orderService.getOrderEntity("MH-20260326-0001")).thenReturn(order);
+            when(orderService.getOrderEntityWithItems("MH-20260326-0001")).thenReturn(order);
             when(calendarService.generateIcs(order)).thenReturn("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n");
 
             String result = orderTools.getCalendarEntry("buyer@example.com", "MH-20260326-0001");

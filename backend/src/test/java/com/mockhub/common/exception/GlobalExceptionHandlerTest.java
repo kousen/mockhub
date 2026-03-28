@@ -6,9 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.context.request.WebRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GlobalExceptionHandlerTest {
 
@@ -75,6 +78,23 @@ class GlobalExceptionHandlerTest {
         assertNotNull(body);
         assertEquals(401, body.getStatus());
         assertEquals("Unauthorized", body.getTitle());
+    }
+
+    @Test
+    @DisplayName("handleGeneral - returns 500 ProblemDetail with generic message")
+    void handleGeneral_returns500ProblemDetail() {
+        WebRequest request = mock(WebRequest.class);
+        when(request.getDescription(false)).thenReturn("uri=/api/v1/orders/MH-20260328-0001/calendar");
+        RuntimeException ex = new RuntimeException("Something broke");
+
+        ResponseEntity<ProblemDetail> response = handler.handleGeneral(ex, request);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        ProblemDetail body = response.getBody();
+        assertNotNull(body);
+        assertEquals(500, body.getStatus());
+        assertEquals("Internal Server Error", body.getTitle());
+        assertEquals("An unexpected error occurred", body.getDetail());
     }
 
     @Test

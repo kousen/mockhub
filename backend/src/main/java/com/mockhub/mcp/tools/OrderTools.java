@@ -197,7 +197,7 @@ public class OrderTools {
             }
             User user = resolveUser(userEmail);
             orderService.getOrder(user, orderNumber.strip()); // auth check
-            Order order = orderService.getOrderEntity(orderNumber.strip());
+            Order order = orderService.getOrderEntityWithItems(orderNumber.strip());
             return calendarService.generateIcs(order);
         } catch (Exception e) {
             log.error("Error generating calendar for order '{}': {}", orderNumber, e.getMessage(), e);

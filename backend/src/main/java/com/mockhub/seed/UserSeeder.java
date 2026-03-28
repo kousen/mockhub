@@ -1,6 +1,7 @@
 package com.mockhub.seed;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -37,7 +38,8 @@ public class UserSeeder {
     @Transactional
     public void seed() {
         if (userRepository.existsByEmail("admin@mockhub.com")) {
-            log.info("Users already seeded, skipping");
+            log.info("Users already seeded, resetting seed account fields");
+            resetSeedAccounts();
             return;
         }
 
@@ -75,6 +77,28 @@ public class UserSeeder {
         }
 
         log.info("Seeded 8 users (admin, buyer, seller, 5 random)");
+    }
+
+    private static final Map<String, String> SEED_ACCOUNT_PHONES = Map.of(
+            "admin@mockhub.com", "555-0100",
+            "buyer@mockhub.com", "555-0101",
+            "seller@mockhub.com", "555-0102"
+    );
+
+    private void resetSeedAccounts() {
+        SEED_ACCOUNT_PHONES.forEach((email, phone) ->
+                userRepository.findByEmail(email).ifPresent(user -> {
+                    boolean changed = false;
+                    if (!phone.equals(user.getPhone())) {
+                        user.setPhone(phone);
+                        changed = true;
+                    }
+                    if (changed) {
+                        userRepository.save(user);
+                        log.info("Reset seed account {} to default phone", email);
+                    }
+                })
+        );
     }
 
     private void createUser(String email, String password, String firstName,
