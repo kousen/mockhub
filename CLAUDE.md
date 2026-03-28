@@ -10,7 +10,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 - **Database:** PostgreSQL 17 (standard — pgvector removed, all search uses tsvector full-text)
 - **AI:** Spring AI 2.0.0-M3 (milestone — requires Spring Milestones repo in Gradle)
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack React Query, Zustand
-- **Testing:** JUnit 5 + Mockito + Testcontainers (backend), Vitest + React Testing Library + MSW (frontend), Playwright (E2E, 5 browsers)
+- **Testing:** JUnit 5 + Mockito + Testcontainers (backend), Vitest + React Testing Library + MSW (frontend), Playwright (E2E, 3 browsers, sharded CI)
 - **Payments:** Stripe test mode + mock fallback via Spring profiles
 
 ## Architecture Rules
@@ -188,7 +188,7 @@ The codebase uses Java DOP patterns where they add value:
 - Frontend API mocking: MSW (Mock Service Worker)
 - **jsdom polyfills:** `ResizeObserver` stub is in `src/test/setup.ts` — required for any Radix UI component that uses poppers/tooltips. Add other browser API stubs here as needed.
 - **Tooltip testing:** Use `findByRole('tooltip')` not `findByText` — Radix renders tooltip content in two DOM locations (visible + accessible hidden), causing `findByText` to fail with duplicate matches.
-- E2E tests: Playwright configured for Chrome, Firefox, Safari, Mobile Android, Mobile iOS
+- E2E tests: Playwright configured for Chrome, Safari, Mobile iOS (3 browsers covering all rendering engines). Sharded across 2 CI jobs for faster runs.
 - E2E accessibility checks: axe-core via `@axe-core/playwright`
 
 ### Code Style
