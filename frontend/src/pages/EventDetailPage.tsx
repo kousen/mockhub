@@ -179,13 +179,14 @@ export function EventDetailPage() {
             {/* Spotify embedded player */}
             <div className="overflow-hidden rounded-xl">
               <iframe
-                src={`https://open.spotify.com/embed/artist/${event.spotifyArtistId}?utm_source=generator&theme=0`}
+                src={`https://open.spotify.com/embed/artist/${event.spotifyArtistId}?utm_source=generator`}
                 width="100%"
-                height="152"
+                height="352"
+                frameBorder="0"
+                allowFullScreen
                 allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                 loading="lazy"
                 title={`Spotify player for ${event.artistName || event.name}`}
-                className="border-0"
               />
             </div>
             <p className="text-xs text-muted-foreground">
