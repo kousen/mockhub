@@ -48,6 +48,9 @@ dependencies {
     implementation(libs.spring.boot.starter.flyway)
     implementation(libs.flyway.postgresql)
 
+    // Security - OAuth2 Client
+    implementation(libs.spring.boot.starter.oauth2client)
+
     // Security - JWT
     implementation(libs.jjwt.api)
     runtimeOnly(libs.jjwt.impl)

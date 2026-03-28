@@ -1,6 +1,7 @@
 package com.mockhub.auth.service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,8 +16,10 @@ import com.mockhub.auth.dto.AuthResponse;
 import com.mockhub.auth.dto.LoginRequest;
 import com.mockhub.auth.dto.RegisterRequest;
 import com.mockhub.auth.dto.UserDto;
+import com.mockhub.auth.entity.OAuthAccount;
 import com.mockhub.auth.entity.Role;
 import com.mockhub.auth.entity.User;
+import com.mockhub.auth.repository.OAuthAccountRepository;
 import com.mockhub.auth.repository.RoleRepository;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.auth.security.JwtTokenProvider;
@@ -32,17 +35,20 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final OAuthAccountRepository oAuthAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
+                       OAuthAccountRepository oAuthAccountRepository,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
                        JwtTokenProvider jwtTokenProvider) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.oAuthAccountRepository = oAuthAccountRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -146,6 +152,15 @@ public class AuthService {
 
     public String generateRefreshToken(SecurityUser securityUser) {
         return jwtTokenProvider.generateRefreshToken(securityUser);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getLinkedProviders(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(USER_RESOURCE, EMAIL_FIELD, email));
+        return oAuthAccountRepository.findByUserId(user.getId()).stream()
+                .map(OAuthAccount::getProvider)
+                .toList();
     }
 
     private UserDto toUserDto(User user) {

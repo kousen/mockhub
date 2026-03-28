@@ -25,6 +25,7 @@ import com.mockhub.auth.dto.AuthResponse;
 import com.mockhub.auth.dto.LoginRequest;
 import com.mockhub.auth.dto.RegisterRequest;
 import com.mockhub.auth.dto.UserDto;
+import com.mockhub.auth.security.OAuth2AuthenticationSuccessHandler;
 import com.mockhub.auth.security.SecurityUser;
 import com.mockhub.auth.service.AuthService;
 
@@ -41,13 +42,16 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthenticationManager authenticationManager;
+    private final OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
     private final boolean secureCookie;
 
     public AuthController(AuthService authService,
                           AuthenticationManager authenticationManager,
+                          OAuth2AuthenticationSuccessHandler oauth2SuccessHandler,
                           @Value("${mockhub.cookie.secure:false}") boolean secureCookie) {
         this.authService = authService;
         this.authenticationManager = authenticationManager;
+        this.oauth2SuccessHandler = oauth2SuccessHandler;
         this.secureCookie = secureCookie;
     }
 
@@ -117,6 +121,30 @@ public class AuthController {
                 updateRequest.phone()
         );
         return ResponseEntity.ok(userDto);
+    }
+
+    @PostMapping("/oauth2/exchange")
+    @Operation(summary = "Exchange OAuth2 code for JWT",
+            description = "Exchange a one-time code from the OAuth2 callback for an access token")
+    @ApiResponse(responseCode = "200", description = "Token exchange successful")
+    @ApiResponse(responseCode = "401", description = "Invalid or expired code")
+    public ResponseEntity<AuthResponse> exchangeOAuth2Code(
+            @org.springframework.web.bind.annotation.RequestParam String code) {
+        AuthResponse response = oauth2SuccessHandler.exchangeCode(code);
+        if (response == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/me/providers")
+    @Operation(summary = "List linked OAuth providers",
+            description = "Return the list of OAuth providers linked to the current user's account")
+    @ApiResponse(responseCode = "200", description = "Providers returned")
+    public ResponseEntity<java.util.List<String>> getLinkedProviders(
+            @AuthenticationPrincipal SecurityUser securityUser) {
+        java.util.List<String> providers = authService.getLinkedProviders(securityUser.getEmail());
+        return ResponseEntity.ok(providers);
     }
 
     private ResponseCookie buildRefreshCookie(String refreshToken) {

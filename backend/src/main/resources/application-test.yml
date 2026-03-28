@@ -1,4 +1,27 @@
 spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-id
+            client-secret: test-google-secret
+          github:
+            client-id: test-github-id
+            client-secret: test-github-secret
+          spotify:
+            client-id: test-spotify-id
+            client-secret: test-spotify-secret
+            scope: user-read-email
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          spotify:
+            authorization-uri: https://accounts.spotify.com/authorize
+            token-uri: https://accounts.spotify.com/api/token
+            user-info-uri: https://api.spotify.com/v1/me
+            user-name-attribute: id
+
   datasource:
     url: jdbc:tc:postgresql:17:///mockhub?TC_IMAGE_TAG=17
     username: mockhub

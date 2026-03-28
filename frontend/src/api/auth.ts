@@ -31,3 +31,13 @@ export async function updateMe(data: UpdateProfileRequest): Promise<UserDto> {
   const response = await apiClient.put<UserDto>('/auth/me', data);
   return response.data;
 }
+
+export async function exchangeOAuth2Code(code: string): Promise<AuthResponse> {
+  const response = await apiClient.post<AuthResponse>(`/auth/oauth2/exchange?code=${code}`);
+  return response.data;
+}
+
+export async function getLinkedProviders(): Promise<string[]> {
+  const response = await apiClient.get<string[]>('/auth/me/providers');
+  return response.data;
+}

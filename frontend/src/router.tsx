@@ -5,6 +5,7 @@ import { AdminRoute } from '@/components/common/AdminRoute';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
+import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { TicketVerifyPage } from '@/pages/TicketVerifyPage';
 import { PublicTicketViewPage } from '@/pages/PublicTicketViewPage';
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: 'register', Component: RegisterPage },
       { path: 'events', Component: EventListPage },
       { path: 'events/:slug', Component: EventDetailPage },
+      { path: 'auth/callback', Component: AuthCallbackPage },
       { path: 'verify', Component: TicketVerifyPage },
       { path: 'tickets/view', Component: PublicTicketViewPage },
 

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useRegister } from '@/hooks/use-auth';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { ROUTES } from '@/lib/constants';
 import type { AxiosError } from 'axios';
 import type { ApiError } from '@/types/common';
@@ -138,6 +139,7 @@ export function RegisterPage() {
               {registerMutation.isPending ? 'Creating account...' : 'Create account'}
             </Button>
           </form>
+          <SocialLoginButtons />
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{' '}
             <Link to={ROUTES.LOGIN} className="font-medium text-primary hover:underline">

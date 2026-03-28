@@ -17,7 +17,11 @@ import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.http.HttpStatus;
 
+import java.util.Optional;
+
+import com.mockhub.auth.security.CookieOAuth2AuthorizationRequestRepository;
 import com.mockhub.auth.security.JwtAuthenticationFilter;
+import com.mockhub.auth.security.OAuth2AuthenticationSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -25,9 +29,15 @@ import com.mockhub.auth.security.JwtAuthenticationFilter;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final Optional<OAuth2AuthenticationSuccessHandler> oauth2SuccessHandler;
+    private final Optional<CookieOAuth2AuthorizationRequestRepository> oauth2AuthorizationRequestRepository;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          Optional<OAuth2AuthenticationSuccessHandler> oauth2SuccessHandler,
+                          Optional<CookieOAuth2AuthorizationRequestRepository> oauth2AuthorizationRequestRepository) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.oauth2SuccessHandler = oauth2SuccessHandler;
+        this.oauth2AuthorizationRequestRepository = oauth2AuthorizationRequestRepository;
     }
 
     @Bean
@@ -40,10 +50,13 @@ public class SecurityConfig {
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // Public auth endpoints (login, register, refresh — but NOT /me)
+                        // Public auth endpoints (login, register, refresh, OAuth2 — but NOT /me)
                         .requestMatchers("/api/v1/auth/login").permitAll()
                         .requestMatchers("/api/v1/auth/register").permitAll()
                         .requestMatchers("/api/v1/auth/refresh").permitAll()
+                        .requestMatchers("/api/v1/auth/oauth2/exchange").permitAll()
+                        .requestMatchers("/login/oauth2/code/**").permitAll()
+                        .requestMatchers("/oauth2/authorization/**").permitAll()
                         // Public catalog endpoints
                         .requestMatchers(HttpMethod.GET, "/api/v1/events/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/venues/**").permitAll()
@@ -73,7 +86,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/index.html", "/assets/**", "/favicon.ico", "/favicon.svg").permitAll()
                         .requestMatchers("/login", "/register", "/events/**", "/sell", "/my/**",
                                 "/cart", "/checkout", "/orders/**", "/favorites", "/admin/**",
-                                "/verify", "/tickets/**").permitAll()
+                                "/verify", "/tickets/**", "/auth/callback").permitAll()
                         // Actuator health and error page
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/error").permitAll()
@@ -84,6 +97,13 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class);
+
+        if (oauth2SuccessHandler.isPresent() && oauth2AuthorizationRequestRepository.isPresent()) {
+            http.oauth2Login(oauth2 -> oauth2
+                    .authorizationEndpoint(auth -> auth
+                            .authorizationRequestRepository(oauth2AuthorizationRequestRepository.get()))
+                    .successHandler(oauth2SuccessHandler.get()));
+        }
 
         return http.build();
     }
