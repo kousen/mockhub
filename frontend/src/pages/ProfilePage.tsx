@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth-store';
 import { Badge } from '@/components/ui/badge';
+import { getOAuth2Url } from '@/components/auth/SocialLoginButtons';
 import { useCurrentUser, useLinkedProviders, useUpdateProfile } from '@/hooks/use-auth';
 import type { UserDto } from '@/types/auth';
 
@@ -178,7 +179,7 @@ export function ProfilePage() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      window.location.href = `/oauth2/authorization/${provider.id}`;
+                      window.location.href = getOAuth2Url(provider.id);
                     }}
                   >
                     Connect

@@ -2,7 +2,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { API_BASE_URL } from '@/lib/constants';
 
-function getOAuth2Url(provider: string): string {
+export function getOAuth2Url(provider: string): string {
   const baseUrl = API_BASE_URL.startsWith('/') ? '' : API_BASE_URL.replace('/api/v1', '');
   return `${baseUrl}/oauth2/authorization/${provider}`;
 }
