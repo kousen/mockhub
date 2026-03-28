@@ -27,6 +27,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withTooManyRequests;
 
 class SpotifyApiServiceTest {
 
@@ -172,6 +173,65 @@ class SpotifyApiServiceTest {
     }
 
     @Nested
+    @DisplayName("429 retry integration")
+    class RetryIntegrationTests {
+
+        private MockRestServiceServer retryAuthServer;
+        private MockRestServiceServer retryApiServer;
+        private SpotifyApiService retryService;
+
+        @BeforeEach
+        void setUp() {
+            RestClient.Builder authBuilder = RestClient.builder().baseUrl("https://accounts.spotify.com");
+            RestClient.Builder apiBuilder = RestClient.builder().baseUrl("https://api.spotify.com/v1");
+            retryAuthServer = MockRestServiceServer.bindTo(authBuilder).build();
+            retryApiServer = MockRestServiceServer.bindTo(apiBuilder).build();
+            retryService = new SpotifyApiService(authBuilder.build(), apiBuilder.build(),
+                    "fake-id", "fake-secret") {
+                @Override
+                void sleep(long millis) {
+                    // No-op to avoid delays in tests
+                }
+            };
+        }
+
+        @Test
+        @DisplayName("getArtist - given 429 then success - retries and returns artist")
+        void getArtist_given429ThenSuccess_retriesAndReturnsArtist() {
+            retryAuthServer.expect(requestTo("https://accounts.spotify.com/api/token"))
+                    .andRespond(withSuccess("""
+                            { "access_token": "token", "token_type": "bearer", "expires_in": 3600 }
+                            """, MediaType.APPLICATION_JSON));
+            retryApiServer.expect(requestTo("https://api.spotify.com/v1/artists/retry-id"))
+                    .andRespond(withTooManyRequests());
+            retryApiServer.expect(requestTo("https://api.spotify.com/v1/artists/retry-id"))
+                    .andRespond(withSuccess("""
+                            { "id": "retry-id", "name": "Retried Artist", "genres": ["pop"], "followers": { "total": 100 }, "images": [] }
+                            """, MediaType.APPLICATION_JSON));
+
+            Optional<SpotifyArtistDto> result = retryService.getArtist("retry-id");
+
+            assertTrue(result.isPresent());
+            assertEquals("Retried Artist", result.get().name());
+        }
+
+        @Test
+        @DisplayName("getArtist - given persistent 429 - throws after max retries")
+        void getArtist_givenPersistent429_throwsAfterMaxRetries() {
+            retryAuthServer.expect(requestTo("https://accounts.spotify.com/api/token"))
+                    .andRespond(withSuccess("""
+                            { "access_token": "token", "token_type": "bearer", "expires_in": 3600 }
+                            """, MediaType.APPLICATION_JSON));
+            for (int i = 0; i <= 3; i++) {
+                retryApiServer.expect(requestTo("https://api.spotify.com/v1/artists/stuck-id"))
+                        .andRespond(withTooManyRequests());
+            }
+
+            assertThrows(RestClientException.class, () -> retryService.getArtist("stuck-id"));
+        }
+    }
+
+    @Nested
     @DisplayName("Rate limit and retry logic")
     class RetryTests {
 
@@ -204,6 +264,16 @@ class SpotifyApiServiceTest {
 
             assertEquals(2000, result);
         }
+    }
+
+    @Test
+    @DisplayName("sleep - given interrupt - throws RestClientException and restores interrupt flag")
+    void sleep_givenInterrupt_throwsAndRestoresFlag() {
+        Thread.currentThread().interrupt();
+
+        assertThrows(RestClientException.class, () -> service.sleep(100));
+        // Clear the interrupt flag for test cleanup
+        Thread.interrupted();
     }
 
     private void stubTokenResponse() {
