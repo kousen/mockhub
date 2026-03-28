@@ -3,6 +3,7 @@ package com.mockhub.mandate.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -103,7 +104,8 @@ public class MandateService {
         return mandates.stream()
                 .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
                 .filter(m -> validateMandateConstraints(m, requiredScope, amount, categorySlug, eventSlug))
-                .findFirst()
+                .min(Comparator.comparing(this::mandateSpecificity).reversed()
+                        .thenComparing(Mandate::getCreatedAt))
                 .map(this::toDto);
     }
 
@@ -185,13 +187,27 @@ public class MandateService {
 
         if (eventSlug != null && mandate.getAllowedEvents() != null
                 && !mandate.getAllowedEvents().isBlank()
-                && !parseCommaSeparated(mandate.getAllowedEvents()).contains(eventSlug)) {
+                && !parseCommaSeparated(mandate.getAllowedEvents()).contains(eventSlug.toLowerCase())) {
             log.warn("Mandate {} does not allow event '{}'",
                     mandate.getMandateId(), eventSlug);
             return false;
         }
 
         return true;
+    }
+
+    private int mandateSpecificity(Mandate mandate) {
+        int score = 0;
+        if (mandate.getAllowedEvents() != null && !mandate.getAllowedEvents().isBlank()) {
+            score += 4;
+        }
+        if (mandate.getAllowedCategories() != null && !mandate.getAllowedCategories().isBlank()) {
+            score += 2;
+        }
+        if (mandate.getMaxSpendPerTransaction() != null) {
+            score += 1;
+        }
+        return score;
     }
 
     private boolean scopeCovers(String grantedScope, String requiredScope) {
