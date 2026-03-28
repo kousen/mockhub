@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import * as authApi from '@/api/auth';
 import { useAuthStore } from '@/stores/auth-store';
-import type { LoginRequest, RegisterRequest } from '@/types/auth';
+import type { LoginRequest, RegisterRequest, UpdateProfileRequest } from '@/types/auth';
 import { ROUTES } from '@/lib/constants';
 
 /**
@@ -77,4 +77,21 @@ export function useCurrentUser() {
   }, [query.data, setUser]);
 
   return query;
+}
+
+/**
+ * Hook for updating the current user's profile.
+ * On success, updates the auth store with the new user data.
+ */
+export function useUpdateProfile() {
+  const setUser = useAuthStore((state) => state.setUser);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateProfileRequest) => authApi.updateMe(data),
+    onSuccess: (updatedUser) => {
+      setUser(updatedUser);
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+    },
+  });
 }

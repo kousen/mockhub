@@ -108,6 +108,12 @@ export function Header() {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
+                  <Link to={ROUTES.PROFILE}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link to={ROUTES.ORDERS}>
                     <User className="mr-2 h-4 w-4" />
                     My Orders

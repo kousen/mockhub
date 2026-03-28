@@ -72,6 +72,14 @@ export function MobileNav() {
                 </p>
                 <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
+              <Link
+                to={ROUTES.PROFILE}
+                onClick={closeMobileNav}
+                className={navLinkClass(ROUTES.PROFILE)}
+              >
+                <Settings className="h-4 w-4" />
+                Profile
+              </Link>
               <Link to={ROUTES.CART} onClick={closeMobileNav} className={navLinkClass(ROUTES.CART)}>
                 <ShoppingCart className="h-4 w-4" />
                 Cart
