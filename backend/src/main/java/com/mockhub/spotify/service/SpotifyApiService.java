@@ -1,6 +1,8 @@
 package com.mockhub.spotify.service;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -103,9 +106,12 @@ public class SpotifyApiService implements SpotifyService {
             log.info("Fetched Spotify artist: {} ({})", artist.name(), spotifyArtistId.replaceAll("[\\r\\n]", ""));
             return Optional.of(artist);
 
-        } catch (RestClientException e) {
-            log.error("Failed to fetch Spotify artist {}: {}", spotifyArtistId.replaceAll("[\\r\\n]", ""), e.getMessage());
+        } catch (HttpClientErrorException.NotFound e) {
+            log.info("Spotify artist not found: {}", spotifyArtistId.replaceAll("[\\r\\n]", ""));
             return Optional.empty();
+        } catch (RestClientException e) {
+            log.error("Spotify API error for artist {}: {}", spotifyArtistId.replaceAll("[\\r\\n]", ""), e.getMessage());
+            throw e;
         }
     }
 
@@ -114,13 +120,15 @@ public class SpotifyApiService implements SpotifyService {
             return accessToken;
         }
 
+        String credentials = Base64.getEncoder().encodeToString(
+                (clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
+
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("grant_type", "client_credentials");
-        body.add("client_id", clientId);
-        body.add("client_secret", clientSecret);
 
         TokenResponse response = authClient.post()
                 .uri("/api/token")
+                .header("Authorization", "Basic " + credentials)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(body)
                 .retrieve()

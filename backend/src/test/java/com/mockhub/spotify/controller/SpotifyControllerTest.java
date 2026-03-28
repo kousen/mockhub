@@ -23,6 +23,7 @@ import com.mockhub.spotify.service.SpotifyService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
+import org.springframework.web.client.RestClientException;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -70,6 +71,16 @@ class SpotifyControllerTest {
 
         mockMvc.perform(get("/api/v1/spotify/artists/unknown"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/spotify/artists/{id} - given Spotify upstream error - returns 502")
+    void getArtist_givenUpstreamError_returns502() throws Exception {
+        when(spotifyService.getArtist("error-id"))
+                .thenThrow(new RestClientException("Spotify is down"));
+
+        mockMvc.perform(get("/api/v1/spotify/artists/error-id"))
+                .andExpect(status().isBadGateway());
     }
 
     @Test

@@ -9,16 +9,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import com.mockhub.spotify.dto.SpotifyArtistDto;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class SpotifyApiServiceTest {
@@ -71,8 +74,8 @@ class SpotifyApiServiceTest {
     }
 
     @Test
-    @DisplayName("getArtist - given API error - returns empty")
-    void getArtist_givenApiError_returnsEmpty() {
+    @DisplayName("getArtist - given 404 from Spotify - returns empty")
+    void getArtist_given404FromSpotify_returnsEmpty() {
         stubTokenResponse();
         apiServer.expect(requestTo("https://api.spotify.com/v1/artists/bad-id"))
                 .andRespond(withResourceNotFound());
@@ -80,6 +83,16 @@ class SpotifyApiServiceTest {
         Optional<SpotifyArtistDto> result = service.getArtist("bad-id");
 
         assertFalse(result.isPresent());
+    }
+
+    @Test
+    @DisplayName("getArtist - given 500 from Spotify - throws RestClientException")
+    void getArtist_given500FromSpotify_throwsRestClientException() {
+        stubTokenResponse();
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/error-id"))
+                .andRespond(withServerError());
+
+        assertThrows(RestClientException.class, () -> service.getArtist("error-id"));
     }
 
     @Test
@@ -156,6 +169,7 @@ class SpotifyApiServiceTest {
 
     private void stubTokenResponse() {
         authServer.expect(requestTo("https://accounts.spotify.com/api/token"))
+                .andExpect(header("Authorization", "Basic dGVzdC1jbGllbnQtaWQ6dGVzdC1jbGllbnQtc2VjcmV0"))
                 .andRespond(withSuccess("""
                         {
                             "access_token": "mock-access-token",
