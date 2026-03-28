@@ -89,10 +89,14 @@ jobs:
           path: frontend/coverage/
 
   e2e-test:
-    name: E2E Tests (Playwright)
+    name: E2E Tests (Playwright) - Shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     needs: [backend-test, frontend-test]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/2, 2/2]
 
     services:
       postgres:
@@ -156,20 +160,20 @@ jobs:
 
       - name: Run E2E tests
         working-directory: frontend
-        run: npx playwright test
+        run: npx playwright test --shard=${{ matrix.shard }}
 
       - name: Upload backend log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-bootrun-log
+          name: backend-bootrun-log-${{ strategy.job-index }}
           path: backend/bootRun.log
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ strategy.job-index }}
           path: frontend/playwright-report/
 
   sonarcloud:

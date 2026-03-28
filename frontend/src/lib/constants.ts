@@ -12,6 +12,7 @@ export const ROUTES = {
   CHECKOUT: '/checkout',
   ORDERS: '/orders',
   FAVORITES: '/favorites',
+  PROFILE: '/my/profile',
   SELL: '/sell',
   MY_LISTINGS: '/my/listings',
   EARNINGS: '/my/earnings',
