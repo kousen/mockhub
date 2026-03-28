@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -91,6 +92,21 @@ public class MandateService {
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public Optional<MandateDto> findBestMandate(String agentId, String userEmail,
+                                                 String requiredScope, BigDecimal amount,
+                                                 String categorySlug, String eventSlug) {
+        List<Mandate> mandates = mandateRepository.findByAgentIdAndUserEmailAndStatus(
+                agentId, userEmail, STATUS_ACTIVE);
+
+        Instant now = Instant.now();
+        return mandates.stream()
+                .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
+                .filter(m -> validateMandateConstraints(m, requiredScope, amount, categorySlug, eventSlug))
+                .findFirst()
+                .map(this::toDto);
+    }
+
     @Transactional
     public void recordSpend(String mandateId, BigDecimal amount) {
         Mandate mandate = mandateRepository.findByMandateIdForUpdate(mandateId)
@@ -161,7 +177,7 @@ public class MandateService {
 
         if (categorySlug != null && mandate.getAllowedCategories() != null
                 && !mandate.getAllowedCategories().isBlank()
-                && !parseCommaSeparated(mandate.getAllowedCategories()).contains(categorySlug)) {
+                && !parseCommaSeparated(mandate.getAllowedCategories()).contains(categorySlug.toLowerCase())) {
             log.warn("Mandate {} does not allow category '{}'",
                     mandate.getMandateId(), categorySlug);
             return false;
@@ -188,6 +204,7 @@ public class MandateService {
     private Set<String> parseCommaSeparated(String value) {
         return Arrays.stream(value.split(","))
                 .map(String::strip)
+                .map(String::toLowerCase)
                 .collect(Collectors.toSet());
     }
 

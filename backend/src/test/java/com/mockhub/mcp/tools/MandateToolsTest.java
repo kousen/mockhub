@@ -203,7 +203,7 @@ class MandateToolsTest {
         when(mandateService.validateAction("agent-1", "user@test.com", "BROWSE", null, null, null))
                 .thenReturn(true);
 
-        String result = mandateTools.validateMandate("agent-1", "user@test.com", "BROWSE", null);
+        String result = mandateTools.validateMandate("agent-1", "user@test.com", "BROWSE", null, null, null);
 
         assertTrue(result.contains("\"authorized\": true"), "Result should contain authorized true");
         assertTrue(result.contains("Action is authorized"), "Result should contain authorized message");
@@ -216,7 +216,7 @@ class MandateToolsTest {
                 new BigDecimal("1000.00"), null, null)).thenReturn(false);
 
         String result = mandateTools.validateMandate(
-                "agent-1", "user@test.com", "PURCHASE", new BigDecimal("1000.00"));
+                "agent-1", "user@test.com", "PURCHASE", new BigDecimal("1000.00"), null, null);
 
         assertTrue(result.contains("\"authorized\": false"), "Result should contain authorized false");
         assertTrue(result.contains("not authorized"), "Result should contain not authorized message");
@@ -228,7 +228,7 @@ class MandateToolsTest {
         when(mandateService.validateAction(eq("agent-1"), eq("bad@test.com"), eq("BROWSE"),
                 any(), any(), any())).thenThrow(new RuntimeException("Validation failed"));
 
-        String result = mandateTools.validateMandate("agent-1", "bad@test.com", "BROWSE", null);
+        String result = mandateTools.validateMandate("agent-1", "bad@test.com", "BROWSE", null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to validate mandate"), "Result should contain failure message");
@@ -242,7 +242,7 @@ class MandateToolsTest {
         when(mandateService.validateAction("agent-1", "user@test.com", "PURCHASE", amount, null, null))
                 .thenReturn(true);
 
-        String result = mandateTools.validateMandate("agent-1", "user@test.com", "PURCHASE", amount);
+        String result = mandateTools.validateMandate("agent-1", "user@test.com", "PURCHASE", amount, null, null);
 
         assertTrue(result.contains("\"authorized\": true"), "Result should contain authorized true");
         verify(mandateService).validateAction("agent-1", "user@test.com", "PURCHASE", amount, null, null);

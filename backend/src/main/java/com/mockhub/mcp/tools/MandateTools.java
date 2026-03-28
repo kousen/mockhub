@@ -3,6 +3,7 @@ package com.mockhub.mcp.tools;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,15 +84,19 @@ public class MandateTools {
     }
 
     @Tool(description = "Validate whether an agent has an active mandate to perform an action for a user. "
-            + "Returns whether the action is authorized based on scope and spending limits.")
+            + "Returns whether the action is authorized based on scope, spending limits, "
+            + "and optional category/event restrictions. Always pass eventSlug and categorySlug "
+            + "when validating a purchase to catch event-specific restrictions early.")
     public String validateMandate(
             @ToolParam(description = "ID of the agent requesting authorization", required = true) String agentId,
             @ToolParam(description = "Email of the user the agent is acting for", required = true) String userEmail,
             @ToolParam(description = "Required scope: BROWSE or PURCHASE", required = true) String scope,
-            @ToolParam(description = "Transaction amount to validate against spending limits (optional)") BigDecimal amount) {
+            @ToolParam(description = "Transaction amount to validate against spending limits (optional)") BigDecimal amount,
+            @ToolParam(description = "Category slug to check against allowed categories (optional)") String categorySlug,
+            @ToolParam(description = "Event slug to check against allowed events (optional)") String eventSlug) {
         try {
             boolean authorized = mandateService.validateAction(
-                    agentId, userEmail, scope, amount, null, null);
+                    agentId, userEmail, scope, amount, categorySlug, eventSlug);
             if (authorized) {
                 return "{\"authorized\": true, \"message\": \"Action is authorized\"}";
             } else {
@@ -101,6 +106,30 @@ public class MandateTools {
             log.error("Error validating mandate for agent '{}' and user '{}': {}",
                     agentId, userEmail, e.getMessage(), e);
             return errorJson("Failed to validate mandate: " + e.getMessage());
+        }
+    }
+
+    @Tool(description = "RECOMMENDED before addToCart — finds the best matching mandate for a specific "
+            + "purchase action. Checks scope, spending limits, category, and event restrictions in one call. "
+            + "Returns the matching mandate or an error explaining why none match.")
+    public String getBestMandate(
+            @ToolParam(description = "ID of the agent requesting authorization", required = true) String agentId,
+            @ToolParam(description = "Email of the user the agent is acting for", required = true) String userEmail,
+            @ToolParam(description = "Event slug to check against allowed events", required = true) String eventSlug,
+            @ToolParam(description = "Category slug to check against allowed categories (optional)") String categorySlug,
+            @ToolParam(description = "Transaction amount to validate against spending limits (optional)") BigDecimal amount) {
+        try {
+            Optional<MandateDto> mandate = mandateService.findBestMandate(
+                    agentId, userEmail, "PURCHASE", amount, categorySlug, eventSlug);
+            if (mandate.isPresent()) {
+                return objectMapper.writeValueAsString(mandate.get());
+            }
+            return "{\"error\": \"No active mandate found that authorizes this purchase. "
+                    + "Check scope, spending limits, and event/category restrictions.\"}";
+        } catch (Exception e) {
+            log.error("Error finding best mandate for agent '{}' and user '{}': {}",
+                    agentId, userEmail, e.getMessage(), e);
+            return errorJson("Failed to find best mandate: " + e.getMessage());
         }
     }
 

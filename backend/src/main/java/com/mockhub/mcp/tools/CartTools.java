@@ -58,6 +58,7 @@ public class CartTools {
 
     @Tool(description = "Add a ticket listing to a user's shopping cart. "
             + "The listing must be active and not already in the cart. Cart expires after 15 minutes. "
+            + "Returns the full updated cart contents, so a separate getCart call is not needed. "
             + "Autonomous agent actions must include both agentId and mandateId.")
     @Transactional
     public String addToCart(
@@ -141,6 +142,22 @@ public class CartTools {
         } catch (Exception e) {
             log.error("Error clearing cart for '{}': {}", userEmail, e.getMessage(), e);
             return errorJson("Failed to clear cart: " + e.getMessage());
+        }
+    }
+
+    @Tool(description = "Refresh the cart expiration timer without modifying contents. "
+            + "Useful when an agent needs more time to compare options before completing a purchase. "
+            + "Resets the 15-minute TTL. Returns the updated cart with new expiration time. "
+            + "If the cart has already expired, returns an empty cart.")
+    public String refreshCart(
+            @ToolParam(description = "User's email address", required = true) String userEmail) {
+        try {
+            User user = resolveUser(userEmail);
+            CartDto cart = cartService.refreshCart(user);
+            return objectMapper.writeValueAsString(cart);
+        } catch (Exception e) {
+            log.error("Error refreshing cart for '{}': {}", userEmail, e.getMessage(), e);
+            return errorJson("Failed to refresh cart: " + e.getMessage());
         }
     }
 
