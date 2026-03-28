@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLogin } from '@/hooks/use-auth';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { ROUTES } from '@/lib/constants';
 import type { AxiosError } from 'axios';
 import type { ApiError } from '@/types/common';
@@ -70,6 +71,7 @@ export function LoginPage() {
               {loginMutation.isPending ? 'Logging in...' : 'Log in'}
             </Button>
           </form>
+          <SocialLoginButtons />
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link to={ROUTES.REGISTER} className="font-medium text-primary hover:underline">

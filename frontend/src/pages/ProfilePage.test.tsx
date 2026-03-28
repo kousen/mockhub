@@ -20,6 +20,7 @@ vi.mock('@/hooks/use-auth', () => ({
     isPending: false,
     isError: false,
   }),
+  useLinkedProviders: () => ({ data: ['google'] }),
 }));
 
 function renderProfilePage() {
@@ -68,14 +69,13 @@ describe('ProfilePage', () => {
     expect(screen.getByRole('button', { name: /save changes/i })).toBeDefined();
   });
 
-  it('shows connected services section with Spotify placeholder', () => {
+  it('shows connected services with provider status', () => {
     renderProfilePage();
 
     expect(screen.getByText('Connected Services')).toBeDefined();
+    expect(screen.getByText('Google')).toBeDefined();
+    expect(screen.getByText('GitHub')).toBeDefined();
     expect(screen.getByText('Spotify')).toBeDefined();
-    const comingSoonButton = screen.getByRole('button', {
-      name: /coming soon/i,
-    }) as HTMLButtonElement;
-    expect(comingSoonButton.disabled).toBe(true);
+    expect(screen.getByText('Connected')).toBeDefined();
   });
 });

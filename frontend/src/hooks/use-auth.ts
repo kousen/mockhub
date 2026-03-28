@@ -4,6 +4,17 @@ import { useNavigate } from 'react-router';
 import * as authApi from '@/api/auth';
 import { useAuthStore } from '@/stores/auth-store';
 import type { LoginRequest, RegisterRequest, UpdateProfileRequest } from '@/types/auth';
+
+export function useLinkedProviders() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  return useQuery({
+    queryKey: ['auth', 'providers'],
+    queryFn: () => authApi.getLinkedProviders(),
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+  });
+}
 import { ROUTES } from '@/lib/constants';
 
 /**

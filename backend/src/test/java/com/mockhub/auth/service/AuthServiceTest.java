@@ -1,6 +1,7 @@
 package com.mockhub.auth.service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -21,8 +22,10 @@ import com.mockhub.auth.dto.AuthResponse;
 import com.mockhub.auth.dto.LoginRequest;
 import com.mockhub.auth.dto.RegisterRequest;
 import com.mockhub.auth.dto.UserDto;
+import com.mockhub.auth.entity.OAuthAccount;
 import com.mockhub.auth.entity.Role;
 import com.mockhub.auth.entity.User;
+import com.mockhub.auth.repository.OAuthAccountRepository;
 import com.mockhub.auth.repository.RoleRepository;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.auth.security.JwtTokenProvider;
@@ -48,6 +51,9 @@ class AuthServiceTest {
 
     @Mock
     private RoleRepository roleRepository;
+
+    @Mock
+    private OAuthAccountRepository oAuthAccountRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -198,6 +204,49 @@ class AuthServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> authService.getCurrentUser("unknown@example.com"),
+                "Should throw ResourceNotFoundException for unknown email");
+    }
+
+    @Test
+    @DisplayName("getLinkedProviders - given user with linked accounts - returns provider names")
+    void getLinkedProviders_givenUserWithLinkedAccounts_returnsProviderNames() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+
+        OAuthAccount googleAccount = new OAuthAccount();
+        googleAccount.setProvider("google");
+        googleAccount.setProviderAccountId("google-id-123");
+
+        OAuthAccount githubAccount = new OAuthAccount();
+        githubAccount.setProvider("github");
+        githubAccount.setProviderAccountId("github-id-456");
+
+        when(oAuthAccountRepository.findByUserId(1L)).thenReturn(List.of(googleAccount, githubAccount));
+
+        List<String> providers = authService.getLinkedProviders("test@example.com");
+
+        assertEquals(2, providers.size(), "Should return 2 providers");
+        assertEquals("google", providers.get(0), "First provider should be google");
+        assertEquals("github", providers.get(1), "Second provider should be github");
+    }
+
+    @Test
+    @DisplayName("getLinkedProviders - given user with no linked accounts - returns empty list")
+    void getLinkedProviders_givenNoLinkedAccounts_returnsEmptyList() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(oAuthAccountRepository.findByUserId(1L)).thenReturn(List.of());
+
+        List<String> providers = authService.getLinkedProviders("test@example.com");
+
+        assertEquals(0, providers.size(), "Should return empty list");
+    }
+
+    @Test
+    @DisplayName("getLinkedProviders - given unknown email - throws ResourceNotFoundException")
+    void getLinkedProviders_givenUnknownEmail_throwsResourceNotFoundException() {
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> authService.getLinkedProviders("unknown@example.com"),
                 "Should throw ResourceNotFoundException for unknown email");
     }
 }

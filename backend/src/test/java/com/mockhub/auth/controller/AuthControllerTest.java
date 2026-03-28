@@ -53,6 +53,9 @@ class AuthControllerTest {
     @MockitoBean
     private UserDetailsServiceImpl userDetailsService;
 
+    @MockitoBean
+    private com.mockhub.auth.security.OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
+
     private AuthResponse createTestAuthResponse() {
         UserDto userDto = new UserDto(
                 1L, "test@example.com", "John", "Doe",
@@ -176,5 +179,28 @@ class AuthControllerTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/oauth2/exchange - given valid code - returns 200 with auth response")
+    void exchangeOAuth2Code_givenValidCode_returns200WithAuthResponse() throws Exception {
+        AuthResponse response = createTestAuthResponse();
+        when(oauth2SuccessHandler.exchangeCode("valid-code")).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/auth/oauth2/exchange")
+                        .param("code", "valid-code"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("jwt-token"))
+                .andExpect(jsonPath("$.user.email").value("test@example.com"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/auth/oauth2/exchange - given invalid code - returns 401")
+    void exchangeOAuth2Code_givenInvalidCode_returns401() throws Exception {
+        when(oauth2SuccessHandler.exchangeCode("invalid-code")).thenReturn(null);
+
+        mockMvc.perform(post("/api/v1/auth/oauth2/exchange")
+                        .param("code", "invalid-code"))
+                .andExpect(status().isUnauthorized());
     }
 }
