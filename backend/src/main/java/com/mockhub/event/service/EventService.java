@@ -242,18 +242,20 @@ public class EventService {
     }
 
     private Sort buildSort(String sortParam) {
+        Sort primarySort;
         if (sortParam == null || sortParam.isBlank()) {
-            return Sort.by(SORT_EVENT_DATE).ascending();
+            primarySort = Sort.by(SORT_EVENT_DATE).ascending();
+        } else {
+            primarySort = switch (sortParam) {
+                case "date", SORT_EVENT_DATE -> Sort.by(SORT_EVENT_DATE).ascending();
+                case "dateDesc" -> Sort.by(SORT_EVENT_DATE).descending();
+                case "price" -> Sort.by("minPrice").ascending();
+                case "priceDesc" -> Sort.by("minPrice").descending();
+                case "name" -> Sort.by("name").ascending();
+                default -> Sort.by(SORT_EVENT_DATE).ascending();
+            };
         }
-
-        return switch (sortParam) {
-            case "date" , SORT_EVENT_DATE -> Sort.by(SORT_EVENT_DATE).ascending();
-            case "dateDesc" -> Sort.by(SORT_EVENT_DATE).descending();
-            case "price" -> Sort.by("minPrice").ascending();
-            case "priceDesc" -> Sort.by("minPrice").descending();
-            case "name" -> Sort.by("name").ascending();
-            default -> Sort.by(SORT_EVENT_DATE).ascending();
-        };
+        return primarySort.and(Sort.by("id").ascending());
     }
 
     private EventDto toEventDto(Event event) {
