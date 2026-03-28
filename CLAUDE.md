@@ -180,6 +180,7 @@ The codebase uses Java DOP patterns where they add value:
 ### Testing
 
 - **Every feature must have tests.** This is non-negotiable.
+- **Tests MUST be written before pushing.** Do not rely on SonarCloud to catch coverage gaps. SonarCloud enforces 80% coverage on new code — every untested new method tanks the metric. Write the test immediately after (or before) writing the production method. Run `./gradlew test jacocoTestReport` locally and verify coverage on new files before creating a PR. Repeated quality gate failures from missing tests are unacceptable.
 - Backend unit tests: JUnit 5 + Mockito, naming convention `methodName_givenCondition_expectedResult`
 - Backend controller tests: MockMvc + @WebMvcTest
 - Backend integration tests: Testcontainers with real PostgreSQL

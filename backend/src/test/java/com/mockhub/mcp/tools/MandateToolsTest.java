@@ -3,6 +3,7 @@ package com.mockhub.mcp.tools;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -203,7 +204,7 @@ class MandateToolsTest {
         when(mandateService.validateAction("agent-1", "user@test.com", "BROWSE", null, null, null))
                 .thenReturn(true);
 
-        String result = mandateTools.validateMandate("agent-1", "user@test.com", "BROWSE", null);
+        String result = mandateTools.validateMandate("agent-1", "user@test.com", "BROWSE", null, null, null);
 
         assertTrue(result.contains("\"authorized\": true"), "Result should contain authorized true");
         assertTrue(result.contains("Action is authorized"), "Result should contain authorized message");
@@ -216,7 +217,7 @@ class MandateToolsTest {
                 new BigDecimal("1000.00"), null, null)).thenReturn(false);
 
         String result = mandateTools.validateMandate(
-                "agent-1", "user@test.com", "PURCHASE", new BigDecimal("1000.00"));
+                "agent-1", "user@test.com", "PURCHASE", new BigDecimal("1000.00"), null, null);
 
         assertTrue(result.contains("\"authorized\": false"), "Result should contain authorized false");
         assertTrue(result.contains("not authorized"), "Result should contain not authorized message");
@@ -228,7 +229,7 @@ class MandateToolsTest {
         when(mandateService.validateAction(eq("agent-1"), eq("bad@test.com"), eq("BROWSE"),
                 any(), any(), any())).thenThrow(new RuntimeException("Validation failed"));
 
-        String result = mandateTools.validateMandate("agent-1", "bad@test.com", "BROWSE", null);
+        String result = mandateTools.validateMandate("agent-1", "bad@test.com", "BROWSE", null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to validate mandate"), "Result should contain failure message");
@@ -242,9 +243,58 @@ class MandateToolsTest {
         when(mandateService.validateAction("agent-1", "user@test.com", "PURCHASE", amount, null, null))
                 .thenReturn(true);
 
-        String result = mandateTools.validateMandate("agent-1", "user@test.com", "PURCHASE", amount);
+        String result = mandateTools.validateMandate("agent-1", "user@test.com", "PURCHASE", amount, null, null);
 
         assertTrue(result.contains("\"authorized\": true"), "Result should contain authorized true");
         verify(mandateService).validateAction("agent-1", "user@test.com", "PURCHASE", amount, null, null);
+    }
+
+    // --- getBestMandate ---
+
+    @Test
+    @DisplayName("getBestMandate - given matching mandate found - returns mandate JSON")
+    void getBestMandate_givenMatchingMandateFound_returnsMandateJson() {
+        MandateDto mandateDto = new MandateDto(
+                1L, "mandate-best", "agent-1", "user@test.com", "PURCHASE",
+                new BigDecimal("100.00"), new BigDecimal("500.00"), BigDecimal.ZERO,
+                new BigDecimal("500.00"), "concerts", "taylor-swift", "ACTIVE", null, Instant.now());
+
+        when(mandateService.findBestMandate("agent-1", "user@test.com", "PURCHASE",
+                new BigDecimal("75.00"), "concerts", "taylor-swift"))
+                .thenReturn(Optional.of(mandateDto));
+
+        String result = mandateTools.getBestMandate(
+                "agent-1", "user@test.com", "taylor-swift", "concerts", new BigDecimal("75.00"));
+
+        assertTrue(result.contains("\"mandateId\":\"mandate-best\""), "Result should contain mandateId");
+        assertTrue(result.contains("\"scope\":\"PURCHASE\""), "Result should contain scope");
+        assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+    }
+
+    @Test
+    @DisplayName("getBestMandate - given no matching mandate - returns error JSON")
+    void getBestMandate_givenNoMatchingMandate_returnsErrorJson() {
+        when(mandateService.findBestMandate("agent-1", "user@test.com", "PURCHASE",
+                new BigDecimal("75.00"), "sports", "coldplay"))
+                .thenReturn(Optional.empty());
+
+        String result = mandateTools.getBestMandate(
+                "agent-1", "user@test.com", "coldplay", "sports", new BigDecimal("75.00"));
+
+        assertTrue(result.contains("\"error\""), "Result should contain error field");
+        assertTrue(result.contains("No active mandate found"), "Result should indicate no mandate found");
+    }
+
+    @Test
+    @DisplayName("getBestMandate - given service throws exception - returns error JSON")
+    void getBestMandate_givenServiceThrowsException_returnsErrorJson() {
+        when(mandateService.findBestMandate(eq("agent-1"), eq("bad@test.com"), eq("PURCHASE"),
+                any(), any(), any())).thenThrow(new RuntimeException("Database error"));
+
+        String result = mandateTools.getBestMandate(
+                "agent-1", "bad@test.com", "some-event", null, null);
+
+        assertTrue(result.contains("\"error\""), "Result should contain error field");
+        assertTrue(result.contains("Failed to find best mandate"), "Result should contain failure message");
     }
 }

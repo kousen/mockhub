@@ -44,12 +44,18 @@ public class PricingUpdateService {
             return;
         }
 
-        BigDecimal newMinPrice = event.getBasePrice().multiply(multiplier)
-                .setScale(2, RoundingMode.HALF_UP);
-        event.setMinPrice(newMinPrice);
-        eventRepository.save(event);
-
         listingService.updateListingPrices(eventId, multiplier);
+
+        BigDecimal[] priceRange = listingService.getComputedPriceRange(eventId);
+        BigDecimal newMinPrice = priceRange[0] != null
+                ? priceRange[0]
+                : event.getBasePrice().multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal newMaxPrice = priceRange[1] != null
+                ? priceRange[1]
+                : newMinPrice;
+        event.setMinPrice(newMinPrice);
+        event.setMaxPrice(newMaxPrice);
+        eventRepository.save(event);
 
         BigDecimal supplyRatio = computeSupplyRatio(event);
         long daysToEvent = computeDaysToEvent(event);

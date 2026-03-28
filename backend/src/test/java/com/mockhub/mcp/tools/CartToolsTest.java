@@ -162,6 +162,24 @@ class CartToolsTest {
         }
 
         @Test
+        @DisplayName("given eval warnings - returns cart with warnings")
+        void givenEvalWarnings_returnsCartWithWarnings() {
+            stubUserLookup("buyer@example.com");
+            when(listingRepository.findById(42L)).thenReturn(Optional.of(createActiveListing()));
+            when(evalRunner.evaluate(any(EvalContext.class)))
+                    .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))))
+                    .thenReturn(new EvalSummary(List.of(
+                            EvalResult.fail("SpendingLimit", EvalSeverity.WARNING, "Cart total exceeds $2000"))));
+            CartDto cartDto = new CartDto(null, null, null, null, 0, null);
+            when(cartService.addToCart(testUser, 42L)).thenReturn(cartDto);
+
+            String result = cartTools.addToCart("buyer@example.com", 42L, AGENT_ID, MANDATE_ID);
+
+            assertTrue(result.contains("\"warnings\""), "Result should contain warnings field");
+            assertTrue(result.contains("SpendingLimit"), "Warnings should include condition name");
+        }
+
+        @Test
         @DisplayName("given null listing ID - returns error JSON")
         void givenNullListingId_returnsErrorJson() {
             String result = cartTools.addToCart("buyer@example.com", null, AGENT_ID, MANDATE_ID);
@@ -271,6 +289,45 @@ class CartToolsTest {
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to remove from cart"), "Result should contain failure message");
+        }
+    }
+
+    @Nested
+    @DisplayName("refreshCart")
+    class RefreshCart {
+
+        @Test
+        @DisplayName("given valid email - returns cart JSON")
+        void givenValidEmail_returnsCartJson() {
+            stubUserLookup("buyer@example.com");
+            CartDto cartDto = new CartDto(1L, 1L, List.of(), BigDecimal.ZERO, 0, null);
+            when(cartService.refreshCart(testUser)).thenReturn(cartDto);
+
+            String result = cartTools.refreshCart("buyer@example.com");
+
+            verify(cartService).refreshCart(testUser);
+            assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given null email - returns error JSON")
+        void givenNullEmail_returnsErrorJson() {
+            String result = cartTools.refreshCart(null);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+        }
+
+        @Test
+        @DisplayName("given service throws exception - returns error JSON")
+        void givenServiceThrowsException_returnsErrorJson() {
+            stubUserLookup("buyer@example.com");
+            when(cartService.refreshCart(testUser))
+                    .thenThrow(new RuntimeException("Cart error"));
+
+            String result = cartTools.refreshCart("buyer@example.com");
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Failed to refresh cart"), "Result should contain failure message");
         }
     }
 

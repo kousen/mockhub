@@ -9,6 +9,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +69,8 @@ public class EventSeeder {
         restoreSeedImages();
 
         if (eventRepository.count() > 0) {
-            log.info("Events already seeded, skipping");
+            log.info("Events already seeded, backfilling Spotify IDs");
+            backfillSpotifyArtistIds();
             return;
         }
 
@@ -152,6 +154,29 @@ public class EventSeeder {
                 .filter(c -> c.getSlug().equals(slug))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private void backfillSpotifyArtistIds() {
+        Map<String, String> spotifyIds = new HashMap<>();
+        for (EventData eventData : getEventData()) {
+            if (eventData.spotifyArtistId != null) {
+                spotifyIds.put(eventData.name, eventData.spotifyArtistId);
+            }
+        }
+
+        List<Event> events = eventRepository.findAll();
+        int updated = 0;
+        for (Event event : events) {
+            String spotifyId = spotifyIds.get(event.getName());
+            if (spotifyId != null && !spotifyId.equals(event.getSpotifyArtistId())) {
+                event.setSpotifyArtistId(spotifyId);
+                eventRepository.save(event);
+                updated++;
+            }
+        }
+        if (updated > 0) {
+            log.info("Backfilled Spotify artist IDs for {} events", updated);
+        }
     }
 
     private void restoreSeedImages() {

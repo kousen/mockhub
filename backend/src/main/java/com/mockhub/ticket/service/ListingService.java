@@ -148,6 +148,25 @@ public class ListingService {
         log.debug("Updated {} listing prices for event {}", activeListings.size(), eventId);
     }
 
+    @Transactional(readOnly = true)
+    public BigDecimal[] getComputedPriceRange(Long eventId) {
+        List<Listing> activeListings = listingRepository.findByEventIdAndStatus(eventId, STATUS_ACTIVE);
+        BigDecimal min = null;
+        BigDecimal max = null;
+        for (Listing listing : activeListings) {
+            BigDecimal price = listing.getComputedPrice();
+            if (price != null) {
+                if (min == null || price.compareTo(min) < 0) {
+                    min = price;
+                }
+                if (max == null || price.compareTo(max) > 0) {
+                    max = price;
+                }
+            }
+        }
+        return new BigDecimal[]{min, max};
+    }
+
     // -- Seller flow methods --
 
     @Transactional

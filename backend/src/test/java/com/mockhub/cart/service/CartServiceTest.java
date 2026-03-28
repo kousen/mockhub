@@ -234,4 +234,61 @@ class CartServiceTest {
 
         verify(cartRepository, never()).save(any(Cart.class));
     }
+
+    // --- refreshCart ---
+
+    @Test
+    @DisplayName("refreshCart - given active cart with items - resets TTL and returns cart DTO")
+    void refreshCart_givenActiveCartWithItems_resetsTtlAndReturnsCartDto() {
+        CartItem cartItem = new CartItem();
+        cartItem.setId(10L);
+        cartItem.setCart(testCart);
+        cartItem.setListing(testListing);
+        cartItem.setPriceAtAdd(new BigDecimal("75.00"));
+        cartItem.setAddedAt(Instant.now());
+        testCart.getItems().add(cartItem);
+
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
+        when(cartRepository.save(any(Cart.class))).thenReturn(testCart);
+
+        CartDto result = cartService.refreshCart(testUser);
+
+        assertNotNull(result, "Cart DTO should not be null");
+        verify(cartRepository).save(any(Cart.class));
+    }
+
+    @Test
+    @DisplayName("refreshCart - given expired cart - clears items and returns empty cart DTO")
+    void refreshCart_givenExpiredCart_clearsItemsAndReturnsEmptyCartDto() {
+        testCart.setExpiresAt(Instant.now().minus(1, ChronoUnit.MINUTES));
+        CartItem cartItem = new CartItem();
+        cartItem.setId(10L);
+        cartItem.setCart(testCart);
+        cartItem.setListing(testListing);
+        cartItem.setPriceAtAdd(new BigDecimal("75.00"));
+        cartItem.setAddedAt(Instant.now());
+        testCart.getItems().add(cartItem);
+
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
+        when(cartRepository.save(any(Cart.class))).thenReturn(testCart);
+
+        CartDto result = cartService.refreshCart(testUser);
+
+        assertNotNull(result, "Cart DTO should not be null");
+        assertEquals(0, result.itemCount(), "Expired cart should return empty");
+        assertEquals(BigDecimal.ZERO, result.subtotal(), "Subtotal should be zero for expired cart");
+    }
+
+    @Test
+    @DisplayName("refreshCart - given no cart - returns empty cart DTO")
+    void refreshCart_givenNoCart_returnsEmptyCartDto() {
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.empty());
+
+        CartDto result = cartService.refreshCart(testUser);
+
+        assertNotNull(result, "Cart DTO should not be null");
+        assertEquals(0, result.itemCount(), "No cart should return empty");
+        assertEquals(BigDecimal.ZERO, result.subtotal(), "Subtotal should be zero when no cart");
+        verify(cartRepository, never()).save(any(Cart.class));
+    }
 }

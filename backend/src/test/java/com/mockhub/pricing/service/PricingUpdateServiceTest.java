@@ -64,12 +64,13 @@ class PricingUpdateServiceTest {
     void updateEventPricing_givenActiveEvent_updatesPriceAndSavesHistory() {
         BigDecimal multiplier = new BigDecimal("1.250");
         when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(listingService.getComputedPriceRange(1L)).thenReturn(new BigDecimal[]{null, null});
 
         pricingUpdateService.updateEventPricing(1L, multiplier);
 
         BigDecimal expectedPrice = new BigDecimal("125.00");
         assertEquals(expectedPrice, testEvent.getMinPrice(),
-                "Event min price should be updated to basePrice * multiplier");
+                "Event min price should be updated to basePrice * multiplier when no listings");
         verify(eventRepository).save(testEvent);
         verify(listingService).updateListingPrices(1L, multiplier);
         verify(priceHistoryRepository).save(any(PriceHistory.class));
@@ -80,6 +81,7 @@ class PricingUpdateServiceTest {
     void updateEventPricing_givenActiveEvent_savesCorrectPriceHistoryFields() {
         BigDecimal multiplier = new BigDecimal("1.500");
         when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(listingService.getComputedPriceRange(1L)).thenReturn(new BigDecimal[]{null, null});
 
         pricingUpdateService.updateEventPricing(1L, multiplier);
 
@@ -129,6 +131,7 @@ class PricingUpdateServiceTest {
     void updateEventPricing_givenMultiplier_calculatesCorrectPrice() {
         BigDecimal multiplier = new BigDecimal("1.333");
         when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(listingService.getComputedPriceRange(1L)).thenReturn(new BigDecimal[]{null, null});
 
         pricingUpdateService.updateEventPricing(1L, multiplier);
 
@@ -144,6 +147,7 @@ class PricingUpdateServiceTest {
         testEvent.setTotalTickets(0);
         testEvent.setAvailableTickets(0);
         when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(listingService.getComputedPriceRange(1L)).thenReturn(new BigDecimal[]{null, null});
 
         pricingUpdateService.updateEventPricing(1L, new BigDecimal("1.000"));
 
@@ -153,6 +157,22 @@ class PricingUpdateServiceTest {
         PriceHistory savedHistory = captor.getValue();
         assertEquals(new BigDecimal("0.0000"), savedHistory.getSupplyRatio(),
                 "Supply ratio should be zero when total tickets is zero");
+    }
+
+    @Test
+    @DisplayName("updateEventPricing - given listings with computed prices - uses actual min/max from listings")
+    void updateEventPricing_givenListingsWithComputedPrices_usesActualMinMax() {
+        BigDecimal multiplier = new BigDecimal("1.200");
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(listingService.getComputedPriceRange(1L)).thenReturn(
+                new BigDecimal[]{new BigDecimal("40.94"), new BigDecimal("180.50")});
+
+        pricingUpdateService.updateEventPricing(1L, multiplier);
+
+        assertEquals(new BigDecimal("40.94"), testEvent.getMinPrice(),
+                "Min price should come from actual listing computed prices");
+        assertEquals(new BigDecimal("180.50"), testEvent.getMaxPrice(),
+                "Max price should come from actual listing computed prices");
     }
 
     @Test

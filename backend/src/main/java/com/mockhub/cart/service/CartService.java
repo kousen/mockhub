@@ -131,6 +131,24 @@ public class CartService {
         }
     }
 
+    @Transactional
+    public CartDto refreshCart(User user) {
+        Cart cart = cartRepository.findByUser(user).orElse(null);
+        if (cart == null || cart.getItems().isEmpty()) {
+            return emptyCartDto(user);
+        }
+        if (isExpired(cart)) {
+            cart.getItems().clear();
+            cart.setExpiresAt(null);
+            cartRepository.save(cart);
+            return emptyCartDto(user);
+        }
+        cart.setExpiresAt(Instant.now().plus(CART_EXPIRATION_MINUTES, ChronoUnit.MINUTES));
+        cartRepository.save(cart);
+        log.info("Refreshed cart {} expiration for user {}", cart.getId(), user.getId());
+        return toCartDto(cart);
+    }
+
     private boolean isExpired(Cart cart) {
         return cart.getExpiresAt() != null && Instant.now().isAfter(cart.getExpiresAt());
     }

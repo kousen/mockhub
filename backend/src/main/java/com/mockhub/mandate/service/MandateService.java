@@ -3,7 +3,9 @@ package com.mockhub.mandate.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -91,6 +93,22 @@ public class MandateService {
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public Optional<MandateDto> findBestMandate(String agentId, String userEmail,
+                                                 String requiredScope, BigDecimal amount,
+                                                 String categorySlug, String eventSlug) {
+        List<Mandate> mandates = mandateRepository.findByAgentIdAndUserEmailAndStatus(
+                agentId, userEmail, STATUS_ACTIVE);
+
+        Instant now = Instant.now();
+        return mandates.stream()
+                .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
+                .filter(m -> validateMandateConstraints(m, requiredScope, amount, categorySlug, eventSlug))
+                .min(Comparator.comparing(this::mandateSpecificity).reversed()
+                        .thenComparing(Mandate::getCreatedAt))
+                .map(this::toDto);
+    }
+
     @Transactional
     public void recordSpend(String mandateId, BigDecimal amount) {
         Mandate mandate = mandateRepository.findByMandateIdForUpdate(mandateId)
@@ -161,7 +179,7 @@ public class MandateService {
 
         if (categorySlug != null && mandate.getAllowedCategories() != null
                 && !mandate.getAllowedCategories().isBlank()
-                && !parseCommaSeparated(mandate.getAllowedCategories()).contains(categorySlug)) {
+                && !parseCommaSeparated(mandate.getAllowedCategories()).contains(categorySlug.toLowerCase())) {
             log.warn("Mandate {} does not allow category '{}'",
                     mandate.getMandateId(), categorySlug);
             return false;
@@ -169,13 +187,27 @@ public class MandateService {
 
         if (eventSlug != null && mandate.getAllowedEvents() != null
                 && !mandate.getAllowedEvents().isBlank()
-                && !parseCommaSeparated(mandate.getAllowedEvents()).contains(eventSlug)) {
+                && !parseCommaSeparated(mandate.getAllowedEvents()).contains(eventSlug.toLowerCase())) {
             log.warn("Mandate {} does not allow event '{}'",
                     mandate.getMandateId(), eventSlug);
             return false;
         }
 
         return true;
+    }
+
+    private int mandateSpecificity(Mandate mandate) {
+        int score = 0;
+        if (mandate.getAllowedEvents() != null && !mandate.getAllowedEvents().isBlank()) {
+            score += 4;
+        }
+        if (mandate.getAllowedCategories() != null && !mandate.getAllowedCategories().isBlank()) {
+            score += 2;
+        }
+        if (mandate.getMaxSpendPerTransaction() != null) {
+            score += 1;
+        }
+        return score;
     }
 
     private boolean scopeCovers(String grantedScope, String requiredScope) {
@@ -188,6 +220,7 @@ public class MandateService {
     private Set<String> parseCommaSeparated(String value) {
         return Arrays.stream(value.split(","))
                 .map(String::strip)
+                .map(String::toLowerCase)
                 .collect(Collectors.toSet());
     }
 
