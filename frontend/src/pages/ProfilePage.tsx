@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Mail, Phone, Save, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,10 +17,18 @@ export function ProfilePage() {
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName);
+      setLastName(user.lastName);
+      setPhone(user.phone ?? '');
+    }
+  }, [user]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfile.mutate(
-      { firstName, lastName, phone: phone || undefined },
+      { firstName, lastName, phone },
       {
         onSuccess: () => {
           setSaved(true);
