@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -33,6 +34,8 @@ public class SpotifyApiService implements SpotifyService {
 
     private static final Logger log = LoggerFactory.getLogger(SpotifyApiService.class);
     private static final long CACHE_TTL_SECONDS = 3600;
+    private static final int MAX_RETRIES = 3;
+    private static final long BASE_BACKOFF_MS = 1000;
 
     private final RestClient authClient;
     private final RestClient apiClient;
@@ -76,11 +79,7 @@ public class SpotifyApiService implements SpotifyService {
 
         try {
             String token = getAccessToken();
-            SpotifyArtistResponse response = apiClient.get()
-                    .uri("/artists/{id}", spotifyArtistId)
-                    .header("Authorization", "Bearer " + token)
-                    .retrieve()
-                    .body(SpotifyArtistResponse.class);
+            SpotifyArtistResponse response = fetchWithRetry(spotifyArtistId, token);
 
             if (response == null) {
                 return Optional.empty();
@@ -112,6 +111,52 @@ public class SpotifyApiService implements SpotifyService {
         } catch (RestClientException e) {
             log.error("Spotify API error for artist {}: {}", spotifyArtistId.replaceAll("[\\r\\n]", ""), e.getMessage());
             throw e;
+        }
+    }
+
+    private SpotifyArtistResponse fetchWithRetry(String spotifyArtistId, String token) {
+        for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                return apiClient.get()
+                        .uri("/artists/{id}", spotifyArtistId)
+                        .header("Authorization", "Bearer " + token)
+                        .retrieve()
+                        .body(SpotifyArtistResponse.class);
+            } catch (HttpClientErrorException.TooManyRequests e) {
+                if (attempt == MAX_RETRIES) {
+                    log.error("Spotify rate limit exceeded after {} retries for artist {}",
+                            MAX_RETRIES, spotifyArtistId.replaceAll("[\\r\\n]", ""));
+                    throw e;
+                }
+                long waitMs = parseRetryAfter(e.getResponseHeaders(), attempt);
+                log.warn("Spotify rate limited (attempt {}/{}), waiting {}ms",
+                        attempt + 1, MAX_RETRIES, waitMs);
+                sleep(waitMs);
+            }
+        }
+        throw new RestClientException("Spotify API request failed after retries");
+    }
+
+    long parseRetryAfter(HttpHeaders headers, int attempt) {
+        if (headers != null) {
+            String retryAfter = headers.getFirst("Retry-After");
+            if (retryAfter != null) {
+                try {
+                    return Long.parseLong(retryAfter) * 1000;
+                } catch (NumberFormatException ignored) {
+                    // Fall through to exponential backoff
+                }
+            }
+        }
+        return BASE_BACKOFF_MS * (1L << attempt);
+    }
+
+    void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RestClientException("Interrupted while waiting for Spotify rate limit", e);
         }
     }
 

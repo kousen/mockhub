@@ -7,7 +7,9 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -167,6 +169,41 @@ class SpotifyApiServiceTest {
         assertEquals("Second", result.get().name());
         // Only one token request should have been made
         authServer.verify();
+    }
+
+    @Nested
+    @DisplayName("Rate limit and retry logic")
+    class RetryTests {
+
+        @Test
+        @DisplayName("parseRetryAfter - given Retry-After header - returns header value in millis")
+        void parseRetryAfter_givenRetryAfterHeader_returnsHeaderValueInMillis() {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Retry-After", "5");
+
+            long result = service.parseRetryAfter(headers, 0);
+
+            assertEquals(5000, result);
+        }
+
+        @Test
+        @DisplayName("parseRetryAfter - given no header - returns exponential backoff")
+        void parseRetryAfter_givenNoHeader_returnsExponentialBackoff() {
+            assertEquals(1000, service.parseRetryAfter(null, 0));
+            assertEquals(2000, service.parseRetryAfter(null, 1));
+            assertEquals(4000, service.parseRetryAfter(null, 2));
+        }
+
+        @Test
+        @DisplayName("parseRetryAfter - given non-numeric header - falls back to exponential backoff")
+        void parseRetryAfter_givenNonNumericHeader_fallsBackToExponentialBackoff() {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Retry-After", "not-a-number");
+
+            long result = service.parseRetryAfter(headers, 1);
+
+            assertEquals(2000, result);
+        }
     }
 
     private void stubTokenResponse() {

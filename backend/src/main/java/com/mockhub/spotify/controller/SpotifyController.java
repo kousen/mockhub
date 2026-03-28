@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,7 +41,7 @@ public class SpotifyController {
     @ApiResponse(responseCode = "503", description = "Spotify integration not enabled")
     public ResponseEntity<SpotifyArtistDto> getArtist(@PathVariable String spotifyArtistId) {
         if (spotifyService.isEmpty()) {
-            return ResponseEntity.status(503).build();
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
         try {
             return spotifyService.get().getArtist(spotifyArtistId)
@@ -49,7 +50,7 @@ public class SpotifyController {
         } catch (RestClientException e) {
             log.error("Spotify upstream error for artist {}: {}",
                     spotifyArtistId.replaceAll("[\\r\\n]", ""), e.getMessage());
-            return ResponseEntity.status(502).build();
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
         }
     }
 }
