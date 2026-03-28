@@ -297,16 +297,24 @@ public class AcpCheckoutService {
                                                      String city, Instant dateFrom, Instant dateTo,
                                                      BigDecimal minPrice, BigDecimal maxPrice,
                                                      String section, int page, int size) {
-        EventSearchRequest searchRequest = new EventSearchRequest(
-                query, category, null, city,
-                dateFrom, dateTo, minPrice, maxPrice,
-                STATUS_ACTIVE, "eventDate", 0, 100
-        );
+        List<EventSummaryDto> allEvents = new ArrayList<>();
+        int eventPage = 0;
+        int eventPageSize = 100;
+        PagedResponse<EventSummaryDto> eventBatch;
+        do {
+            EventSearchRequest searchRequest = new EventSearchRequest(
+                    query, category, null, city,
+                    dateFrom, dateTo, minPrice, maxPrice,
+                    STATUS_ACTIVE, "eventDate", eventPage, eventPageSize
+            );
+            eventBatch = eventService.listEvents(searchRequest);
+            allEvents.addAll(eventBatch.content());
+            eventPage++;
+        } while (eventPage < eventBatch.totalPages());
 
-        PagedResponse<EventSummaryDto> eventPage = eventService.listEvents(searchRequest);
         List<AcpListingItem> allListings = new ArrayList<>();
 
-        for (EventSummaryDto event : eventPage.content()) {
+        for (EventSummaryDto event : allEvents) {
             List<Listing> eventListings = listingRepository.findByEventIdAndStatus(event.id(), STATUS_ACTIVE);
             for (Listing listing : eventListings) {
                 if (!matchesFilters(listing, minPrice, maxPrice, section)) {
