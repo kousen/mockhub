@@ -31,7 +31,7 @@ public class MockSpotifyService implements SpotifyService {
 
     @Override
     public Optional<SpotifyArtistDto> getArtist(String spotifyArtistId) {
-        log.info("[MOCK SPOTIFY] Fetching artist: {}", spotifyArtistId);
+        log.info("[MOCK SPOTIFY] Fetching artist: {}", spotifyArtistId.replaceAll("[\\r\\n]", ""));
         SpotifyArtistDto artist = MOCK_ARTISTS.get(spotifyArtistId);
         if (artist != null) {
             return Optional.of(artist);

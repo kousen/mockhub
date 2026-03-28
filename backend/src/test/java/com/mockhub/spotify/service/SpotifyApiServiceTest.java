@@ -14,6 +14,7 @@ import com.mockhub.spotify.dto.SpotifyArtistDto;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -104,6 +105,53 @@ class SpotifyApiServiceTest {
         assertEquals("Cached Artist", result.get().name());
         authServer.verify();
         apiServer.verify();
+    }
+
+    @Test
+    @DisplayName("getArtist - given artist with null genres and followers - handles gracefully")
+    void getArtist_givenArtistWithNullFields_handlesGracefully() {
+        stubTokenResponse();
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/minimal"))
+                .andRespond(withSuccess("""
+                        {
+                            "id": "minimal",
+                            "name": "Minimal Artist",
+                            "genres": null,
+                            "followers": null,
+                            "images": null
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        Optional<SpotifyArtistDto> result = service.getArtist("minimal");
+
+        assertTrue(result.isPresent());
+        SpotifyArtistDto artist = result.get();
+        assertEquals("Minimal Artist", artist.name());
+        assertTrue(artist.genres().isEmpty());
+        assertEquals(0, artist.followers());
+        assertNull(artist.imageUrl());
+    }
+
+    @Test
+    @DisplayName("getArtist - reuses token for second call")
+    void getArtist_reusesTokenForSecondCall() {
+        stubTokenResponse();
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/first"))
+                .andRespond(withSuccess("""
+                        { "id": "first", "name": "First", "genres": [], "followers": { "total": 1 }, "images": [] }
+                        """, MediaType.APPLICATION_JSON));
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/second"))
+                .andRespond(withSuccess("""
+                        { "id": "second", "name": "Second", "genres": [], "followers": { "total": 2 }, "images": [] }
+                        """, MediaType.APPLICATION_JSON));
+
+        service.getArtist("first");
+        Optional<SpotifyArtistDto> result = service.getArtist("second");
+
+        assertTrue(result.isPresent());
+        assertEquals("Second", result.get().name());
+        // Only one token request should have been made
+        authServer.verify();
     }
 
     private void stubTokenResponse() {

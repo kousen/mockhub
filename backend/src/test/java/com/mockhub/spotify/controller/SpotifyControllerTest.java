@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -19,6 +21,7 @@ import com.mockhub.config.SecurityConfig;
 import com.mockhub.spotify.dto.SpotifyArtistDto;
 import com.mockhub.spotify.service.SpotifyService;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -78,5 +81,20 @@ class SpotifyControllerTest {
 
         mockMvc.perform(get("/api/v1/spotify/artists/abc123"))
                 .andExpect(status().isOk());
+    }
+
+    @Nested
+    @DisplayName("Unit tests for SpotifyController without Spring context")
+    class UnitTests {
+
+        @Test
+        @DisplayName("getArtist - given no SpotifyService bean - returns 503")
+        void getArtist_givenNoSpotifyService_returns503() {
+            SpotifyController controller = new SpotifyController(Optional.empty());
+
+            ResponseEntity<SpotifyArtistDto> response = controller.getArtist("abc123");
+
+            assertEquals(503, response.getStatusCode().value());
+        }
     }
 }

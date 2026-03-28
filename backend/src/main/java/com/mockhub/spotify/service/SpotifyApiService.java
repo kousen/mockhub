@@ -100,11 +100,11 @@ public class SpotifyApiService implements SpotifyService {
 
             artistCache.put(spotifyArtistId, new CachedArtist(artist,
                     Instant.now().plusSeconds(CACHE_TTL_SECONDS)));
-            log.info("Fetched Spotify artist: {} ({})", artist.name(), spotifyArtistId);
+            log.info("Fetched Spotify artist: {} ({})", artist.name(), spotifyArtistId.replaceAll("[\\r\\n]", ""));
             return Optional.of(artist);
 
         } catch (RestClientException e) {
-            log.error("Failed to fetch Spotify artist {}: {}", spotifyArtistId, e.getMessage());
+            log.error("Failed to fetch Spotify artist {}: {}", spotifyArtistId.replaceAll("[\\r\\n]", ""), e.getMessage());
             return Optional.empty();
         }
     }
