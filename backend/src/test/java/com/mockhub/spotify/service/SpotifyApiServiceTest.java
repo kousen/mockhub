@@ -1,5 +1,7 @@
 package com.mockhub.spotify.service;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,7 +42,7 @@ class SpotifyApiServiceTest {
 
         service = new SpotifyApiService(
                 authBuilder.build(), apiBuilder.build(),
-                "test-client-id", "test-client-secret");
+                "fake-id", "fake-secret");
     }
 
     @Test
@@ -169,7 +171,8 @@ class SpotifyApiServiceTest {
 
     private void stubTokenResponse() {
         authServer.expect(requestTo("https://accounts.spotify.com/api/token"))
-                .andExpect(header("Authorization", "Basic dGVzdC1jbGllbnQtaWQ6dGVzdC1jbGllbnQtc2VjcmV0"))
+                .andExpect(header("Authorization", "Basic " +
+                        Base64.getEncoder().encodeToString("fake-id:fake-secret".getBytes(StandardCharsets.UTF_8))))
                 .andRespond(withSuccess("""
                         {
                             "access_token": "mock-access-token",
