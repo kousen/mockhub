@@ -160,6 +160,22 @@ class PricingUpdateServiceTest {
     }
 
     @Test
+    @DisplayName("updateEventPricing - given listings with computed prices - uses actual min/max from listings")
+    void updateEventPricing_givenListingsWithComputedPrices_usesActualMinMax() {
+        BigDecimal multiplier = new BigDecimal("1.200");
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(listingService.getComputedPriceRange(1L)).thenReturn(
+                new BigDecimal[]{new BigDecimal("40.94"), new BigDecimal("180.50")});
+
+        pricingUpdateService.updateEventPricing(1L, multiplier);
+
+        assertEquals(new BigDecimal("40.94"), testEvent.getMinPrice(),
+                "Min price should come from actual listing computed prices");
+        assertEquals(new BigDecimal("180.50"), testEvent.getMaxPrice(),
+                "Max price should come from actual listing computed prices");
+    }
+
+    @Test
     @DisplayName("updateEventPricing - given event with COMPLETED status - does nothing")
     void updateEventPricing_givenCompletedEvent_doesNothing() {
         testEvent.setStatus("COMPLETED");
