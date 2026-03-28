@@ -54,15 +54,15 @@ public class CookieOAuth2AuthorizationRequestRepository
             return;
         }
         try {
-            Map<String, String> data = Map.of(
-                    "authorizationUri", authorizationRequest.getAuthorizationUri(),
-                    "clientId", authorizationRequest.getClientId(),
-                    "redirectUri", authorizationRequest.getRedirectUri() != null
-                            ? authorizationRequest.getRedirectUri() : "",
-                    "state", authorizationRequest.getState() != null
-                            ? authorizationRequest.getState() : "",
-                    "scopes", String.join(",", authorizationRequest.getScopes())
-            );
+            Map<String, Object> data = new java.util.HashMap<>();
+            data.put("authorizationUri", authorizationRequest.getAuthorizationUri());
+            data.put("clientId", authorizationRequest.getClientId());
+            data.put("redirectUri", authorizationRequest.getRedirectUri() != null
+                    ? authorizationRequest.getRedirectUri() : "");
+            data.put("state", authorizationRequest.getState() != null
+                    ? authorizationRequest.getState() : "");
+            data.put("scopes", String.join(",", authorizationRequest.getScopes()));
+            data.put("attributes", authorizationRequest.getAttributes());
             String json = objectMapper.writeValueAsString(data);
             String signature = sign(json);
             String payload = Base64.getUrlEncoder().withoutPadding()
@@ -99,16 +99,24 @@ public class CookieOAuth2AuthorizationRequestRepository
                     if (!expectedSignature.equals(parts[1])) {
                         return null;
                     }
-                    Map<String, String> data = objectMapper.readValue(json, Map.class);
-                    Set<String> scopes = data.get("scopes") != null && !data.get("scopes").isEmpty()
-                            ? Set.of(data.get("scopes").split(","))
+                    Map<String, Object> data = objectMapper.readValue(json, Map.class);
+                    String scopesStr = (String) data.get("scopes");
+                    Set<String> scopes = scopesStr != null && !scopesStr.isEmpty()
+                            ? Set.of(scopesStr.split(","))
                             : Set.of();
+                    String redirectUri = (String) data.get("redirectUri");
+                    String state = (String) data.get("state");
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> attributes = data.get("attributes") instanceof Map
+                            ? (Map<String, Object>) data.get("attributes")
+                            : Map.of();
                     return OAuth2AuthorizationRequest.authorizationCode()
-                            .authorizationUri(data.get("authorizationUri"))
-                            .clientId(data.get("clientId"))
-                            .redirectUri(data.get("redirectUri").isEmpty() ? null : data.get("redirectUri"))
-                            .state(data.get("state").isEmpty() ? null : data.get("state"))
+                            .authorizationUri((String) data.get("authorizationUri"))
+                            .clientId((String) data.get("clientId"))
+                            .redirectUri(redirectUri.isEmpty() ? null : redirectUri)
+                            .state(state.isEmpty() ? null : state)
                             .scopes(scopes)
+                            .attributes(attrs -> attrs.putAll(attributes))
                             .build();
                 } catch (Exception e) {
                     return null;
