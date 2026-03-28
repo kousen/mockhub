@@ -427,6 +427,31 @@ class MandateServiceTest {
         assertThat(result).isEmpty();
     }
 
+    @Test
+    @DisplayName("findBestMandate - given multiple matching mandates - returns most specific")
+    void findBestMandate_givenMultipleMatchingMandates_returnsMostSpecific() {
+        Mandate broadMandate = createActiveMandate("m-broad", "agent-1", "user@example.com");
+        broadMandate.setScope("PURCHASE");
+        broadMandate.setCreatedAt(Instant.now().minus(2, ChronoUnit.DAYS));
+
+        Mandate specificMandate = createActiveMandate("m-specific", "agent-1", "user@example.com");
+        specificMandate.setScope("PURCHASE");
+        specificMandate.setAllowedEvents("rock-festival");
+        specificMandate.setAllowedCategories("concerts");
+        specificMandate.setMaxSpendPerTransaction(new BigDecimal("200.00"));
+        specificMandate.setCreatedAt(Instant.now().minus(1, ChronoUnit.DAYS));
+
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(broadMandate, specificMandate));
+
+        Optional<MandateDto> result = mandateService.findBestMandate(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("100.00"), "concerts", "rock-festival");
+
+        assertThat(result).isPresent();
+        assertThat(result.get().mandateId()).isEqualTo("m-specific");
+    }
+
     private Mandate createActiveMandate(String mandateId, String agentId, String userEmail) {
         Mandate mandate = new Mandate();
         mandate.setMandateId(mandateId);

@@ -162,6 +162,24 @@ class CartToolsTest {
         }
 
         @Test
+        @DisplayName("given eval warnings - returns cart with warnings")
+        void givenEvalWarnings_returnsCartWithWarnings() {
+            stubUserLookup("buyer@example.com");
+            when(listingRepository.findById(42L)).thenReturn(Optional.of(createActiveListing()));
+            when(evalRunner.evaluate(any(EvalContext.class)))
+                    .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))))
+                    .thenReturn(new EvalSummary(List.of(
+                            EvalResult.fail("SpendingLimit", EvalSeverity.WARNING, "Cart total exceeds $2000"))));
+            CartDto cartDto = new CartDto(null, null, null, null, 0, null);
+            when(cartService.addToCart(testUser, 42L)).thenReturn(cartDto);
+
+            String result = cartTools.addToCart("buyer@example.com", 42L, AGENT_ID, MANDATE_ID);
+
+            assertTrue(result.contains("\"warnings\""), "Result should contain warnings field");
+            assertTrue(result.contains("SpendingLimit"), "Warnings should include condition name");
+        }
+
+        @Test
         @DisplayName("given null listing ID - returns error JSON")
         void givenNullListingId_returnsErrorJson() {
             String result = cartTools.addToCart("buyer@example.com", null, AGENT_ID, MANDATE_ID);
