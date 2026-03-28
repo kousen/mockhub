@@ -28,6 +28,7 @@ class CookieOAuth2AuthorizationRequestRepositoryTest {
     void setUp() {
         repository = new CookieOAuth2AuthorizationRequestRepository(
                 "dGVzdC1zZWNyZXQta2V5LWZvci1obWFjLXNpZ25pbmctdGVzdA==",
+                false,
                 new ObjectMapper());
         request = new MockHttpServletRequest();
         response = new MockHttpServletResponse();

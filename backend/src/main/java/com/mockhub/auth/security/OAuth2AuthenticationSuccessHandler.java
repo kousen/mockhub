@@ -37,6 +37,9 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
 
     private static final Logger log = LoggerFactory.getLogger(OAuth2AuthenticationSuccessHandler.class);
     private static final long CODE_TTL_MS = 30_000;
+    private static final String PROVIDER_GOOGLE = "google";
+    private static final String PROVIDER_GITHUB = "github";
+    private static final String PROVIDER_SPOTIFY = "spotify";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
@@ -70,7 +73,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         OAuth2User oauth2User = oauthToken.getPrincipal();
         String provider = oauthToken.getAuthorizedClientRegistrationId();
 
-        String email = extractEmail(oauth2User, provider);
+        String email = extractEmail(oauth2User);
         if (email == null) {
             log.error("Could not extract email from {} OAuth2 user", provider);
             response.sendRedirect(frontendRedirectUrl + "/login?error=oauth_no_email");
@@ -161,25 +164,22 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         }
     }
 
-    private String extractEmail(OAuth2User user, String provider) {
-        return switch (provider) {
-            case "spotify" -> user.getAttribute("email");
-            default -> user.getAttribute("email");
-        };
+    private String extractEmail(OAuth2User user) {
+        return user.getAttribute("email");
     }
 
     private String extractProviderAccountId(OAuth2User user, String provider) {
         return switch (provider) {
-            case "google" -> user.getAttribute("sub");
-            case "github" -> String.valueOf((Object) user.getAttribute("id"));
-            case "spotify" -> user.getAttribute("id");
+            case PROVIDER_GOOGLE -> user.getAttribute("sub");
+            case PROVIDER_GITHUB -> String.valueOf((Object) user.getAttribute("id"));
+            case PROVIDER_SPOTIFY -> user.getAttribute("id");
             default -> null;
         };
     }
 
     private String extractName(OAuth2User user, String provider) {
         return switch (provider) {
-            case "spotify" -> user.getAttribute("display_name");
+            case PROVIDER_SPOTIFY -> user.getAttribute("display_name");
             default -> user.getAttribute("name");
         };
     }
@@ -187,9 +187,9 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     @SuppressWarnings("unchecked")
     private String extractAvatarUrl(OAuth2User user, String provider) {
         return switch (provider) {
-            case "google" -> user.getAttribute("picture");
-            case "github" -> user.getAttribute("avatar_url");
-            case "spotify" -> {
+            case PROVIDER_GOOGLE -> user.getAttribute("picture");
+            case PROVIDER_GITHUB -> user.getAttribute("avatar_url");
+            case PROVIDER_SPOTIFY -> {
                 Object images = user.getAttribute("images");
                 if (images instanceof List<?> imageList && !imageList.isEmpty()) {
                     Object first = imageList.getFirst();

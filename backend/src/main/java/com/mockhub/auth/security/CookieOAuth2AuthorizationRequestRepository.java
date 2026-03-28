@@ -29,11 +29,14 @@ public class CookieOAuth2AuthorizationRequestRepository
 
     private final byte[] signingKey;
     private final ObjectMapper objectMapper;
+    private final boolean secureCookie;
 
     public CookieOAuth2AuthorizationRequestRepository(
             @Value("${mockhub.jwt.secret}") String jwtSecret,
+            @Value("${mockhub.cookie.secure:false}") boolean secureCookie,
             ObjectMapper objectMapper) {
         this.signingKey = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        this.secureCookie = secureCookie;
         this.objectMapper = objectMapper;
     }
 
@@ -130,6 +133,7 @@ public class CookieOAuth2AuthorizationRequestRepository
         Cookie cookie = new Cookie(COOKIE_NAME, value);
         cookie.setPath("/");
         cookie.setHttpOnly(true);
+        cookie.setSecure(secureCookie);
         cookie.setMaxAge(COOKIE_EXPIRE_SECONDS);
         response.addCookie(cookie);
     }
@@ -138,6 +142,7 @@ public class CookieOAuth2AuthorizationRequestRepository
         Cookie cookie = new Cookie(COOKIE_NAME, "");
         cookie.setPath("/");
         cookie.setHttpOnly(true);
+        cookie.setSecure(secureCookie);
         cookie.setMaxAge(0);
         response.addCookie(cookie);
     }

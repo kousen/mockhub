@@ -22,7 +22,6 @@ import com.mockhub.auth.entity.Role;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
-import com.mockhub.auth.security.OAuth2AuthenticationSuccessHandler;
 import com.mockhub.auth.security.SecurityUser;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
 import com.mockhub.auth.service.AuthService;
@@ -30,7 +29,6 @@ import com.mockhub.common.exception.ConflictException;
 import com.mockhub.config.SecurityConfig;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -187,7 +185,7 @@ class AuthControllerTest {
     @DisplayName("POST /api/v1/auth/oauth2/exchange - given valid code - returns 200 with auth response")
     void exchangeOAuth2Code_givenValidCode_returns200WithAuthResponse() throws Exception {
         AuthResponse response = createTestAuthResponse();
-        when(oauth2SuccessHandler.exchangeCode(eq("valid-code"))).thenReturn(response);
+        when(oauth2SuccessHandler.exchangeCode("valid-code")).thenReturn(response);
 
         mockMvc.perform(post("/api/v1/auth/oauth2/exchange")
                         .param("code", "valid-code"))
@@ -199,7 +197,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("POST /api/v1/auth/oauth2/exchange - given invalid code - returns 401")
     void exchangeOAuth2Code_givenInvalidCode_returns401() throws Exception {
-        when(oauth2SuccessHandler.exchangeCode(eq("invalid-code"))).thenReturn(null);
+        when(oauth2SuccessHandler.exchangeCode("invalid-code")).thenReturn(null);
 
         mockMvc.perform(post("/api/v1/auth/oauth2/exchange")
                         .param("code", "invalid-code"))
