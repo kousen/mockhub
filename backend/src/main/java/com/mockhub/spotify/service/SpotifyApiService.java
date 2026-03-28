@@ -36,6 +36,7 @@ public class SpotifyApiService implements SpotifyService {
     private static final long CACHE_TTL_SECONDS = 3600;
     private static final int MAX_RETRIES = 3;
     private static final long BASE_BACKOFF_MS = 1000;
+    private static final String SANITIZE_PATTERN = "[\\r\\n]";
 
     private final RestClient authClient;
     private final RestClient apiClient;
@@ -77,6 +78,7 @@ public class SpotifyApiService implements SpotifyService {
             return Optional.of(cached.artist());
         }
 
+        String sanitizedId = spotifyArtistId.replaceAll(SANITIZE_PATTERN, "");
         try {
             String token = getAccessToken();
             SpotifyArtistResponse response = fetchWithRetry(spotifyArtistId, token);
@@ -102,19 +104,19 @@ public class SpotifyApiService implements SpotifyService {
 
             artistCache.put(spotifyArtistId, new CachedArtist(artist,
                     Instant.now().plusSeconds(CACHE_TTL_SECONDS)));
-            log.info("Fetched Spotify artist: {} ({})", artist.name(), spotifyArtistId.replaceAll("[\\r\\n]", ""));
+            log.info("Fetched Spotify artist: {} ({})", artist.name(), sanitizedId);
             return Optional.of(artist);
 
-        } catch (HttpClientErrorException.NotFound e) {
-            log.info("Spotify artist not found: {}", spotifyArtistId.replaceAll("[\\r\\n]", ""));
+        } catch (HttpClientErrorException.NotFound _) {
+            log.info("Spotify artist not found: {}", sanitizedId);
             return Optional.empty();
         } catch (RestClientException e) {
-            log.error("Spotify API error for artist {}: {}", spotifyArtistId.replaceAll("[\\r\\n]", ""), e.getMessage());
-            throw e;
+            throw new RestClientException("Spotify API error for artist " + sanitizedId, e);
         }
     }
 
     private SpotifyArtistResponse fetchWithRetry(String spotifyArtistId, String token) {
+        String sanitizedId = spotifyArtistId.replaceAll(SANITIZE_PATTERN, "");
         for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
             try {
                 return apiClient.get()
@@ -125,7 +127,7 @@ public class SpotifyApiService implements SpotifyService {
             } catch (HttpClientErrorException.TooManyRequests e) {
                 if (attempt == MAX_RETRIES) {
                     log.error("Spotify rate limit exceeded after {} retries for artist {}",
-                            MAX_RETRIES, spotifyArtistId.replaceAll("[\\r\\n]", ""));
+                            MAX_RETRIES, sanitizedId);
                     throw e;
                 }
                 long waitMs = parseRetryAfter(e.getResponseHeaders(), attempt);
@@ -143,7 +145,7 @@ public class SpotifyApiService implements SpotifyService {
             if (retryAfter != null) {
                 try {
                     return Long.parseLong(retryAfter) * 1000;
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException _) {
                     // Fall through to exponential backoff
                 }
             }

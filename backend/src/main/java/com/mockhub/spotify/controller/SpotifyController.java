@@ -46,10 +46,9 @@ public class SpotifyController {
         try {
             return spotifyService.get().getArtist(spotifyArtistId)
                     .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
         } catch (RestClientException e) {
-            log.error("Spotify upstream error for artist {}: {}",
-                    spotifyArtistId.replaceAll("[\\r\\n]", ""), e.getMessage());
+            log.error("Spotify upstream error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
         }
     }
