@@ -188,6 +188,9 @@ export function EventDetailPage() {
                 className="border-0"
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Playback requires a Spotify account. Use "Open in Spotify" below to listen.
+            </p>
 
             {/* Listen on Spotify link */}
             <a
