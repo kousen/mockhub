@@ -377,6 +377,56 @@ class MandateServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    // --- findBestMandate ---
+
+    @Test
+    @DisplayName("findBestMandate returns matching mandate when constraints pass")
+    void findBestMandate_givenMatchingMandate_returnsMandate() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setId(1L);
+        mandate.setScope("PURCHASE");
+        mandate.setMaxSpendPerTransaction(new BigDecimal("200.00"));
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        Optional<MandateDto> result = mandateService.findBestMandate(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("100.00"), null, null);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().mandateId()).isEqualTo("m1");
+        assertThat(result.get().scope()).isEqualTo("PURCHASE");
+    }
+
+    @Test
+    @DisplayName("findBestMandate returns empty when no mandates exist")
+    void findBestMandate_givenNoMandates_returnsEmpty() {
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of());
+
+        Optional<MandateDto> result = mandateService.findBestMandate(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("50.00"), null, null);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("findBestMandate filters out expired mandates")
+    void findBestMandate_givenExpiredMandate_returnsEmpty() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setId(1L);
+        mandate.setExpiresAt(Instant.now().minus(1, ChronoUnit.HOURS));
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        Optional<MandateDto> result = mandateService.findBestMandate(
+                "agent-1", "user@example.com", "PURCHASE",
+                null, null, null);
+
+        assertThat(result).isEmpty();
+    }
+
     private Mandate createActiveMandate(String mandateId, String agentId, String userEmail) {
         Mandate mandate = new Mandate();
         mandate.setMandateId(mandateId);

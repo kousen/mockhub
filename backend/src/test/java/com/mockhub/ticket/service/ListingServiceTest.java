@@ -369,6 +369,46 @@ class ListingServiceTest {
         assertEquals(0, results.size());
     }
 
+    // --- getComputedPriceRange ---
+
+    @Test
+    @DisplayName("getComputedPriceRange - given listings with prices - returns min and max")
+    void getComputedPriceRange_givenListingsWithPrices_returnsMinAndMax() {
+        Listing listing1 = new Listing();
+        listing1.setComputedPrice(new BigDecimal("50.00"));
+        listing1.setStatus("ACTIVE");
+
+        Listing listing2 = new Listing();
+        listing2.setComputedPrice(new BigDecimal("150.00"));
+        listing2.setStatus("ACTIVE");
+
+        Listing listing3 = new Listing();
+        listing3.setComputedPrice(new BigDecimal("75.00"));
+        listing3.setStatus("ACTIVE");
+
+        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE"))
+                .thenReturn(List.of(listing1, listing2, listing3));
+
+        BigDecimal[] result = listingService.getComputedPriceRange(1L);
+
+        assertNotNull(result, "Result should not be null");
+        assertEquals(new BigDecimal("50.00"), result[0], "Min price should be 50.00");
+        assertEquals(new BigDecimal("150.00"), result[1], "Max price should be 150.00");
+    }
+
+    @Test
+    @DisplayName("getComputedPriceRange - given no listings - returns nulls")
+    void getComputedPriceRange_givenNoListings_returnsNulls() {
+        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE"))
+                .thenReturn(List.of());
+
+        BigDecimal[] result = listingService.getComputedPriceRange(1L);
+
+        assertNotNull(result, "Result array should not be null");
+        assertNull(result[0], "Min price should be null when no listings");
+        assertNull(result[1], "Max price should be null when no listings");
+    }
+
     private Listing createFullListing(boolean withSeat, boolean withSeller) {
         Venue venue = new Venue();
         venue.setName("Test Venue");

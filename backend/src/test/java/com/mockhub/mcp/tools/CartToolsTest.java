@@ -275,6 +275,45 @@ class CartToolsTest {
     }
 
     @Nested
+    @DisplayName("refreshCart")
+    class RefreshCart {
+
+        @Test
+        @DisplayName("given valid email - returns cart JSON")
+        void givenValidEmail_returnsCartJson() {
+            stubUserLookup("buyer@example.com");
+            CartDto cartDto = new CartDto(1L, 1L, List.of(), BigDecimal.ZERO, 0, null);
+            when(cartService.refreshCart(testUser)).thenReturn(cartDto);
+
+            String result = cartTools.refreshCart("buyer@example.com");
+
+            verify(cartService).refreshCart(testUser);
+            assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given null email - returns error JSON")
+        void givenNullEmail_returnsErrorJson() {
+            String result = cartTools.refreshCart(null);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+        }
+
+        @Test
+        @DisplayName("given service throws exception - returns error JSON")
+        void givenServiceThrowsException_returnsErrorJson() {
+            stubUserLookup("buyer@example.com");
+            when(cartService.refreshCart(testUser))
+                    .thenThrow(new RuntimeException("Cart error"));
+
+            String result = cartTools.refreshCart("buyer@example.com");
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Failed to refresh cart"), "Result should contain failure message");
+        }
+    }
+
+    @Nested
     @DisplayName("clearCart")
     class ClearCart {
 
