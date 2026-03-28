@@ -84,7 +84,8 @@ test.describe('Cart and checkout', () => {
     await expect(page.getByRole('banner').getByRole('link', { name: 'MockHub' })).toBeVisible();
   });
 
-  test('cart icon shows badge count when authenticated with items in cart', async ({ page }) => {
+  test('cart icon shows badge count when authenticated with items in cart', async ({ page, isMobile }) => {
+    test.skip(!!isMobile, 'Cart button in header is not visible on mobile — mobile nav tested separately');
     await authenticateUser(page);
 
     // Mock cart endpoint to return a cart with one item
