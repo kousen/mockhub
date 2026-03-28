@@ -243,6 +243,12 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
     }
 
+    @Transactional(readOnly = true)
+    public Order getOrderEntityWithItems(String orderNumber) {
+        return orderRepository.findByOrderNumberWithItems(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
+    }
+
     @Transactional
     public Order getOrderEntityByPaymentIntentId(String paymentIntentId) {
         return orderRepository.findByPaymentIntentId(paymentIntentId)
