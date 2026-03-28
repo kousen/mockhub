@@ -1,29 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Mail, Phone, Save, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCurrentUser, useUpdateProfile } from '@/hooks/use-auth';
+import type { UserDto } from '@/types/auth';
 
-export function ProfilePage() {
-  const user = useAuthStore((state) => state.user);
-  useCurrentUser();
-
+function ProfileForm({ user }: { user: UserDto }) {
   const updateProfile = useUpdateProfile();
 
-  const [firstName, setFirstName] = useState(user?.firstName ?? '');
-  const [lastName, setLastName] = useState(user?.lastName ?? '');
-  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [firstName, setFirstName] = useState(user.firstName);
+  const [lastName, setLastName] = useState(user.lastName);
+  const [phone, setPhone] = useState(user.phone ?? '');
   const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      setFirstName(user.firstName);
-      setLastName(user.lastName);
-      setPhone(user.phone ?? '');
-    }
-  }, [user]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +27,98 @@ export function ProfilePage() {
       },
     );
   };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold">Personal Information</h2>
+        <p className="text-sm text-muted-foreground">Update your name and contact details.</p>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="email" className="mb-1 block text-sm font-medium">
+            Email
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              value={user.email}
+              disabled
+              className="pl-10 opacity-60"
+            />
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Email cannot be changed — it is your account identifier.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="firstName" className="mb-1 block text-sm font-medium">
+              First Name
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="pl-10"
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="lastName" className="mb-1 block text-sm font-medium">
+              Last Name
+            </label>
+            <Input
+              id="lastName"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="phone" className="mb-1 block text-sm font-medium">
+            Phone Number
+          </label>
+          <div className="relative">
+            <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Optional"
+              className="pl-10"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={updateProfile.isPending}>
+          <Save className="mr-2 h-4 w-4" />
+          {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
+        </Button>
+        {saved && <span className="text-sm text-emerald-600">Profile updated!</span>}
+        {updateProfile.isError && (
+          <span className="text-sm text-destructive">Failed to update profile.</span>
+        )}
+      </div>
+    </form>
+  );
+}
+
+export function ProfilePage() {
+  const user = useAuthStore((state) => state.user);
+  useCurrentUser();
 
   if (!user) {
     return null;
@@ -53,91 +135,8 @@ export function ProfilePage() {
 
       <Separator className="mb-6" />
 
-      {/* Profile Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <h2 className="text-lg font-semibold">Personal Information</h2>
-          <p className="text-sm text-muted-foreground">Update your name and contact details.</p>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium">
-              Email
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                value={user.email}
-                disabled
-                className="pl-10 opacity-60"
-              />
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Email cannot be changed — it is your account identifier.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="firstName" className="mb-1 block text-sm font-medium">
-                First Name
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="firstName"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="lastName" className="mb-1 block text-sm font-medium">
-                Last Name
-              </label>
-              <Input
-                id="lastName"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="phone" className="mb-1 block text-sm font-medium">
-              Phone Number
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Optional"
-                className="pl-10"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button type="submit" disabled={updateProfile.isPending}>
-            <Save className="mr-2 h-4 w-4" />
-            {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
-          </Button>
-          {saved && <span className="text-sm text-emerald-600">Profile updated!</span>}
-          {updateProfile.isError && (
-            <span className="text-sm text-destructive">Failed to update profile.</span>
-          )}
-        </div>
-      </form>
+      {/* Key on user ID so form reinitializes when user data refreshes */}
+      <ProfileForm key={user.id} user={user} />
 
       <Separator className="my-8" />
 
