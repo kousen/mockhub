@@ -249,4 +249,54 @@ class AuthServiceTest {
                 () -> authService.getLinkedProviders("unknown@example.com"),
                 "Should throw ResourceNotFoundException for unknown email");
     }
+
+    @Test
+    @DisplayName("unlinkProvider - given linked provider and user has password - removes provider")
+    void unlinkProvider_givenLinkedProviderAndPassword_removesProvider() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
+        when(oAuthAccountRepository.countByUserId(1L)).thenReturn(1L);
+
+        authService.unlinkProvider("test@example.com", "google");
+
+        verify(oAuthAccountRepository).deleteByUserIdAndProvider(1L, "google");
+    }
+
+    @Test
+    @DisplayName("unlinkProvider - given linked provider and multiple providers no password - removes provider")
+    void unlinkProvider_givenMultipleProvidersNoPassword_removesProvider() {
+        testUser.setPasswordHash(null);
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
+        when(oAuthAccountRepository.countByUserId(1L)).thenReturn(2L);
+
+        authService.unlinkProvider("test@example.com", "google");
+
+        verify(oAuthAccountRepository).deleteByUserIdAndProvider(1L, "google");
+    }
+
+    @Test
+    @DisplayName("unlinkProvider - given only provider and no password - throws ConflictException")
+    void unlinkProvider_givenOnlyProviderAndNoPassword_throwsConflictException() {
+        testUser.setPasswordHash(null);
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
+        when(oAuthAccountRepository.countByUserId(1L)).thenReturn(1L);
+
+        assertThrows(ConflictException.class,
+                () -> authService.unlinkProvider("test@example.com", "google"),
+                "Should prevent unlinking last login method");
+        verify(oAuthAccountRepository, never()).deleteByUserIdAndProvider(any(), any());
+    }
+
+    @Test
+    @DisplayName("unlinkProvider - given provider not linked - throws ResourceNotFoundException")
+    void unlinkProvider_givenProviderNotLinked_throwsResourceNotFoundException() {
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "github")).thenReturn(false);
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> authService.unlinkProvider("test@example.com", "github"),
+                "Should throw when provider not linked");
+    }
 }

@@ -15,6 +15,17 @@ export function useLinkedProviders() {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+export function useUnlinkProvider() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (provider: string) => authApi.unlinkProvider(provider),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth', 'providers'] });
+    },
+  });
+}
 import { ROUTES } from '@/lib/constants';
 
 /**
