@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.ai.service.ChatContext;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
@@ -38,6 +39,7 @@ import com.mockhub.event.entity.Category;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -549,6 +551,66 @@ class OrderToolsTest {
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to generate calendar entry"), "Should contain failure message");
+        }
+    }
+
+    @Nested
+    @DisplayName("ChatContext email enforcement")
+    class ChatContextEnforcement {
+
+        @org.junit.jupiter.api.AfterEach
+        void tearDown() {
+            ChatContext.clear();
+        }
+
+        @Test
+        @DisplayName("given ChatContext set - overrides userEmail in checkout")
+        void givenChatContext_overridesUserEmailInCheckout() {
+            ChatContext.setAuthenticatedEmail("real@example.com");
+            User realUser = new User();
+            realUser.setId(2L);
+            realUser.setEmail("real@example.com");
+            when(userRepository.findByEmail("real@example.com")).thenReturn(Optional.of(realUser));
+            CartDto cartDto = new CartDto(null, null, null, java.math.BigDecimal.TEN, 1, null);
+            when(cartService.getCartDto(realUser)).thenReturn(cartDto);
+            when(evalRunner.evaluate(any())).thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
+            OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null);
+            when(orderService.checkout(eq(realUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID)))
+                    .thenReturn(orderDto);
+
+            String result = orderTools.checkout("attacker@example.com", "mock", AGENT_ID, MANDATE_ID);
+
+            verify(userRepository).findByEmail("real@example.com");
+            verify(userRepository, never()).findByEmail("attacker@example.com");
+        }
+
+        @Test
+        @DisplayName("given ChatContext set - overrides userEmail in getOrder")
+        void givenChatContext_overridesUserEmailInGetOrder() {
+            ChatContext.setAuthenticatedEmail("real@example.com");
+            User realUser = new User();
+            realUser.setId(2L);
+            realUser.setEmail("real@example.com");
+            when(userRepository.findByEmail("real@example.com")).thenReturn(Optional.of(realUser));
+            OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(realUser, "MH-001")).thenReturn(orderDto);
+
+            String result = orderTools.getOrder("attacker@example.com", "MH-001");
+
+            verify(userRepository).findByEmail("real@example.com");
+            verify(userRepository, never()).findByEmail("attacker@example.com");
+        }
+
+        @Test
+        @DisplayName("given no ChatContext - uses parameter email (external MCP)")
+        void givenNoChatContext_usesParameterEmail() {
+            stubUserLookup("buyer@example.com");
+            OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-001")).thenReturn(orderDto);
+
+            String result = orderTools.getOrder("buyer@example.com", "MH-001");
+
+            verify(userRepository).findByEmail("buyer@example.com");
         }
     }
 }

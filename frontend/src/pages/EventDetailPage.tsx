@@ -190,7 +190,8 @@ export function EventDetailPage() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Playback requires a Spotify account. Use "Open in Spotify" below to listen.
+              Playback is not available in the embedded player due to browser privacy restrictions.
+              Use the link below to listen on Spotify.
             </p>
 
             {/* Listen on Spotify link */}
