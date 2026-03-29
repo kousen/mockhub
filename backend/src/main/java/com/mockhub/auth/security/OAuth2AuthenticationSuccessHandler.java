@@ -213,9 +213,15 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
                 roles, user.getCreatedAt());
     }
 
-    private void cleanupExpired() {
+    @org.springframework.scheduling.annotation.Scheduled(fixedRateString = "${mockhub.oauth2.cleanup-interval-ms:300000}")
+    void cleanupExpired() {
+        int sizeBefore = pendingAuths.size();
         Instant now = Instant.now();
         pendingAuths.entrySet().removeIf(entry -> now.isAfter(entry.getValue().expiry()));
+        int removed = sizeBefore - pendingAuths.size();
+        if (removed > 0) {
+            log.info("Cleaned up {} expired OAuth pending auth codes", removed);
+        }
     }
 
     record PendingAuth(AuthResponse authResponse, String refreshToken, Instant expiry) {

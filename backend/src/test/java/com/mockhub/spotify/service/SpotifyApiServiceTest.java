@@ -31,6 +31,15 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class SpotifyApiServiceTest {
 
+    // Valid 22-char base62 Spotify IDs for tests
+    private static final String ARTIST_ID_1 = "1aB2cD3eF4gH5iJ6kL7mN8";
+    private static final String ARTIST_ID_2 = "2bC3dE4fG5hI6jK7lM8nO9";
+    private static final String ARTIST_ID_3 = "3cD4eF5gH6iJ7kL8mN9oP0";
+    private static final String ARTIST_ID_4 = "4dE5fG6hI7jK8lM9nO0pQ1";
+    private static final String ARTIST_ID_5 = "5eF6gH7iJ8kL9mN0oP1qR2";
+    private static final String ARTIST_ID_6 = "6fG7hI8jK9lM0nO1pQ2rS3";
+    private static final String ARTIST_ID_7 = "7gH8iJ9kL0mN1oP2qR3sT4";
+
     private MockRestServiceServer authServer;
     private MockRestServiceServer apiServer;
     private SpotifyApiService service;
@@ -52,11 +61,11 @@ class SpotifyApiServiceTest {
     @DisplayName("getArtist - given valid artist ID - returns artist metadata")
     void getArtist_givenValidArtistId_returnsArtistMetadata() {
         stubTokenResponse();
-        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/abc123"))
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_1))
                 .andExpect(header("Authorization", "Bearer mock-access-token"))
                 .andRespond(withSuccess("""
                         {
-                            "id": "abc123",
+                            "id": "%s",
                             "name": "Test Artist",
                             "genres": ["rock", "indie"],
                             "followers": { "total": 500000 },
@@ -65,13 +74,13 @@ class SpotifyApiServiceTest {
                                 { "url": "https://img.spotify.com/small.jpg", "height": 64, "width": 64 }
                             ]
                         }
-                        """, MediaType.APPLICATION_JSON));
+                        """.formatted(ARTIST_ID_1), MediaType.APPLICATION_JSON));
 
-        Optional<SpotifyArtistDto> result = service.getArtist("abc123");
+        Optional<SpotifyArtistDto> result = service.getArtist(ARTIST_ID_1);
 
         assertTrue(result.isPresent());
         SpotifyArtistDto artist = result.get();
-        assertEquals("abc123", artist.id());
+        assertEquals(ARTIST_ID_1, artist.id());
         assertEquals("Test Artist", artist.name());
         assertEquals(List.of("rock", "indie"), artist.genres());
         assertEquals(500000, artist.followers());
@@ -82,10 +91,10 @@ class SpotifyApiServiceTest {
     @DisplayName("getArtist - given 404 from Spotify - returns empty")
     void getArtist_given404FromSpotify_returnsEmpty() {
         stubTokenResponse();
-        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/bad-id"))
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_2))
                 .andRespond(withResourceNotFound());
 
-        Optional<SpotifyArtistDto> result = service.getArtist("bad-id");
+        Optional<SpotifyArtistDto> result = service.getArtist(ARTIST_ID_2);
 
         assertFalse(result.isPresent());
     }
@@ -94,30 +103,30 @@ class SpotifyApiServiceTest {
     @DisplayName("getArtist - given 500 from Spotify - throws RestClientException")
     void getArtist_given500FromSpotify_throwsRestClientException() {
         stubTokenResponse();
-        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/error-id"))
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_3))
                 .andRespond(withServerError());
 
-        assertThrows(RestClientException.class, () -> service.getArtist("error-id"));
+        assertThrows(RestClientException.class, () -> service.getArtist(ARTIST_ID_3));
     }
 
     @Test
     @DisplayName("getArtist - given cached artist - does not call API again")
     void getArtist_givenCachedArtist_doesNotCallApiAgain() {
         stubTokenResponse();
-        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/cached123"))
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_4))
                 .andRespond(withSuccess("""
                         {
-                            "id": "cached123",
+                            "id": "%s",
                             "name": "Cached Artist",
                             "genres": ["pop"],
                             "followers": { "total": 100 },
                             "images": []
                         }
-                        """, MediaType.APPLICATION_JSON));
+                        """.formatted(ARTIST_ID_4), MediaType.APPLICATION_JSON));
 
-        service.getArtist("cached123");
+        service.getArtist(ARTIST_ID_4);
         // Second call should use cache, not hit the server
-        Optional<SpotifyArtistDto> result = service.getArtist("cached123");
+        Optional<SpotifyArtistDto> result = service.getArtist(ARTIST_ID_4);
 
         assertTrue(result.isPresent());
         assertEquals("Cached Artist", result.get().name());
@@ -129,18 +138,18 @@ class SpotifyApiServiceTest {
     @DisplayName("getArtist - given artist with null genres and followers - handles gracefully")
     void getArtist_givenArtistWithNullFields_handlesGracefully() {
         stubTokenResponse();
-        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/minimal"))
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_5))
                 .andRespond(withSuccess("""
                         {
-                            "id": "minimal",
+                            "id": "%s",
                             "name": "Minimal Artist",
                             "genres": null,
                             "followers": null,
                             "images": null
                         }
-                        """, MediaType.APPLICATION_JSON));
+                        """.formatted(ARTIST_ID_5), MediaType.APPLICATION_JSON));
 
-        Optional<SpotifyArtistDto> result = service.getArtist("minimal");
+        Optional<SpotifyArtistDto> result = service.getArtist(ARTIST_ID_5);
 
         assertTrue(result.isPresent());
         SpotifyArtistDto artist = result.get();
@@ -154,17 +163,17 @@ class SpotifyApiServiceTest {
     @DisplayName("getArtist - reuses token for second call")
     void getArtist_reusesTokenForSecondCall() {
         stubTokenResponse();
-        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/first"))
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_6))
                 .andRespond(withSuccess("""
-                        { "id": "first", "name": "First", "genres": [], "followers": { "total": 1 }, "images": [] }
-                        """, MediaType.APPLICATION_JSON));
-        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/second"))
+                        { "id": "%s", "name": "First", "genres": [], "followers": { "total": 1 }, "images": [] }
+                        """.formatted(ARTIST_ID_6), MediaType.APPLICATION_JSON));
+        apiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_7))
                 .andRespond(withSuccess("""
-                        { "id": "second", "name": "Second", "genres": [], "followers": { "total": 2 }, "images": [] }
-                        """, MediaType.APPLICATION_JSON));
+                        { "id": "%s", "name": "Second", "genres": [], "followers": { "total": 2 }, "images": [] }
+                        """.formatted(ARTIST_ID_7), MediaType.APPLICATION_JSON));
 
-        service.getArtist("first");
-        Optional<SpotifyArtistDto> result = service.getArtist("second");
+        service.getArtist(ARTIST_ID_6);
+        Optional<SpotifyArtistDto> result = service.getArtist(ARTIST_ID_7);
 
         assertTrue(result.isPresent());
         assertEquals("Second", result.get().name());
@@ -202,14 +211,14 @@ class SpotifyApiServiceTest {
                     .andRespond(withSuccess("""
                             { "access_token": "token", "token_type": "bearer", "expires_in": 3600 }
                             """, MediaType.APPLICATION_JSON));
-            retryApiServer.expect(requestTo("https://api.spotify.com/v1/artists/retry-id"))
+            retryApiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_1))
                     .andRespond(withTooManyRequests());
-            retryApiServer.expect(requestTo("https://api.spotify.com/v1/artists/retry-id"))
+            retryApiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_1))
                     .andRespond(withSuccess("""
-                            { "id": "retry-id", "name": "Retried Artist", "genres": ["pop"], "followers": { "total": 100 }, "images": [] }
-                            """, MediaType.APPLICATION_JSON));
+                            { "id": "%s", "name": "Retried Artist", "genres": ["pop"], "followers": { "total": 100 }, "images": [] }
+                            """.formatted(ARTIST_ID_1), MediaType.APPLICATION_JSON));
 
-            Optional<SpotifyArtistDto> result = retryService.getArtist("retry-id");
+            Optional<SpotifyArtistDto> result = retryService.getArtist(ARTIST_ID_1);
 
             assertTrue(result.isPresent());
             assertEquals("Retried Artist", result.get().name());
@@ -223,11 +232,11 @@ class SpotifyApiServiceTest {
                             { "access_token": "token", "token_type": "bearer", "expires_in": 3600 }
                             """, MediaType.APPLICATION_JSON));
             for (int i = 0; i <= 3; i++) {
-                retryApiServer.expect(requestTo("https://api.spotify.com/v1/artists/stuck-id"))
+                retryApiServer.expect(requestTo("https://api.spotify.com/v1/artists/" + ARTIST_ID_2))
                         .andRespond(withTooManyRequests());
             }
 
-            assertThrows(RestClientException.class, () -> retryService.getArtist("stuck-id"));
+            assertThrows(RestClientException.class, () -> retryService.getArtist(ARTIST_ID_2));
         }
     }
 
@@ -274,6 +283,64 @@ class SpotifyApiServiceTest {
         assertThrows(RestClientException.class, () -> service.sleep(100));
         // Clear the interrupt flag for test cleanup
         Thread.interrupted();
+    }
+
+    @Nested
+    @DisplayName("getArtist - ID format validation")
+    class ArtistIdValidation {
+
+        @Test
+        @DisplayName("given null ID - returns empty")
+        void givenNullId_returnsEmpty() {
+            Optional<SpotifyArtistDto> result = service.getArtist(null);
+
+            assertTrue(result.isEmpty(), "Null ID should return empty");
+        }
+
+        @Test
+        @DisplayName("given too short ID - returns empty")
+        void givenTooShortId_returnsEmpty() {
+            Optional<SpotifyArtistDto> result = service.getArtist("abc123");
+
+            assertTrue(result.isEmpty(), "Short ID should return empty");
+        }
+
+        @Test
+        @DisplayName("given ID with special characters - returns empty")
+        void givenIdWithSpecialChars_returnsEmpty() {
+            Optional<SpotifyArtistDto> result = service.getArtist("06HL4z0CvFAxyc27GXp?02");
+
+            assertTrue(result.isEmpty(), "ID with special chars should return empty");
+        }
+
+        @Test
+        @DisplayName("given too long ID - returns empty")
+        void givenTooLongId_returnsEmpty() {
+            Optional<SpotifyArtistDto> result = service.getArtist("06HL4z0CvFAxyc27GXpf02X");
+
+            assertTrue(result.isEmpty(), "Too long ID should return empty");
+        }
+
+        @Test
+        @DisplayName("given valid 22-char base62 ID - proceeds with API call")
+        void givenValidId_proceedsWithApiCall() {
+            stubTokenResponse();
+            apiServer.expect(requestTo("https://api.spotify.com/v1/artists/06HL4z0CvFAxyc27GXpf02"))
+                    .andRespond(withSuccess("""
+                            {
+                                "id": "06HL4z0CvFAxyc27GXpf02",
+                                "name": "Taylor Swift",
+                                "genres": ["pop"],
+                                "followers": {"total": 100000},
+                                "images": [{"url": "https://img.example.com/ts.jpg", "height": 640, "width": 640}]
+                            }
+                            """, MediaType.APPLICATION_JSON));
+
+            Optional<SpotifyArtistDto> result = service.getArtist("06HL4z0CvFAxyc27GXpf02");
+
+            assertTrue(result.isPresent(), "Valid ID should return artist");
+            assertEquals("Taylor Swift", result.get().name());
+        }
     }
 
     private void stubTokenResponse() {

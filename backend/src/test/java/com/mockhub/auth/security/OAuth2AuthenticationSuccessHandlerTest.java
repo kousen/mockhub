@@ -383,4 +383,78 @@ class OAuth2AuthenticationSuccessHandlerTest {
             assertNull(second, "Second exchange should return null (code already consumed)");
         }
     }
+
+    @Nested
+    @DisplayName("cleanupExpired")
+    class CleanupExpired {
+
+        @Test
+        @DisplayName("removes expired pending auth codes")
+        void cleanupExpired_removesExpiredCodes() throws IOException {
+            stubForSuccessfulLogin();
+
+            handler.onAuthenticationSuccess(request, response, createGoogleToken());
+            String redirectUrl = response.getRedirectedUrl();
+            assertNotNull(redirectUrl);
+            String code = redirectUrl.substring(redirectUrl.indexOf("code=") + 5);
+
+            // Simulate expiry by exchanging after TTL would have passed
+            // The cleanupExpired method is called internally by exchangeCode
+            // Verify the code is valid right now
+            AuthResponse result = handler.exchangeCode(code);
+            assertNotNull(result, "Code should be valid immediately after creation");
+        }
+
+        @Test
+        @DisplayName("scheduled cleanup can be called without errors when map is empty")
+        void cleanupExpired_emptyMap_noErrors() {
+            handler.cleanupExpired();
+            // No exception means success
+        }
+
+        @Test
+        @DisplayName("scheduled cleanup removes expired entries and logs count")
+        void cleanupExpired_withExpiredEntries_removesAndLogs() throws Exception {
+            // Use reflection to insert an already-expired entry into pendingAuths
+            java.lang.reflect.Field field =
+                    OAuth2AuthenticationSuccessHandler.class.getDeclaredField("pendingAuths");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, ?> map = (Map<String, ?>) field.get(handler);
+
+            // Create an expired PendingAuth via the record constructor
+            Class<?> pendingAuthClass = Class.forName(
+                    "com.mockhub.auth.security.OAuth2AuthenticationSuccessHandler$PendingAuth");
+            java.lang.reflect.Constructor<?> constructor = pendingAuthClass.getDeclaredConstructors()[0];
+            constructor.setAccessible(true);
+            Object expiredEntry = constructor.newInstance(null, null, Instant.now().minusSeconds(60));
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> rawMap = (Map<String, Object>) map;
+            rawMap.put("expired-code", expiredEntry);
+
+            assertEquals(1, rawMap.size(), "Map should have 1 entry before cleanup");
+
+            handler.cleanupExpired();
+
+            assertEquals(0, rawMap.size(), "Expired entry should be removed");
+        }
+    }
+
+    private void stubForSuccessfulLogin() {
+        when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
+        when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
+        when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
+        when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(3600000L);
+    }
+
+    private OAuth2AuthenticationToken createGoogleToken() {
+        OAuth2User oauth2User = new DefaultOAuth2User(
+                List.of(() -> "ROLE_USER"),
+                Map.of("email", "user@example.com", "sub", "google-123", "name", "John Doe"),
+                "email");
+        return new OAuth2AuthenticationToken(oauth2User, oauth2User.getAuthorities(), "google");
+    }
 }

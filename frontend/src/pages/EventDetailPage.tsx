@@ -179,7 +179,7 @@ export function EventDetailPage() {
             {/* Spotify embedded player */}
             <div className="overflow-hidden rounded-xl">
               <iframe
-                src={`https://open.spotify.com/embed/artist/${event.spotifyArtistId}?utm_source=generator`}
+                src={`https://open.spotify.com/embed/artist/${encodeURIComponent(event.spotifyArtistId)}?utm_source=generator`}
                 width="100%"
                 height="352"
                 frameBorder="0"
@@ -196,7 +196,7 @@ export function EventDetailPage() {
 
             {/* Listen on Spotify link */}
             <a
-              href={`https://open.spotify.com/artist/${event.spotifyArtistId}`}
+              href={`https://open.spotify.com/artist/${encodeURIComponent(event.spotifyArtistId)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full bg-[#1DB954] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#1ed760]"
