@@ -21,6 +21,7 @@ import com.mockhub.eval.service.EvalRunner;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
@@ -174,5 +175,48 @@ class ChatServiceTest {
         ChatResponse response = chatService.chat(request, "ken@example.com");
 
         assertEquals(99L, response.conversationId());
+    }
+
+    @Test
+    @DisplayName("chat - given user email - sets ChatContext during call and clears after")
+    void chat_givenUserEmail_setsChatContextDuringCallAndClearsAfter() {
+        ChatRequest request = new ChatRequest("Buy tickets", null);
+        stubEvalRunnerPassing();
+
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(anyString())).thenReturn(requestSpec);
+        when(requestSpec.advisors(any(java.util.function.Consumer.class))).thenReturn(requestSpec);
+        // Capture the ChatContext value during the chatClient.call()
+        when(requestSpec.call()).thenAnswer(invocation -> {
+            assertEquals("ken@example.com", ChatContext.getAuthenticatedEmail(),
+                    "ChatContext should be set during tool execution");
+            return callResponseSpec;
+        });
+        when(callResponseSpec.content()).thenReturn("OK");
+
+        chatService.chat(request, "ken@example.com");
+
+        assertNull(ChatContext.getAuthenticatedEmail(),
+                "ChatContext should be cleared after chat completes");
+    }
+
+    @Test
+    @DisplayName("chat - clears ChatContext even when exception occurs")
+    void chat_givenException_clearsChatContext() {
+        ChatRequest request = new ChatRequest("Buy tickets", null);
+
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(anyString())).thenReturn(requestSpec);
+        when(requestSpec.advisors(any(java.util.function.Consumer.class))).thenReturn(requestSpec);
+        when(requestSpec.call()).thenThrow(new RuntimeException("AI error"));
+
+        try {
+            chatService.chat(request, "ken@example.com");
+        } catch (RuntimeException ignored) {
+            // expected
+        }
+
+        assertNull(ChatContext.getAuthenticatedEmail(),
+                "ChatContext should be cleared even after exception");
     }
 }
