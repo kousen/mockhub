@@ -13,7 +13,7 @@ POST /api/v1/auth/register — JSON body: {"email", "password", "firstName", "la
 POST /api/v1/auth/refresh — Refresh access token via HttpOnly cookie
 GET /api/v1/auth/me — Get current user profile
 PUT /api/v1/auth/me — Update profile. JSON body: {"firstName", "lastName", "phone"}
-POST /api/v1/auth/oauth2/exchange — Exchange OAuth2 one-time code for JWT. JSON body: {"code": "string"}
+POST /api/v1/auth/oauth2/exchange?code={code} — Exchange OAuth2 one-time code for JWT. Code is a query parameter, not a JSON body.
 GET /api/v1/auth/me/providers — List linked OAuth providers for current user
 OAuth2 login: /oauth2/authorization/{google|github|spotify}
 Authenticated requests: Authorization: Bearer <accessToken>
@@ -24,7 +24,7 @@ GET /api/v1/events — List events with search/filter/pagination
   Returns: {"content": [EventSummary], "page", "size", "totalElements", "totalPages"}
 GET /api/v1/events/featured — Featured events list
 GET /api/v1/events/{slug} — Event detail by slug
-GET /api/v1/events/{slug}/listings — Active ticket listings for an event (paginated)
+GET /api/v1/events/{slug}/listings — Active ticket listings for an event (returns full list, not paginated)
 GET /api/v1/events/{slug}/sections — Section availability with pricing
 GET /api/v1/events/{slug}/price-history — Price history snapshots
 GET /api/v1/events/{slug}/predicted-price — AI price prediction (requires AI profile)
@@ -71,7 +71,7 @@ GET /api/v1/my/earnings — Seller earnings summary with recent sales
 POST /api/v1/orders/checkout — Create order from cart. JSON body: {"paymentMethod": "string"}. Optional header: Idempotency-Key
 
 ## Orders (requires auth)
-GET /api/v1/orders — List user's orders (paginated). Returns event name, date, and venue per order.
+GET /api/v1/orders — List user's orders (paginated)
 GET /api/v1/orders/{orderNumber} — Order detail
 GET /api/v1/orders/{orderNumber}/calendar — Download .ics calendar file for event
 
