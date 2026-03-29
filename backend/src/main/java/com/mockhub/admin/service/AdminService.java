@@ -95,14 +95,7 @@ public class AdminService {
                 org.springframework.data.domain.PageRequest.of(0, 10,
                         org.springframework.data.domain.Sort.by("createdAt").descending()));
         List<OrderSummaryDto> recentOrders = recentOrderPage.getContent().stream()
-                .map(order -> new OrderSummaryDto(
-                        order.getId(),
-                        order.getOrderNumber(),
-                        order.getStatus(),
-                        order.getTotal(),
-                        order.getItems().size(),
-                        order.getCreatedAt()
-                ))
+                .map(this::toOrderSummaryDto)
                 .toList();
 
         return new DashboardStatsDto(
@@ -201,14 +194,7 @@ public class AdminService {
         Page<Order> orderPage = orderRepository.findAll(pageable);
 
         List<OrderSummaryDto> content = orderPage.getContent().stream()
-                .map(order -> new OrderSummaryDto(
-                        order.getId(),
-                        order.getOrderNumber(),
-                        order.getStatus(),
-                        order.getTotal(),
-                        order.getItems().size(),
-                        order.getCreatedAt()
-                ))
+                .map(this::toOrderSummaryDto)
                 .toList();
 
         return new PagedResponse<>(
@@ -326,6 +312,31 @@ public class AdminService {
                 null,
                 soldTickets,
                 revenue
+        );
+    }
+
+    private OrderSummaryDto toOrderSummaryDto(Order order) {
+        String eventName = null;
+        java.time.Instant eventDate = null;
+        String venueName = null;
+        if (!order.getItems().isEmpty()) {
+            Event event = order.getItems().getFirst().getListing().getEvent();
+            eventName = event.getName();
+            eventDate = event.getEventDate();
+            if (event.getVenue() != null) {
+                venueName = event.getVenue().getName();
+            }
+        }
+        return new OrderSummaryDto(
+                order.getId(),
+                order.getOrderNumber(),
+                order.getStatus(),
+                order.getTotal(),
+                order.getItems().size(),
+                order.getCreatedAt(),
+                eventName,
+                eventDate,
+                venueName
         );
     }
 

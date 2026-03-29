@@ -40,7 +40,7 @@ function getStatusColor(status: string): string {
 }
 
 /**
- * Card displaying an order summary with status badge, date, total, and item count.
+ * Card displaying an order summary with event name, status badge, date, total, and item count.
  * Links to the order detail/confirmation page.
  */
 export function OrderCard({ order }: OrderCardProps) {
@@ -50,20 +50,25 @@ export function OrderCard({ order }: OrderCardProps) {
     <Link to={`/orders/${order.orderNumber}/confirmation`}>
       <Card className="transition-colors hover:bg-accent/50">
         <CardContent className="flex items-center justify-between p-4">
-          <div className="space-y-1">
+          <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">#{order.orderNumber}</span>
+              <span className="truncate text-sm font-semibold">
+                {order.eventName || `#${order.orderNumber}`}
+              </span>
               <Badge variant={statusVariant} className={getStatusColor(order.status)}>
                 {order.status}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatShortDate(order.createdAt)}
+              {order.eventDate
+                ? formatShortDate(order.eventDate)
+                : formatShortDate(order.createdAt)}
+              {order.venueName && ` \u00b7 ${order.venueName}`}
               {' \u00b7 '}
               {order.itemCount} {order.itemCount === 1 ? 'ticket' : 'tickets'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <span className="text-sm font-semibold">{formatCurrency(order.total)}</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </div>

@@ -51,6 +51,7 @@ import com.mockhub.venue.entity.Section;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -469,6 +470,9 @@ class OrderServiceTest {
 
         assertNotNull(result, "Paged response should not be null");
         assertEquals(1, result.content().size(), "Should contain one order");
+        OrderSummaryDto summary = result.content().getFirst();
+        assertEquals("Test Event", summary.eventName(), "Should include event name from first item");
+        assertNull(summary.venueName(), "Venue should be null when event has no venue");
     }
 
     @Test

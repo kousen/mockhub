@@ -30,6 +30,9 @@ export interface OrderSummary {
   total: number;
   itemCount: number;
   createdAt: string;
+  eventName: string | null;
+  eventDate: string | null;
+  venueName: string | null;
 }
 
 export interface CheckoutRequest {
