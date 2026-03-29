@@ -28,7 +28,7 @@ MockHub mimics the functionality of sites like StubHub and TicketNetwork — reg
 | Build | Gradle 9.4.0, Vite |
 | Testing | JUnit 5, Testcontainers, Vitest, Playwright |
 | Payments | Stripe (test mode) + mock fallback |
-| Notifications | Twilio SMS, Resend email (Spring Mail SMTP) |
+| Notifications | Twilio SMS, Resend email (REST API + SMTP fallback) |
 
 ## Prerequisites
 
@@ -87,11 +87,26 @@ Any authenticated user can both buy and sell tickets.
 - **Dynamic pricing** — prices adjust based on supply, demand, and time to event
 - **Shopping cart and checkout** — full purchase flow with Stripe test mode
 - **Seller marketplace** — any user can list tickets, manage listings, track earnings
+- **OAuth social login** — Google, GitHub, and Spotify sign-in alongside email/password
+- **User profiles** — edit name/phone, view connected OAuth providers
+- **Spotify integration** — embedded player, artist genres, and metadata on event pages
 - **AI chat assistant** — ask questions about events and pricing (function-calling enabled)
 - **AI recommendations** — personalized event suggestions with relevance scores
 - **AI price predictions** — trend analysis on event detail pages
-- **MCP server** — 20 tools for AI agent integration (events, cart, orders, pricing, mandates)
-- **Agent discovery** — `llms.txt` at `/llms.txt` describes all API endpoints
+- **MCP server** — 21 tools for AI agent integration (events, cart, orders, pricing, mandates)
+- **Agent mandates** — authorization model for AI agents with spending limits and scope restrictions
+- **ACP endpoints** — Agentic Commerce Protocol checkout API for agent interoperability
+- **Agent discovery** — `llms.txt` at `/llms.txt` describes all API endpoints, MCP tools, and ACP endpoints
+
+### Social Login & Profile
+
+![Login page with Google, GitHub, and Spotify social login](docs/screenshots/login-social.png)
+
+![User profile with connected services](docs/screenshots/profile-page.png)
+
+### My Orders
+
+![My Orders page showing event names, dates, and venues](docs/screenshots/my-orders.png)
 
 ### Seller Flow
 
@@ -108,6 +123,7 @@ Any authenticated user can both buy and sell tickets.
 - **Email confirmations** via Resend SMTP — HTML email with "View Your Tickets" button
 - **Public ticket view** — mobile-optimized page showing scannable QR codes, authenticated by signed JWT tokens
 - **Venue verification** — scan QR code at entry, tracks first scan with "already scanned" warnings
+- **Calendar integration** — download `.ics` file to add event to any calendar app
 
 ![Order confirmation with download buttons for each ticket](docs/screenshots/order-confirmation.png)
 
@@ -136,6 +152,8 @@ Deployed on [Railway](https://railway.com) as a single Docker container serving 
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — database schema, API design, backend/frontend architecture, testing strategy
 - [CLAUDE.md](CLAUDE.md) — implementation rules and conventions for contributors
+- [docs/agentic-commerce.md](docs/agentic-commerce.md) — MCP tools, agent mandates, ACP endpoints, protocol landscape
+- [docs/evaluation-conditions.md](docs/evaluation-conditions.md) — Design by Contract sanity checks for AI agents
 - [docs/stripe-test-setup.md](docs/stripe-test-setup.md) — Stripe test mode configuration
 
 ## License
