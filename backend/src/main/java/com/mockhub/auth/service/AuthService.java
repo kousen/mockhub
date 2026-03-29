@@ -165,7 +165,7 @@ public class AuthService {
 
     @Transactional
     public void unlinkProvider(String email, String provider) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailForUpdate(email)
                 .orElseThrow(() -> new ResourceNotFoundException(USER_RESOURCE, EMAIL_FIELD, email));
 
         if (!oAuthAccountRepository.existsByUserIdAndProvider(user.getId(), provider)) {

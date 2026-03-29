@@ -253,7 +253,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("unlinkProvider - given linked provider and user has password - removes provider")
     void unlinkProvider_givenLinkedProviderAndPassword_removesProvider() {
-        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmailForUpdate("test@example.com")).thenReturn(Optional.of(testUser));
         when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
         when(oAuthAccountRepository.countByUserId(1L)).thenReturn(1L);
 
@@ -266,7 +266,7 @@ class AuthServiceTest {
     @DisplayName("unlinkProvider - given linked provider and multiple providers no password - removes provider")
     void unlinkProvider_givenMultipleProvidersNoPassword_removesProvider() {
         testUser.setPasswordHash(null);
-        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmailForUpdate("test@example.com")).thenReturn(Optional.of(testUser));
         when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
         when(oAuthAccountRepository.countByUserId(1L)).thenReturn(2L);
 
@@ -279,7 +279,7 @@ class AuthServiceTest {
     @DisplayName("unlinkProvider - given only provider and no password - throws ConflictException")
     void unlinkProvider_givenOnlyProviderAndNoPassword_throwsConflictException() {
         testUser.setPasswordHash(null);
-        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmailForUpdate("test@example.com")).thenReturn(Optional.of(testUser));
         when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
         when(oAuthAccountRepository.countByUserId(1L)).thenReturn(1L);
 
@@ -292,7 +292,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("unlinkProvider - given provider not linked - throws ResourceNotFoundException")
     void unlinkProvider_givenProviderNotLinked_throwsResourceNotFoundException() {
-        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmailForUpdate("test@example.com")).thenReturn(Optional.of(testUser));
         when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "github")).thenReturn(false);
 
         assertThrows(ResourceNotFoundException.class,
