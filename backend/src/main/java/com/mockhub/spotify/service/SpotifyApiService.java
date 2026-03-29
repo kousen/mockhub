@@ -37,6 +37,8 @@ public class SpotifyApiService implements SpotifyService {
     private static final int MAX_RETRIES = 3;
     private static final long BASE_BACKOFF_MS = 1000;
     private static final String SANITIZE_PATTERN = "[\\r\\n]";
+    private static final java.util.regex.Pattern SPOTIFY_ID_PATTERN =
+            java.util.regex.Pattern.compile("^[a-zA-Z0-9]{22}$");
 
     private final RestClient authClient;
     private final RestClient apiClient;
@@ -72,6 +74,12 @@ public class SpotifyApiService implements SpotifyService {
 
     @Override
     public Optional<SpotifyArtistDto> getArtist(String spotifyArtistId) {
+        if (spotifyArtistId == null || !SPOTIFY_ID_PATTERN.matcher(spotifyArtistId).matches()) {
+            log.warn("Invalid Spotify artist ID format: {}",
+                    spotifyArtistId != null ? spotifyArtistId.replaceAll(SANITIZE_PATTERN, "") : "null");
+            return Optional.empty();
+        }
+
         CachedArtist cached = artistCache.get(spotifyArtistId);
         if (cached != null && Instant.now().isBefore(cached.expiry())) {
             log.debug("Spotify artist cache hit for {}", spotifyArtistId);
