@@ -54,6 +54,7 @@ The codebase uses Java DOP patterns where they add value:
 - **ChatClient has function-calling tools.** `EventTools` and `PricingTools` are wired into the ChatClient via `.defaultToolCallbacks(ToolCallbacks.from(...))`. The same `@Tool`-annotated classes serve both the MCP server (external agents) and the chat endpoint (users on the website).
 - **AI responses are parsed from JSON.** Services prompt the LLM for JSON output and parse with Jackson. Fallback logic returns safe defaults if parsing fails.
 - **Circular dependency:** MCP tool registration → PricingTools → PricePredictionService → ChatClient creates a cycle. Broken with `@Lazy` on the `ChatClient` parameter in `PricePredictionService`.
+- **ChatContext email enforcement:** Website chat tool calls use `ChatContext` (ThreadLocal) to override the LLM-provided `userEmail` with the authenticated user's email. Prevents prompt injection from operating as a different user. External MCP calls don't set the context, so `userEmail` is honored as-is. All tool classes use `ChatContext.resolveEmail(paramEmail)` for consistent resolution.
 - **Circular dependency (eval variant):** When a bean that depends on `AnthropicChatModel` (like `evalJudgeChatClient`) is injected into a `@Component` collected via `List<EvalCondition>`, Spring eagerly resolves the entire list during context startup — `@Lazy` on the component class or the list parameter does NOT prevent this. Fix: remove `@Component` from the condition class and define it as a `@Bean` in a `@Configuration` class with `@Lazy` on the `ChatClient` parameter. This ensures the `ChatClient` proxy is only resolved at first method call, after the context is fully initialized. Unit tests won't catch this because they mock dependencies; only a full `@SpringBootTest` or production deploy with all profiles active will trigger the cycle.
 
 ### Evaluation Conditions
@@ -118,6 +119,28 @@ The codebase uses Java DOP patterns where they add value:
 - **Endpoints:** `POST /api/v1/listings`, `GET /api/v1/my/listings`, `PUT /api/v1/listings/{id}/price`, `DELETE /api/v1/listings/{id}`, `GET /api/v1/my/earnings`
 - **Frontend:** 3 pages (SellPage with 3-step form, MyListingsPage with tab filtering, EarningsPage dashboard), seller API + hooks, nav links visible when authenticated.
 
+### OAuth2 Social Login
+
+- **Three providers:** Google, GitHub, Spotify via `spring-boot-starter-oauth2-client`.
+- **Stateless OAuth2 state:** `CookieOAuth2AuthorizationRequestRepository` stores OAuth2 state in HMAC-signed JSON cookies (not server sessions). Compatible with Railway's stateless deployment.
+- **Code exchange flow:** `OAuth2AuthenticationSuccessHandler` generates a one-time code, redirects to `/auth/callback?code=...`, frontend exchanges via `POST /api/v1/auth/oauth2/exchange?code=...` (query param, not JSON body).
+- **Pending auth cleanup:** `@Scheduled` every 5 min removes expired one-time codes from the `pendingAuths` map. Prevents unbounded memory growth from abandoned OAuth flows.
+- **User linking:** First OAuth login creates a user account. Subsequent logins from the same email link the OAuth provider to the existing account via `OAuthAccount` entity.
+- **Profile page:** `/my/profile` shows edit form (name, phone) and connected OAuth providers.
+- **Environment:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (Spotify uses the same vars as the API integration). `OAUTH2_FRONTEND_REDIRECT_URL` for Railway vs localhost.
+- **`forward-headers-strategy: framework`** required in production for correct OAuth redirect URIs behind Railway's TLS proxy.
+
+### Spotify Integration
+
+- **Two phases shipped:** Phase 1 (API metadata) and Phase 2 (embedded player, genre tags).
+- **Client Credentials OAuth2:** `SpotifyApiService` authenticates with Spotify's token endpoint using Basic auth (client ID + secret). Tokens cached until near-expiry.
+- **Artist ID validation:** Spotify IDs are 22-char base62 strings. Validated with `^[a-zA-Z0-9]{22}$` regex in `SpotifyApiService.getArtist()` and `@Pattern` on `EventCreateRequest.spotifyArtistId`.
+- **Iframe URL encoding:** Frontend uses `encodeURIComponent()` on artist IDs in both the embed iframe `src` and "Open in Spotify" link `href`.
+- **Embedded player limitation:** Playback doesn't work due to browser third-party cookie partitioning (Spotify Connect returns 403). A note below the player explains this and directs users to the "Open in Spotify" link.
+- **Rate limit retry:** Exponential backoff with `Retry-After` header support. Max 3 retries.
+- **Caching:** Artist metadata cached 1 hour in `ConcurrentHashMap`.
+- **Profile-based:** `spotify` profile activates `SpotifyApiService` (`@Primary`). Without it, `MockSpotifyService` returns empty.
+
 ### Lifecycle Cleanup
 
 - **`LifecycleCleanupService`** — `@Scheduled` every 15 min (configurable via `mockhub.lifecycle.cleanup-interval`).
@@ -152,7 +175,7 @@ The codebase uses Java DOP patterns where they add value:
 
 - **Authorization model for agents.** A `Mandate` record defines what an agent can do on behalf of a user: scope (BROWSE/PURCHASE), spending limits (per-transaction + cumulative), category/event restrictions, expiration.
 - **`MandateCondition`** — CRITICAL eval condition that blocks agent actions without a valid mandate. Checks scope, spending limits, and category/event constraints.
-- **MandateTools** — 4 MCP tools for mandate lifecycle: `createMandate`, `revokeMandate`, `listMandates`, `validateMandate`.
+- **MandateTools** — 5 MCP tools for mandate lifecycle: `createMandate`, `revokeMandate`, `listMandates`, `validateMandate`, `getBestMandate` (compound lookup, recommended before `addToCart`).
 - **Mandate entity** in `com.mockhub.mandate` package. Flyway migration `V22__create_mandates_table.sql`.
 - **Inspired by AP2** (Google's Agent Payments Protocol) — mandates are MockHub's implementation of AP2's digitally signed authorization concept, enforced through the eval conditions framework.
 - **PURCHASE scope subsumes BROWSE** — an agent authorized to buy can also browse.

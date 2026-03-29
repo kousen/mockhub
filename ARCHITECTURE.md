@@ -61,6 +61,7 @@ The schema has six clusters. Flyway migrations are the source of truth (see `bac
 4. **Marketplace**: `tickets`, `listings`, `price_history`
 5. **Commerce**: `carts`, `cart_items`, `orders`, `order_items`, `transaction_logs`
 6. **Engagement**: `favorites`, `notifications`, `reviews`, `conversations`, `conversation_messages`, `user_preferences`
+7. **Agentic**: `mandates` (agent authorization with scope, spending limits, restrictions)
 
 ### Identity
 
@@ -72,7 +73,11 @@ erDiagram
         VARCHAR password_hash
         VARCHAR first_name
         VARCHAR last_name
+        VARCHAR phone
+        VARCHAR avatar_url
+        BOOLEAN email_verified
         BOOLEAN enabled
+        TIMESTAMP last_login_at
     }
     roles {
         BIGINT id PK
@@ -82,9 +87,16 @@ erDiagram
         BIGINT user_id FK
         BIGINT role_id FK
     }
+    oauth_accounts {
+        BIGINT id PK
+        BIGINT user_id FK
+        VARCHAR provider
+        VARCHAR provider_account_id
+    }
 
     users ||--o{ user_roles : "has"
     roles ||--o{ user_roles : "assigned to"
+    users ||--o{ oauth_accounts : "linked"
 ```
 
 ### Venue / Seating
@@ -144,6 +156,7 @@ erDiagram
         BIGINT venue_id FK
         BIGINT category_id FK
         VARCHAR artist_name
+        VARCHAR spotify_artist_id
         TIMESTAMP event_date
         DECIMAL base_price
         INT available_tickets
@@ -231,6 +244,10 @@ erDiagram
         DECIMAL subtotal
         DECIMAL service_fee
         DECIMAL total
+        VARCHAR payment_method
+        VARCHAR payment_intent_id
+        VARCHAR agent_id
+        VARCHAR mandate_id
     }
     order_items {
         BIGINT id PK
@@ -328,6 +345,8 @@ All endpoints are prefixed with `/api/v1`. List endpoints return paginated respo
 | POST | `/auth/refresh` | Refresh access token | Public (valid refresh token) |
 | GET | `/auth/me` | Get current user profile | Authenticated |
 | PUT | `/auth/me` | Update current user profile | Authenticated |
+| POST | `/auth/oauth2/exchange` | Exchange OAuth2 code for JWT | Public |
+| GET | `/auth/me/providers` | List linked OAuth providers | Authenticated |
 
 ### Events
 
@@ -358,6 +377,7 @@ All endpoints are prefixed with `/api/v1`. List endpoints return paginated respo
 | POST | `/orders/checkout` | Create order from cart | Authenticated |
 | GET | `/orders` | List user's orders (paginated) | Authenticated |
 | GET | `/orders/{orderNumber}` | Get order details | Authenticated (own) |
+| GET | `/orders/{orderNumber}/calendar` | Download .ics calendar file | Authenticated (own) |
 
 ### Payments
 
@@ -518,9 +538,10 @@ Profile-based SMS notification on order confirmation:
 
 Profile-based email notification on order confirmation:
 
-- **Interface:** `EmailDeliveryService` with `MockEmailDeliveryService` (mock-email) and `SmtpEmailDeliveryService` (email-smtp, `@Primary`)
-- **Standard Spring Mail:** Uses `JavaMailSender` + `MimeMessageHelper` from `spring-boot-starter-mail`. Sends HTML emails with inline CSS.
-- **SMTP provider:** Resend (`smtp.resend.com:465`) configured in `application-email-smtp.yml`. Auth via `RESEND_API_KEY` env var as SMTP password.
+- **Interface:** `EmailDeliveryService` with three implementations:
+  - `MockEmailDeliveryService` (mock-email profile) — console logging
+  - `SmtpEmailDeliveryService` (email-smtp profile) — Spring `JavaMailSender`, works with any SMTP provider
+  - `ResendEmailDeliveryService` (email-resend profile, `@Primary`) — Resend REST API via Spring `RestClient`. Preferred in production because Railway blocks SMTP port 465.
 - **Trigger:** `OrderService.confirmOrder()` sends HTML email with order summary and "View Your Tickets" button linking to the public ticket view page.
 - **Email content:** Event name, order number, ticket count, total, and a styled CTA button to the public ticket view.
 - **From address:** `mockhub.email.from-address` (env: `EMAIL_FROM_ADDRESS`). Resend free tier uses `onboarding@resend.dev`; custom domains require verification.
@@ -592,6 +613,9 @@ Never cached: carts, orders, notifications, pricing data.
 /sell                            → SellPage (3-step listing form)
 /my/listings                     → MyListingsPage (tab filtering, inline price editing)
 /my/earnings                     → EarningsPage (summary stats, recent sales)
+/my/profile                      → ProfilePage (auth required)
+/auth/callback                   → AuthCallbackPage (OAuth2 code exchange)
+/tickets/view                    → PublicTicketViewPage (token-authenticated, no login)
 /admin                           → AdminDashboardPage (admin required)
 /admin/events                    → AdminEventsPage
 /admin/events/new                → AdminEventFormPage
@@ -643,12 +667,12 @@ Naming convention: `methodName_givenCondition_expectedResult`
 
 | Type | Tool | Location |
 |---|---|---|
-| Component tests | Vitest + React Testing Library | Colocated as `*.test.tsx` (114 tests across 19 files) |
+| Component tests | Vitest + React Testing Library | Colocated as `*.test.tsx` |
 | API mocking | MSW (Mock Service Worker) | `src/test/mocks/` |
-| E2E tests | Playwright (5 browsers) | `e2e/*.spec.ts` |
+| E2E tests | Playwright (3 browsers, sharded CI) | `e2e/*.spec.ts` |
 | Accessibility | axe-core + Playwright | Included in E2E specs |
 
-**Playwright browser targets:** Chromium, Firefox, WebKit, Mobile Android (Chromium), Mobile iOS (WebKit)
+**Playwright browser targets:** Chrome, Safari, Mobile iOS (3 browsers covering all rendering engines, sharded across 2 CI jobs)
 
 ---
 
@@ -701,8 +725,16 @@ Naming convention: `methodName_givenCondition_expectedResult`
 | `TWILIO_ACCOUNT_SID` | For SMS | Twilio account SID |
 | `TWILIO_AUTH_TOKEN` | For SMS | Twilio auth token |
 | `TWILIO_PHONE_NUMBER` | For SMS | Twilio "from" phone number |
-| `RESEND_API_KEY` | For email | Resend API key (used as SMTP password) |
+| `RESEND_API_KEY` | For email | Resend API key (REST API or SMTP password) |
 | `EMAIL_FROM_ADDRESS` | For email | Sender address (default: `noreply@mockhub.dev`) |
+| `GOOGLE_CLIENT_ID` | For OAuth | Google OAuth2 client ID |
+| `GOOGLE_CLIENT_SECRET` | For OAuth | Google OAuth2 client secret |
+| `GITHUB_CLIENT_ID` | For OAuth | GitHub OAuth2 client ID |
+| `GITHUB_CLIENT_SECRET` | For OAuth | GitHub OAuth2 client secret |
+| `OAUTH2_FRONTEND_REDIRECT_URL` | For OAuth | Frontend base URL for OAuth callback |
+| `SPOTIFY_CLIENT_ID` | For Spotify | Spotify API client ID |
+| `SPOTIFY_CLIENT_SECRET` | For Spotify | Spotify API client secret |
+| `MCP_API_KEY` | For MCP/ACP | API key for MCP and ACP endpoints |
 | `SPRING_PROFILES_ACTIVE` | Yes | Profile combination (e.g., `dev,ai-anthropic`) |
 
 ### CI (GitHub Actions)

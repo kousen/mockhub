@@ -923,7 +923,46 @@ Decision: address in phases — refactor search params first (code quality), mak
 
 ---
 
-*Last updated: 2026-03-27*
+## Session 2026-03-28: Spotify Embed Investigation, OAuth Fixes
+
+Investigated Spotify embedded player playback failures. DevTools showed 403 on Spotify Connect API (`/connect-state/v1/player/command/`) due to browser third-party cookie partitioning. Updated user-facing note to set correct expectations. Fixed Spotify embed height and attributes per docs.
+
+### Commits
+- `198084c` — Add Spotify login note below embedded player
+- `f40ecf7` — Fix Spotify embed: use standard height and attributes per docs
+
+---
+
+## Session 2026-03-29: 1.0 Punch List Completion
+
+Completed all items on the 1.0 release readiness punch list (#120). Addressed 8 issues across 4 PRs, all passing CI with SonarCloud quality gate.
+
+### Security Fixes
+- **#61** — Chat email bypass: Added `ChatContext` ThreadLocal to enforce authenticated user's email in website chat tool calls. Prevents prompt injection from operating as a different user. External MCP calls unaffected.
+- **#74** — Authorization bypass tests: Added `AuthorizationBypassTest` proving user A can't access user B's orders/listings, and non-admin users can't reach admin endpoints.
+- **#117** — OAuth pending auth code memory leak: Added `@Scheduled` cleanup for expired one-time codes.
+- **#118** — Unsafe Spotify artist ID in iframe URL: Added `encodeURIComponent()` on artist IDs.
+- **#119** — Spotify artist ID format validation: Added `^[a-zA-Z0-9]{22}$` regex in `SpotifyApiService` and `@Pattern` on `EventCreateRequest`.
+
+### Feature Improvements
+- **#79** — My Orders page now shows event name, date, and venue per order. Multi-event orders show "Multiple events" label. Full stack change (DTO + service + frontend).
+- **#122** — Audited and updated `llms.txt` for accuracy. Added 3 missing MCP tools, fixed 5 stale signatures, added missing API sections (OAuth, Spotify, favorites, calendar, public ticket view).
+
+### Process Improvements
+- Established `gh pr checks --watch` background monitoring pattern for CI feedback
+- Addressed Codex code review comments on all PRs before merging
+
+### PRs Merged
+- #124 — Fix chat email bypass and add authorization boundary tests
+- #125 — Fix OAuth code leak, Spotify ID validation, and iframe URL encoding
+- #126 — Add event details to My Orders page
+- #127 — Audit and update llms.txt for accuracy
+
+### Issues Closed: #61, #74, #79, #116, #117, #118, #119, #122
+
+---
+
+*Last updated: 2026-03-29*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*~630 tests passing (625 backend + 114 frontend unit + Playwright E2E)*
+*~650 tests passing (backend + 120 frontend unit + Playwright E2E across 3 browsers)*
 *Live at: https://mockhub.kousenit.com*
