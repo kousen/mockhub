@@ -192,10 +192,6 @@ class CartToolsTest {
         @Test
         @DisplayName("given null email - returns error JSON")
         void givenNullEmail_returnsErrorJson() {
-            when(listingRepository.findById(42L)).thenReturn(Optional.of(createActiveListing()));
-            when(evalRunner.evaluate(any(EvalContext.class)))
-                    .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
-
             String result = cartTools.addToCart(null, 42L, AGENT_ID, MANDATE_ID);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");

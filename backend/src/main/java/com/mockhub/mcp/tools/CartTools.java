@@ -79,12 +79,14 @@ public class CartTools {
                 return errorJson("Mandate ID is required");
             }
 
+            String effectiveEmail = ChatContext.resolveEmail(userEmail);
+
             java.util.Optional<Listing> listingOpt = listingRepository.findById(listingId);
             if (listingOpt.isPresent()) {
                 Listing listing = listingOpt.get();
                 String categorySlug = listing.getEvent().getCategory() != null
                         ? listing.getEvent().getCategory().getSlug() : null;
-                EvalContext evalContext = EvalContext.forAgentAction(agentId.strip(), userEmail,
+                EvalContext evalContext = EvalContext.forAgentAction(agentId.strip(), effectiveEmail,
                         listing.getEvent(), listing, listing.getComputedPrice(), categorySlug, mandateId.strip());
                 EvalSummary evalSummary = evalRunner.evaluate(evalContext);
                 if (evalSummary.hasCriticalFailure()) {
@@ -96,7 +98,7 @@ public class CartTools {
                 }
             }
 
-            User user = resolveUser(userEmail);
+            User user = resolveUser(effectiveEmail);
             CartDto cartDto = cartService.addToCart(user, listingId);
 
             EvalContext cartContext = EvalContext.forCart(cartDto);
