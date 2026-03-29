@@ -51,6 +51,7 @@ import com.mockhub.venue.entity.Section;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -122,11 +123,17 @@ class OrderServiceTest {
         otherUser.setEmail("other@example.com");
         otherUser.setRoles(Set.of(buyerRole));
 
+        com.mockhub.venue.entity.Venue testVenue = new com.mockhub.venue.entity.Venue();
+        testVenue.setId(1L);
+        testVenue.setName("Madison Square Garden");
+
         Event testEvent = new Event();
         testEvent.setId(1L);
         testEvent.setName("Test Event");
         testEvent.setSlug("test-event");
         testEvent.setAvailableTickets(10);
+        testEvent.setEventDate(java.time.Instant.parse("2026-09-15T20:00:00Z"));
+        testEvent.setVenue(testVenue);
 
         Section testSection = new Section();
         testSection.setId(1L);
@@ -469,6 +476,42 @@ class OrderServiceTest {
 
         assertNotNull(result, "Paged response should not be null");
         assertEquals(1, result.content().size(), "Should contain one order");
+        OrderSummaryDto summary = result.content().getFirst();
+        assertEquals("Test Event", summary.eventName(), "Should include event name from first item");
+        assertEquals(java.time.Instant.parse("2026-09-15T20:00:00Z"), summary.eventDate(),
+                "Should include event date");
+        assertEquals("Madison Square Garden", summary.venueName(),
+                "Should include venue name from first item's event");
+    }
+
+    @Test
+    @DisplayName("listOrders - given multi-event order - returns 'Multiple events' label")
+    void listOrders_givenMultiEventOrder_returnsMultipleEventsLabel() {
+        Event secondEvent = new Event();
+        secondEvent.setId(2L);
+        secondEvent.setName("Second Event");
+
+        Listing secondListing = new Listing();
+        secondListing.setEvent(secondEvent);
+
+        OrderItem secondItem = new OrderItem();
+        secondItem.setId(2L);
+        secondItem.setListing(secondListing);
+        secondItem.setPricePaid(new BigDecimal("50.00"));
+
+        testOrder.setItems(List.of(testOrder.getItems().getFirst(), secondItem));
+
+        Page<Order> page = new PageImpl<>(List.of(testOrder));
+        when(orderRepository.findByUserIdOrderByCreatedAtDesc(anyLong(), any(Pageable.class)))
+                .thenReturn(page);
+
+        PagedResponse<OrderSummaryDto> result = orderService.listOrders(testUser, 0, 20);
+
+        OrderSummaryDto summary = result.content().getFirst();
+        assertEquals("Multiple events", summary.eventName(),
+                "Multi-event orders should show 'Multiple events'");
+        assertNull(summary.eventDate(), "Multi-event orders should have null event date");
+        assertNull(summary.venueName(), "Multi-event orders should have null venue name");
     }
 
     @Test

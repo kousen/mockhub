@@ -9,6 +9,9 @@ public record OrderSummaryDto(
         String status,
         BigDecimal total,
         int itemCount,
-        Instant createdAt
+        Instant createdAt,
+        String eventName,
+        Instant eventDate,
+        String venueName
 ) {
 }

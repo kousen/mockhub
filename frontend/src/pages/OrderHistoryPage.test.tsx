@@ -21,6 +21,9 @@ const mockOrders: OrderSummary[] = [
     total: 275.0,
     itemCount: 2,
     createdAt: '2026-03-20T10:00:00',
+    eventName: 'Taylor Swift - Eras Tour',
+    eventDate: '2026-09-15T20:00:00Z',
+    venueName: 'Madison Square Garden',
   },
   {
     id: 2,
@@ -29,6 +32,9 @@ const mockOrders: OrderSummary[] = [
     total: 150.0,
     itemCount: 1,
     createdAt: '2026-03-19T14:30:00',
+    eventName: null,
+    eventDate: null,
+    venueName: null,
   },
 ];
 
@@ -54,7 +60,7 @@ describe('OrderHistoryPage', () => {
     renderWithProviders(<OrderHistoryPage />);
 
     expect(screen.getByText('My Orders')).toBeDefined();
-    expect(screen.getByText('#ORD-001')).toBeDefined();
+    expect(screen.getByText('Taylor Swift - Eras Tour')).toBeDefined();
     expect(screen.getByText('#ORD-002')).toBeDefined();
   });
 
@@ -99,7 +105,7 @@ describe('OrderHistoryPage', () => {
 
     renderWithProviders(<OrderHistoryPage />);
 
-    expect(screen.getByText('#ORD-001')).toBeDefined();
+    expect(screen.getByText('Taylor Swift - Eras Tour')).toBeDefined();
     expect(screen.getByText('CONFIRMED')).toBeDefined();
     expect(screen.getByText('$275.00')).toBeDefined();
     expect(screen.getByText('#ORD-002')).toBeDefined();

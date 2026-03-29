@@ -217,4 +217,36 @@ class AdminServiceTest {
 
         verify(userRepository).save(testUser);
     }
+
+    @Test
+    @DisplayName("getAllOrders - given orders with event details - returns summaries with event info")
+    void getAllOrders_givenOrdersWithEventDetails_returnsSummariesWithEventInfo() {
+        com.mockhub.ticket.entity.Listing listing = new com.mockhub.ticket.entity.Listing();
+        listing.setEvent(testEvent);
+
+        com.mockhub.order.entity.OrderItem item = new com.mockhub.order.entity.OrderItem();
+        item.setListing(listing);
+        item.setPricePaid(new BigDecimal("75.00"));
+
+        com.mockhub.order.entity.Order order = new com.mockhub.order.entity.Order();
+        order.setId(1L);
+        order.setOrderNumber("MH-20260329-0001");
+        order.setStatus("CONFIRMED");
+        order.setTotal(new BigDecimal("82.50"));
+        order.setCreatedAt(Instant.now());
+        order.setItems(List.of(item));
+
+        Pageable pageable = PageRequest.of(0, 20);
+        when(orderRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(order)));
+
+        PagedResponse<com.mockhub.order.dto.OrderSummaryDto> result =
+                adminService.getAllOrders(pageable);
+
+        assertNotNull(result);
+        assertEquals(1, result.content().size());
+        com.mockhub.order.dto.OrderSummaryDto summary = result.content().getFirst();
+        assertEquals("Test Event", summary.eventName());
+        assertEquals("Test Venue", summary.venueName());
+        assertNotNull(summary.eventDate());
+    }
 }

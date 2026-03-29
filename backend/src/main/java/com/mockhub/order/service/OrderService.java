@@ -218,14 +218,39 @@ public class OrderService {
         Page<Order> orderPage = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
 
         List<OrderSummaryDto> summaries = orderPage.getContent().stream()
-                .map(order -> new OrderSummaryDto(
-                        order.getId(),
-                        order.getOrderNumber(),
-                        order.getStatus(),
-                        order.getTotal(),
-                        order.getItems().size(),
-                        order.getCreatedAt()
-                ))
+                .map(order -> {
+                    String eventName = null;
+                    Instant eventDate = null;
+                    String venueName = null;
+                    if (!order.getItems().isEmpty()) {
+                        long distinctEvents = order.getItems().stream()
+                                .map(item -> item.getListing().getEvent().getId())
+                                .distinct()
+                                .count();
+                        if (distinctEvents == 1) {
+                            com.mockhub.event.entity.Event event =
+                                    order.getItems().getFirst().getListing().getEvent();
+                            eventName = event.getName();
+                            eventDate = event.getEventDate();
+                            if (event.getVenue() != null) {
+                                venueName = event.getVenue().getName();
+                            }
+                        } else {
+                            eventName = "Multiple events";
+                        }
+                    }
+                    return new OrderSummaryDto(
+                            order.getId(),
+                            order.getOrderNumber(),
+                            order.getStatus(),
+                            order.getTotal(),
+                            order.getItems().size(),
+                            order.getCreatedAt(),
+                            eventName,
+                            eventDate,
+                            venueName
+                    );
+                })
                 .toList();
 
         return new PagedResponse<>(
