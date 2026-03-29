@@ -98,6 +98,16 @@ Any authenticated user can both buy and sell tickets.
 - **ACP endpoints** — Agentic Commerce Protocol checkout API for agent interoperability
 - **Agent discovery** — `llms.txt` at `/llms.txt` describes all API endpoints, MCP tools, and ACP endpoints
 
+### Social Login & Profile
+
+![Login page with Google, GitHub, and Spotify social login](docs/screenshots/login-social.png)
+
+![User profile with connected services](docs/screenshots/profile-page.png)
+
+### My Orders
+
+![My Orders page showing event names, dates, and venues](docs/screenshots/my-orders.png)
+
 ### Seller Flow
 
 ![Sell tickets page with event search and 3-step form](docs/screenshots/sell-page.png)
