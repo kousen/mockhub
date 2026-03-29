@@ -123,11 +123,17 @@ class OrderServiceTest {
         otherUser.setEmail("other@example.com");
         otherUser.setRoles(Set.of(buyerRole));
 
+        com.mockhub.venue.entity.Venue testVenue = new com.mockhub.venue.entity.Venue();
+        testVenue.setId(1L);
+        testVenue.setName("Madison Square Garden");
+
         Event testEvent = new Event();
         testEvent.setId(1L);
         testEvent.setName("Test Event");
         testEvent.setSlug("test-event");
         testEvent.setAvailableTickets(10);
+        testEvent.setEventDate(java.time.Instant.parse("2026-09-15T20:00:00Z"));
+        testEvent.setVenue(testVenue);
 
         Section testSection = new Section();
         testSection.setId(1L);
@@ -472,7 +478,10 @@ class OrderServiceTest {
         assertEquals(1, result.content().size(), "Should contain one order");
         OrderSummaryDto summary = result.content().getFirst();
         assertEquals("Test Event", summary.eventName(), "Should include event name from first item");
-        assertNull(summary.venueName(), "Venue should be null when event has no venue");
+        assertEquals(java.time.Instant.parse("2026-09-15T20:00:00Z"), summary.eventDate(),
+                "Should include event date");
+        assertEquals("Madison Square Garden", summary.venueName(),
+                "Should include venue name from first item's event");
     }
 
     @Test
