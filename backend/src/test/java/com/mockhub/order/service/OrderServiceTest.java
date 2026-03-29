@@ -485,6 +485,36 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("listOrders - given multi-event order - returns 'Multiple events' label")
+    void listOrders_givenMultiEventOrder_returnsMultipleEventsLabel() {
+        Event secondEvent = new Event();
+        secondEvent.setId(2L);
+        secondEvent.setName("Second Event");
+
+        Listing secondListing = new Listing();
+        secondListing.setEvent(secondEvent);
+
+        OrderItem secondItem = new OrderItem();
+        secondItem.setId(2L);
+        secondItem.setListing(secondListing);
+        secondItem.setPricePaid(new BigDecimal("50.00"));
+
+        testOrder.setItems(List.of(testOrder.getItems().getFirst(), secondItem));
+
+        Page<Order> page = new PageImpl<>(List.of(testOrder));
+        when(orderRepository.findByUserIdOrderByCreatedAtDesc(anyLong(), any(Pageable.class)))
+                .thenReturn(page);
+
+        PagedResponse<OrderSummaryDto> result = orderService.listOrders(testUser, 0, 20);
+
+        OrderSummaryDto summary = result.content().getFirst();
+        assertEquals("Multiple events", summary.eventName(),
+                "Multi-event orders should show 'Multiple events'");
+        assertNull(summary.eventDate(), "Multi-event orders should have null event date");
+        assertNull(summary.venueName(), "Multi-event orders should have null venue name");
+    }
+
+    @Test
     @DisplayName("getOrderEntityWithItems - given existing order - returns order")
     void getOrderEntityWithItems_givenExistingOrder_returnsOrder() {
         when(orderRepository.findByOrderNumberWithItems("MH-20260317-0001"))

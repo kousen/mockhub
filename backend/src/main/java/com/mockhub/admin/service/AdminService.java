@@ -320,11 +320,19 @@ public class AdminService {
         java.time.Instant eventDate = null;
         String venueName = null;
         if (!order.getItems().isEmpty()) {
-            Event event = order.getItems().getFirst().getListing().getEvent();
-            eventName = event.getName();
-            eventDate = event.getEventDate();
-            if (event.getVenue() != null) {
-                venueName = event.getVenue().getName();
+            long distinctEvents = order.getItems().stream()
+                    .map(item -> item.getListing().getEvent().getId())
+                    .distinct()
+                    .count();
+            if (distinctEvents == 1) {
+                Event event = order.getItems().getFirst().getListing().getEvent();
+                eventName = event.getName();
+                eventDate = event.getEventDate();
+                if (event.getVenue() != null) {
+                    venueName = event.getVenue().getName();
+                }
+            } else {
+                eventName = "Multiple events";
             }
         }
         return new OrderSummaryDto(
