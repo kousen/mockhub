@@ -4,9 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useAuthStore } from '@/stores/auth-store';
-import { Badge } from '@/components/ui/badge';
 import { getOAuth2Url } from '@/components/auth/SocialLoginButtons';
-import { useCurrentUser, useLinkedProviders, useUpdateProfile } from '@/hooks/use-auth';
+import {
+  useCurrentUser,
+  useLinkedProviders,
+  useUnlinkProvider,
+  useUpdateProfile,
+} from '@/hooks/use-auth';
 import type { UserDto } from '@/types/auth';
 
 function ProfileForm({ user }: { user: UserDto }) {
@@ -132,6 +136,7 @@ export function ProfilePage() {
   const user = useAuthStore((state) => state.user);
   useCurrentUser();
   const { data: linkedProviders } = useLinkedProviders();
+  const unlinkProvider = useUnlinkProvider();
 
   if (!user) {
     return null;
@@ -173,7 +178,18 @@ export function ProfilePage() {
                   <p className="text-sm text-muted-foreground">{provider.description}</p>
                 </div>
                 {isConnected ? (
-                  <Badge variant="secondary">Connected</Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (window.confirm(`Disconnect ${provider.name}? You can reconnect later.`)) {
+                        unlinkProvider.mutate(provider.id);
+                      }
+                    }}
+                    disabled={unlinkProvider.isPending}
+                  >
+                    Disconnect
+                  </Button>
                 ) : (
                   <Button
                     variant="outline"

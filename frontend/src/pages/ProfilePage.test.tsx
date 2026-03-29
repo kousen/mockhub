@@ -21,6 +21,10 @@ vi.mock('@/hooks/use-auth', () => ({
     isError: false,
   }),
   useLinkedProviders: () => ({ data: ['google'] }),
+  useUnlinkProvider: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 function renderProfilePage() {
@@ -76,6 +80,6 @@ describe('ProfilePage', () => {
     expect(screen.getByText('Google')).toBeDefined();
     expect(screen.getByText('GitHub')).toBeDefined();
     expect(screen.getByText('Spotify')).toBeDefined();
-    expect(screen.getByText('Connected')).toBeDefined();
+    expect(screen.getByRole('button', { name: /disconnect/i })).toBeDefined();
   });
 });

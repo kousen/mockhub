@@ -14,7 +14,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -145,6 +147,19 @@ public class AuthController {
             @AuthenticationPrincipal SecurityUser securityUser) {
         java.util.List<String> providers = authService.getLinkedProviders(securityUser.getEmail());
         return ResponseEntity.ok(providers);
+    }
+
+    @DeleteMapping("/me/providers/{provider}")
+    @Operation(summary = "Unlink OAuth provider",
+            description = "Disconnect an OAuth provider from the current user's account")
+    @ApiResponse(responseCode = "204", description = "Provider unlinked")
+    @ApiResponse(responseCode = "404", description = "Provider not linked")
+    @ApiResponse(responseCode = "409", description = "Cannot unlink only login method")
+    public ResponseEntity<Void> unlinkProvider(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @PathVariable String provider) {
+        authService.unlinkProvider(securityUser.getEmail(), provider);
+        return ResponseEntity.noContent().build();
     }
 
     private ResponseCookie buildRefreshCookie(String refreshToken) {

@@ -41,3 +41,7 @@ export async function getLinkedProviders(): Promise<string[]> {
   const response = await apiClient.get<string[]>('/auth/me/providers');
   return response.data;
 }
+
+export async function unlinkProvider(provider: string): Promise<void> {
+  await apiClient.delete(`/auth/me/providers/${provider}`);
+}

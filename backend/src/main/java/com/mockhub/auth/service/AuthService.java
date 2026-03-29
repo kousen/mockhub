@@ -163,6 +163,26 @@ public class AuthService {
                 .toList();
     }
 
+    @Transactional
+    public void unlinkProvider(String email, String provider) {
+        User user = userRepository.findByEmailForUpdate(email)
+                .orElseThrow(() -> new ResourceNotFoundException(USER_RESOURCE, EMAIL_FIELD, email));
+
+        if (!oAuthAccountRepository.existsByUserIdAndProvider(user.getId(), provider)) {
+            throw new ResourceNotFoundException("OAuthAccount", "provider", provider);
+        }
+
+        boolean hasPassword = user.getPasswordHash() != null && !user.getPasswordHash().isBlank();
+        long linkedProviderCount = oAuthAccountRepository.countByUserId(user.getId());
+
+        if (!hasPassword && linkedProviderCount <= 1) {
+            throw new ConflictException(
+                    "Cannot disconnect your only login method. Set a password first.");
+        }
+
+        oAuthAccountRepository.deleteByUserIdAndProvider(user.getId(), provider);
+    }
+
     private UserDto toUserDto(User user) {
         Set<String> roleNames = user.getRoles().stream()
                 .map(Role::getName)
