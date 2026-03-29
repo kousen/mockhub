@@ -9,7 +9,13 @@
 
 ## Authentication
 POST /api/v1/auth/login — JSON body: {"email", "password"} → {"accessToken", "expiresIn", "user"}
-POST /api/v1/auth/register — JSON body: {"email", "password", "firstName", "lastName"} → {"accessToken", "expiresIn", "user"}
+POST /api/v1/auth/register — JSON body: {"email", "password", "firstName", "lastName", "phone"} → {"accessToken", "expiresIn", "user"}
+POST /api/v1/auth/refresh — Refresh access token via HttpOnly cookie
+GET /api/v1/auth/me — Get current user profile
+PUT /api/v1/auth/me — Update profile. JSON body: {"firstName", "lastName", "phone"}
+POST /api/v1/auth/oauth2/exchange — Exchange OAuth2 one-time code for JWT. JSON body: {"code": "string"}
+GET /api/v1/auth/me/providers — List linked OAuth providers for current user
+OAuth2 login: /oauth2/authorization/{google|github|spotify}
 Authenticated requests: Authorization: Bearer <accessToken>
 
 ## Events (public, no auth required)
@@ -18,9 +24,13 @@ GET /api/v1/events — List events with search/filter/pagination
   Returns: {"content": [EventSummary], "page", "size", "totalElements", "totalPages"}
 GET /api/v1/events/featured — Featured events list
 GET /api/v1/events/{slug} — Event detail by slug
-GET /api/v1/events/{slug}/listings — Active ticket listings for an event
+GET /api/v1/events/{slug}/listings — Active ticket listings for an event (paginated)
 GET /api/v1/events/{slug}/sections — Section availability with pricing
+GET /api/v1/events/{slug}/price-history — Price history snapshots
 GET /api/v1/events/{slug}/predicted-price — AI price prediction (requires AI profile)
+
+## Categories (public)
+GET /api/v1/categories — List all event categories
 
 ## Venues (public)
 GET /api/v1/venues — List all venues
@@ -28,16 +38,27 @@ GET /api/v1/venues/{slug} — Venue detail by slug
 
 ## Search (public)
 GET /api/v1/search?q={query} — Full-text event search
+GET /api/v1/search/suggest?q={query} — Search suggestions/autocomplete
 
-## AI Features (public, requires AI provider profile)
-POST /api/v1/chat — Chat with AI assistant. JSON body: {"message": "string"}
+## Spotify (public, requires spotify profile)
+GET /api/v1/spotify/artists/{spotifyArtistId} — Artist metadata, genres, follower count
+
+## AI Features (requires AI provider profile)
+POST /api/v1/chat — Chat with AI assistant. JSON body: {"message": "string", "conversationId": number}
 GET /api/v1/recommendations — AI-ranked event recommendations
+GET /api/v1/events/{slug}/predicted-price — AI price prediction
 
 ## Cart (requires auth)
 GET /api/v1/cart — Get current cart
 POST /api/v1/cart/items — Add listing to cart. JSON body: {"listingId": number}
 DELETE /api/v1/cart/items/{itemId} — Remove item from cart
 DELETE /api/v1/cart — Clear cart
+
+## Favorites (requires auth)
+GET /api/v1/favorites — List favorited events
+POST /api/v1/favorites/{eventId} — Add event to favorites
+DELETE /api/v1/favorites/{eventId} — Remove event from favorites
+GET /api/v1/favorites/check/{eventId} — Check if event is favorited
 
 ## Seller Listings (requires auth)
 POST /api/v1/listings — Create a listing. JSON body: {"eventSlug", "sectionName", "rowLabel", "seatNumber", "price"}
@@ -47,14 +68,19 @@ DELETE /api/v1/listings/{id} — Deactivate a listing (sets status CANCELLED, re
 GET /api/v1/my/earnings — Seller earnings summary with recent sales
 
 ## Checkout (requires auth)
-POST /api/v1/orders/checkout — Create order from cart. JSON body: {"paymentMethod": "string"}
+POST /api/v1/orders/checkout — Create order from cart. JSON body: {"paymentMethod": "string"}. Optional header: Idempotency-Key
 
 ## Orders (requires auth)
-GET /api/v1/orders — List user's orders (paginated)
+GET /api/v1/orders — List user's orders (paginated). Returns event name, date, and venue per order.
 GET /api/v1/orders/{orderNumber} — Order detail
+GET /api/v1/orders/{orderNumber}/calendar — Download .ics calendar file for event
 
 ## Ticket Download (requires auth)
 GET /api/v1/orders/{orderNumber}/tickets/{ticketId}/download — Download ticket PDF with QR code
+
+## Public Ticket View (no auth — token-authenticated)
+GET /api/v1/tickets/view?token={orderViewToken} — View order tickets with QR codes (mobile-optimized)
+GET /api/v1/tickets/{orderNumber}/{ticketId}/qr?token={orderViewToken} — QR code PNG image
 
 ## Ticket Verification (public, no auth)
 GET /api/v1/tickets/verify?token={jwt} — Verify ticket QR code token
@@ -76,27 +102,30 @@ AI-as-judge checks verify response grounding (no fabricated events, prices, or d
 Eval results are logged for observability. Critical eval failures may block agent actions.
 
 ## MCP Tools (requires API key: X-API-Key header)
-MockHub exposes MCP tools for AI agents at /mcp/**:
-- searchEvents(query, category, city, page, size) — search and filter events
-- getEventDetail(slug) — full event details
-- getEventListings(slug) — active listings for an event
+MockHub exposes MCP tools for AI agents at /mcp (Streamable HTTP transport):
+- searchEvents(query?, category?, city?, page?, size?) — search and filter events with pagination
+- getEventDetail(slug) — full event details by URL slug
+- getEventListings(slug, page?, size?) — active listings for an event with pagination (default 20, max 50)
 - getFeaturedEvents() — curated featured events
 - getListingDetail(listingId) — single listing by ID
-- findTickets(query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, maxResults) — compound search returning matching listings with event/date metadata
+- findTickets(query?, category?, city?, dateFrom?, dateTo?, minPrice?, maxPrice?, section?, maxResults?) — RECOMMENDED: compound search returning matching listings sorted by price. Date params are ISO-8601 strings (e.g. '2026-04-01T00:00:00Z'). Reduces round-trips from 3 to 1.
 - getPriceHistory(eventSlug) — historical price snapshots
 - getPricePrediction(eventSlug) — AI price forecast (requires AI provider)
 - getCart(userEmail) — current cart contents
-- addToCart(userEmail, listingId, agentId, mandateId) — add listing to cart for an autonomous agent action (eval-gated)
+- addToCart(userEmail, listingId, agentId, mandateId) — add listing to cart (eval-gated). Returns full updated cart, so a separate getCart call is not needed.
 - removeFromCart(userEmail, itemId) — remove cart item
 - clearCart(userEmail) — empty cart
-- checkout(userEmail, paymentMethod, agentId, mandateId) — create order from cart for an autonomous agent action
-- confirmOrder(userEmail, orderNumber, agentId, mandateId, paymentIntentId) — complete payment for a pending order; non-mock payments require a paymentIntentId
+- refreshCart(userEmail) — reset cart 15-minute TTL without modifying contents
+- checkout(userEmail, paymentMethod, agentId, mandateId) — create order from cart
+- confirmOrder(userEmail, orderNumber, agentId, mandateId, paymentIntentId?) — complete payment; non-mock payments require paymentIntentId
 - getOrder(userEmail, orderNumber) — order details
-- listOrders(userEmail, page, size) — order history
-- createMandate(agentId, userEmail, scope, maxSpendPerTransaction, maxSpendTotal, allowedCategories, allowedEvents, expiresAt) — authorize agent actions
+- listOrders(userEmail, page?, size?) — order history with pagination
+- getCalendarEntry(userEmail, orderNumber) — RFC 5545 .ics calendar content for a confirmed order
+- createMandate(agentId, userEmail, scope, maxSpendPerTransaction?, maxSpendTotal?, allowedCategories?, allowedEvents?, expiresAt?) — authorize agent actions
 - revokeMandate(mandateId) — revoke agent authorization
 - listMandates(userEmail) — list active mandates
-- validateMandate(agentId, userEmail, scope, amount) — check if action is authorized
+- validateMandate(agentId, userEmail, scope, amount?, categorySlug?, eventSlug?) — check if action is authorized by scope, spending limits, and category/event restrictions
+- getBestMandate(agentId, userEmail, eventSlug, categorySlug?, amount?) — RECOMMENDED before addToCart: finds the best matching mandate for a purchase action in one call
 
 ## ACP Endpoints (Agentic Commerce Protocol, requires API key: X-API-Key header)
 ACP-compatible checkout endpoints at /acp/v1/:
@@ -126,7 +155,7 @@ Managed via MCP MandateTools or directly via mandate service.
 
 ### Purchase Flow with Mandates
 
-findTickets(query, filters) → addToCart(userEmail, listingId, agentId, mandateId) → checkout(userEmail, paymentMethod, agentId, mandateId) → confirmOrder(userEmail, orderNumber, agentId, mandateId)
+findTickets(query, filters) → getBestMandate(agentId, userEmail, eventSlug) → addToCart(userEmail, listingId, agentId, mandateId) → checkout(userEmail, paymentMethod, agentId, mandateId) → confirmOrder(userEmail, orderNumber, agentId, mandateId)
 
 Each step validates the mandate via eval conditions. Spend is recorded on confirmation. If the order is later cancelled, spend is reversed.
 
