@@ -12,6 +12,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.ai.service.ChatContext;
 import com.mockhub.mandate.dto.CreateMandateRequest;
 import com.mockhub.mandate.dto.MandateDto;
 import com.mockhub.mandate.service.MandateService;
@@ -43,9 +44,10 @@ public class MandateTools {
             @ToolParam(description = "Comma-separated event slugs (optional, null = all)") String allowedEvents,
             @ToolParam(description = "ISO-8601 expiration timestamp (optional, null = no expiration)") String expiresAt) {
         try {
+            String effectiveEmail = ChatContext.resolveEmail(userEmail);
             Instant parsedExpiresAt = expiresAt != null ? Instant.parse(expiresAt) : null;
             CreateMandateRequest request = new CreateMandateRequest(
-                    agentId, userEmail, scope,
+                    agentId, effectiveEmail, scope,
                     maxSpendPerTransaction, maxSpendTotal,
                     allowedCategories, allowedEvents,
                     parsedExpiresAt);
@@ -75,7 +77,8 @@ public class MandateTools {
     public String listMandates(
             @ToolParam(description = "Email of the user whose mandates to list", required = true) String userEmail) {
         try {
-            List<MandateDto> mandates = mandateService.listMandates(userEmail);
+            String effectiveEmail = ChatContext.resolveEmail(userEmail);
+            List<MandateDto> mandates = mandateService.listMandates(effectiveEmail);
             return objectMapper.writeValueAsString(mandates);
         } catch (Exception e) {
             log.error("Error listing mandates for '{}': {}", userEmail, e.getMessage(), e);
@@ -95,8 +98,9 @@ public class MandateTools {
             @ToolParam(description = "Category slug to check against allowed categories (optional)") String categorySlug,
             @ToolParam(description = "Event slug to check against allowed events (optional)") String eventSlug) {
         try {
+            String effectiveEmail = ChatContext.resolveEmail(userEmail);
             boolean authorized = mandateService.validateAction(
-                    agentId, userEmail, scope, amount, categorySlug, eventSlug);
+                    agentId, effectiveEmail, scope, amount, categorySlug, eventSlug);
             if (authorized) {
                 return "{\"authorized\": true, \"message\": \"Action is authorized\"}";
             } else {
@@ -119,8 +123,9 @@ public class MandateTools {
             @ToolParam(description = "Category slug to check against allowed categories (optional)") String categorySlug,
             @ToolParam(description = "Transaction amount to validate against spending limits (optional)") BigDecimal amount) {
         try {
+            String effectiveEmail = ChatContext.resolveEmail(userEmail);
             Optional<MandateDto> mandate = mandateService.findBestMandate(
-                    agentId, userEmail, "PURCHASE", amount, categorySlug, eventSlug);
+                    agentId, effectiveEmail, "PURCHASE", amount, categorySlug, eventSlug);
             if (mandate.isPresent()) {
                 return objectMapper.writeValueAsString(mandate.get());
             }

@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.ai.service.ChatContext;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
@@ -366,6 +367,74 @@ class CartToolsTest {
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to clear cart"), "Result should contain failure message");
+        }
+    }
+
+    @Nested
+    @DisplayName("ChatContext email enforcement")
+    class ChatContextEnforcement {
+
+        @org.junit.jupiter.api.AfterEach
+        void tearDown() {
+            ChatContext.clear();
+        }
+
+        @Test
+        @DisplayName("given ChatContext set - overrides userEmail parameter in getCart")
+        void givenChatContext_overridesUserEmailInGetCart() {
+            ChatContext.setAuthenticatedEmail("real@example.com");
+            User realUser = new User();
+            realUser.setId(2L);
+            realUser.setEmail("real@example.com");
+            when(userRepository.findByEmail("real@example.com")).thenReturn(Optional.of(realUser));
+            CartDto cartDto = new CartDto(null, null, null, null, 0, null);
+            when(cartService.getCartDto(realUser)).thenReturn(cartDto);
+
+            String result = cartTools.getCart("attacker@example.com");
+
+            verify(userRepository).findByEmail("real@example.com");
+            verify(userRepository, never()).findByEmail("attacker@example.com");
+            assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given ChatContext set - overrides userEmail parameter in addToCart")
+        void givenChatContext_overridesUserEmailInAddToCart() {
+            ChatContext.setAuthenticatedEmail("real@example.com");
+            User realUser = new User();
+            realUser.setId(2L);
+            realUser.setEmail("real@example.com");
+            when(userRepository.findByEmail("real@example.com")).thenReturn(Optional.of(realUser));
+            Listing listing = new Listing();
+            Event event = new Event();
+            event.setEventDate(Instant.now().plus(30, ChronoUnit.DAYS));
+            event.setStatus("ACTIVE");
+            listing.setEvent(event);
+            listing.setStatus("ACTIVE");
+            listing.setComputedPrice(new BigDecimal("50.00"));
+            when(listingRepository.findById(1L)).thenReturn(Optional.of(listing));
+            when(evalRunner.evaluate(any(EvalContext.class)))
+                    .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
+            CartDto cartDto = new CartDto(null, null, null, null, 0, null);
+            when(cartService.addToCart(realUser, 1L)).thenReturn(cartDto);
+
+            String result = cartTools.addToCart("attacker@example.com", 1L, AGENT_ID, MANDATE_ID);
+
+            verify(userRepository).findByEmail("real@example.com");
+            verify(userRepository, never()).findByEmail("attacker@example.com");
+        }
+
+        @Test
+        @DisplayName("given no ChatContext - uses parameter email (external MCP)")
+        void givenNoChatContext_usesParameterEmail() {
+            stubUserLookup("buyer@example.com");
+            CartDto cartDto = new CartDto(null, null, null, null, 0, null);
+            when(cartService.getCartDto(testUser)).thenReturn(cartDto);
+
+            String result = cartTools.getCart("buyer@example.com");
+
+            verify(userRepository).findByEmail("buyer@example.com");
+            assertTrue(!result.contains("\"error\""), "Result should not contain error field");
         }
     }
 }

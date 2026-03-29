@@ -12,6 +12,7 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
 import com.mockhub.cart.service.CartService;
+import com.mockhub.ai.service.ChatContext;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.eval.dto.EvalContext;
 import com.mockhub.eval.dto.EvalSummary;
@@ -162,11 +163,9 @@ public class CartTools {
     }
 
     private User resolveUser(String email) {
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("User email is required");
-        }
-        return userRepository.findByEmail(email.strip())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        String effectiveEmail = ChatContext.resolveEmail(email);
+        return userRepository.findByEmail(effectiveEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", effectiveEmail));
     }
 
     private String errorJson(String message) {

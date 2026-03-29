@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.ai.service.ChatContext;
 import com.mockhub.eval.dto.EvalResult;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
@@ -206,11 +207,9 @@ public class OrderTools {
     }
 
     private User resolveUser(String email) {
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("User email is required");
-        }
-        return userRepository.findByEmail(email.strip())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+        String effectiveEmail = ChatContext.resolveEmail(email);
+        return userRepository.findByEmail(effectiveEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", effectiveEmail));
     }
 
     private String errorJson(String message) {

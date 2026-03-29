@@ -42,12 +42,20 @@ public class ChatService {
             userMessage = "[User context: logged in as " + userEmail + "]\n\n" + userMessage;
         }
 
-        String aiResponse = chatClient.prompt()
-                .user(userMessage)
-                .advisors(advisorSpec -> advisorSpec.param(
-                        CONVERSATION_ID_KEY, conversationId))
-                .call()
-                .content();
+        if (userEmail != null && !userEmail.isBlank()) {
+            ChatContext.setAuthenticatedEmail(userEmail.strip());
+        }
+        String aiResponse;
+        try {
+            aiResponse = chatClient.prompt()
+                    .user(userMessage)
+                    .advisors(advisorSpec -> advisorSpec.param(
+                            CONVERSATION_ID_KEY, conversationId))
+                    .call()
+                    .content();
+        } finally {
+            ChatContext.clear();
+        }
 
         EvalContext evalContext = EvalContext.forChat(aiResponse, request.message());
         EvalSummary evalSummary = evalRunner.evaluate(evalContext);
