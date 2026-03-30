@@ -333,10 +333,10 @@ public class ListingService {
         List<Listing> listings = listingRepository.searchActiveListings(
                 normalizedQuery, normalizedCategory, normalizedCity,
                 minPrice, maxPrice, normalizedSection,
-                effectiveDateFrom, dateTo);
+                effectiveDateFrom, dateTo,
+                org.springframework.data.domain.PageRequest.of(0, limit));
 
         return listings.stream()
-                .limit(limit)
                 .map(this::toTicketSearchResultDto)
                 .toList();
     }

@@ -107,7 +107,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             @Param("maxPrice") BigDecimal maxPrice,
             @Param("section") String section,
             @Param("dateFrom") Instant dateFrom,
-            @Param("dateTo") Instant dateTo);
+            @Param("dateTo") Instant dateTo,
+            org.springframework.data.domain.Pageable pageable);
 
     @Query("""
             SELECT l FROM Listing l
