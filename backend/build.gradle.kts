@@ -97,6 +97,10 @@ sonar {
         property("sonar.organization", "kousen-it-inc")
         property("sonar.host.url", "https://sonarcloud.io")
         property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
+        property("sonar.javascript.lcov.reportPaths", "../frontend/coverage/lcov.info")
+        property("sonar.sources", "src/main/java,../frontend/src")
+        property("sonar.tests", "src/test/java,../frontend/src")
+        property("sonar.test.inclusions", "**/*Test.java,**/*.test.ts,**/*.test.tsx")
         property("sonar.coverage.exclusions", listOf(
             "**/seed/**",
             "**/entity/**",
