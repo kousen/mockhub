@@ -16,11 +16,18 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import com.mockhub.auth.dto.AuthResponse;
+import com.mockhub.auth.entity.OAuthAccount;
 import com.mockhub.auth.entity.Role;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.OAuthAccountRepository;
@@ -51,6 +58,9 @@ class OAuth2AuthenticationSuccessHandlerTest {
     @Mock
     private OAuthAccountRepository oAuthAccountRepository;
 
+    @Mock
+    private OAuth2AuthorizedClientService authorizedClientService;
+
     private OAuth2AuthenticationSuccessHandler handler;
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
@@ -64,7 +74,7 @@ class OAuth2AuthenticationSuccessHandlerTest {
     void setUp() {
         handler = new OAuth2AuthenticationSuccessHandler(
                 jwtTokenProvider, userRepository, roleRepository,
-                oAuthAccountRepository, FRONTEND_URL, false);
+                oAuthAccountRepository, authorizedClientService, FRONTEND_URL, false);
 
         request = new MockHttpServletRequest();
         response = new MockHttpServletResponse();
@@ -104,9 +114,16 @@ class OAuth2AuthenticationSuccessHandlerTest {
                     "picture", "https://example.com/avatar.jpg");
             OAuth2AuthenticationToken token = createOAuthToken("google", attrs, "email");
 
+            OAuthAccount existingAccount = new OAuthAccount();
+            existingAccount.setUser(testUser);
+            existingAccount.setProvider("google");
+            existingAccount.setProviderAccountId("google-id-123");
+
             when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-            when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
+            when(oAuthAccountRepository.findByProviderAndProviderAccountId("google", "google-id-123"))
+                    .thenReturn(Optional.of(existingAccount));
             when(userRepository.save(any(User.class))).thenReturn(testUser);
+            when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenReturn(existingAccount);
             when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
             when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
             when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(3600000L);
@@ -143,7 +160,9 @@ class OAuth2AuthenticationSuccessHandlerTest {
             when(userRepository.findByEmail("newuser@example.com")).thenReturn(Optional.empty());
             when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.of(userRole));
             when(userRepository.save(any(User.class))).thenReturn(newUser);
-            when(oAuthAccountRepository.existsByUserIdAndProvider(2L, "github")).thenReturn(false);
+            when(oAuthAccountRepository.findByProviderAndProviderAccountId("github", "42"))
+                    .thenReturn(Optional.empty());
+            when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenAnswer(i -> i.getArgument(0));
             when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
             when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
             when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(3600000L);
@@ -154,14 +173,13 @@ class OAuth2AuthenticationSuccessHandlerTest {
             assertNotNull(redirectUrl, "Should redirect");
             assertTrue(redirectUrl.startsWith(FRONTEND_URL + "/auth/callback?code="),
                     "Should redirect to frontend callback with code");
-            // save called twice: once for new user creation, once for lastLoginAt update
             verify(userRepository).findByEmail("newuser@example.com");
-            verify(oAuthAccountRepository).save(any());
+            verify(oAuthAccountRepository).save(any(OAuthAccount.class));
         }
 
         @Test
-        @DisplayName("onAuthenticationSuccess - given OAuth account already linked - does not re-link")
-        void onAuthenticationSuccess_givenAlreadyLinked_doesNotReLink() throws IOException {
+        @DisplayName("onAuthenticationSuccess - given OAuth account already linked - updates existing account")
+        void onAuthenticationSuccess_givenAlreadyLinked_updatesExistingAccount() throws IOException {
             Map<String, Object> attrs = Map.of(
                     "email", "user@example.com",
                     "name", "John Doe",
@@ -169,8 +187,15 @@ class OAuth2AuthenticationSuccessHandlerTest {
                     "picture", "https://example.com/pic.jpg");
             OAuth2AuthenticationToken token = createOAuthToken("google", attrs, "email");
 
+            OAuthAccount existingAccount = new OAuthAccount();
+            existingAccount.setUser(testUser);
+            existingAccount.setProvider("google");
+            existingAccount.setProviderAccountId("google-id-123");
+
             when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-            when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
+            when(oAuthAccountRepository.findByProviderAndProviderAccountId("google", "google-id-123"))
+                    .thenReturn(Optional.of(existingAccount));
+            when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenReturn(existingAccount);
             when(userRepository.save(any(User.class))).thenReturn(testUser);
             when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
             when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
@@ -178,7 +203,7 @@ class OAuth2AuthenticationSuccessHandlerTest {
 
             handler.onAuthenticationSuccess(request, response, token);
 
-            verify(oAuthAccountRepository, never()).save(any());
+            verify(oAuthAccountRepository).save(existingAccount);
         }
 
         @Test
@@ -213,10 +238,17 @@ class OAuth2AuthenticationSuccessHandlerTest {
             spotifyUser.setEnabled(true);
             spotifyUser.setAvatarUrl("https://i.scdn.co/image/abc");
 
+            OAuth2AuthorizedClient spotifyClient = createAuthorizedClient("spotify",
+                    "spotify-access-token", "spotify-refresh-token");
+
             when(userRepository.findByEmail("spotify@example.com")).thenReturn(Optional.empty());
             when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.of(userRole));
             when(userRepository.save(any(User.class))).thenReturn(spotifyUser);
-            when(oAuthAccountRepository.existsByUserIdAndProvider(3L, "spotify")).thenReturn(false);
+            when(oAuthAccountRepository.findByProviderAndProviderAccountId("spotify", "spotify-id-456"))
+                    .thenReturn(Optional.empty());
+            when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenAnswer(i -> i.getArgument(0));
+            when(authorizedClientService.loadAuthorizedClient("spotify", "spotify@example.com"))
+                    .thenReturn(spotifyClient);
             when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
             when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
             when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(3600000L);
@@ -225,6 +257,15 @@ class OAuth2AuthenticationSuccessHandlerTest {
 
             assertTrue(response.getRedirectedUrl().startsWith(FRONTEND_URL + "/auth/callback?code="),
                     "Should redirect with code for Spotify user");
+
+            // Verify Spotify tokens were stored
+            org.mockito.ArgumentCaptor<OAuthAccount> captor =
+                    org.mockito.ArgumentCaptor.forClass(OAuthAccount.class);
+            verify(oAuthAccountRepository).save(captor.capture());
+            OAuthAccount saved = captor.getValue();
+            assertEquals("spotify-access-token", saved.getAccessTokenEncrypted());
+            assertEquals("spotify-refresh-token", saved.getRefreshTokenEncrypted());
+            assertNotNull(saved.getScopesGranted());
         }
 
         @Test
@@ -247,7 +288,9 @@ class OAuth2AuthenticationSuccessHandlerTest {
             when(userRepository.findByEmail("noname@example.com")).thenReturn(Optional.empty());
             when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.of(userRole));
             when(userRepository.save(any(User.class))).thenReturn(newUser);
-            when(oAuthAccountRepository.existsByUserIdAndProvider(4L, "google")).thenReturn(false);
+            when(oAuthAccountRepository.findByProviderAndProviderAccountId("google", "google-id-789"))
+                    .thenReturn(Optional.empty());
+            when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenAnswer(i -> i.getArgument(0));
             when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
             when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
             when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(3600000L);
@@ -277,10 +320,17 @@ class OAuth2AuthenticationSuccessHandlerTest {
             spotifyUser.setCreatedAt(Instant.now());
             spotifyUser.setEnabled(true);
 
+            OAuth2AuthorizedClient spotifyClient = createAuthorizedClient("spotify",
+                    "spotify-access", "spotify-refresh");
+
             when(userRepository.findByEmail("spotifybare@example.com")).thenReturn(Optional.empty());
             when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.of(userRole));
             when(userRepository.save(any(User.class))).thenReturn(spotifyUser);
-            when(oAuthAccountRepository.existsByUserIdAndProvider(5L, "spotify")).thenReturn(false);
+            when(oAuthAccountRepository.findByProviderAndProviderAccountId("spotify", "spotify-id-bare"))
+                    .thenReturn(Optional.empty());
+            when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenAnswer(i -> i.getArgument(0));
+            when(authorizedClientService.loadAuthorizedClient("spotify", "spotifybare@example.com"))
+                    .thenReturn(spotifyClient);
             when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
             when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
             when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(3600000L);
@@ -308,7 +358,7 @@ class OAuth2AuthenticationSuccessHandlerTest {
             handler.onAuthenticationSuccess(request, response, token);
 
             // linkOAuthAccount returns early when providerAccountId is null
-            verify(oAuthAccountRepository, never()).existsByUserIdAndProvider(any(), any());
+            verify(oAuthAccountRepository, never()).findByProviderAndProviderAccountId(any(), any());
             verify(oAuthAccountRepository, never()).save(any());
         }
     }
@@ -328,12 +378,7 @@ class OAuth2AuthenticationSuccessHandlerTest {
                     "picture", "https://example.com/avatar.jpg");
             OAuth2AuthenticationToken token = createOAuthToken("google", attrs, "email");
 
-            when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-            when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
-            when(userRepository.save(any(User.class))).thenReturn(testUser);
-            when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
-            when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
-            when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(3600000L);
+            stubForSuccessfulLogin();
 
             handler.onAuthenticationSuccess(request, response, token);
 
@@ -364,12 +409,7 @@ class OAuth2AuthenticationSuccessHandlerTest {
                     "picture", "https://example.com/avatar.jpg");
             OAuth2AuthenticationToken token = createOAuthToken("google", attrs, "email");
 
-            when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-            when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
-            when(userRepository.save(any(User.class))).thenReturn(testUser);
-            when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
-            when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
-            when(jwtTokenProvider.getAccessTokenExpirationMs()).thenReturn(3600000L);
+            stubForSuccessfulLogin();
 
             handler.onAuthenticationSuccess(request, response, token);
 
@@ -442,8 +482,15 @@ class OAuth2AuthenticationSuccessHandlerTest {
     }
 
     private void stubForSuccessfulLogin() {
+        OAuthAccount existingAccount = new OAuthAccount();
+        existingAccount.setUser(testUser);
+        existingAccount.setProvider("google");
+        existingAccount.setProviderAccountId("google-id-123");
+
         when(userRepository.findByEmail("user@example.com")).thenReturn(Optional.of(testUser));
-        when(oAuthAccountRepository.existsByUserIdAndProvider(1L, "google")).thenReturn(true);
+        when(oAuthAccountRepository.findByProviderAndProviderAccountId(any(), any()))
+                .thenReturn(Optional.of(existingAccount));
+        when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenReturn(existingAccount);
         when(userRepository.save(any(User.class))).thenReturn(testUser);
         when(jwtTokenProvider.generateAccessToken(any(SecurityUser.class))).thenReturn("access-token");
         when(jwtTokenProvider.generateRefreshToken(any(SecurityUser.class))).thenReturn("refresh-token");
@@ -456,5 +503,28 @@ class OAuth2AuthenticationSuccessHandlerTest {
                 Map.of("email", "user@example.com", "sub", "google-123", "name", "John Doe"),
                 "email");
         return new OAuth2AuthenticationToken(oauth2User, oauth2User.getAuthorities(), "google");
+    }
+
+    private OAuth2AuthorizedClient createAuthorizedClient(String registrationId,
+                                                           String accessTokenValue,
+                                                           String refreshTokenValue) {
+        ClientRegistration registration = ClientRegistration.withRegistrationId(registrationId)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .clientId("test-client-id")
+                .redirectUri("http://localhost/callback")
+                .authorizationUri("https://accounts.spotify.com/authorize")
+                .tokenUri("https://accounts.spotify.com/api/token")
+                .build();
+
+        OAuth2AccessToken accessToken = new OAuth2AccessToken(
+                OAuth2AccessToken.TokenType.BEARER,
+                accessTokenValue,
+                Instant.now(),
+                Instant.now().plusSeconds(3600),
+                Set.of("user-read-email", "user-top-read", "user-read-recently-played"));
+
+        OAuth2RefreshToken refreshToken = new OAuth2RefreshToken(refreshTokenValue, Instant.now());
+
+        return new OAuth2AuthorizedClient(registration, "test-principal", accessToken, refreshToken);
     }
 }

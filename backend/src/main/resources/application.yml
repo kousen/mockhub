@@ -21,7 +21,7 @@ spring:
           spotify:
             client-id: ${SPOTIFY_CLIENT_ID:placeholder}
             client-secret: ${SPOTIFY_CLIENT_SECRET:placeholder}
-            scope: user-read-email
+            scope: user-read-email,user-top-read,user-read-recently-played
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
         provider:
@@ -109,6 +109,7 @@ mockhub:
   spotify:
     client-id: ${SPOTIFY_CLIENT_ID:}
     client-secret: ${SPOTIFY_CLIENT_SECRET:}
+    token-encryption-key: ${SPOTIFY_TOKEN_ENCRYPTION_KEY:}
   oauth2:
     frontend-redirect-url: ${OAUTH2_FRONTEND_REDIRECT_URL:http://localhost:5173}
   images:
