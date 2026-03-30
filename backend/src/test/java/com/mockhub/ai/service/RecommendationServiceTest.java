@@ -74,7 +74,8 @@ class RecommendationServiceTest {
     @BeforeEach
     void setUp() {
         recommendationService = new RecommendationService(
-                chatClient, eventRepository, evalRunner, favoriteRepository, orderItemRepository);
+                chatClient, eventRepository, evalRunner, favoriteRepository,
+                orderItemRepository, java.util.Optional.empty());
     }
 
     private Event createTestEvent(Long id, String name, String slug, String venueName,
