@@ -33,7 +33,7 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
 
     private static final Logger log = LoggerFactory.getLogger(SpotifyListeningApiService.class);
     private static final Duration CACHE_TTL = Duration.ofHours(24);
-    private static final String REQUIRED_SCOPE = "user-top-read";
+    private static final List<String> REQUIRED_SCOPES = List.of("user-top-read", "user-read-recently-played");
 
     private final OAuthAccountRepository oAuthAccountRepository;
     private final SpotifyListeningCacheRepository cacheRepository;
@@ -65,7 +65,7 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
 
         OAuthAccount account = accountOpt.get();
 
-        if (account.getScopesGranted() == null || !account.getScopesGranted().contains(REQUIRED_SCOPE)) {
+        if (account.getScopesGranted() == null || !hasAllRequiredScopes(account.getScopesGranted())) {
             log.info("User {} needs Spotify scope upgrade (current: {})", userId, account.getScopesGranted());
             return SpotifyListeningDto.needsScopeUpgrade();
         }
@@ -82,6 +82,10 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
 
         // Fetch from Spotify
         return fetchAndCache(userId, account, cached.orElse(null));
+    }
+
+    private boolean hasAllRequiredScopes(String scopesGranted) {
+        return REQUIRED_SCOPES.stream().allMatch(scopesGranted::contains);
     }
 
     private boolean isCacheFresh(SpotifyListeningCache cache) {
@@ -102,18 +106,28 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
                 log.warn("Spotify token refresh failed for user {}", userId);
                 return SpotifyListeningDto.needsScopeUpgrade();
             }
-            return doFetchAndCache(userId, refreshedToken, existingCache);
+            try {
+                return doFetchAndCache(userId, refreshedToken, existingCache);
+            } catch (Exception retryEx) {
+                log.error("Spotify fetch failed after token refresh for user {}: {}",
+                        userId, retryEx.getMessage());
+            }
         } catch (Exception e) {
             log.error("Failed to fetch Spotify listening data for user {}: {}", userId, e.getMessage());
-            // Return stale cache if available
-            if (existingCache != null) {
-                return new SpotifyListeningDto(
-                        existingCache.getTopArtistIds(), existingCache.getTopArtistNames(),
-                        existingCache.getTopGenres(), existingCache.getRecentlyPlayedArtistIds(),
-                        true, false);
-            }
-            return new SpotifyListeningDto(List.of(), List.of(), List.of(), List.of(), true, false);
         }
+
+        // Fallback: return stale cache if available, otherwise empty
+        return staleCacheOrEmpty(existingCache);
+    }
+
+    private SpotifyListeningDto staleCacheOrEmpty(SpotifyListeningCache existingCache) {
+        if (existingCache != null) {
+            return new SpotifyListeningDto(
+                    existingCache.getTopArtistIds(), existingCache.getTopArtistNames(),
+                    existingCache.getTopGenres(), existingCache.getRecentlyPlayedArtistIds(),
+                    true, false);
+        }
+        return new SpotifyListeningDto(List.of(), List.of(), List.of(), List.of(), true, false);
     }
 
     @SuppressWarnings("unchecked")

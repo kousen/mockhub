@@ -70,6 +70,20 @@ class SpotifyListeningApiServiceTest {
     }
 
     @Test
+    @DisplayName("getListeningData - only one required scope - returns scope upgrade needed")
+    void getListeningData_partialScopes_returnsScopeUpgradeNeeded() {
+        OAuthAccount account = createSpotifyAccount("user-read-email,user-top-read");
+
+        when(oAuthAccountRepository.findByUserIdAndProvider(1L, "spotify"))
+                .thenReturn(Optional.of(account));
+
+        SpotifyListeningDto result = service.getListeningData(1L);
+
+        assertTrue(result.spotifyConnected());
+        assertTrue(result.scopeUpgradeNeeded());
+    }
+
+    @Test
     @DisplayName("getListeningData - null scopes - returns scope upgrade needed")
     void getListeningData_nullScopes_returnsScopeUpgradeNeeded() {
         OAuthAccount account = createSpotifyAccount(null);
