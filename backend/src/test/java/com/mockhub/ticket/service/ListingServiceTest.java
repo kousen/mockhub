@@ -277,12 +277,10 @@ class ListingServiceTest {
     @SuppressWarnings("unchecked")
     private void stubSpecSearch(List<Listing> listings) {
         List<Long> ids = listings.stream().map(Listing::getId).toList();
-        org.springframework.data.domain.Page<Listing> page =
-                new org.springframework.data.domain.PageImpl<>(listings);
-        when(listingRepository.findAll(
+        when(listingRepository.findBy(
                 any(org.springframework.data.jpa.domain.Specification.class),
-                any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(page);
+                any(java.util.function.Function.class)))
+                .thenReturn(listings);
         if (!ids.isEmpty()) {
             when(listingRepository.findByIdsWithDetails(ids)).thenReturn(listings);
         }
@@ -341,38 +339,31 @@ class ListingServiceTest {
 
     @SuppressWarnings("unchecked")
     @Test
-    @DisplayName("searchTickets - given limit - passes limit to Specification query via Pageable")
+    @DisplayName("searchTickets - given limit - passes limit via fluent API")
     void searchTickets_givenLimit_passesLimitToQuery() {
-        org.springframework.data.domain.Page<Listing> emptyPage =
-                new org.springframework.data.domain.PageImpl<>(List.of());
-        when(listingRepository.findAll(
+        when(listingRepository.findBy(
                 any(org.springframework.data.jpa.domain.Specification.class),
-                any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(emptyPage);
+                any(java.util.function.Function.class)))
+                .thenReturn(List.of());
 
         ListingSearchCriteria criteria = new ListingSearchCriteria(
                 null, null, null, null, null, null, null, null, 5);
-        listingService.searchTickets(criteria);
+        List<TicketSearchResultDto> results = listingService.searchTickets(criteria);
 
-        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> pageableCaptor =
-                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
-        verify(listingRepository).findAll(
+        assertEquals(0, results.size());
+        verify(listingRepository).findBy(
                 any(org.springframework.data.jpa.domain.Specification.class),
-                pageableCaptor.capture());
-        assertEquals(5, pageableCaptor.getValue().getPageSize(), "Should pass limit as page size");
-        assertEquals(0, pageableCaptor.getValue().getPageNumber(), "Should request first page");
+                any(java.util.function.Function.class));
     }
 
     @SuppressWarnings("unchecked")
     @Test
     @DisplayName("searchTickets - given no results - returns empty list")
     void searchTickets_givenNoResults_returnsEmptyList() {
-        org.springframework.data.domain.Page<Listing> emptyPage =
-                new org.springframework.data.domain.PageImpl<>(List.of());
-        when(listingRepository.findAll(
+        when(listingRepository.findBy(
                 any(org.springframework.data.jpa.domain.Specification.class),
-                any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(emptyPage);
+                any(java.util.function.Function.class)))
+                .thenReturn(List.of());
 
         ListingSearchCriteria criteria = new ListingSearchCriteria(
                 "nonexistent", null, null, null, null, null, null, null, 10);

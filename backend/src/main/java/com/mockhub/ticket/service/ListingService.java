@@ -326,8 +326,10 @@ public class ListingService {
     public List<TicketSearchResultDto> searchTickets(ListingSearchCriteria criteria) {
         Specification<Listing> spec = ListingSearchSpecification.fromCriteria(criteria);
 
-        // Phase 1: Find matching listing IDs via Specification
-        List<Long> listingIds = listingRepository.findAll(spec, PageRequest.of(0, criteria.limit()))
+        // Phase 1: Find matching listing IDs via fluent API (no COUNT query)
+        List<Long> listingIds = listingRepository.findBy(spec,
+                query -> query.limit(criteria.limit()).all())
+                .stream()
                 .map(Listing::getId)
                 .toList();
 
