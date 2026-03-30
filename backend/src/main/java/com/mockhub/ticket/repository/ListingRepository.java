@@ -77,31 +77,31 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     boolean existsByTicketIdAndStatus(Long ticketId, String status);
 
-    @Query("""
-            SELECT l.id FROM Listing l
-            JOIN l.ticket t
-            JOIN t.section s
-            JOIN l.event e
-            JOIN e.venue v
-            JOIN e.category c
+    @Query(value = """
+            SELECT l.id FROM listings l
+            JOIN tickets t ON t.id = l.ticket_id
+            JOIN sections s ON s.id = t.section_id
+            JOIN events e ON e.id = l.event_id
+            JOIN venues v ON v.id = e.venue_id
+            JOIN categories c ON c.id = e.category_id
             WHERE l.status = 'ACTIVE'
-            AND l.event.id IN (
-                SELECT ev.id FROM Event ev
-                JOIN ev.venue ven
-                JOIN ev.category cat
-                WHERE (:query IS NULL OR LOWER(ev.name) LIKE CONCAT('%', :query, '%')
-                     OR LOWER(ev.artistName) LIKE CONCAT('%', :query, '%'))
-                AND (:categorySlug IS NULL OR cat.slug = :categorySlug)
-                AND (:city IS NULL OR LOWER(ven.city) = :city)
-                AND ev.eventDate > :dateFrom
-                AND (:dateTo IS NULL OR ev.eventDate <= :dateTo)
+            AND e.id IN (
+                SELECT ev.id FROM events ev
+                JOIN venues ven ON ven.id = ev.venue_id
+                JOIN categories cat ON cat.id = ev.category_id
+                WHERE (CAST(:query AS varchar) IS NULL OR LOWER(ev.name) LIKE '%' || CAST(:query AS varchar) || '%'
+                     OR LOWER(ev.artist_name) LIKE '%' || CAST(:query AS varchar) || '%')
+                AND (CAST(:categorySlug AS varchar) IS NULL OR cat.slug = CAST(:categorySlug AS varchar))
+                AND (CAST(:city AS varchar) IS NULL OR LOWER(ven.city) = CAST(:city AS varchar))
+                AND ev.event_date > CAST(:dateFrom AS timestamptz)
+                AND (CAST(:dateTo AS timestamptz) IS NULL OR ev.event_date <= CAST(:dateTo AS timestamptz))
             )
-            AND (:minPrice IS NULL OR l.computedPrice >= :minPrice)
-            AND (:maxPrice IS NULL OR l.computedPrice <= :maxPrice)
-            AND (:section IS NULL OR LOWER(s.name) = :section)
-            ORDER BY l.computedPrice ASC
-            """)
-    @SuppressWarnings("java:S107") // Repository query params map directly to JPQL named parameters
+            AND (CAST(:minPrice AS numeric) IS NULL OR l.computed_price >= CAST(:minPrice AS numeric))
+            AND (CAST(:maxPrice AS numeric) IS NULL OR l.computed_price <= CAST(:maxPrice AS numeric))
+            AND (CAST(:section AS varchar) IS NULL OR LOWER(s.name) = CAST(:section AS varchar))
+            ORDER BY l.computed_price ASC
+            """, nativeQuery = true)
+    @SuppressWarnings("java:S107") // Repository query params map directly to SQL named parameters
     List<Long> searchActiveListingIds(
             @Param("query") String query,
             @Param("categorySlug") String categorySlug,
