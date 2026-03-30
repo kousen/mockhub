@@ -65,8 +65,12 @@ public class SpotifyController {
     @Operation(summary = "Get Spotify connection status",
             description = "Returns whether the user has connected their Spotify account and if scope upgrade is needed")
     @ApiResponse(responseCode = "200", description = "Connection status returned")
+    @ApiResponse(responseCode = "401", description = "Not authenticated")
     public ResponseEntity<SpotifyConnectionDto> getConnectionStatus(
             @AuthenticationPrincipal SecurityUser securityUser) {
+        if (securityUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         return ResponseEntity.ok(connectionService.getConnectionStatus(securityUser.getId()));
     }
 
@@ -74,7 +78,11 @@ public class SpotifyController {
     @Operation(summary = "Disconnect Spotify",
             description = "Removes Spotify OAuth tokens and listening cache for the user")
     @ApiResponse(responseCode = "204", description = "Spotify disconnected")
+    @ApiResponse(responseCode = "401", description = "Not authenticated")
     public ResponseEntity<Void> disconnect(@AuthenticationPrincipal SecurityUser securityUser) {
+        if (securityUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         connectionService.disconnect(securityUser.getId());
         return ResponseEntity.noContent().build();
     }
