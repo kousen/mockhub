@@ -39,6 +39,9 @@ class SpotifyControllerTest {
     private SpotifyService spotifyService;
 
     @MockitoBean
+    private com.mockhub.spotify.service.SpotifyConnectionService connectionService;
+
+    @MockitoBean
     private UserRepository userRepository;
 
     @MockitoBean
@@ -101,7 +104,7 @@ class SpotifyControllerTest {
         @Test
         @DisplayName("getArtist - given no SpotifyService bean - returns 503")
         void getArtist_givenNoSpotifyService_returns503() {
-            SpotifyController controller = new SpotifyController(Optional.empty());
+            SpotifyController controller = new SpotifyController(Optional.empty(), connectionService);
 
             ResponseEntity<SpotifyArtistDto> response = controller.getArtist("abc123");
 
