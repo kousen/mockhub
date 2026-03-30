@@ -78,15 +78,12 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     boolean existsByTicketIdAndStatus(Long ticketId, String status);
 
     @Query("""
-            SELECT l FROM Listing l
-            JOIN FETCH l.ticket t
-            JOIN FETCH t.section s
-            LEFT JOIN FETCH t.seat seat
-            LEFT JOIN FETCH seat.row r
-            JOIN FETCH l.event e
-            JOIN FETCH e.venue v
-            JOIN FETCH e.category c
-            LEFT JOIN FETCH l.seller seller
+            SELECT l.id FROM Listing l
+            JOIN l.ticket t
+            JOIN t.section s
+            JOIN l.event e
+            JOIN e.venue v
+            JOIN e.category c
             WHERE l.status = 'ACTIVE'
             AND l.event.id IN (
                 SELECT ev.id FROM Event ev
@@ -104,7 +101,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             AND (:section IS NULL OR LOWER(s.name) = LOWER(:section))
             ORDER BY l.computedPrice ASC
             """)
-    List<Listing> searchActiveListings(
+    List<Long> searchActiveListingIds(
             @Param("query") String query,
             @Param("categorySlug") String categorySlug,
             @Param("city") String city,
@@ -114,6 +111,21 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             @Param("dateFrom") Instant dateFrom,
             @Param("dateTo") Instant dateTo,
             org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT l FROM Listing l
+            JOIN FETCH l.ticket t
+            JOIN FETCH t.section s
+            LEFT JOIN FETCH t.seat seat
+            LEFT JOIN FETCH seat.row r
+            JOIN FETCH l.event e
+            JOIN FETCH e.venue v
+            JOIN FETCH e.category c
+            LEFT JOIN FETCH l.seller seller
+            WHERE l.id IN :ids
+            ORDER BY l.computedPrice ASC
+            """)
+    List<Listing> findByIdsWithDetails(@Param("ids") List<Long> ids);
 
     @Query("""
             SELECT l FROM Listing l
