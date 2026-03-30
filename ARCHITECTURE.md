@@ -520,7 +520,7 @@ Two implementations controlled by Spring profiles:
 - **Same `@Tool`-annotated classes** serve both the MCP server (external agents) and the chat endpoint (users)
 - **Conditional activation** via `@ConditionalOnProperty(name = "spring.ai.anthropic.api-key")` — not `@ConditionalOnBean` (evaluates before auto-config)
 - **`AiController`** injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active
-- **Personalized recommendations:** `RecommendationService` accepts a nullable `userId` — when provided, enriches the AI prompt with user favorites and purchase history for personalized ranking. Falls back to generic recommendations for anonymous users.
+- **Personalized recommendations:** `RecommendationService` accepts a nullable `userId` and optional `city` — when provided, enriches the AI prompt with user favorites, purchase history, and Spotify listening data (top artists, genres, recently played) for personalized ranking. Spotify-matched events are included in the candidate pool even if not featured. Falls back to generic recommendations for anonymous users.
 - **Circular dependency** (MCP tools → PricingTools → PricePredictionService → ChatClient) broken with `@Lazy`
 
 ### SMS Delivery
@@ -734,6 +734,7 @@ Naming convention: `methodName_givenCondition_expectedResult`
 | `OAUTH2_FRONTEND_REDIRECT_URL` | For OAuth | Frontend base URL for OAuth callback |
 | `SPOTIFY_CLIENT_ID` | For Spotify | Spotify API client ID |
 | `SPOTIFY_CLIENT_SECRET` | For Spotify | Spotify API client secret |
+| `SPOTIFY_TOKEN_ENCRYPTION_KEY` | For Spotify | AES-256 key (32-byte Base64) for encrypting stored OAuth tokens |
 | `MCP_API_KEY` | For MCP/ACP | API key for MCP and ACP endpoints |
 | `SPRING_PROFILES_ACTIVE` | Yes | Profile combination (e.g., `dev,ai-anthropic`) |
 

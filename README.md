@@ -89,11 +89,11 @@ Any authenticated user can both buy and sell tickets.
 - **Seller marketplace** — any user can list tickets, manage listings, track earnings
 - **OAuth social login** — Google, GitHub, and Spotify sign-in alongside email/password
 - **User profiles** — edit name/phone, view connected OAuth providers
-- **Spotify integration** — embedded player, artist genres, and metadata on event pages
+- **Spotify integration** — embedded player, artist genres, metadata, and personalized recommendations based on listening history (top artists, genres, recently played)
 - **AI chat assistant** — ask questions about events and pricing (function-calling enabled)
 - **AI recommendations** — personalized event suggestions with relevance scores
 - **AI price predictions** — trend analysis on event detail pages
-- **MCP server** — 21 tools for AI agent integration (events, cart, orders, pricing, mandates)
+- **MCP server** — 23 tools for AI agent integration (events, cart, orders, pricing, mandates)
 - **Agent mandates** — authorization model for AI agents with spending limits and scope restrictions
 - **ACP endpoints** — Agentic Commerce Protocol checkout API for agent interoperability
 - **Agent discovery** — `llms.txt` at `/llms.txt` describes all API endpoints, MCP tools, and ACP endpoints

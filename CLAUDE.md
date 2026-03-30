@@ -132,14 +132,24 @@ The codebase uses Java DOP patterns where they add value:
 
 ### Spotify Integration
 
-- **Two phases shipped:** Phase 1 (API metadata) and Phase 2 (embedded player, genre tags).
+- **Three phases shipped:** Phase 1 (API metadata), Phase 2 (embedded player, genre tags), Phase 3 (user listening history for personalized recommendations).
 - **Client Credentials OAuth2:** `SpotifyApiService` authenticates with Spotify's token endpoint using Basic auth (client ID + secret). Tokens cached until near-expiry.
+- **User OAuth2 (Phase 3):** `SpotifyListeningApiService` uses the user's OAuth access/refresh tokens (stored encrypted) to fetch `GET /v1/me/top/artists` and `GET /v1/me/player/recently-played`. Scopes: `user-read-email,user-top-read,user-read-recently-played`.
+- **Token storage:** Spotify access/refresh tokens stored encrypted (AES-256-GCM) in `oauth_accounts` via `TokenEncryptionConverter` JPA AttributeConverter. Key from `SPOTIFY_TOKEN_ENCRYPTION_KEY` env var (32-byte Base64). Random 12-byte IV per encryption.
+- **Lazy token refresh:** On 401, `SpotifyListeningApiService` refreshes via `POST /api/token` with `grant_type=refresh_token`. Updates stored tokens. Falls back to stale cache on failure.
+- **Listening cache:** `spotify_listening_cache` table (JSONB columns) caches top artist IDs/names, genres, recently played artist IDs per user. 24-hour TTL. Minimizes API calls under Spotify's 5-user dev mode cap.
+- **Incremental consent:** `scopes_granted` column on `OAuthAccount` tracks which scopes were granted. `SpotifyListeningService` returns `scopeUpgradeNeeded=true` if `user-top-read` or `user-read-recently-played` is missing. Frontend shows "Update permissions" button.
+- **Connect/disconnect:** `SpotifyConnectionService` manages connection status and disconnect (deletes tokens + listening cache). `GET/DELETE /api/v1/spotify/connection`.
+- **Privacy cleanup:** `SpotifyDataCleanupScheduler` runs nightly to remove orphaned cache entries where user no longer has a Spotify OAuth account.
+- **Enhanced recommendations:** `RecommendationService` injects `Optional<SpotifyListeningService>`. Spotify artist names and genres are added to the AI prompt. Events matching the user's Spotify artist IDs are included in the candidate pool even if not featured. Optional `city` query parameter filters both featured and Spotify-matched events (case-insensitive).
+- **Mock implementation:** `MockSpotifyListeningService` (`mock-spotify` profile) returns hardcoded Beyonce/Drake/Radiohead data. No Spotify credentials needed for dev/testing.
+- **Spotify dev mode cap:** 5 allowlisted users max, each needs Spotify Premium. Extended Quota Mode requires 250K MAU — not applicable for teaching projects. The 24-hour cache and mock profile make the feature usable within this constraint.
 - **Artist ID validation:** Spotify IDs are 22-char base62 strings. Validated with `^[a-zA-Z0-9]{22}$` regex in `SpotifyApiService.getArtist()` and `@Pattern` on `EventCreateRequest.spotifyArtistId`.
 - **Iframe URL encoding:** Frontend uses `encodeURIComponent()` on artist IDs in both the embed iframe `src` and "Open in Spotify" link `href`.
 - **Embedded player limitation:** Playback doesn't work due to browser third-party cookie partitioning (Spotify Connect returns 403). A note below the player explains this and directs users to the "Open in Spotify" link.
 - **Rate limit retry:** Exponential backoff with `Retry-After` header support. Max 3 retries.
 - **Caching:** Artist metadata cached 1 hour in `ConcurrentHashMap`.
-- **Profile-based:** `spotify` profile activates `SpotifyApiService` (`@Primary`). Without it, `MockSpotifyService` returns empty.
+- **Profile-based:** `spotify` profile activates `SpotifyApiService` (`@Primary`) and `SpotifyListeningApiService`. Without it, mock implementations return empty/hardcoded data.
 
 ### Lifecycle Cleanup
 
@@ -163,10 +173,10 @@ The codebase uses Java DOP patterns where they add value:
 - **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
-- **MCP server** — 21 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Claude Desktop requires `mcp-remote` bridge for auth headers: `{"command": "npx", "args": ["-y", "mcp-remote", "https://mockhub.kousenit.com/mcp", "--header", "X-API-Key: <key>"]}`.
+- **MCP server** — 23 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Claude Desktop requires `mcp-remote` bridge for auth headers: `{"command": "npx", "args": ["-y", "mcp-remote", "https://mockhub.kousenit.com/mcp", "--header", "X-API-Key: <key>"]}`.
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
-- **`findTickets` compound tool** — single-call search with query, category, city, date range, price range, section filter, returning matching listings sorted by price. Date parameters are `String` (not `Instant`) because Spring AI MCP can't deserialize ISO-8601 to `Instant`. Reduces agent round-trips from 3 to 1.
+- **`findTickets` compound tool** — single-call search with query, category, city, date range, price range, section filter, returning matching listings sorted by price. Uses JPA `Specification` with `findBy` fluent API (no `COUNT` query overhead). `ListingSearchCriteria` record encapsulates all filters; `ListingSearchSpecification` builds predicates dynamically for non-null criteria only. Date parameters are `String` (not `Instant`) because Spring AI MCP can't deserialize ISO-8601 to `Instant`. Reduces agent round-trips from 3 to 1. Server-side execution: ~54ms.
 - **`getEventListings` paginated** — accepts `page`/`size` params (default 20, max 50), returns `{ listings, page, size, totalListings }`. Without pagination, popular events (500+ listings) exceeded MCP context limits.
 - **`getCalendarEntry` tool** — returns RFC 5545 .ics content for a confirmed order.
 - **`SpendingLimitCondition`** — WARNING eval condition when cart exceeds configurable limit (`mockhub.eval.max-cart-total`, default $2000).
@@ -235,7 +245,7 @@ The codebase uses Java DOP patterns where they add value:
 ## CI / Quality
 
 - **GitHub Actions** (`.github/workflows/ci.yml`) runs on push to main and PRs: backend tests, frontend lint/typecheck/tests, SonarCloud analysis, Docker build smoke test
-- **SonarCloud** — org: `kousen-it-inc`, project: `kousen_mockhub`. Config in both `sonar-project.properties` (frontend) and `build.gradle.kts` sonar block (backend). Token stored as `SONAR_TOKEN` GitHub secret.
+- **SonarCloud** — org: `kousen-it-inc`, project: `kousen_mockhub`. Config in both `sonar-project.properties` (frontend) and `build.gradle.kts` sonar block (backend). Token stored as `SONAR_TOKEN` GitHub secret. Frontend coverage (lcov) is uploaded as an artifact and downloaded by the SonarCloud job — both backend and frontend coverage feed the quality gate.
 - **Issue exclusions** are in the Gradle `sonar {}` block: S1186 (JPA empty constructors), S1192 (seed data literals), S3776 (seed data complexity). Do NOT add them only to `sonar-project.properties` — the backend scanner won't see them there.
 - **SonarQube MCP server** is available in this project. Use it to query SonarCloud for issues, quality gate status, and hotspots. When fixing code, check SonarCloud issues first.
 - **GitHub repo:** `kousen/mockhub` (public, MIT license)
