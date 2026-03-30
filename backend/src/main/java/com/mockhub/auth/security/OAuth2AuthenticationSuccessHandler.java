@@ -17,7 +17,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -45,6 +49,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final OAuthAccountRepository oAuthAccountRepository;
+    private final OAuth2AuthorizedClientService authorizedClientService;
     private final String frontendRedirectUrl;
     private final boolean secureCookie;
 
@@ -55,12 +60,14 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             UserRepository userRepository,
             RoleRepository roleRepository,
             OAuthAccountRepository oAuthAccountRepository,
+            OAuth2AuthorizedClientService authorizedClientService,
             @Value("${mockhub.oauth2.frontend-redirect-url}") String frontendRedirectUrl,
             @Value("${mockhub.cookie.secure:false}") boolean secureCookie) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.oAuthAccountRepository = oAuthAccountRepository;
+        this.authorizedClientService = authorizedClientService;
         this.frontendRedirectUrl = frontendRedirectUrl;
         this.secureCookie = secureCookie;
     }
@@ -85,7 +92,10 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         String avatarUrl = extractAvatarUrl(oauth2User, provider);
 
         User user = findOrCreateUser(email, name, avatarUrl);
-        linkOAuthAccount(user, provider, providerAccountId);
+
+        OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
+                provider, oauthToken.getName());
+        linkOAuthAccount(user, provider, providerAccountId, authorizedClient);
 
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
@@ -149,19 +159,49 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         });
     }
 
-    private void linkOAuthAccount(User user, String provider, String providerAccountId) {
+    private void linkOAuthAccount(User user, String provider, String providerAccountId,
+                                   OAuth2AuthorizedClient authorizedClient) {
         if (providerAccountId == null) {
             return;
         }
-        boolean alreadyLinked = oAuthAccountRepository.existsByUserIdAndProvider(user.getId(), provider);
-        if (!alreadyLinked) {
-            OAuthAccount account = new OAuthAccount();
+        OAuthAccount account = oAuthAccountRepository
+                .findByProviderAndProviderAccountId(provider, providerAccountId)
+                .orElse(null);
+
+        if (account == null) {
+            account = new OAuthAccount();
             account.setUser(user);
             account.setProvider(provider);
             account.setProviderAccountId(providerAccountId);
-            oAuthAccountRepository.save(account);
-            log.info("Linked {} account to user {}", provider, user.getEmail());
         }
+
+        if (PROVIDER_SPOTIFY.equals(provider) && authorizedClient != null) {
+            storeSpotifyTokens(account, authorizedClient);
+        }
+
+        oAuthAccountRepository.save(account);
+        log.info("Linked {} account to user {}", provider, user.getEmail());
+    }
+
+    private void storeSpotifyTokens(OAuthAccount account, OAuth2AuthorizedClient authorizedClient) {
+        OAuth2AccessToken accessToken = authorizedClient.getAccessToken();
+        OAuth2RefreshToken refreshToken = authorizedClient.getRefreshToken();
+
+        account.setAccessTokenEncrypted(accessToken.getTokenValue());
+        if (accessToken.getExpiresAt() != null) {
+            account.setTokenExpiresAt(accessToken.getExpiresAt());
+        }
+        if (refreshToken != null) {
+            account.setRefreshTokenEncrypted(refreshToken.getTokenValue());
+        }
+
+        Set<String> scopes = accessToken.getScopes();
+        if (scopes != null && !scopes.isEmpty()) {
+            account.setScopesGranted(String.join(",", scopes));
+        }
+
+        log.info("Stored Spotify tokens for user {} (scopes: {})",
+                account.getUser().getEmail(), account.getScopesGranted());
     }
 
     private String extractEmail(OAuth2User user) {
