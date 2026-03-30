@@ -88,15 +88,20 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             JOIN FETCH e.category c
             LEFT JOIN FETCH l.seller seller
             WHERE l.status = 'ACTIVE'
-            AND (:query IS NULL OR LOWER(e.name) LIKE LOWER(CONCAT('%', :query, '%'))
-                 OR LOWER(e.artistName) LIKE LOWER(CONCAT('%', :query, '%')))
-            AND (:categorySlug IS NULL OR c.slug = :categorySlug)
-            AND (:city IS NULL OR LOWER(v.city) = LOWER(:city))
+            AND l.event.id IN (
+                SELECT ev.id FROM Event ev
+                JOIN ev.venue ven
+                JOIN ev.category cat
+                WHERE (:query IS NULL OR LOWER(ev.name) LIKE LOWER(CONCAT('%', :query, '%'))
+                     OR LOWER(ev.artistName) LIKE LOWER(CONCAT('%', :query, '%')))
+                AND (:categorySlug IS NULL OR cat.slug = :categorySlug)
+                AND (:city IS NULL OR LOWER(ven.city) = LOWER(:city))
+                AND ev.eventDate > :dateFrom
+                AND (:dateTo IS NULL OR ev.eventDate <= :dateTo)
+            )
             AND (:minPrice IS NULL OR l.computedPrice >= :minPrice)
             AND (:maxPrice IS NULL OR l.computedPrice <= :maxPrice)
             AND (:section IS NULL OR LOWER(s.name) = LOWER(:section))
-            AND e.eventDate > :dateFrom
-            AND (:dateTo IS NULL OR e.eventDate <= :dateTo)
             ORDER BY l.computedPrice ASC
             """)
     List<Listing> searchActiveListings(
