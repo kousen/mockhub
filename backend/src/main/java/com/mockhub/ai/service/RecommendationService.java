@@ -130,6 +130,15 @@ public class RecommendationService {
 
         List<Event> spotifyMatched = eventRepository.findBySpotifyArtistIdIn(allArtistIds);
 
+        // Apply city filter to Spotify-matched events if specified
+        if (city != null && !city.isBlank()) {
+            String cityLower = city.toLowerCase(java.util.Locale.ROOT);
+            spotifyMatched = spotifyMatched.stream()
+                    .filter(e -> e.getVenue() != null && e.getVenue().getCity() != null
+                            && e.getVenue().getCity().toLowerCase(java.util.Locale.ROOT).equals(cityLower))
+                    .toList();
+        }
+
         // Deduplicate by event ID, preserving featured order
         Map<Long, Event> merged = new LinkedHashMap<>();
         for (Event event : featured) {
