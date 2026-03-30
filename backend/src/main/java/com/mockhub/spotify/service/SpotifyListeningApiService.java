@@ -67,7 +67,7 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public SpotifyListeningDto getListeningData(Long userId) {
         Optional<OAuthAccount> accountOpt = oAuthAccountRepository.findByUserIdAndProvider(userId, "spotify");
         if (accountOpt.isEmpty()) {
