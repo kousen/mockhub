@@ -30,6 +30,8 @@ import com.mockhub.event.repository.EventRepository;
 import com.mockhub.favorite.entity.Favorite;
 import com.mockhub.favorite.repository.FavoriteRepository;
 import com.mockhub.order.repository.OrderItemRepository;
+import com.mockhub.spotify.dto.SpotifyListeningDto;
+import com.mockhub.spotify.service.SpotifyListeningService;
 import com.mockhub.venue.entity.Venue;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -269,5 +271,90 @@ class RecommendationServiceTest {
 
         assertNotNull(recommendations);
         assertEquals(0, recommendations.size());
+    }
+
+    // --- Spotify + city filter tests (getRecommendations with two params) ---
+
+    @Test
+    @DisplayName("getRecommendations with city - filters featured events by city")
+    void getRecommendations_withCity_filtersFeaturedByCity() {
+        List<Event> cityEvents = List.of(
+                createTestEvent(1L, "NYC Jazz", "nyc-jazz", "Blue Note", "New York"));
+        when(eventRepository.findFeaturedEventsByCity("New York")).thenReturn(cityEvents);
+        when(favoriteRepository.findByUserIdWithEventDetails(42L)).thenReturn(List.of());
+        when(orderItemRepository.findDistinctPurchasedEventsByUserId(42L)).thenReturn(List.of());
+
+        stubChatClient("""
+                [{"eventId": 1, "relevanceScore": 0.90, "reason": "Great jazz"}]
+                """);
+        stubEvalRunnerPassing();
+
+        com.mockhub.ai.dto.RecommendationsResponse response =
+                recommendationService.getRecommendations(42L, "New York");
+
+        assertNotNull(response);
+        assertEquals(1, response.recommendations().size());
+        verify(eventRepository).findFeaturedEventsByCity("New York");
+    }
+
+    @Test
+    @DisplayName("getRecommendations with Spotify - includes Spotify artists in prompt")
+    void getRecommendations_withSpotify_includesSpotifyArtistsInPrompt() {
+        @SuppressWarnings("unchecked")
+        SpotifyListeningService mockListeningService =
+                org.mockito.Mockito.mock(SpotifyListeningService.class);
+        RecommendationService serviceWithSpotify = new RecommendationService(
+                chatClient, eventRepository, evalRunner, favoriteRepository,
+                orderItemRepository, java.util.Optional.of(mockListeningService));
+
+        SpotifyListeningDto listeningData = new SpotifyListeningDto(
+                List.of("artist-id-1"), List.of("Beyonce"),
+                List.of("pop", "r&b"), List.of("artist-id-1"),
+                true, false);
+        when(mockListeningService.getListeningData(42L)).thenReturn(listeningData);
+
+        List<Event> events = List.of(
+                createTestEvent(1L, "Pop Concert", "pop-concert", "Arena", "LA"));
+        when(eventRepository.findFeaturedEvents()).thenReturn(events);
+        when(eventRepository.findBySpotifyArtistIdIn(any())).thenReturn(List.of());
+        when(favoriteRepository.findByUserIdWithEventDetails(42L)).thenReturn(List.of());
+        when(orderItemRepository.findDistinctPurchasedEventsByUserId(42L)).thenReturn(List.of());
+
+        stubChatClient("""
+                [{"eventId": 1, "relevanceScore": 0.95, "reason": "Matches your Spotify taste"}]
+                """);
+        stubEvalRunnerPassing();
+
+        com.mockhub.ai.dto.RecommendationsResponse response =
+                serviceWithSpotify.getRecommendations(42L, null);
+
+        assertTrue(response.spotifyConnected());
+        assertFalse(response.scopeUpgradeNeeded());
+        verify(requestSpec).user(promptCaptor.capture());
+        String prompt = promptCaptor.getValue();
+        assertTrue(prompt.contains("Beyonce"), "Prompt should include Spotify artist name");
+        assertTrue(prompt.contains("pop"), "Prompt should include Spotify genres");
+    }
+
+    @Test
+    @DisplayName("getRecommendations - Spotify not connected - still works without Spotify data")
+    void getRecommendations_spotifyNotConnected_worksWithoutSpotifyData() {
+        List<Event> events = List.of(
+                createTestEvent(1L, "Rock Show", "rock-show", "Venue", "Chicago"));
+        when(eventRepository.findFeaturedEvents()).thenReturn(events);
+        when(favoriteRepository.findByUserIdWithEventDetails(42L)).thenReturn(List.of());
+        when(orderItemRepository.findDistinctPurchasedEventsByUserId(42L)).thenReturn(List.of());
+
+        stubChatClient("""
+                [{"eventId": 1, "relevanceScore": 0.85, "reason": "Good show"}]
+                """);
+        stubEvalRunnerPassing();
+
+        com.mockhub.ai.dto.RecommendationsResponse response =
+                recommendationService.getRecommendations(42L, null);
+
+        assertFalse(response.spotifyConnected());
+        assertFalse(response.scopeUpgradeNeeded());
+        assertEquals(1, response.recommendations().size());
     }
 }
