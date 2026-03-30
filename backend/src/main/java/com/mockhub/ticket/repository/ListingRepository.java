@@ -89,16 +89,16 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                 SELECT ev.id FROM Event ev
                 JOIN ev.venue ven
                 JOIN ev.category cat
-                WHERE (:query IS NULL OR LOWER(ev.name) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))
-                     OR LOWER(ev.artistName) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')))
+                WHERE (:query IS NULL OR LOWER(ev.name) LIKE CONCAT('%', :query, '%')
+                     OR LOWER(ev.artistName) LIKE CONCAT('%', :query, '%'))
                 AND (:categorySlug IS NULL OR cat.slug = :categorySlug)
-                AND (:city IS NULL OR LOWER(ven.city) = LOWER(CAST(:city AS string)))
+                AND (:city IS NULL OR LOWER(ven.city) = :city)
                 AND ev.eventDate > :dateFrom
                 AND (:dateTo IS NULL OR ev.eventDate <= :dateTo)
             )
             AND (:minPrice IS NULL OR l.computedPrice >= :minPrice)
             AND (:maxPrice IS NULL OR l.computedPrice <= :maxPrice)
-            AND (:section IS NULL OR LOWER(s.name) = LOWER(CAST(:section AS string)))
+            AND (:section IS NULL OR LOWER(s.name) = :section)
             ORDER BY l.computedPrice ASC
             """)
     @SuppressWarnings("java:S107") // Repository query params map directly to JPQL named parameters

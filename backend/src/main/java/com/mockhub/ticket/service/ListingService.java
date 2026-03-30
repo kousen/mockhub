@@ -324,10 +324,10 @@ public class ListingService {
                                                      BigDecimal minPrice, BigDecimal maxPrice,
                                                      String section, Instant dateFrom,
                                                      Instant dateTo, int limit) {
-        String normalizedQuery = normalizeParam(query);
+        String normalizedQuery = lowerParam(query);
         String normalizedCategory = normalizeParam(category);
-        String normalizedCity = normalizeParam(city);
-        String normalizedSection = normalizeParam(section);
+        String normalizedCity = lowerParam(city);
+        String normalizedSection = lowerParam(section);
         Instant effectiveDateFrom = (dateFrom != null) ? dateFrom : Instant.now();
 
         List<Long> listingIds = listingRepository.searchActiveListingIds(
@@ -352,6 +352,13 @@ public class ListingService {
             return null;
         }
         return value.strip();
+    }
+
+    private String lowerParam(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.strip().toLowerCase(java.util.Locale.ROOT);
     }
 
     private TicketSearchResultDto toTicketSearchResultDto(Listing listing) {
