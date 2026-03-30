@@ -94,13 +94,15 @@ class AiControllerTest {
         void returns200WithRecommendations() throws Exception {
             RecommendationDto rec = new RecommendationDto(
                     1L, "Rock Festival", "rock-festival", "MSG", "New York",
-                    Instant.now(), new BigDecimal("75.00"), 0.95, "Popular event");
-            when(recommendationService.getRecommendations(any())).thenReturn(List.of(rec));
+                    Instant.now(), new BigDecimal("75.00"), 0.95, "Popular event", false);
+            com.mockhub.ai.dto.RecommendationsResponse response =
+                    new com.mockhub.ai.dto.RecommendationsResponse(List.of(rec), false, false);
+            when(recommendationService.getRecommendations(any(), any())).thenReturn(response);
 
             mockMvc.perform(get("/api/v1/recommendations"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$[0].eventName").value("Rock Festival"))
-                    .andExpect(jsonPath("$[0].relevanceScore").value(0.95));
+                    .andExpect(jsonPath("$.recommendations[0].eventName").value("Rock Festival"))
+                    .andExpect(jsonPath("$.recommendations[0].relevanceScore").value(0.95));
         }
     }
 

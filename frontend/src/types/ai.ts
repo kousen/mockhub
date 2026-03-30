@@ -25,6 +25,13 @@ export interface Recommendation {
   minPrice: number;
   relevanceScore: number;
   reason: string;
+  spotifyMatch: boolean;
+}
+
+export interface RecommendationsResponse {
+  recommendations: Recommendation[];
+  spotifyConnected: boolean;
+  scopeUpgradeNeeded: boolean;
 }
 
 export type PriceTrend = 'RISING' | 'FALLING' | 'STABLE';

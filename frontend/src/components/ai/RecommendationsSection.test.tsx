@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderWithProviders, screen } from '@/test/test-utils';
 import { RecommendationsSection } from './RecommendationsSection';
-import type { Recommendation } from '@/types/ai';
+import type { Recommendation, RecommendationsResponse } from '@/types/ai';
 
 const mockRecommendations: Recommendation[] = [
   {
@@ -14,6 +14,7 @@ const mockRecommendations: Recommendation[] = [
     minPrice: 150.0,
     relevanceScore: 0.95,
     reason: 'Based on your interest in pop concerts',
+    spotifyMatch: false,
   },
   {
     eventId: 2,
@@ -25,6 +26,7 @@ const mockRecommendations: Recommendation[] = [
     minPrice: 85.0,
     relevanceScore: 0.88,
     reason: 'Popular in your area',
+    spotifyMatch: true,
   },
 ];
 
@@ -56,7 +58,10 @@ function setAuthenticated(value: boolean) {
   });
 }
 
-function setRecommendations(data: Recommendation[] | undefined, isLoading = false) {
+function setRecommendations(recs: Recommendation[] | undefined, isLoading = false) {
+  const data: RecommendationsResponse | undefined = recs
+    ? { recommendations: recs, spotifyConnected: false, scopeUpgradeNeeded: false }
+    : undefined;
   vi.mocked(useRecommendations).mockReturnValue({
     data,
     isLoading,

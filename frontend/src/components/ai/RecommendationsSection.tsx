@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Calendar, MapPin, Sparkles, Star, TrendingUp } from 'lucide-react';
+import { Calendar, MapPin, Music, Sparkles, Star, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,11 +29,14 @@ function RecommendationSkeleton() {
 /**
  * AI-powered event recommendations section for the homepage.
  * Displays a horizontally scrollable list of recommended events.
+ * Shows Spotify match badges for events matching the user's listening history.
  * Hides entirely if AI is unavailable or no recommendations exist.
  */
 export function RecommendationsSection() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const { data: recommendations, isLoading } = useRecommendations();
+  const { data, isLoading } = useRecommendations();
+
+  const recommendations = data?.recommendations;
 
   // Hide if no recommendations or AI unavailable
   if (!isLoading && (!recommendations || recommendations.length === 0)) {
@@ -52,6 +55,12 @@ export function RecommendationsSection() {
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
             {isAuthenticated ? 'Recommended for You' : 'Trending Events'}
           </h2>
+          {data?.spotifyConnected && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              <Music className="mr-1 h-3 w-3" />
+              Spotify
+            </Badge>
+          )}
         </div>
 
         {isLoading ? (
@@ -70,10 +79,20 @@ export function RecommendationsSection() {
                       <h3 className="line-clamp-2 text-sm font-semibold leading-tight">
                         {rec.eventName}
                       </h3>
-                      <Badge variant="secondary" className="shrink-0 text-xs">
-                        <Star className="mr-0.5 h-3 w-3" />
-                        {Math.round(rec.relevanceScore * 100)}%
-                      </Badge>
+                      <div className="flex shrink-0 gap-1">
+                        {rec.spotifyMatch && (
+                          <Badge
+                            variant="outline"
+                            className="border-green-500 text-xs text-green-600 dark:text-green-400"
+                          >
+                            <Music className="mr-0.5 h-3 w-3" />
+                          </Badge>
+                        )}
+                        <Badge variant="secondary" className="text-xs">
+                          <Star className="mr-0.5 h-3 w-3" />
+                          {Math.round(rec.relevanceScore * 100)}%
+                        </Badge>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5 text-xs text-muted-foreground">
