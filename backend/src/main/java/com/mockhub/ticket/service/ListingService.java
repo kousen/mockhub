@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,11 +28,13 @@ import com.mockhub.ticket.dto.SaleDto;
 import com.mockhub.ticket.dto.SellListingRequest;
 import com.mockhub.ticket.dto.SellerListingDto;
 import com.mockhub.ticket.dto.TicketSearchResultDto;
+import com.mockhub.ticket.dto.ListingSearchCriteria;
 import com.mockhub.ticket.dto.UpdatePriceRequest;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.ticket.repository.ListingRepository;
 import com.mockhub.ticket.repository.TicketRepository;
+import com.mockhub.ticket.specification.ListingSearchSpecification;
 
 @Service
 public class ListingService {
@@ -320,45 +323,26 @@ public class ListingService {
     }
 
     @Transactional(readOnly = true)
-    public List<TicketSearchResultDto> searchTickets(String query, String category, String city,
-                                                     BigDecimal minPrice, BigDecimal maxPrice,
-                                                     String section, Instant dateFrom,
-                                                     Instant dateTo, int limit) {
-        String normalizedQuery = lowerParam(query);
-        String normalizedCategory = normalizeParam(category);
-        String normalizedCity = lowerParam(city);
-        String normalizedSection = lowerParam(section);
-        Instant effectiveDateFrom = (dateFrom != null) ? dateFrom : Instant.now();
+    public List<TicketSearchResultDto> searchTickets(ListingSearchCriteria criteria) {
+        Specification<Listing> spec = ListingSearchSpecification.fromCriteria(criteria);
 
-        List<Long> listingIds = listingRepository.searchActiveListingIds(
-                normalizedQuery, normalizedCategory, normalizedCity,
-                minPrice, maxPrice, normalizedSection,
-                effectiveDateFrom, dateTo,
-                org.springframework.data.domain.PageRequest.of(0, limit));
+        // Phase 1: Find matching listing IDs via fluent API (no COUNT query)
+        List<Long> listingIds = listingRepository.findBy(spec,
+                query -> query.limit(criteria.limit()).all())
+                .stream()
+                .map(Listing::getId)
+                .toList();
 
         if (listingIds.isEmpty()) {
             return List.of();
         }
 
+        // Phase 2: Fetch full details with eager joins
         List<Listing> listings = listingRepository.findByIdsWithDetails(listingIds);
 
         return listings.stream()
                 .map(this::toTicketSearchResultDto)
                 .toList();
-    }
-
-    private String normalizeParam(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return value.strip();
-    }
-
-    private String lowerParam(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return value.strip().toLowerCase(java.util.Locale.ROOT);
     }
 
     private TicketSearchResultDto toTicketSearchResultDto(Listing listing) {
