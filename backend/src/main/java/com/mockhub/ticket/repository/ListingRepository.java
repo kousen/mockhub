@@ -123,7 +123,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             JOIN FETCH e.venue v
             JOIN FETCH e.category c
             LEFT JOIN FETCH l.seller seller
-            WHERE l.id IN :ids
+            WHERE l.id IN :ids AND l.status = 'ACTIVE'
             ORDER BY l.computedPrice ASC
             """)
     List<Listing> findByIdsWithDetails(@Param("ids") List<Long> ids);
