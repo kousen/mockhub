@@ -101,6 +101,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             AND (:section IS NULL OR LOWER(s.name) = LOWER(:section))
             ORDER BY l.computedPrice ASC
             """)
+    @SuppressWarnings("java:S107") // Repository query params map directly to JPQL named parameters
     List<Long> searchActiveListingIds(
             @Param("query") String query,
             @Param("categorySlug") String categorySlug,
