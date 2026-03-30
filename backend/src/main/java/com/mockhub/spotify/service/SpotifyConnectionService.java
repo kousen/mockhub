@@ -51,6 +51,7 @@ public class SpotifyConnectionService {
     public void disconnect(Long userId) {
         oAuthAccountRepository.deleteByUserIdAndProvider(userId, PROVIDER_SPOTIFY);
         cacheRepository.deleteByUserId(userId);
-        log.info("Disconnected Spotify for user {} — tokens and listening cache deleted", userId);
+        log.info("Disconnected Spotify for user ID {} — tokens and listening cache deleted",
+                String.valueOf(userId).replaceAll("[\r\n]", ""));
     }
 }
