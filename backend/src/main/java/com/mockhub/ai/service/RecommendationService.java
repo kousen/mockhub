@@ -93,7 +93,7 @@ public class RecommendationService {
                 listeningData.spotifyConnected(), listeningData.scopeUpgradeNeeded());
     }
 
-    @Transactional(readOnly = true)
+    @SuppressWarnings("java:S6809") // Both methods share the same readOnly transaction
     public List<RecommendationDto> getRecommendations(Long userId) {
         return getRecommendations(userId, null).recommendations();
     }
@@ -184,37 +184,35 @@ public class RecommendationService {
         if (userId != null) {
             List<Favorite> favorites = favoriteRepository.findByUserIdWithEventDetails(userId);
             for (Favorite favorite : favorites) {
-                Event event = favorite.getEvent();
-                if (event.getCategory() != null) {
-                    categories.add(event.getCategory().getName());
-                }
-                if (event.getArtistName() != null && !event.getArtistName().isBlank()) {
-                    artists.add(event.getArtistName());
-                }
-                if (event.getVenue() != null && event.getVenue().getCity() != null) {
-                    cities.add(event.getVenue().getCity());
-                }
+                extractEventSignals(favorite.getEvent(), categories, artists, cities);
             }
 
             List<Event> purchasedEvents = orderItemRepository.findDistinctPurchasedEventsByUserId(userId);
             for (Event event : purchasedEvents) {
-                if (event.getCategory() != null) {
-                    categories.add(event.getCategory().getName());
-                }
-                if (event.getArtistName() != null && !event.getArtistName().isBlank()) {
-                    artists.add(event.getArtistName());
-                }
-                if (event.getVenue() != null && event.getVenue().getCity() != null) {
-                    cities.add(event.getVenue().getCity());
-                }
+                extractEventSignals(event, categories, artists, cities);
             }
         }
 
-        // Add Spotify listening data
-        if (!listeningData.topArtistNames().isEmpty()) {
-            artists.addAll(listeningData.topArtistNames());
-        }
+        artists.addAll(listeningData.topArtistNames());
 
+        return formatContextString(categories, artists, cities, listeningData.topGenres());
+    }
+
+    private void extractEventSignals(Event event, Set<String> categories,
+                                      Set<String> artists, Set<String> cities) {
+        if (event.getCategory() != null) {
+            categories.add(event.getCategory().getName());
+        }
+        if (event.getArtistName() != null && !event.getArtistName().isBlank()) {
+            artists.add(event.getArtistName());
+        }
+        if (event.getVenue() != null && event.getVenue().getCity() != null) {
+            cities.add(event.getVenue().getCity());
+        }
+    }
+
+    private String formatContextString(Set<String> categories, Set<String> artists,
+                                        Set<String> cities, List<String> spotifyGenres) {
         StringBuilder context = new StringBuilder();
         if (!categories.isEmpty()) {
             context.append("The user's favorite categories are: ").append(String.join(", ", categories)).append(".\n");
@@ -225,8 +223,8 @@ public class RecommendationService {
         if (!cities.isEmpty()) {
             context.append("Cities they attend events in: ").append(String.join(", ", cities)).append(".\n");
         }
-        if (!listeningData.topGenres().isEmpty()) {
-            context.append("Their top music genres on Spotify: ").append(String.join(", ", listeningData.topGenres())).append(".\n");
+        if (!spotifyGenres.isEmpty()) {
+            context.append("Their top music genres on Spotify: ").append(String.join(", ", spotifyGenres)).append(".\n");
         }
         return context.toString();
     }

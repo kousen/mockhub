@@ -11,9 +11,6 @@ import org.springframework.http.ResponseEntity;
 import com.mockhub.ai.dto.ChatRequest;
 import com.mockhub.ai.dto.ChatResponse;
 import com.mockhub.ai.dto.PricePredictionDto;
-import com.mockhub.ai.dto.RecommendationDto;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
