@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Mail, Phone, Save, User } from 'lucide-react';
+import { AlertCircle, Mail, Music, Phone, Save, User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -11,6 +12,7 @@ import {
   useUnlinkProvider,
   useUpdateProfile,
 } from '@/hooks/use-auth';
+import { useSpotifyConnection, useDisconnectSpotify } from '@/hooks/use-spotify';
 import type { UserDto } from '@/types/auth';
 
 function ProfileForm({ user }: { user: UserDto }) {
@@ -137,6 +139,8 @@ export function ProfilePage() {
   useCurrentUser();
   const { data: linkedProviders } = useLinkedProviders();
   const unlinkProvider = useUnlinkProvider();
+  const { data: spotifyStatus } = useSpotifyConnection();
+  const disconnectSpotifyMutation = useDisconnectSpotify();
 
   if (!user) {
     return null;
@@ -168,39 +172,77 @@ export function ProfilePage() {
         <div className="space-y-3">
           {PROVIDERS.map((provider) => {
             const isConnected = linkedProviders?.includes(provider.id) ?? false;
+            const isSpotify = provider.id === 'spotify';
+            const spotifyNeedsUpgrade = isSpotify && spotifyStatus?.scopeUpgradeNeeded;
+
             return (
               <div
                 key={provider.id}
                 className="flex items-center justify-between rounded-lg border p-4"
               >
-                <div>
-                  <p className="font-medium">{provider.name}</p>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    {isSpotify && <Music className="h-4 w-4 text-green-500" />}
+                    <p className="font-medium">{provider.name}</p>
+                    {isSpotify && isConnected && !spotifyNeedsUpgrade && (
+                      <Badge variant="outline" className="text-xs text-green-600">
+                        Listening data active
+                      </Badge>
+                    )}
+                    {spotifyNeedsUpgrade && (
+                      <Badge variant="outline" className="text-xs text-amber-600">
+                        <AlertCircle className="mr-1 h-3 w-3" />
+                        Update permissions
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">{provider.description}</p>
                 </div>
-                {isConnected ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (window.confirm(`Disconnect ${provider.name}? You can reconnect later.`)) {
-                        unlinkProvider.mutate(provider.id);
+                <div className="flex shrink-0 gap-2">
+                  {spotifyNeedsUpgrade && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        window.location.href = getOAuth2Url('spotify');
+                      }}
+                    >
+                      Update
+                    </Button>
+                  )}
+                  {isConnected ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (
+                          window.confirm(`Disconnect ${provider.name}? You can reconnect later.`)
+                        ) {
+                          if (isSpotify) {
+                            disconnectSpotifyMutation.mutate();
+                          } else {
+                            unlinkProvider.mutate(provider.id);
+                          }
+                        }
+                      }}
+                      disabled={
+                        isSpotify ? disconnectSpotifyMutation.isPending : unlinkProvider.isPending
                       }
-                    }}
-                    disabled={unlinkProvider.isPending}
-                  >
-                    Disconnect
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      window.location.href = getOAuth2Url(provider.id);
-                    }}
-                  >
-                    Connect
-                  </Button>
-                )}
+                    >
+                      Disconnect
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        window.location.href = getOAuth2Url(provider.id);
+                      }}
+                    >
+                      Connect
+                    </Button>
+                  )}
+                </div>
               </div>
             );
           })}

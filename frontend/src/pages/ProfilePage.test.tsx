@@ -13,6 +13,11 @@ const MOCK_USER = {
   roles: ['ROLE_USER'],
 };
 
+vi.mock('@/hooks/use-spotify', () => ({
+  useSpotifyConnection: () => ({ data: undefined }),
+  useDisconnectSpotify: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+
 vi.mock('@/hooks/use-auth', () => ({
   useCurrentUser: () => ({ data: MOCK_USER }),
   useUpdateProfile: () => ({
