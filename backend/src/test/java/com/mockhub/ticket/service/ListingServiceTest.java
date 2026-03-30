@@ -270,12 +270,21 @@ class ListingServiceTest {
 
     // --- searchTickets ---
 
+    private void stubSearchIds(List<Listing> listings) {
+        List<Long> ids = listings.stream().map(Listing::getId).toList();
+        when(listingRepository.searchActiveListingIds(any(), any(), any(), any(), any(), any(),
+                any(Instant.class), any(), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(ids);
+        if (!ids.isEmpty()) {
+            when(listingRepository.findByIdsWithDetails(ids)).thenReturn(listings);
+        }
+    }
+
     @Test
     @DisplayName("searchTickets - given matching listings - returns search result DTOs")
     void searchTickets_givenMatchingListings_returnsSearchResultDtos() {
         Listing listing = createFullListing(false, false);
-        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(List.of(listing));
+        stubSearchIds(List.of(listing));
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
                 null, null, null, null, null, null, null, null, 10);
@@ -291,8 +300,7 @@ class ListingServiceTest {
     @DisplayName("searchTickets - given listing with seat - includes row and seat info")
     void searchTickets_givenListingWithSeat_includesRowAndSeatInfo() {
         Listing listing = createFullListing(true, false);
-        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(List.of(listing));
+        stubSearchIds(List.of(listing));
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
                 null, null, null, null, null, null, null, null, 10);
@@ -305,8 +313,7 @@ class ListingServiceTest {
     @DisplayName("searchTickets - given listing with seller - includes seller display name")
     void searchTickets_givenListingWithSeller_includesSellerDisplayName() {
         Listing listing = createFullListing(false, true);
-        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(List.of(listing));
+        stubSearchIds(List.of(listing));
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
                 null, null, null, null, null, null, null, null, 10);
@@ -318,8 +325,7 @@ class ListingServiceTest {
     @DisplayName("searchTickets - given listing without seat or seller - returns nulls for optional fields")
     void searchTickets_givenListingWithoutSeatOrSeller_returnsNullsForOptionalFields() {
         Listing listing = createFullListing(false, false);
-        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(List.of(listing));
+        stubSearchIds(List.of(listing));
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
                 null, null, null, null, null, null, null, null, 10);
@@ -330,16 +336,16 @@ class ListingServiceTest {
     }
 
     @Test
-    @DisplayName("searchTickets - given limit - passes limit to database query via Pageable")
+    @DisplayName("searchTickets - given limit - passes limit to ID query via Pageable")
     void searchTickets_givenLimit_passesLimitToQuery() {
-        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(List.of());
+        stubSearchIds(List.of());
 
         listingService.searchTickets(null, null, null, null, null, null, null, null, 5);
 
         org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> pageableCaptor =
                 org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
-        verify(listingRepository).searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), pageableCaptor.capture());
+        verify(listingRepository).searchActiveListingIds(any(), any(), any(), any(), any(), any(),
+                any(Instant.class), any(), pageableCaptor.capture());
         assertEquals(5, pageableCaptor.getValue().getPageSize(), "Should pass limit as page size");
         assertEquals(0, pageableCaptor.getValue().getPageNumber(), "Should request first page");
     }
@@ -347,21 +353,19 @@ class ListingServiceTest {
     @Test
     @DisplayName("searchTickets - given blank params - normalizes to null")
     void searchTickets_givenBlankParams_normalizesToNull() {
-        when(listingRepository.searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(List.of());
+        stubSearchIds(List.of());
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
                 "  ", "  ", "  ", null, null, "  ", null, null, 10);
 
         assertEquals(0, results.size());
-        verify(listingRepository).searchActiveListings(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), any(org.springframework.data.domain.Pageable.class));
+        verify(listingRepository).searchActiveListingIds(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), any(org.springframework.data.domain.Pageable.class));
     }
 
     @Test
     @DisplayName("searchTickets - given no results - returns empty list")
     void searchTickets_givenNoResults_returnsEmptyList() {
-        when(listingRepository.searchActiveListings(eq("nonexistent"), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), isNull(), any(org.springframework.data.domain.Pageable.class)))
-                .thenReturn(List.of());
+        stubSearchIds(List.of());
 
         List<TicketSearchResultDto> results = listingService.searchTickets(
                 "nonexistent", null, null, null, null, null, null, null, 10);

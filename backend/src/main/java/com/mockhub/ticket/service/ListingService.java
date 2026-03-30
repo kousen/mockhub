@@ -330,11 +330,17 @@ public class ListingService {
         String normalizedSection = normalizeParam(section);
         Instant effectiveDateFrom = (dateFrom != null) ? dateFrom : Instant.now();
 
-        List<Listing> listings = listingRepository.searchActiveListings(
+        List<Long> listingIds = listingRepository.searchActiveListingIds(
                 normalizedQuery, normalizedCategory, normalizedCity,
                 minPrice, maxPrice, normalizedSection,
                 effectiveDateFrom, dateTo,
                 org.springframework.data.domain.PageRequest.of(0, limit));
+
+        if (listingIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<Listing> listings = listingRepository.findByIdsWithDetails(listingIds);
 
         return listings.stream()
                 .map(this::toTicketSearchResultDto)
