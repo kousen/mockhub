@@ -2,7 +2,10 @@ package com.mockhub.auth.entity;
 
 import java.time.Instant;
 
+import com.mockhub.auth.security.TokenEncryptionConverter;
+
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -32,6 +35,20 @@ public class OAuthAccount {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
+
+    @Column(name = "access_token_encrypted")
+    @Convert(converter = TokenEncryptionConverter.class)
+    private String accessTokenEncrypted;
+
+    @Column(name = "refresh_token_encrypted")
+    @Convert(converter = TokenEncryptionConverter.class)
+    private String refreshTokenEncrypted;
+
+    @Column(name = "token_expires_at")
+    private Instant tokenExpiresAt;
+
+    @Column(name = "scopes_granted", length = 500)
+    private String scopesGranted;
 
     public OAuthAccount() {
     }
@@ -74,5 +91,37 @@ public class OAuthAccount {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getAccessTokenEncrypted() {
+        return accessTokenEncrypted;
+    }
+
+    public void setAccessTokenEncrypted(String accessTokenEncrypted) {
+        this.accessTokenEncrypted = accessTokenEncrypted;
+    }
+
+    public String getRefreshTokenEncrypted() {
+        return refreshTokenEncrypted;
+    }
+
+    public void setRefreshTokenEncrypted(String refreshTokenEncrypted) {
+        this.refreshTokenEncrypted = refreshTokenEncrypted;
+    }
+
+    public Instant getTokenExpiresAt() {
+        return tokenExpiresAt;
+    }
+
+    public void setTokenExpiresAt(Instant tokenExpiresAt) {
+        this.tokenExpiresAt = tokenExpiresAt;
+    }
+
+    public String getScopesGranted() {
+        return scopesGranted;
+    }
+
+    public void setScopesGranted(String scopesGranted) {
+        this.scopesGranted = scopesGranted;
     }
 }

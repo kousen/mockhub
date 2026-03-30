@@ -109,6 +109,7 @@ mockhub:
   spotify:
     client-id: ${SPOTIFY_CLIENT_ID:}
     client-secret: ${SPOTIFY_CLIENT_SECRET:}
+    token-encryption-key: ${SPOTIFY_TOKEN_ENCRYPTION_KEY:}
   oauth2:
     frontend-redirect-url: ${OAUTH2_FRONTEND_REDIRECT_URL:http://localhost:5173}
   images:
