@@ -44,7 +44,8 @@ class SpotifyListeningApiServiceTest {
     private SpotifyListeningCacheRepository cacheRepository;
 
     private SpotifyListeningApiService service;
-    private MockRestServiceServer mockServer;
+    private MockRestServiceServer mockApiServer;
+    private MockRestServiceServer mockTokenServer;
 
     private static final String ALL_SCOPES = "user-read-email,user-top-read,user-read-recently-played";
 
@@ -66,15 +67,23 @@ class SpotifyListeningApiServiceTest {
             }
             """;
 
+    private static final String TOKEN_RESPONSE_JSON = """
+            {"access_token": "new-access-token", "expires_in": 3600, "refresh_token": "new-refresh-token"}
+            """;
+
     @BeforeEach
     void setUp() {
-        RestClient.Builder builder = RestClient.builder().baseUrl("https://api.spotify.com/v1");
-        mockServer = MockRestServiceServer.bindTo(builder).build();
-        RestClient restClient = builder.build();
+        RestClient.Builder apiBuilder = RestClient.builder().baseUrl("https://api.spotify.com/v1");
+        mockApiServer = MockRestServiceServer.bindTo(apiBuilder).build();
+        RestClient apiClient = apiBuilder.build();
+
+        RestClient.Builder tokenBuilder = RestClient.builder().baseUrl("https://accounts.spotify.com");
+        mockTokenServer = MockRestServiceServer.bindTo(tokenBuilder).build();
+        RestClient tokenClient = tokenBuilder.build();
 
         service = new SpotifyListeningApiService(
                 oAuthAccountRepository, cacheRepository,
-                "test-client-id", "test-client-secret", restClient);
+                "test-client-id", "test-client-secret", apiClient, tokenClient);
     }
 
     @Test
@@ -178,11 +187,11 @@ class SpotifyListeningApiServiceTest {
         when(cacheRepository.findByUserId(1L)).thenReturn(Optional.of(staleCache));
         when(cacheRepository.save(any(SpotifyListeningCache.class))).thenAnswer(i -> i.getArgument(0));
 
-        mockServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(TOP_ARTISTS_JSON, MediaType.APPLICATION_JSON));
 
-        mockServer.expect(requestTo("https://api.spotify.com/v1/me/player/recently-played?limit=50"))
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/player/recently-played?limit=50"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(RECENTLY_PLAYED_JSON, MediaType.APPLICATION_JSON));
 
@@ -196,7 +205,7 @@ class SpotifyListeningApiServiceTest {
         assertTrue(result.recentlyPlayedArtistIds().contains("artist-3"));
 
         verify(cacheRepository).save(any(SpotifyListeningCache.class));
-        mockServer.verify();
+        mockApiServer.verify();
     }
 
     @Test
@@ -210,17 +219,17 @@ class SpotifyListeningApiServiceTest {
         when(cacheRepository.findByUserId(1L)).thenReturn(Optional.empty());
         when(cacheRepository.save(any(SpotifyListeningCache.class))).thenAnswer(i -> i.getArgument(0));
 
-        mockServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
                 .andRespond(withSuccess(TOP_ARTISTS_JSON, MediaType.APPLICATION_JSON));
 
-        mockServer.expect(requestTo("https://api.spotify.com/v1/me/player/recently-played?limit=50"))
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/player/recently-played?limit=50"))
                 .andRespond(withSuccess(RECENTLY_PLAYED_JSON, MediaType.APPLICATION_JSON));
 
         SpotifyListeningDto result = service.getListeningData(1L);
 
         assertEquals(2, result.topArtistIds().size());
         verify(cacheRepository).save(any(SpotifyListeningCache.class));
-        mockServer.verify();
+        mockApiServer.verify();
     }
 
     @Test
@@ -241,7 +250,7 @@ class SpotifyListeningApiServiceTest {
                 .thenReturn(Optional.of(account));
         when(cacheRepository.findByUserId(1L)).thenReturn(Optional.of(staleCache));
 
-        mockServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
                 .andRespond(withUnauthorizedRequest());
 
         // Refresh fails (no refresh token, no token endpoint mocked)
@@ -249,6 +258,44 @@ class SpotifyListeningApiServiceTest {
         SpotifyListeningDto result = service.getListeningData(1L);
 
         assertTrue(result.scopeUpgradeNeeded());
+    }
+
+    @Test
+    @DisplayName("getListeningData - 401 then refresh succeeds - retries and returns data")
+    void getListeningData_unauthorizedThenRefresh_retriesSuccessfully() {
+        OAuthAccount account = createSpotifyAccount(ALL_SCOPES);
+        account.setAccessTokenEncrypted("expired-token");
+        account.setRefreshTokenEncrypted("valid-refresh-token");
+
+        when(oAuthAccountRepository.findByUserIdAndProvider(1L, "spotify"))
+                .thenReturn(Optional.of(account));
+        when(cacheRepository.findByUserId(1L)).thenReturn(Optional.empty());
+        when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenReturn(account);
+        when(cacheRepository.save(any(SpotifyListeningCache.class))).thenAnswer(i -> i.getArgument(0));
+
+        // First call returns 401
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+                .andRespond(withUnauthorizedRequest());
+
+        // Token refresh succeeds
+        mockTokenServer.expect(requestTo("https://accounts.spotify.com/api/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(TOKEN_RESPONSE_JSON, MediaType.APPLICATION_JSON));
+
+        // Retry with new token succeeds
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+                .andRespond(withSuccess(TOP_ARTISTS_JSON, MediaType.APPLICATION_JSON));
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/player/recently-played?limit=50"))
+                .andRespond(withSuccess(RECENTLY_PLAYED_JSON, MediaType.APPLICATION_JSON));
+
+        SpotifyListeningDto result = service.getListeningData(1L);
+
+        assertFalse(result.scopeUpgradeNeeded());
+        assertEquals(2, result.topArtistIds().size());
+        assertEquals("new-access-token", account.getAccessTokenEncrypted());
+
+        mockApiServer.verify();
+        mockTokenServer.verify();
     }
 
     @Test
@@ -261,7 +308,7 @@ class SpotifyListeningApiServiceTest {
                 .thenReturn(Optional.of(account));
         when(cacheRepository.findByUserId(1L)).thenReturn(Optional.empty());
 
-        mockServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
                 .andRespond(withUnauthorizedRequest());
 
         SpotifyListeningDto result = service.getListeningData(1L);

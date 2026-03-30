@@ -38,6 +38,7 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
     private final OAuthAccountRepository oAuthAccountRepository;
     private final SpotifyListeningCacheRepository cacheRepository;
     private final RestClient restClient;
+    private final RestClient tokenRestClient;
     private final String clientId;
     private final String clientSecret;
 
@@ -48,19 +49,21 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
             @Value("${mockhub.spotify.client-id}") String clientId,
             @Value("${mockhub.spotify.client-secret}") String clientSecret) {
         this(oAuthAccountRepository, cacheRepository, clientId, clientSecret,
-                RestClient.builder().baseUrl("https://api.spotify.com/v1").build());
+                RestClient.builder().baseUrl("https://api.spotify.com/v1").build(),
+                RestClient.builder().baseUrl("https://accounts.spotify.com").build());
     }
 
     SpotifyListeningApiService(
             OAuthAccountRepository oAuthAccountRepository,
             SpotifyListeningCacheRepository cacheRepository,
             String clientId, String clientSecret,
-            RestClient restClient) {
+            RestClient restClient, RestClient tokenRestClient) {
         this.oAuthAccountRepository = oAuthAccountRepository;
         this.cacheRepository = cacheRepository;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.restClient = restClient;
+        this.tokenRestClient = tokenRestClient;
     }
 
     @Override
@@ -219,9 +222,9 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
             body.add("client_id", clientId);
             body.add("client_secret", clientSecret);
 
-            Map<String, Object> tokenResponse = RestClient.create()
+            Map<String, Object> tokenResponse = tokenRestClient
                     .post()
-                    .uri("https://accounts.spotify.com/api/token")
+                    .uri("/api/token")
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(body)
                     .retrieve()
