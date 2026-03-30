@@ -102,7 +102,9 @@ AI-as-judge checks verify response grounding (no fabricated events, prices, or d
 Eval results are logged for observability. Critical eval failures may block agent actions.
 
 ## MCP Tools (requires API key: X-API-Key header)
-MockHub exposes MCP tools for AI agents at /mcp (Streamable HTTP transport):
+MockHub exposes MCP tools for AI agents at /mcp (Streamable HTTP transport).
+Sessions are in-memory — after server redeploys, clients must re-initialize.
+Claude Desktop users: if tools time out after a deploy, restart Claude Desktop (Cmd+Q) to reset the mcp-remote bridge.
 - searchEvents(query?, category?, city?, page?, size?) — search and filter events with pagination
 - getEventDetail(slug) — full event details by URL slug
 - getEventListings(slug, page?, size?) — active listings for an event with pagination (default 20, max 50)
