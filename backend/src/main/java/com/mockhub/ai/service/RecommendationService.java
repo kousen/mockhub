@@ -93,7 +93,8 @@ public class RecommendationService {
                 listeningData.spotifyConnected(), listeningData.scopeUpgradeNeeded());
     }
 
-    @SuppressWarnings("java:S6809") // Both methods share the same readOnly transaction
+    @Transactional(readOnly = true)
+    @SuppressWarnings("java:S6809") // Delegate to sibling @Transactional method; same readOnly semantics
     public List<RecommendationDto> getRecommendations(Long userId) {
         return getRecommendations(userId, null).recommendations();
     }
