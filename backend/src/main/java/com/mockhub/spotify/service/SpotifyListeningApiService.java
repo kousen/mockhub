@@ -41,18 +41,26 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
     private final String clientId;
     private final String clientSecret;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public SpotifyListeningApiService(
             OAuthAccountRepository oAuthAccountRepository,
             SpotifyListeningCacheRepository cacheRepository,
             @Value("${mockhub.spotify.client-id}") String clientId,
             @Value("${mockhub.spotify.client-secret}") String clientSecret) {
+        this(oAuthAccountRepository, cacheRepository, clientId, clientSecret,
+                RestClient.builder().baseUrl("https://api.spotify.com/v1").build());
+    }
+
+    SpotifyListeningApiService(
+            OAuthAccountRepository oAuthAccountRepository,
+            SpotifyListeningCacheRepository cacheRepository,
+            String clientId, String clientSecret,
+            RestClient restClient) {
         this.oAuthAccountRepository = oAuthAccountRepository;
         this.cacheRepository = cacheRepository;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        this.restClient = RestClient.builder()
-                .baseUrl("https://api.spotify.com/v1")
-                .build();
+        this.restClient = restClient;
     }
 
     @Override
