@@ -18,6 +18,7 @@ import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
 import com.mockhub.ticket.dto.ListingDto;
+import com.mockhub.ticket.dto.ListingSearchCriteria;
 import com.mockhub.ticket.dto.TicketSearchResultDto;
 import com.mockhub.ticket.service.ListingService;
 
@@ -172,12 +173,12 @@ public class EventTools {
                     required = false) Integer maxResults) {
         try {
             int limit = (maxResults == null || maxResults <= 0) ? 10 : Math.min(maxResults, 50);
-            Instant parsedDateFrom = parseInstant(dateFrom);
-            Instant parsedDateTo = parseInstant(dateTo);
 
-            List<TicketSearchResultDto> results = listingService.searchTickets(
+            ListingSearchCriteria criteria = new ListingSearchCriteria(
                     query, category, city, minPrice, maxPrice, section,
-                    parsedDateFrom, parsedDateTo, limit);
+                    parseInstant(dateFrom), parseInstant(dateTo), limit);
+
+            List<TicketSearchResultDto> results = listingService.searchTickets(criteria);
 
             return objectMapper.writeValueAsString(results);
         } catch (Exception e) {
