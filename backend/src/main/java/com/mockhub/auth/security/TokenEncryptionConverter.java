@@ -37,6 +37,11 @@ public class TokenEncryptionConverter implements AttributeConverter<String, Stri
             this.secretKey = null;
         } else {
             byte[] keyBytes = Base64.getDecoder().decode(base64Key);
+            if (keyBytes.length != 32) {
+                throw new IllegalArgumentException(
+                        "SPOTIFY_TOKEN_ENCRYPTION_KEY must be exactly 32 bytes (256 bits) "
+                        + "for AES-256-GCM, got " + keyBytes.length + " bytes");
+            }
             this.secretKey = new SecretKeySpec(keyBytes, "AES");
         }
     }

@@ -93,6 +93,24 @@ class TokenEncryptionConverterTest {
     }
 
     @Test
+    @DisplayName("constructor - given 16-byte key - throws IllegalArgumentException")
+    void constructor_given16ByteKey_throwsIllegalArgumentException() {
+        String short16ByteKey = Base64.getEncoder().encodeToString(new byte[16]);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new TokenEncryptionConverter(short16ByteKey));
+    }
+
+    @Test
+    @DisplayName("constructor - given 24-byte key - throws IllegalArgumentException")
+    void constructor_given24ByteKey_throwsIllegalArgumentException() {
+        String medium24ByteKey = Base64.getEncoder().encodeToString(new byte[24]);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new TokenEncryptionConverter(medium24ByteKey));
+    }
+
+    @Test
     @DisplayName("encrypt and decrypt - empty string - round trips correctly")
     void encryptDecrypt_emptyString_roundTripsCorrectly() {
         String encrypted = converter.convertToDatabaseColumn("");
