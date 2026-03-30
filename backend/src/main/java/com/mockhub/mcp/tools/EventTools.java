@@ -148,7 +148,9 @@ public class EventTools {
     @Tool(description = "RECOMMENDED for ticket discovery — prefer this over calling searchEvents, "
             + "getEventDetail, and getEventListings separately. "
             + "Searches for ticket listings across events with filters in a single call. "
-            + "Returns matching listings sorted by price ascending, including event details.")
+            + "Returns matching listings sorted by price ascending, including event details. "
+            + "For broad queries, ask the user to narrow by city, category, or date range "
+            + "before calling — this produces faster, more relevant results.")
     public String findTickets(
             @ToolParam(description = "Search query text to match event name or artist",
                     required = false) String query,
