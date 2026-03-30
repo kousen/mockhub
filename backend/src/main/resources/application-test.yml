@@ -35,10 +35,6 @@ spring:
   flyway:
     enabled: true
 
-mockhub:
-  spotify:
-    token-encryption-key: cysWhnNFqiFjynz6U1T4MjKgiawi3TbPXxmqgUVBidE=
-
 logging:
   level:
     com.mockhub: DEBUG
