@@ -21,7 +21,7 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
     @Query("SELECT e FROM Event e WHERE e.isFeatured = true AND e.status = 'ACTIVE' ORDER BY e.eventDate ASC")
     List<Event> findFeaturedEvents();
 
-    @Query("SELECT e FROM Event e WHERE e.isFeatured = true AND e.status = 'ACTIVE' AND e.venue.city = :city ORDER BY e.eventDate ASC")
+    @Query("SELECT e FROM Event e WHERE e.isFeatured = true AND e.status = 'ACTIVE' AND LOWER(e.venue.city) = LOWER(:city) ORDER BY e.eventDate ASC")
     List<Event> findFeaturedEventsByCity(@Param("city") String city);
 
     @Query("SELECT e FROM Event e WHERE e.spotifyArtistId IN :artistIds AND e.status = 'ACTIVE' ORDER BY e.eventDate ASC")
