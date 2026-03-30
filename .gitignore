@@ -78,4 +78,5 @@ frontend/test-results/
 .windsurf/
 .zencoder/
 skills/
+!.claude/skills/
 skills-lock.json
