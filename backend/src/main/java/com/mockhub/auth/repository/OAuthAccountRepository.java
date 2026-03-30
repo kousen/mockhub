@@ -15,6 +15,8 @@ public interface OAuthAccountRepository extends JpaRepository<OAuthAccount, Long
 
     List<OAuthAccount> findByUserId(Long userId);
 
+    Optional<OAuthAccount> findByUserIdAndProvider(Long userId, String provider);
+
     boolean existsByUserIdAndProvider(Long userId, String provider);
 
     void deleteByUserIdAndProvider(Long userId, String provider);
