@@ -14,13 +14,14 @@ export function useChat() {
 
 /**
  * Hook for fetching AI-powered event recommendations.
+ * Returns the full response including Spotify connection status.
  * Uses a longer stale time since recommendations change infrequently.
  */
-export function useRecommendations() {
+export function useRecommendations(city?: string) {
   const user = useAuthStore((state) => state.user);
   return useQuery({
-    queryKey: ['ai', 'recommendations', user?.id ?? 'anonymous'],
-    queryFn: () => aiApi.getRecommendations(),
+    queryKey: ['ai', 'recommendations', user?.id ?? 'anonymous', city ?? 'all'],
+    queryFn: () => aiApi.getRecommendations(city),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false, // Don't retry if AI is unavailable
   });

@@ -1,6 +1,5 @@
 package com.mockhub.ai.controller;
 
-import java.util.List;
 import java.util.Optional;
 
 import jakarta.validation.Valid;
@@ -16,10 +15,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
+import org.springframework.web.bind.annotation.RequestParam;
+
 import com.mockhub.ai.dto.ChatRequest;
 import com.mockhub.ai.dto.ChatResponse;
 import com.mockhub.ai.dto.PricePredictionDto;
-import com.mockhub.ai.dto.RecommendationDto;
+import com.mockhub.ai.dto.RecommendationsResponse;
 import com.mockhub.ai.service.ChatService;
 import com.mockhub.ai.service.PricePredictionService;
 import com.mockhub.ai.service.RecommendationService;
@@ -60,16 +61,17 @@ public class AiController {
     }
 
     @GetMapping("/recommendations")
-    @Operation(summary = "Get AI recommendations", description = "AI-ranked event recommendations personalized to user preferences when authenticated")
+    @Operation(summary = "Get AI recommendations", description = "AI-ranked event recommendations personalized to user preferences, Spotify listening data, and optional city filter")
     @ApiResponse(responseCode = "200", description = "Recommendations returned")
     @ApiResponse(responseCode = "503", description = "AI provider not configured")
-    public ResponseEntity<List<RecommendationDto>> getRecommendations(
-            @AuthenticationPrincipal SecurityUser securityUser) {
+    public ResponseEntity<RecommendationsResponse> getRecommendations(
+            @AuthenticationPrincipal SecurityUser securityUser,
+            @RequestParam(required = false) String city) {
         if (recommendationService.isEmpty()) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
         Long userId = securityUser != null ? securityUser.getId() : null;
-        return ResponseEntity.ok(recommendationService.get().getRecommendations(userId));
+        return ResponseEntity.ok(recommendationService.get().getRecommendations(userId, city));
     }
 
     @GetMapping("/events/{slug}/predicted-price")

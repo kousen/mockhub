@@ -157,7 +157,8 @@ class RecommendationAvailabilityConditionTest {
                 Instant.now().plus(30, ChronoUnit.DAYS),
                 new BigDecimal("50.00"),
                 0.85,
-                "Great event"
+                "Great event",
+                false
         );
     }
 

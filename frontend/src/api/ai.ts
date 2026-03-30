@@ -1,5 +1,10 @@
 import apiClient from './client';
-import type { ChatRequest, ChatResponse, Recommendation, PricePrediction } from '@/types/ai';
+import type {
+  ChatRequest,
+  ChatResponse,
+  RecommendationsResponse,
+  PricePrediction,
+} from '@/types/ai';
 import { isAxiosError } from 'axios';
 
 /**
@@ -20,15 +25,18 @@ export async function sendChatMessage(data: ChatRequest): Promise<ChatResponse |
 
 /**
  * Fetch AI-powered event recommendations for the current user.
- * Returns an empty array if AI features are unavailable (503).
+ * Returns empty response if AI features are unavailable (503).
  */
-export async function getRecommendations(): Promise<Recommendation[]> {
+export async function getRecommendations(city?: string): Promise<RecommendationsResponse> {
   try {
-    const response = await apiClient.get<Recommendation[]>('/recommendations');
+    const params = city ? { city } : undefined;
+    const response = await apiClient.get<RecommendationsResponse>('/recommendations', {
+      params,
+    });
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 503) {
-      return [];
+      return { recommendations: [], spotifyConnected: false, scopeUpgradeNeeded: false };
     }
     throw error;
   }

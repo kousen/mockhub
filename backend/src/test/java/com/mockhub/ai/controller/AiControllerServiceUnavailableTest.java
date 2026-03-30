@@ -11,9 +11,6 @@ import org.springframework.http.ResponseEntity;
 import com.mockhub.ai.dto.ChatRequest;
 import com.mockhub.ai.dto.ChatResponse;
 import com.mockhub.ai.dto.PricePredictionDto;
-import com.mockhub.ai.dto.RecommendationDto;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -43,7 +40,7 @@ class AiControllerServiceUnavailableTest {
     @Test
     @DisplayName("getRecommendations - given no RecommendationService configured - returns 503 SERVICE_UNAVAILABLE")
     void getRecommendations_givenNoRecommendationServiceConfigured_returns503() {
-        ResponseEntity<List<RecommendationDto>> response = controller.getRecommendations(null);
+        ResponseEntity<com.mockhub.ai.dto.RecommendationsResponse> response = controller.getRecommendations(null, null);
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode(),
                 "Should return 503 when RecommendationService is not configured");

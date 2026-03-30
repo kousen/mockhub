@@ -12,6 +12,7 @@ public record RecommendationDto(
         Instant eventDate,
         BigDecimal minPrice,
         double relevanceScore,
-        String reason
+        String reason,
+        boolean spotifyMatch
 ) {
 }
