@@ -245,8 +245,8 @@ The codebase uses Java DOP patterns where they add value:
 ## CI / Quality
 
 - **GitHub Actions** (`.github/workflows/ci.yml`) runs on push to main and PRs: backend tests, frontend lint/typecheck/tests, SonarCloud analysis, Docker build smoke test
-- **SonarCloud** — org: `kousen-it-inc`, project: `kousen_mockhub`. Config in both `sonar-project.properties` (frontend) and `build.gradle.kts` sonar block (backend). Token stored as `SONAR_TOKEN` GitHub secret. Frontend coverage (lcov) is uploaded as an artifact and downloaded by the SonarCloud job — both backend and frontend coverage feed the quality gate.
-- **Issue exclusions** are in the Gradle `sonar {}` block: S1186 (JPA empty constructors), S1192 (seed data literals), S3776 (seed data complexity). Do NOT add them only to `sonar-project.properties` — the backend scanner won't see them there.
+- **SonarCloud** — org: `kousen-it-inc`, project: `kousen_mockhub`. All config is in `sonar-project.properties` at the repo root (both backend and frontend). CI uses `SonarSource/sonarqube-scan-action` (not the Gradle plugin). Token stored as `SONAR_TOKEN` GitHub secret. Both JaCoCo (backend) and lcov (frontend) coverage feed the quality gate.
+- **Issue exclusions** are in `sonar-project.properties`: S1186 (JPA empty constructors), S1192 (seed data literals), S3776 (seed data complexity), S6218 (byte[] record), S6863 (verification endpoint), S7746 (Axios throw style).
 - **SonarQube MCP server** is available in this project. Use it to query SonarCloud for issues, quality gate status, and hotspots. When fixing code, check SonarCloud issues first.
 - **GitHub repo:** `kousen/mockhub` (public, MIT license)
 
@@ -271,7 +271,7 @@ The codebase uses Java DOP patterns where they add value:
 - `docs/demo-transcript-agentic-purchase.md` — Full agentic purchase demo transcript (Claude Desktop + MCP, 2026-03-26)
 - `docs/stripe-test-setup.md` — Stripe test mode API key setup instructions
 - `sonar-project.properties` — SonarCloud configuration for frontend (coverage exclusions, issue suppressions)
-- `backend/build.gradle.kts` — Backend build config including SonarCloud issue exclusions in `sonar {}` block
+- `backend/build.gradle.kts` — Backend build config (dependencies, test setup, code style)
 - `.github/workflows/ci.yml` — CI pipeline (backend tests incl. Testcontainers, frontend lint/typecheck/tests, SonarCloud, Docker build)
 - `Dockerfile` — Combined frontend+backend Docker build for production deployment
 - `docker-compose.yml` — Full stack (Postgres, backend, frontend)
@@ -291,4 +291,4 @@ The codebase uses Java DOP patterns where they add value:
 - Do not suppress exceptions silently — log or rethrow as domain exceptions
 - Do not use `@Autowired` on fields — use constructor injection (implicit with single constructor)
 - Do not seal interfaces that need Mockito mocking in `@WebMvcTest` tests (Mockito can't create subclasses of sealed types)
-- Do not add SonarCloud issue exclusions only to `sonar-project.properties` — backend issues need the Gradle `sonar {}` block
+- Do not add SonarCloud issue exclusions anywhere other than `sonar-project.properties` at the repo root

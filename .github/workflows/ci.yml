@@ -196,15 +196,21 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Build and test backend (generates classes + coverage)
+        working-directory: backend
+        run: ./gradlew test jacocoTestReport
+
       - name: Download frontend coverage
         uses: actions/download-artifact@v4
         with:
           name: frontend-coverage
           path: frontend/coverage/
 
-      - name: Build, test, and analyze
-        working-directory: backend
-        run: ./gradlew test sonar
+      - name: Fix lcov paths for repo-root scanner
+        run: sed -i 's|^SF:|SF:frontend/|' frontend/coverage/lcov.info
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 

@@ -3,7 +3,6 @@ plugins {
     jacoco
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
-    alias(libs.plugins.sonarqube)
     alias(libs.plugins.spotless)
     checkstyle
 }
@@ -89,44 +88,6 @@ dependencies {
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
     testRuntimeOnly(libs.junit.platform.launcher)
-}
-
-sonar {
-    properties {
-        property("sonar.projectKey", "kousen_mockhub")
-        property("sonar.organization", "kousen-it-inc")
-        property("sonar.host.url", "https://sonarcloud.io")
-        property("sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml")
-        property("sonar.javascript.lcov.reportPaths", "../frontend/coverage/lcov.info")
-        property("sonar.sources", "src/main/java,../frontend/src")
-        property("sonar.tests", "src/test/java,../frontend/src")
-        property("sonar.test.inclusions", "**/*Test.java,**/*.test.ts,**/*.test.tsx")
-        property("sonar.coverage.exclusions", listOf(
-            "**/seed/**",
-            "**/entity/**",
-            "**/dto/**",
-            "**/config/AiConfig.java",
-            "**/MockHubApplication.java"
-        ))
-
-        // Issue exclusions — suppress known false positives
-        property("sonar.issue.ignore.multicriteria", "e1,e2,e3,e4,e5")
-        // S1186: Empty method body — JPA requires no-arg constructors on entities
-        property("sonar.issue.ignore.multicriteria.e1.ruleKey", "java:S1186")
-        property("sonar.issue.ignore.multicriteria.e1.resourceKey", "**/entity/**")
-        // S1192: Duplicated string literals in seed data
-        property("sonar.issue.ignore.multicriteria.e2.ruleKey", "java:S1192")
-        property("sonar.issue.ignore.multicriteria.e2.resourceKey", "**/seed/**")
-        // S3776: Cognitive complexity in seed data
-        property("sonar.issue.ignore.multicriteria.e3.ruleKey", "java:S3776")
-        property("sonar.issue.ignore.multicriteria.e3.resourceKey", "**/seed/**")
-        // S6218: Record with byte[] — TicketPdfData is internal, never compared/hashed
-        property("sonar.issue.ignore.multicriteria.e4.ruleKey", "java:S6218")
-        property("sonar.issue.ignore.multicriteria.e4.resourceKey", "**/ticket/dto/**")
-        // S6863: Verification endpoint intentionally returns 200 for all cases — validity is in the response body
-        property("sonar.issue.ignore.multicriteria.e5.ruleKey", "java:S6863")
-        property("sonar.issue.ignore.multicriteria.e5.resourceKey", "**/ticket/controller/TicketVerificationController.java")
-    }
 }
 
 spotless {
