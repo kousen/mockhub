@@ -14,6 +14,7 @@ import com.mockhub.auth.repository.OAuthAccountRepository;
 import com.mockhub.spotify.entity.SpotifyListeningCache;
 import com.mockhub.spotify.repository.SpotifyListeningCacheRepository;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,6 +63,9 @@ class SpotifyDataCleanupSchedulerTest {
         when(cacheRepository.findAll()).thenReturn(List.of());
 
         scheduler.cleanupOrphanedCacheEntries();
+
+        verify(cacheRepository).findAll();
+        verify(cacheRepository, never()).delete(any());
     }
 
     private SpotifyListeningCache createCache(Long id, Long userId) {

@@ -38,6 +38,7 @@ import com.mockhub.payment.service.PaymentService;
 public class OrderTools {
 
     private static final Logger log = LoggerFactory.getLogger(OrderTools.class);
+    private static final String ORDER_NUMBER_REQUIRED = "Order number is required";
 
     private final OrderService orderService;
     private final CalendarService calendarService;
@@ -109,7 +110,7 @@ public class OrderTools {
             @ToolParam(description = "Order number (e.g. 'MH-20260319-0001')", required = true) String orderNumber) {
         try {
             if (orderNumber == null || orderNumber.isBlank()) {
-                return errorJson("Order number is required");
+                return errorJson(ORDER_NUMBER_REQUIRED);
             }
             User user = resolveUser(userEmail);
             OrderDto order = orderService.getOrder(user, orderNumber.strip());
@@ -152,7 +153,7 @@ public class OrderTools {
                     required = false) String paymentIntentId) {
         try {
             if (orderNumber == null || orderNumber.isBlank()) {
-                return errorJson("Order number is required");
+                return errorJson(ORDER_NUMBER_REQUIRED);
             }
             if (agentId == null || agentId.isBlank()) {
                 return errorJson("Agent ID is required");
@@ -194,7 +195,7 @@ public class OrderTools {
             @ToolParam(description = "Order number (e.g. 'MH-20260319-0001')", required = true) String orderNumber) {
         try {
             if (orderNumber == null || orderNumber.isBlank()) {
-                return errorJson("Order number is required");
+                return errorJson(ORDER_NUMBER_REQUIRED);
             }
             User user = resolveUser(userEmail);
             orderService.getOrder(user, orderNumber.strip()); // auth check

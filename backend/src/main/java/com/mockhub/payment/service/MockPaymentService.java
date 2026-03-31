@@ -113,7 +113,7 @@ public class MockPaymentService implements PaymentService {
 
         return new PaymentConfirmation(
                 paymentIntentId,
-                "SUCCEEDED",
+                STATUS_SUCCEEDED,
                 orderNumber
         );
     }

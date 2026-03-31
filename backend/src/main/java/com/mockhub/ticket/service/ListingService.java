@@ -46,6 +46,7 @@ public class ListingService {
     private static final String TICKET_AVAILABLE = "AVAILABLE";
     private static final String TICKET_LISTED = "LISTED";
     private static final String LISTING_RESOURCE = "Listing";
+    private static final String EVENT_RESOURCE = "Event";
 
     private final ListingRepository listingRepository;
     private final TicketRepository ticketRepository;
@@ -68,7 +69,7 @@ public class ListingService {
     @Transactional(readOnly = true)
     public List<ListingDto> getActiveListingsByEventSlug(String eventSlug) {
         Event event = eventRepository.findBySlug(eventSlug)
-                .orElseThrow(() -> new ResourceNotFoundException("Event", "slug", eventSlug));
+                .orElseThrow(() -> new ResourceNotFoundException(EVENT_RESOURCE, "slug", eventSlug));
 
         List<Listing> listings = listingRepository.findByEventIdAndStatus(event.getId(), STATUS_ACTIVE);
         return listings.stream()
@@ -79,7 +80,7 @@ public class ListingService {
     @Transactional(readOnly = true)
     public List<ListingDto> getActiveListingsByEventSlugPaginated(String eventSlug, int page, int size) {
         Event event = eventRepository.findBySlug(eventSlug)
-                .orElseThrow(() -> new ResourceNotFoundException("Event", "slug", eventSlug));
+                .orElseThrow(() -> new ResourceNotFoundException(EVENT_RESOURCE, "slug", eventSlug));
 
         List<Listing> listings = listingRepository.findByEventIdAndStatusOrderByPrice(
                 event.getId(), STATUS_ACTIVE, PageRequest.of(page, size));
@@ -91,7 +92,7 @@ public class ListingService {
     @Transactional(readOnly = true)
     public long countActiveListingsByEventSlug(String eventSlug) {
         Event event = eventRepository.findBySlug(eventSlug)
-                .orElseThrow(() -> new ResourceNotFoundException("Event", "slug", eventSlug));
+                .orElseThrow(() -> new ResourceNotFoundException(EVENT_RESOURCE, "slug", eventSlug));
         return listingRepository.countByEventIdAndStatus(event.getId(), STATUS_ACTIVE);
     }
 
