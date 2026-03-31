@@ -206,6 +206,9 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage/
 
+      - name: Fix lcov paths for repo-root scanner
+        run: sed -i 's|^SF:|SF:frontend/|' frontend/coverage/lcov.info
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
