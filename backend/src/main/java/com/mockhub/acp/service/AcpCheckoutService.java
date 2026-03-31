@@ -492,7 +492,7 @@ public class AcpCheckoutService {
         return switch (orderStatus) {
             case "PENDING" -> "CREATED";
             case "CONFIRMED" -> "COMPLETED";
-            case "FAILED", "CANCELLED" -> STATUS_CANCELLED;
+            case "FAILED", STATUS_CANCELLED -> STATUS_CANCELLED;
             default -> orderStatus;
         };
     }

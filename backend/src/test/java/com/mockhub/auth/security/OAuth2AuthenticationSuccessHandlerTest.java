@@ -449,7 +449,8 @@ class OAuth2AuthenticationSuccessHandlerTest {
         @DisplayName("scheduled cleanup can be called without errors when map is empty")
         void cleanupExpired_emptyMap_noErrors() {
             handler.cleanupExpired();
-            // No exception means success
+            // Verify handler still works after cleanup — nonexistent code returns null
+            assertNull(handler.exchangeCode("nonexistent"));
         }
 
         @Test
