@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
@@ -315,6 +316,127 @@ class SpotifyListeningApiServiceTest {
 
         assertTrue(result.spotifyConnected());
         assertTrue(result.topArtistIds().isEmpty());
+    }
+
+    @Test
+    @DisplayName("getListeningData - 401, refresh succeeds, retry fails - falls back to stale cache")
+    void getListeningData_unauthorizedRefreshSucceedsRetryFails_fallsBackToStaleCache() {
+        OAuthAccount account = createSpotifyAccount(ALL_SCOPES);
+        account.setAccessTokenEncrypted("expired-token");
+        account.setRefreshTokenEncrypted("valid-refresh-token");
+
+        SpotifyListeningCache staleCache = new SpotifyListeningCache();
+        staleCache.setUserId(1L);
+        staleCache.setTopArtistIds(List.of("cached-artist"));
+        staleCache.setTopArtistNames(List.of("Cached Artist"));
+        staleCache.setTopGenres(List.of("jazz"));
+        staleCache.setRecentlyPlayedArtistIds(List.of("cached-recent"));
+        staleCache.setFetchedAt(Instant.now().minus(25, ChronoUnit.HOURS));
+
+        when(oAuthAccountRepository.findByUserIdAndProvider(1L, "spotify"))
+                .thenReturn(Optional.of(account));
+        when(cacheRepository.findByUserId(1L)).thenReturn(Optional.of(staleCache));
+        when(oAuthAccountRepository.save(any(OAuthAccount.class))).thenReturn(account);
+
+        // First call returns 401
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+                .andRespond(withUnauthorizedRequest());
+
+        // Token refresh succeeds
+        mockTokenServer.expect(requestTo("https://accounts.spotify.com/api/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess(TOKEN_RESPONSE_JSON, MediaType.APPLICATION_JSON));
+
+        // Retry also returns 401 (second failure)
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+                .andRespond(withUnauthorizedRequest());
+
+        SpotifyListeningDto result = service.getListeningData(1L);
+
+        // Falls back to stale cache data
+        assertTrue(result.spotifyConnected());
+        assertEquals(List.of("cached-artist"), result.topArtistIds());
+        assertEquals(List.of("Cached Artist"), result.topArtistNames());
+    }
+
+    @Test
+    @DisplayName("getListeningData - non-401 error with stale cache - returns stale cache")
+    void getListeningData_genericError_withStaleCache_returnsStaleCache() {
+        OAuthAccount account = createSpotifyAccount(ALL_SCOPES);
+        account.setAccessTokenEncrypted("valid-token");
+
+        SpotifyListeningCache staleCache = new SpotifyListeningCache();
+        staleCache.setUserId(1L);
+        staleCache.setTopArtistIds(List.of("cached-artist"));
+        staleCache.setTopArtistNames(List.of("Cached Artist"));
+        staleCache.setTopGenres(List.of("rock"));
+        staleCache.setRecentlyPlayedArtistIds(List.of("cached-recent"));
+        staleCache.setFetchedAt(Instant.now().minus(25, ChronoUnit.HOURS));
+
+        when(oAuthAccountRepository.findByUserIdAndProvider(1L, "spotify"))
+                .thenReturn(Optional.of(account));
+        when(cacheRepository.findByUserId(1L)).thenReturn(Optional.of(staleCache));
+
+        // Server error (not 401)
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+                .andRespond(withServerError());
+
+        SpotifyListeningDto result = service.getListeningData(1L);
+
+        // Falls back to stale cache
+        assertTrue(result.spotifyConnected());
+        assertEquals(List.of("cached-artist"), result.topArtistIds());
+        assertEquals(List.of("rock"), result.topGenres());
+    }
+
+    @Test
+    @DisplayName("getListeningData - token refresh returns null response - returns scope upgrade")
+    void getListeningData_tokenRefreshReturnsNull_returnsScopeUpgrade() {
+        OAuthAccount account = createSpotifyAccount(ALL_SCOPES);
+        account.setAccessTokenEncrypted("expired-token");
+        account.setRefreshTokenEncrypted("valid-refresh-token");
+
+        when(oAuthAccountRepository.findByUserIdAndProvider(1L, "spotify"))
+                .thenReturn(Optional.of(account));
+        when(cacheRepository.findByUserId(1L)).thenReturn(Optional.empty());
+
+        // First call returns 401
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+                .andRespond(withUnauthorizedRequest());
+
+        // Token refresh returns empty/invalid response (no access_token key)
+        mockTokenServer.expect(requestTo("https://accounts.spotify.com/api/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        SpotifyListeningDto result = service.getListeningData(1L);
+
+        assertTrue(result.scopeUpgradeNeeded());
+    }
+
+    @Test
+    @DisplayName("getListeningData - token refresh throws exception - returns scope upgrade")
+    void getListeningData_tokenRefreshThrowsException_returnsScopeUpgrade() {
+        OAuthAccount account = createSpotifyAccount(ALL_SCOPES);
+        account.setAccessTokenEncrypted("expired-token");
+        account.setRefreshTokenEncrypted("valid-refresh-token");
+
+        when(oAuthAccountRepository.findByUserIdAndProvider(1L, "spotify"))
+                .thenReturn(Optional.of(account));
+        when(cacheRepository.findByUserId(1L)).thenReturn(Optional.empty());
+
+        // First call returns 401
+        mockApiServer.expect(requestTo("https://api.spotify.com/v1/me/top/artists?limit=20&time_range=medium_term"))
+                .andRespond(withUnauthorizedRequest());
+
+        // Token refresh endpoint returns server error
+        mockTokenServer.expect(requestTo("https://accounts.spotify.com/api/token"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withServerError());
+
+        SpotifyListeningDto result = service.getListeningData(1L);
+
+        assertTrue(result.scopeUpgradeNeeded());
     }
 
     private OAuthAccount createSpotifyAccount(String scopes) {
