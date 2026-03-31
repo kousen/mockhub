@@ -209,15 +209,6 @@ jobs:
       - name: Fix lcov paths for repo-root scanner
         run: sed -i 's|^SF:|SF:frontend/|' frontend/coverage/lcov.info
 
-      - name: Debug coverage paths
-        run: |
-          echo "=== JaCoCo report ==="
-          ls -la backend/build/reports/jacoco/test/jacocoTestReport.xml || echo "NOT FOUND"
-          echo "=== Java binaries ==="
-          ls backend/build/classes/java/main/com/mockhub/ | head -10 || echo "NOT FOUND"
-          echo "=== Frontend lcov ==="
-          head -5 frontend/coverage/lcov.info || echo "NOT FOUND"
-
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
