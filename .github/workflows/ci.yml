@@ -210,7 +210,7 @@ jobs:
         run: sed -i 's|^SF:|SF:frontend/|' frontend/coverage/lcov.info
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
