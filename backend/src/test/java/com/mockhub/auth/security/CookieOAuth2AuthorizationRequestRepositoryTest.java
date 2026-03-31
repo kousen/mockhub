@@ -44,6 +44,13 @@ class CookieOAuth2AuthorizationRequestRepositoryTest {
                 .build();
     }
 
+    private OAuth2AuthorizationRequest createMinimalRequest() {
+        return OAuth2AuthorizationRequest.authorizationCode()
+                .authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
+                .clientId("test-client-id")
+                .build();
+    }
+
     @Test
     @DisplayName("saveAuthorizationRequest - sets signed cookie")
     void saveAuthorizationRequest_setsSignedCookie() {
@@ -111,6 +118,33 @@ class CookieOAuth2AuthorizationRequestRepositoryTest {
         request.setCookies(new Cookie(
                 CookieOAuth2AuthorizationRequestRepository.COOKIE_NAME,
                 "not-a-valid-format"));
+
+        OAuth2AuthorizationRequest result = repository.loadAuthorizationRequest(request);
+
+        assertNull(result);
+    }
+
+    @Test
+    @DisplayName("saveAuthorizationRequest - handles null redirectUri and state")
+    void saveAuthorizationRequest_nullRedirectUriAndState_roundTrips() {
+        OAuth2AuthorizationRequest authRequest = createMinimalRequest();
+
+        repository.saveAuthorizationRequest(authRequest, request, response);
+
+        Cookie savedCookie = response.getCookie(CookieOAuth2AuthorizationRequestRepository.COOKIE_NAME);
+        assertNotNull(savedCookie);
+        request.setCookies(savedCookie);
+
+        OAuth2AuthorizationRequest loaded = repository.loadAuthorizationRequest(request);
+        assertNotNull(loaded);
+        assertNull(loaded.getRedirectUri());
+        assertNull(loaded.getState());
+    }
+
+    @Test
+    @DisplayName("loadAuthorizationRequest - ignores unrelated cookies")
+    void loadAuthorizationRequest_unrelatedCookies_returnsNull() {
+        request.setCookies(new Cookie("other_cookie", "some-value"));
 
         OAuth2AuthorizationRequest result = repository.loadAuthorizationRequest(request);
 

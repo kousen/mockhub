@@ -19,6 +19,8 @@ import jakarta.persistence.criteria.Predicate;
  */
 public final class ListingSearchSpecification {
 
+    private static final String COMPUTED_PRICE = "computedPrice";
+
     private ListingSearchSpecification() {
     }
 
@@ -67,10 +69,10 @@ public final class ListingSearchSpecification {
 
             // Price range filters
             if (criteria.minPrice() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("computedPrice"), criteria.minPrice()));
+                predicates.add(cb.greaterThanOrEqualTo(root.get(COMPUTED_PRICE), criteria.minPrice()));
             }
             if (criteria.maxPrice() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("computedPrice"), criteria.maxPrice()));
+                predicates.add(cb.lessThanOrEqualTo(root.get(COMPUTED_PRICE), criteria.maxPrice()));
             }
 
             // Section filter (case-insensitive)
@@ -81,7 +83,7 @@ public final class ListingSearchSpecification {
             }
 
             // Order by price ascending
-            query.orderBy(cb.asc(root.get("computedPrice")));
+            query.orderBy(cb.asc(root.get(COMPUTED_PRICE)));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };

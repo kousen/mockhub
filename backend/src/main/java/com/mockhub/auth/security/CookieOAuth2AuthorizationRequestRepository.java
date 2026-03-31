@@ -26,6 +26,7 @@ public class CookieOAuth2AuthorizationRequestRepository
     static final String COOKIE_NAME = "oauth2_auth_request";
     private static final int COOKIE_EXPIRE_SECONDS = 600;
     private static final String HMAC_ALGORITHM = "HmacSHA256";
+    private static final String ATTRIBUTES_KEY = "attributes";
 
     private final byte[] signingKey;
     private final ObjectMapper objectMapper;
@@ -62,7 +63,7 @@ public class CookieOAuth2AuthorizationRequestRepository
             data.put("state", authorizationRequest.getState() != null
                     ? authorizationRequest.getState() : "");
             data.put("scopes", String.join(",", authorizationRequest.getScopes()));
-            data.put("attributes", authorizationRequest.getAttributes());
+            data.put(ATTRIBUTES_KEY, authorizationRequest.getAttributes());
             String json = objectMapper.writeValueAsString(data);
             String signature = sign(json);
             String payload = Base64.getUrlEncoder().withoutPadding()
@@ -107,8 +108,8 @@ public class CookieOAuth2AuthorizationRequestRepository
                     String redirectUri = (String) data.get("redirectUri");
                     String state = (String) data.get("state");
                     @SuppressWarnings("unchecked")
-                    Map<String, Object> attributes = data.get("attributes") instanceof Map
-                            ? (Map<String, Object>) data.get("attributes")
+                    Map<String, Object> attributes = data.get(ATTRIBUTES_KEY) instanceof Map
+                            ? (Map<String, Object>) data.get(ATTRIBUTES_KEY)
                             : Map.of();
                     return OAuth2AuthorizationRequest.authorizationCode()
                             .authorizationUri((String) data.get("authorizationUri"))
