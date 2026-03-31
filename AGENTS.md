@@ -1,4 +1,4 @@
-# MockHub — Project Instructions for Claude Code
+# MockHub — Project Instructions for Codex
 
 ## Project Overview
 
@@ -173,7 +173,7 @@ The codebase uses Java DOP patterns where they add value:
 - **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
-- **MCP server** — 23 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Claude Desktop requires `mcp-remote` bridge for auth headers: `{"command": "npx", "args": ["-y", "mcp-remote", "https://mockhub.kousenit.com/mcp", "--header", "X-API-Key: <key>"]}`.
+- **MCP server** — 23 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Codex Desktop requires `mcp-remote` bridge for auth headers: `{"command": "npx", "args": ["-y", "mcp-remote", "https://mockhub.kousenit.com/mcp", "--header", "X-API-Key: <key>"]}`.
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
 - **`findTickets` compound tool** — single-call search with query, category, city, date range, price range, section filter, returning matching listings sorted by price. Uses JPA `Specification` with `findBy` fluent API (no `COUNT` query overhead). `ListingSearchCriteria` record encapsulates all filters; `ListingSearchSpecification` builds predicates dynamically for non-null criteria only. Date parameters are `String` (not `Instant`) because Spring AI MCP can't deserialize ISO-8601 to `Instant`. Reduces agent round-trips from 3 to 1. Server-side execution: ~54ms.
@@ -268,7 +268,7 @@ The codebase uses Java DOP patterns where they add value:
 
 - `ARCHITECTURE.md` — Database schema, API design, backend/frontend architecture, key decisions
 - `PROJECT_JOURNAL.md` — Build report with session notes, challenges, metrics, and commit history
-- `docs/demo-transcript-agentic-purchase.md` — Full agentic purchase demo transcript (Claude Desktop + MCP, 2026-03-26)
+- `docs/demo-transcript-agentic-purchase.md` — Full agentic purchase demo transcript (Codex Desktop + MCP, 2026-03-26)
 - `docs/stripe-test-setup.md` — Stripe test mode API key setup instructions
 - `sonar-project.properties` — SonarCloud configuration for frontend (coverage exclusions, issue suppressions)
 - `backend/build.gradle.kts` — Backend build config (dependencies, test setup, code style)
