@@ -179,7 +179,7 @@ public class ListingService {
         User seller = resolveUser(userEmail);
         Event event = eventRepository.findBySlug(request.eventSlug())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Event", "slug", request.eventSlug()));
+                        EVENT_RESOURCE, "slug", request.eventSlug()));
 
         Ticket ticket = ticketRepository.findByEventIdAndSectionAndRowAndSeat(
                         event.getId(),

@@ -4,9 +4,15 @@ import { server } from './mocks/server';
 
 // Radix UI components (Tooltip, Popover, etc.) use ResizeObserver which jsdom doesn't provide
 global.ResizeObserver = class {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe() {
+    /* stub for jsdom */
+  }
+  unobserve() {
+    /* stub for jsdom */
+  }
+  disconnect() {
+    /* stub for jsdom */
+  }
 };
 
 // Start MSW server before all tests

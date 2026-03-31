@@ -34,6 +34,8 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
     private static final Logger log = LoggerFactory.getLogger(SpotifyListeningApiService.class);
     private static final Duration CACHE_TTL = Duration.ofHours(24);
     private static final List<String> REQUIRED_SCOPES = List.of("user-top-read", "user-read-recently-played");
+    private static final String ITEMS_KEY = "items";
+    private static final String REFRESH_TOKEN = "refresh_token";
 
     private final OAuthAccountRepository oAuthAccountRepository;
     private final SpotifyListeningCacheRepository cacheRepository;
@@ -155,8 +157,8 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
         List<String> artistNames = new ArrayList<>();
         LinkedHashSet<String> genres = new LinkedHashSet<>();
 
-        if (topArtistsResponse != null && topArtistsResponse.containsKey("items")) {
-            List<Map<String, Object>> items = (List<Map<String, Object>>) topArtistsResponse.get("items");
+        if (topArtistsResponse != null && topArtistsResponse.containsKey(ITEMS_KEY)) {
+            List<Map<String, Object>> items = (List<Map<String, Object>>) topArtistsResponse.get(ITEMS_KEY);
             for (Map<String, Object> artist : items) {
                 artistIds.add((String) artist.get("id"));
                 artistNames.add((String) artist.get("name"));
@@ -175,8 +177,8 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
                 .body(Map.class);
 
         LinkedHashSet<String> recentArtistIds = new LinkedHashSet<>();
-        if (recentlyPlayedResponse != null && recentlyPlayedResponse.containsKey("items")) {
-            List<Map<String, Object>> items = (List<Map<String, Object>>) recentlyPlayedResponse.get("items");
+        if (recentlyPlayedResponse != null && recentlyPlayedResponse.containsKey(ITEMS_KEY)) {
+            List<Map<String, Object>> items = (List<Map<String, Object>>) recentlyPlayedResponse.get(ITEMS_KEY);
             for (Map<String, Object> item : items) {
                 Map<String, Object> track = (Map<String, Object>) item.get("track");
                 if (track != null) {
@@ -217,8 +219,8 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
 
         try {
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("grant_type", "refresh_token");
-            body.add("refresh_token", refreshToken);
+            body.add("grant_type", REFRESH_TOKEN);
+            body.add(REFRESH_TOKEN, refreshToken);
             body.add("client_id", clientId);
             body.add("client_secret", clientSecret);
 
@@ -243,7 +245,7 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
             }
 
             // Spotify may return a new refresh token
-            String newRefreshToken = (String) tokenResponse.get("refresh_token");
+            String newRefreshToken = (String) tokenResponse.get(REFRESH_TOKEN);
             if (newRefreshToken != null) {
                 account.setRefreshTokenEncrypted(newRefreshToken);
             }
