@@ -121,8 +121,7 @@ class TicketmasterEventMapperTest {
         TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
                 "K8vZ9171ob7", "Eagles",
                 Map.of("spotify", List.of(
-                        new TicketmasterAttractionResponse.ExternalLink(
-                                "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null))));
+                        Map.of("url", "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL"))));
 
         String spotifyId = mapper.extractSpotifyArtistId(attraction);
 
@@ -144,8 +143,7 @@ class TicketmasterEventMapperTest {
         TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
                 "K8vZ9171ob7", "Eagles",
                 Map.of("youtube", List.of(
-                        new TicketmasterAttractionResponse.ExternalLink(
-                                "https://youtube.com/test", null))));
+                        Map.of("url", "https://youtube.com/test"))));
 
         String spotifyId = mapper.extractSpotifyArtistId(attraction);
 
@@ -379,8 +377,7 @@ class TicketmasterEventMapperTest {
                         List.of(new TicketmasterAttractionResponse(
                                 "K8vZ9171ob7", "Eagles",
                                 Map.of("spotify", List.of(
-                                        new TicketmasterAttractionResponse.ExternalLink(
-                                                "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))));
+                                        Map.of("url", "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL")))))));
     }
 
     private TicketmasterEventResponse createEventResponseWithStatus(String statusCode) {

@@ -50,7 +50,7 @@ class TicketmasterEventDeserializationTest {
         assertThat(attraction.name()).isEqualTo("Eagles");
         assertThat(attraction.externalLinks()).isNotNull();
         assertThat(attraction.externalLinks()).containsKey("spotify");
-        assertThat(attraction.externalLinks().get("spotify").getFirst().url())
+        assertThat(attraction.externalLinks().get("spotify").getFirst().get("url"))
                 .isEqualTo("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL");
     }
 
@@ -93,7 +93,7 @@ class TicketmasterEventDeserializationTest {
 
         TicketmasterEventResponse event = response.embedded().events().getFirst();
         TicketmasterAttractionResponse attraction = event.embedded().attractions().getFirst();
-        assertThat(attraction.externalLinks().get("spotify").getFirst().url())
+        assertThat(attraction.externalLinks().get("spotify").getFirst().get("url"))
                 .contains("0ECwFtbIWEVNwjlrfc6xoL");
     }
 }

@@ -352,8 +352,7 @@ class TicketmasterSyncServiceTest {
                         List.of(new TicketmasterAttractionResponse(
                                 "ATTR-001", "Eagles",
                                 Map.of("spotify", List.of(
-                                        new TicketmasterAttractionResponse.ExternalLink(
-                                                "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))));
+                                        Map.of("url", "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL")))))));
     }
 
     private TicketmasterEventResponse createSampleEventWithStatus(String id, String statusCode) {

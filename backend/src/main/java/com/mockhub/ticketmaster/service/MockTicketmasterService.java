@@ -69,7 +69,6 @@ public class MockTicketmasterService implements TicketmasterService {
                         List.of(new TicketmasterAttractionResponse(
                                 "MOCK-ATTR-001", "Test Artist",
                                 Map.of("spotify", List.of(
-                                        new TicketmasterAttractionResponse.ExternalLink(
-                                                "https://open.spotify.com/artist/4Z8W4fKeB5YxbusRsdQVPb", null)))))));
+                                        Map.of("url", "https://open.spotify.com/artist/4Z8W4fKeB5YxbusRsdQVPb")))))));
     }
 }

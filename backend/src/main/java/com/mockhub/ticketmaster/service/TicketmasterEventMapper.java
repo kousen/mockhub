@@ -136,13 +136,12 @@ public class TicketmasterEventMapper {
             return null;
         }
 
-        List<TicketmasterAttractionResponse.ExternalLink> spotifyLinks =
-                attraction.externalLinks().get("spotify");
+        List<Map<String, String>> spotifyLinks = attraction.externalLinks().get("spotify");
         if (spotifyLinks == null || spotifyLinks.isEmpty()) {
             return null;
         }
 
-        String url = spotifyLinks.getFirst().url();
+        String url = spotifyLinks.getFirst().get("url");
         if (url == null || !url.contains("/artist/")) {
             return null;
         }

@@ -31,7 +31,7 @@ class TicketmasterAttractionDeserializationTest {
         assertThat(result.externalLinks()).isNotNull();
         assertThat(result.externalLinks()).containsKey("spotify");
         assertThat(result.externalLinks().get("spotify")).hasSize(1);
-        assertThat(result.externalLinks().get("spotify").getFirst().url())
+        assertThat(result.externalLinks().get("spotify").getFirst().get("url"))
                 .isEqualTo("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL");
     }
 }

@@ -9,13 +9,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record TicketmasterAttractionResponse(
         String id,
         String name,
-        Map<String, List<ExternalLink>> externalLinks
+        Map<String, List<Map<String, String>>> externalLinks
 ) {
-
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record ExternalLink(
-            String url,
-            String id
-    ) {
-    }
 }
