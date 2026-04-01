@@ -30,8 +30,8 @@ public record TicketmasterEventResponse(
             String localDate,
             String localTime,
             String dateTime,
-            boolean dateTBD,
-            boolean timeTBA
+            Boolean dateTBD,
+            Boolean timeTBA
     ) {
     }
 
@@ -43,7 +43,7 @@ public record TicketmasterEventResponse(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Classification(
-            boolean primary,
+            Boolean primary,
             Segment segment,
             Genre genre,
             SubGenre subGenre
@@ -75,9 +75,9 @@ public record TicketmasterEventResponse(
     public record Image(
             String url,
             String ratio,
-            int width,
-            int height,
-            boolean fallback
+            Integer width,
+            Integer height,
+            Boolean fallback
     ) {
     }
 
@@ -85,8 +85,8 @@ public record TicketmasterEventResponse(
     public record PriceRange(
             String type,
             String currency,
-            double min,
-            double max
+            Double min,
+            Double max
     ) {
     }
 
