@@ -98,7 +98,7 @@ class TicketmasterTicketGeneratorTest {
 
         User seller = createSeller();
         when(userRepository.findAll()).thenReturn(List.of(seller));
-        when(venueRepository.save(any(Venue.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(venueRepository.saveAndFlush(any(Venue.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(ticketRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         generator.generateForEvent(event);
