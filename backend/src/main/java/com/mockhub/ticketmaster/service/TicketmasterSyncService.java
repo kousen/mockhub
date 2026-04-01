@@ -198,7 +198,9 @@ public class TicketmasterSyncService {
         // 1. Check by Ticketmaster venue ID
         Optional<Venue> byTmId = venueRepository.findByTicketmasterVenueId(tmVenue.id());
         if (byTmId.isPresent()) {
-            return byTmId.get();
+            Venue venue = byTmId.get();
+            venue.getSections().size(); // eagerly initialize sections for ticket generation
+            return venue;
         }
 
         // 2. Check by name + city match (for seed venues)
@@ -208,6 +210,7 @@ public class TicketmasterSyncService {
             if (byNameCity.isPresent()) {
                 Venue matched = byNameCity.get();
                 matched.setTicketmasterVenueId(tmVenue.id());
+                matched.getSections().size(); // eagerly initialize sections for ticket generation
                 venueRepository.save(matched);
                 log.info("Linked existing venue '{}' to Ticketmaster ID: {}",
                         matched.getName(), tmVenue.id());

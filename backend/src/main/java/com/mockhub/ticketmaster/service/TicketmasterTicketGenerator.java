@@ -53,10 +53,12 @@ public class TicketmasterTicketGenerator {
     public void generateForEvent(Event event) {
         Venue venue = event.getVenue();
 
-        // If venue has no sections, create generic ones
+        // If venue has no sections, create generic ones and flush to DB
         if (venue.getSections().isEmpty()) {
             createGenericSections(venue);
-            venueRepository.save(venue);
+            Venue savedVenue = venueRepository.saveAndFlush(venue);
+            event.setVenue(savedVenue);
+            venue = savedVenue;
         }
 
         List<User> sellers = userRepository.findAll().stream()
