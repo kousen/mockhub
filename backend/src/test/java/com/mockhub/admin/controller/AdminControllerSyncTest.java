@@ -22,7 +22,7 @@ class AdminControllerSyncTest {
         ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        assertThat(response.getBody()).containsKey("error");
+        assertThat(response.getBody()).containsKey("detail");
     }
 
     @Test
@@ -35,8 +35,8 @@ class AdminControllerSyncTest {
 
         ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).containsEntry("status", "Sync completed");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(response.getBody()).containsEntry("status", "Sync triggered successfully");
         verify(syncService).syncEvents();
     }
 }

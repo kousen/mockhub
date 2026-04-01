@@ -104,8 +104,8 @@ class AdminControllerTest {
     @WithMockUser(authorities = "ROLE_ADMIN")
     void triggerTicketmasterSync_admin_returns200() throws Exception {
         mockMvc.perform(post("/api/v1/admin/ticketmaster/sync"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("Sync completed"));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("Sync triggered successfully"));
 
         verify(ticketmasterSyncService).syncEvents();
     }

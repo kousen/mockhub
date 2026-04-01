@@ -8,6 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -148,14 +149,18 @@ public class AdminController {
     @PostMapping("/ticketmaster/sync")
     @Operation(summary = "Trigger Ticketmaster sync (admin)",
             description = "Manually trigger a Ticketmaster event sync. Requires the ticketmaster profile to be active.")
-    @ApiResponse(responseCode = "200", description = "Sync triggered")
+    @ApiResponse(responseCode = "202", description = "Sync triggered")
     @ApiResponse(responseCode = "503", description = "Ticketmaster integration not active")
     public ResponseEntity<Map<String, String>> triggerTicketmasterSync() {
         if (ticketmasterSyncService.isEmpty()) {
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Ticketmaster integration is not active. Enable the 'ticketmaster' profile.");
+            problem.setTitle("Ticketmaster Not Available");
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("error", "Ticketmaster integration is not active. Enable the 'ticketmaster' profile."));
+                    .body(Map.of("detail", problem.getDetail(), "title", problem.getTitle()));
         }
         ticketmasterSyncService.get().syncEvents();
-        return ResponseEntity.ok(Map.of("status", "Sync completed"));
+        return ResponseEntity.accepted().body(Map.of("status", "Sync triggered successfully"));
     }
 }
