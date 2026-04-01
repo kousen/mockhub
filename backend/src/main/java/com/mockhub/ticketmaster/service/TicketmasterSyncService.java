@@ -1,6 +1,8 @@
 package com.mockhub.ticketmaster.service;
 
 import java.time.Instant;
+
+import org.hibernate.Hibernate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -199,7 +201,7 @@ public class TicketmasterSyncService {
         Optional<Venue> byTmId = venueRepository.findByTicketmasterVenueId(tmVenue.id());
         if (byTmId.isPresent()) {
             Venue venue = byTmId.get();
-            venue.getSections().size(); // eagerly initialize sections for ticket generation
+            Hibernate.initialize(venue.getSections());
             return venue;
         }
 
@@ -210,7 +212,7 @@ public class TicketmasterSyncService {
             if (byNameCity.isPresent()) {
                 Venue matched = byNameCity.get();
                 matched.setTicketmasterVenueId(tmVenue.id());
-                matched.getSections().size(); // eagerly initialize sections for ticket generation
+                Hibernate.initialize(matched.getSections());
                 venueRepository.save(matched);
                 log.info("Linked existing venue '{}' to Ticketmaster ID: {}",
                         matched.getName(), tmVenue.id());
