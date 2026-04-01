@@ -1,5 +1,8 @@
 package com.mockhub.ticketmaster.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -27,6 +30,8 @@ import com.mockhub.venue.entity.Venue;
 
 @Component
 public class TicketmasterEventMapper {
+
+    private static final Logger log = LoggerFactory.getLogger(TicketmasterEventMapper.class);
 
     private static final BigDecimal DEFAULT_BASE_PRICE = new BigDecimal("50.00");
     private static final BigDecimal MIN_PRICE_FACTOR = new BigDecimal("0.80");
@@ -218,9 +223,14 @@ public class TicketmasterEventMapper {
     private String extractSpotifyIdFromEmbedded(TicketmasterEventResponse response) {
         if (response.embedded() == null || response.embedded().attractions() == null
                 || response.embedded().attractions().isEmpty()) {
+            log.debug("No attractions for event: {}", response.name());
             return null;
         }
-        return extractSpotifyArtistId(response.embedded().attractions().getFirst());
+        TicketmasterAttractionResponse attraction = response.embedded().attractions().getFirst();
+        log.info("Attraction '{}' for event '{}' — externalLinks: {}",
+                attraction.name(), response.name(),
+                attraction.externalLinks() != null ? attraction.externalLinks().keySet() : "NULL");
+        return extractSpotifyArtistId(attraction);
     }
 
     private String extractArtistName(TicketmasterEventResponse response) {
