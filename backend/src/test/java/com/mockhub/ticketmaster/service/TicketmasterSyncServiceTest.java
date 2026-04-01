@@ -88,6 +88,8 @@ class TicketmasterSyncServiceTest {
         existing.setStatus("ACTIVE");
         existing.setEventDate(java.time.Instant.parse("2026-04-11T03:30:00Z"));
         existing.setPrimaryImageUrl("https://example.com/large.jpg");
+        existing.setSpotifyArtistId("0ECwFtbIWEVNwjlrfc6xoL");
+        existing.setArtistName("Eagles");
 
         when(eventRepository.findByTicketmasterEventId("TM-001")).thenReturn(Optional.of(existing));
 
@@ -95,6 +97,27 @@ class TicketmasterSyncServiceTest {
 
         assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.SKIPPED);
         verify(ticketGenerator, never()).generateForEvent(any());
+    }
+
+    @Test
+    void processEvent_givenExistingEventMissingSpotify_backfills() {
+        TicketmasterEventResponse tmEvent = createSampleEvent("TM-BACKFILL", "Eagles Concert");
+        Event existing = new Event();
+        existing.setTicketmasterEventId("TM-BACKFILL");
+        existing.setStatus("ACTIVE");
+        existing.setEventDate(java.time.Instant.parse("2026-04-11T03:30:00Z"));
+        existing.setPrimaryImageUrl("https://example.com/large.jpg");
+        existing.setSpotifyArtistId(null);
+        existing.setArtistName(null);
+
+        when(eventRepository.findByTicketmasterEventId("TM-BACKFILL")).thenReturn(Optional.of(existing));
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
+
+        assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.UPDATED);
+        assertThat(existing.getSpotifyArtistId()).isEqualTo("0ECwFtbIWEVNwjlrfc6xoL");
+        assertThat(existing.getArtistName()).isEqualTo("Eagles");
     }
 
     @Test

@@ -188,6 +188,26 @@ public class TicketmasterSyncService {
             changed = true;
         }
 
+        // Backfill Spotify artist ID if missing
+        if (existing.getSpotifyArtistId() == null && tmEvent.embedded() != null
+                && tmEvent.embedded().attractions() != null
+                && !tmEvent.embedded().attractions().isEmpty()) {
+            String spotifyId = eventMapper.extractSpotifyArtistId(
+                    tmEvent.embedded().attractions().getFirst());
+            if (spotifyId != null) {
+                existing.setSpotifyArtistId(spotifyId);
+                changed = true;
+            }
+        }
+
+        // Backfill artist name if missing
+        if (existing.getArtistName() == null && tmEvent.embedded() != null
+                && tmEvent.embedded().attractions() != null
+                && !tmEvent.embedded().attractions().isEmpty()) {
+            existing.setArtistName(tmEvent.embedded().attractions().getFirst().name());
+            changed = true;
+        }
+
         if (changed) {
             eventRepository.save(existing);
             return SyncResult.UPDATED;
