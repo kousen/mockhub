@@ -15,10 +15,10 @@ public interface VenueRepository extends JpaRepository<Venue, Long> {
 
     Optional<Venue> findBySlug(String slug);
 
-    @EntityGraph(attributePaths = {"sections", "sections.seatRows", "sections.seatRows.seats"})
+    @EntityGraph(attributePaths = {"sections"})
     Optional<Venue> findByTicketmasterVenueId(String ticketmasterVenueId);
 
-    @EntityGraph(attributePaths = {"sections", "sections.seatRows", "sections.seatRows.seats"})
+    @EntityGraph(attributePaths = {"sections"})
     Optional<Venue> findByNameAndCity(String name, String city);
 
     Page<Venue> findByCity(String city, Pageable pageable);
