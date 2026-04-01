@@ -24,6 +24,8 @@ import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.SubGenre;
 import com.mockhub.ticketmaster.dto.TicketmasterVenueResponse;
 import com.mockhub.venue.entity.Venue;
 
+import com.mockhub.event.entity.Event;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TicketmasterEventMapperTest {
@@ -220,7 +222,7 @@ class TicketmasterEventMapperTest {
         Venue venue = createSampleVenue();
         Category category = createSampleCategory();
 
-        var event = mapper.mapToEvent(response, venue, category);
+        Event event = mapper.mapToEvent(response, venue, category);
 
         assertThat(event.getName()).isEqualTo("Eagles Live at Sphere");
         assertThat(event.getTicketmasterEventId()).isEqualTo("1A9ZkoaGkePdD04");
@@ -244,7 +246,7 @@ class TicketmasterEventMapperTest {
         Venue venue = createSampleVenue();
         Category category = createSampleCategory();
 
-        var event = mapper.mapToEvent(response, venue, category);
+        Event event = mapper.mapToEvent(response, venue, category);
 
         assertThat(event.getStatus()).isEqualTo("CANCELLED");
     }

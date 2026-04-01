@@ -76,7 +76,7 @@ class TicketmasterSyncServiceTest {
         TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
 
         assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.NEW);
-        verify(eventRepository).save(any(Event.class));
+        verify(eventRepository, org.mockito.Mockito.times(2)).save(any(Event.class));
         verify(ticketGenerator).generateForEvent(any(Event.class));
     }
 
@@ -112,6 +112,24 @@ class TicketmasterSyncServiceTest {
 
         assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.UPDATED);
         assertThat(existing.getStatus()).isEqualTo("CANCELLED");
+    }
+
+    @Test
+    void processEvent_givenCancelledNewEvent_doesNotGenerateTickets() {
+        TicketmasterEventResponse tmEvent = createSampleEventWithStatus("TM-CANCELLED", "cancelled");
+        Category category = createCategory("concerts");
+        Venue venue = createVenue("Sphere", "Las Vegas");
+
+        when(eventRepository.findByTicketmasterEventId("TM-CANCELLED")).thenReturn(Optional.empty());
+        when(venueRepository.findByTicketmasterVenueId("VENUE-001")).thenReturn(Optional.of(venue));
+        when(categoryRepository.findBySlug("other")).thenReturn(Optional.of(createCategory("other")));
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
+
+        assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.NEW);
+        verify(eventRepository).save(any(Event.class));
+        verify(ticketGenerator, never()).generateForEvent(any());
     }
 
     @Test

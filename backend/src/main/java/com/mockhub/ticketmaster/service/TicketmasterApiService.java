@@ -31,6 +31,10 @@ public class TicketmasterApiService implements TicketmasterService {
     @Autowired
     public TicketmasterApiService(
             @Value("${mockhub.ticketmaster.api-key}") String apiKey) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException(
+                    "TICKETMASTER_API_KEY must be set when 'ticketmaster' profile is active");
+        }
         this.apiKey = apiKey;
         this.restClient = RestClient.builder()
                 .baseUrl("https://app.ticketmaster.com/discovery/v2")

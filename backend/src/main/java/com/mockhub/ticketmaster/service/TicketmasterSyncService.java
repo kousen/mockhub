@@ -57,7 +57,6 @@ public class TicketmasterSyncService {
     }
 
     @Scheduled(cron = "${mockhub.ticketmaster.sync-cron:0 0 4 * * *}")
-    @Transactional
     public void syncEvents() {
         log.info("Starting Ticketmaster event sync");
 
@@ -97,6 +96,7 @@ public class TicketmasterSyncService {
                 newEvents, updatedEvents, skippedEvents);
     }
 
+    @Transactional
     SyncResult processEvent(TicketmasterEventResponse tmEvent) {
         if (tmEvent.id() == null || tmEvent.name() == null) {
             return SyncResult.SKIPPED;
@@ -136,8 +136,15 @@ public class TicketmasterSyncService {
         event.setAvailableTickets(venue.getCapacity());
         Event savedEvent = eventRepository.save(event);
 
-        // Generate tickets and listings
-        ticketGenerator.generateForEvent(savedEvent);
+        // Only generate tickets and listings for active events
+        if ("ACTIVE".equals(savedEvent.getStatus())) {
+            ticketGenerator.generateForEvent(savedEvent);
+
+            // Update ticket counts to match actual generated capacity
+            savedEvent.setTotalTickets(savedEvent.getVenue().getCapacity());
+            savedEvent.setAvailableTickets(savedEvent.getVenue().getCapacity());
+            eventRepository.save(savedEvent);
+        }
 
         log.debug("Created new event from Ticketmaster: {} ({})", savedEvent.getName(), tmEvent.id());
         return SyncResult.NEW;
