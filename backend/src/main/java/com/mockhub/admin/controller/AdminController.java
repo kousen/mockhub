@@ -163,4 +163,12 @@ public class AdminController {
         ticketmasterSyncService.get().syncEvents();
         return ResponseEntity.accepted().body(Map.of("status", "Sync triggered successfully"));
     }
+
+    @PostMapping("/ticketmaster/activate")
+    @Operation(summary = "Activate Ticketmaster events (admin)",
+            description = "Deactivate seed events, feature Ticketmaster events, and complete past events.")
+    @ApiResponse(responseCode = "200", description = "Activation complete")
+    public ResponseEntity<Map<String, Integer>> activateTicketmasterEvents() {
+        return ResponseEntity.ok(adminService.activateTicketmasterEvents());
+    }
 }

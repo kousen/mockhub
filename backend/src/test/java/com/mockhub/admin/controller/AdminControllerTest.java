@@ -124,4 +124,20 @@ class AdminControllerTest {
         mockMvc.perform(post("/api/v1/admin/ticketmaster/sync"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("POST /api/v1/admin/ticketmaster/activate - admin - returns 200 with counts")
+    @WithMockUser(authorities = "ROLE_ADMIN")
+    void activateTicketmasterEvents_admin_returns200() throws Exception {
+        when(adminService.activateTicketmasterEvents())
+                .thenReturn(java.util.Map.of(
+                        "seedEventsDeactivated", 100,
+                        "ticketmasterEventsFeatured", 83,
+                        "pastEventsCompleted", 5));
+
+        mockMvc.perform(post("/api/v1/admin/ticketmaster/activate"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seedEventsDeactivated").value(100))
+                .andExpect(jsonPath("$.ticketmasterEventsFeatured").value(83));
+    }
 }

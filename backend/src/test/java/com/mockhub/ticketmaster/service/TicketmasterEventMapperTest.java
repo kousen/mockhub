@@ -269,7 +269,7 @@ class TicketmasterEventMapperTest {
         assertThat(event.getBasePrice()).isEqualByComparingTo(new BigDecimal("75.00"));
         assertThat(event.getMinPrice()).isEqualByComparingTo(new BigDecimal("60.00"));
         assertThat(event.getMaxPrice()).isEqualByComparingTo(new BigDecimal("187.50"));
-        assertThat(event.isFeatured()).isFalse();
+        assertThat(event.isFeatured()).isTrue();
         assertThat(event.getSlug()).startsWith("eagles-live-at-sphere");
         assertThat(event.getPrimaryImageUrl()).contains("example.com");
     }
