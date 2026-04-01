@@ -90,6 +90,19 @@ class TicketmasterEventMapperTest {
     }
 
     @Test
+    void resolveCategory_givenNullPrimaryFlag_usesFirstClassification() {
+        List<Classification> classifications = List.of(
+                new Classification(null,
+                        new Segment("KZFzniwnSyZfZ7v7nJ", "Music"),
+                        new Genre("1", "Rock"),
+                        new SubGenre("1", "Pop")));
+
+        String slug = mapper.resolveCategorySlug(classifications);
+
+        assertThat(slug).isEqualTo("concerts");
+    }
+
+    @Test
     void resolveCategory_givenNullClassifications_returnsOther() {
         String slug = mapper.resolveCategorySlug(null);
 
@@ -162,6 +175,17 @@ class TicketmasterEventMapperTest {
     }
 
     @Test
+    void selectBestImage_givenNullWidths_handlesGracefully() {
+        List<Image> images = List.of(
+                new Image("https://example.com/nowidth.jpg", "16_9", null, null, null),
+                new Image("https://example.com/withwidth.jpg", "16_9", 1024, 576, false));
+
+        String url = mapper.selectBestImage(images);
+
+        assertThat(url).isEqualTo("https://example.com/withwidth.jpg");
+    }
+
+    @Test
     void selectBestImage_givenNullImages_returnsNull() {
         String url = mapper.selectBestImage(null);
 
@@ -181,6 +205,16 @@ class TicketmasterEventMapperTest {
     @Test
     void extractBasePrice_givenEmptyPriceRanges_returnsDefault() {
         BigDecimal price = mapper.extractBasePrice(List.of());
+
+        assertThat(price).isEqualByComparingTo(new BigDecimal("50.00"));
+    }
+
+    @Test
+    void extractBasePrice_givenNullMin_returnsDefault() {
+        List<PriceRange> ranges = List.of(
+                new PriceRange("standard", "USD", null, 250.0));
+
+        BigDecimal price = mapper.extractBasePrice(ranges);
 
         assertThat(price).isEqualByComparingTo(new BigDecimal("50.00"));
     }

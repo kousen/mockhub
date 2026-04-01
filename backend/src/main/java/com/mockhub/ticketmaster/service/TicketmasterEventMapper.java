@@ -68,8 +68,9 @@ public class TicketmasterEventMapper {
 
     public Venue mapToVenue(TicketmasterVenueResponse response) {
         Venue venue = new Venue();
-        venue.setName(response.name());
-        venue.setSlug(generateSlug(response.name(), response.id()));
+        String venueName = response.name() != null ? response.name() : "Unknown Venue";
+        venue.setName(venueName);
+        venue.setSlug(generateSlug(venueName, response.id()));
         venue.setTicketmasterVenueId(response.id());
         venue.setCapacity(DEFAULT_VENUE_CAPACITY);
         venue.setVenueType("ARENA");
@@ -104,7 +105,7 @@ public class TicketmasterEventMapper {
         }
 
         Classification primary = classifications.stream()
-                .filter(Classification::primary)
+                .filter(c -> Boolean.TRUE.equals(c.primary()))
                 .findFirst()
                 .orElse(classifications.getFirst());
 
@@ -157,12 +158,14 @@ public class TicketmasterEventMapper {
         }
 
         // Prefer 16:9 images, then pick the largest by width
+        Comparator<Image> byWidth = Comparator.comparingInt(
+                img -> img.width() != null ? img.width() : 0);
         return images.stream()
                 .filter(img -> "16_9".equals(img.ratio()))
-                .max(Comparator.comparingInt(Image::width))
+                .max(byWidth)
                 .map(Image::url)
                 .orElseGet(() -> images.stream()
-                        .max(Comparator.comparingInt(Image::width))
+                        .max(byWidth)
                         .map(Image::url)
                         .orElse(null));
     }
@@ -172,8 +175,11 @@ public class TicketmasterEventMapper {
             return DEFAULT_BASE_PRICE;
         }
 
-        return BigDecimal.valueOf(priceRanges.getFirst().min())
-                .setScale(2, RoundingMode.HALF_UP);
+        Double min = priceRanges.getFirst().min();
+        if (min == null) {
+            return DEFAULT_BASE_PRICE;
+        }
+        return BigDecimal.valueOf(min).setScale(2, RoundingMode.HALF_UP);
     }
 
     public Instant parseEventDate(Dates dates) {
