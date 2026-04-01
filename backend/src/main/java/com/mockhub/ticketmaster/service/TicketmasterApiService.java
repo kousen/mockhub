@@ -90,7 +90,7 @@ public class TicketmasterApiService implements TicketmasterService {
                                 .queryParam("endDateTime", endDateTime)
                                 .queryParam("size", size)
                                 .queryParam("page", page)
-                                .queryParam("sort", "date,asc")
+                                .queryParam("sort", "relevance,desc")
                                 .build())
                         .retrieve()
                         .body(TicketmasterSearchResponse.class);
