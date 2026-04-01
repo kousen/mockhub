@@ -1,12 +1,14 @@
 package com.mockhub.admin.controller;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,7 @@ import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.event.dto.EventCreateRequest;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.order.dto.OrderSummaryDto;
+import com.mockhub.ticketmaster.service.TicketmasterSyncService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -38,9 +41,12 @@ import jakarta.validation.Valid;
 public class AdminController {
 
     private final AdminService adminService;
+    private final Optional<TicketmasterSyncService> ticketmasterSyncService;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService,
+                           Optional<TicketmasterSyncService> ticketmasterSyncService) {
         this.adminService = adminService;
+        this.ticketmasterSyncService = ticketmasterSyncService;
     }
 
     @GetMapping("/dashboard")
@@ -138,5 +144,23 @@ public class AdminController {
     public ResponseEntity<Map<String, Integer>> generateTickets(@PathVariable Long id) {
         int ticketCount = adminService.generateTicketsForEvent(id);
         return ResponseEntity.ok(Map.of("ticketsGenerated", ticketCount));
+    }
+
+    @PostMapping("/ticketmaster/sync")
+    @Operation(summary = "Trigger Ticketmaster sync (admin)",
+            description = "Manually trigger a Ticketmaster event sync. Requires the ticketmaster profile to be active.")
+    @ApiResponse(responseCode = "202", description = "Sync triggered")
+    @ApiResponse(responseCode = "503", description = "Ticketmaster integration not active")
+    public ResponseEntity<Map<String, String>> triggerTicketmasterSync() {
+        if (ticketmasterSyncService.isEmpty()) {
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Ticketmaster integration is not active. Enable the 'ticketmaster' profile.");
+            problem.setTitle("Ticketmaster Not Available");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("detail", problem.getDetail(), "title", problem.getTitle()));
+        }
+        ticketmasterSyncService.get().syncEvents();
+        return ResponseEntity.accepted().body(Map.of("status", "Sync triggered successfully"));
     }
 }

@@ -18,9 +18,12 @@ import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
 import com.mockhub.config.SecurityConfig;
+import com.mockhub.ticketmaster.service.TicketmasterSyncService;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,6 +42,9 @@ class AdminControllerTest {
 
     @MockitoBean
     private UserDetailsServiceImpl userDetailsService;
+
+    @MockitoBean
+    private TicketmasterSyncService ticketmasterSyncService;
 
     @Test
     @DisplayName("GET /api/v1/admin/dashboard - unauthenticated - returns 401")
@@ -91,5 +97,31 @@ class AdminControllerTest {
     void listOrders_unauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/admin/orders"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/admin/ticketmaster/sync - admin - returns 200 and triggers sync")
+    @WithMockUser(authorities = "ROLE_ADMIN")
+    void triggerTicketmasterSync_admin_returns200() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/ticketmaster/sync"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("Sync triggered successfully"));
+
+        verify(ticketmasterSyncService).syncEvents();
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/admin/ticketmaster/sync - unauthenticated - returns 401")
+    void triggerTicketmasterSync_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/ticketmaster/sync"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/admin/ticketmaster/sync - non-admin - returns 403")
+    @WithMockUser(roles = "BUYER")
+    void triggerTicketmasterSync_nonAdmin_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/ticketmaster/sync"))
+                .andExpect(status().isForbidden());
     }
 }
