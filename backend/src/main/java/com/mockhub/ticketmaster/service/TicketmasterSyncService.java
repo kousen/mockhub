@@ -1,6 +1,8 @@
 package com.mockhub.ticketmaster.service;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -60,8 +62,11 @@ public class TicketmasterSyncService {
     public void syncEvents() {
         log.info("Starting Ticketmaster event sync");
 
-        String startDateTime = Instant.now().toString();
-        String endDateTime = Instant.now().plus(180, ChronoUnit.DAYS).toString();
+        // Ticketmaster requires YYYY-MM-DDTHH:mm:ssZ format (no fractional seconds)
+        DateTimeFormatter tmFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                .withZone(ZoneOffset.UTC);
+        String startDateTime = tmFormat.format(Instant.now());
+        String endDateTime = tmFormat.format(Instant.now().plus(180, ChronoUnit.DAYS));
 
         int newEvents = 0;
         int updatedEvents = 0;
