@@ -17,7 +17,8 @@ class AdminControllerSyncTest {
     void triggerTicketmasterSync_givenNoSyncService_returns503() {
         AdminController controller = new AdminController(
                 mock(com.mockhub.admin.service.AdminService.class),
-                Optional.empty());
+                Optional.empty(),
+                mock(com.mockhub.event.repository.EventRepository.class));
 
         ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
 
@@ -31,7 +32,8 @@ class AdminControllerSyncTest {
                 mock(com.mockhub.ticketmaster.service.TicketmasterSyncService.class);
         AdminController controller = new AdminController(
                 mock(com.mockhub.admin.service.AdminService.class),
-                Optional.of(syncService));
+                Optional.of(syncService),
+                mock(com.mockhub.event.repository.EventRepository.class));
 
         ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
 

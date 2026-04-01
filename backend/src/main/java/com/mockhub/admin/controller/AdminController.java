@@ -1,5 +1,6 @@
 package com.mockhub.admin.controller;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -26,6 +27,7 @@ import com.mockhub.admin.service.AdminService;
 import com.mockhub.auth.dto.UserDto;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.event.dto.EventCreateRequest;
+import com.mockhub.event.repository.EventRepository;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.ticketmaster.service.TicketmasterSyncService;
@@ -42,11 +44,14 @@ public class AdminController {
 
     private final AdminService adminService;
     private final Optional<TicketmasterSyncService> ticketmasterSyncService;
+    private final EventRepository eventRepository;
 
     public AdminController(AdminService adminService,
-                           Optional<TicketmasterSyncService> ticketmasterSyncService) {
+                           Optional<TicketmasterSyncService> ticketmasterSyncService,
+                           EventRepository eventRepository) {
         this.adminService = adminService;
         this.ticketmasterSyncService = ticketmasterSyncService;
+        this.eventRepository = eventRepository;
     }
 
     @GetMapping("/dashboard")
@@ -162,5 +167,20 @@ public class AdminController {
         }
         ticketmasterSyncService.get().syncEvents();
         return ResponseEntity.accepted().body(Map.of("status", "Sync triggered successfully"));
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/ticketmaster/activate")
+    @Operation(summary = "Activate Ticketmaster events (admin)",
+            description = "Deactivate seed events, feature Ticketmaster events, and complete past events.")
+    @ApiResponse(responseCode = "200", description = "Activation complete")
+    public ResponseEntity<Map<String, Integer>> activateTicketmasterEvents() {
+        int deactivated = eventRepository.deactivateSeedEvents();
+        int featured = eventRepository.featureTicketmasterEvents();
+        int completed = eventRepository.completePastTicketmasterEvents(Instant.now());
+        return ResponseEntity.ok(Map.of(
+                "seedEventsDeactivated", deactivated,
+                "ticketmasterEventsFeatured", featured,
+                "pastEventsCompleted", completed));
     }
 }

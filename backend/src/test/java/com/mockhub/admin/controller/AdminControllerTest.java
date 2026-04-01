@@ -44,6 +44,9 @@ class AdminControllerTest {
     private UserDetailsServiceImpl userDetailsService;
 
     @MockitoBean
+    private com.mockhub.event.repository.EventRepository eventRepository;
+
+    @MockitoBean
     private TicketmasterSyncService ticketmasterSyncService;
 
     @Test

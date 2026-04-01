@@ -74,6 +74,12 @@ class AuthorizationBypassTest {
     @MockitoBean
     private UserDetailsServiceImpl userDetailsService;
 
+    @MockitoBean
+    private com.mockhub.ticketmaster.service.TicketmasterSyncService ticketmasterSyncService;
+
+    @MockitoBean
+    private com.mockhub.event.repository.EventRepository eventRepository;
+
     private SecurityUser userA;
     private User userAEntity;
 
