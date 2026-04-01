@@ -8,11 +8,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse;
 import com.mockhub.ticketmaster.dto.TicketmasterSearchResponse;
 
@@ -36,8 +39,14 @@ public class TicketmasterApiService implements TicketmasterService {
                     "TICKETMASTER_API_KEY must be set when 'ticketmaster' profile is active");
         }
         this.apiKey = apiKey;
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         this.restClient = RestClient.builder()
                 .baseUrl("https://app.ticketmaster.com/discovery/v2")
+                .messageConverters(converters -> {
+                    converters.removeIf(c -> c instanceof MappingJackson2HttpMessageConverter);
+                    converters.add(new MappingJackson2HttpMessageConverter(objectMapper));
+                })
                 .build();
     }
 
@@ -98,7 +107,8 @@ public class TicketmasterApiService implements TicketmasterService {
                         attempt + 1, MAX_RETRIES, waitMs);
                 sleep(waitMs);
             } catch (RestClientException e) {
-                log.error("Ticketmaster API error: {}", e.getMessage());
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                log.error("Ticketmaster API error: {} — cause: {}", e.getMessage(), cause.toString());
                 throw e;
             }
         }

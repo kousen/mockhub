@@ -271,6 +271,58 @@ class TicketmasterEventMapperTest {
         assertThat(venue.getSlug()).startsWith("sphere");
     }
 
+    @Test
+    void mapToVenue_givenNullStateAndCity_usesDefaults() {
+        TicketmasterVenueResponse venueResponse = new TicketmasterVenueResponse(
+                "VENUE-INTL", "SunBet Arena",
+                null, null, null, null,
+                new TicketmasterVenueResponse.Country("South Africa", "ZA"),
+                null);
+
+        Venue venue = mapper.mapToVenue(venueResponse);
+
+        assertThat(venue.getState()).isEqualTo("N/A");
+        assertThat(venue.getCity()).isEqualTo("Unknown");
+        assertThat(venue.getAddressLine1()).isEqualTo("Unknown");
+        assertThat(venue.getZipCode()).isEqualTo("00000");
+        assertThat(venue.getCountry()).isEqualTo("ZA");
+        assertThat(venue.getLatitude()).isNull();
+        assertThat(venue.getLongitude()).isNull();
+    }
+
+    @Test
+    void mapToVenue_givenNullCountry_defaultsToUS() {
+        TicketmasterVenueResponse venueResponse = new TicketmasterVenueResponse(
+                "VENUE-NULL", "Test Venue",
+                new TicketmasterVenueResponse.Address("123 St"),
+                new TicketmasterVenueResponse.City("Test City"),
+                new TicketmasterVenueResponse.State("Test", "TS"),
+                "12345", null, null);
+
+        Venue venue = mapper.mapToVenue(venueResponse);
+
+        assertThat(venue.getCountry()).isEqualTo("US");
+    }
+
+    @Test
+    void mapToEvent_givenNoAttractions_setsNullArtistAndSpotifyId() {
+        TicketmasterEventResponse response = new TicketmasterEventResponse(
+                "TM-NO-ARTIST", "Festival Event", null,
+                new Dates(
+                        new Start("2026-08-01", "18:00:00", "2026-08-01T22:00:00Z", false, false),
+                        "America/New_York", new Status("onsale")),
+                List.of(new Classification(true,
+                        new Segment("1", "Music"), new Genre("1", "Rock"), new SubGenre("1", "Pop"))),
+                null, null, new TicketmasterEventResponse.Embedded(null, null));
+        Venue venue = createSampleVenue();
+        Category category = createSampleCategory();
+
+        Event event = mapper.mapToEvent(response, venue, category);
+
+        assertThat(event.getArtistName()).isNull();
+        assertThat(event.getSpotifyArtistId()).isNull();
+    }
+
     // --- Helper methods ---
 
     private TicketmasterEventResponse createSampleEventResponse() {
