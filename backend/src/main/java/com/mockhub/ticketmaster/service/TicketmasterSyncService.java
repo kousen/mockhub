@@ -1,8 +1,6 @@
 package com.mockhub.ticketmaster.service;
 
 import java.time.Instant;
-
-import org.hibernate.Hibernate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -223,22 +221,19 @@ public class TicketmasterSyncService {
 
         TicketmasterVenueResponse tmVenue = tmEvent.embedded().venues().getFirst();
 
-        // 1. Check by Ticketmaster venue ID
+        // 1. Check by Ticketmaster venue ID (sections eagerly loaded via @EntityGraph)
         Optional<Venue> byTmId = venueRepository.findByTicketmasterVenueId(tmVenue.id());
         if (byTmId.isPresent()) {
-            Venue venue = byTmId.get();
-            Hibernate.initialize(venue.getSections());
-            return venue;
+            return byTmId.get();
         }
 
-        // 2. Check by name + city match (for seed venues)
+        // 2. Check by name + city match (sections eagerly loaded via @EntityGraph)
         String city = tmVenue.city() != null ? tmVenue.city().name() : null;
         if (city != null) {
             Optional<Venue> byNameCity = venueRepository.findByNameAndCity(tmVenue.name(), city);
             if (byNameCity.isPresent()) {
                 Venue matched = byNameCity.get();
                 matched.setTicketmasterVenueId(tmVenue.id());
-                Hibernate.initialize(matched.getSections());
                 venueRepository.save(matched);
                 log.info("Linked existing venue '{}' to Ticketmaster ID: {}",
                         matched.getName(), tmVenue.id());
