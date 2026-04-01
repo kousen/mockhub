@@ -366,4 +366,17 @@ public class AdminService {
                 user.getCreatedAt()
         );
     }
+
+    @Transactional
+    public java.util.Map<String, Integer> activateTicketmasterEvents() {
+        int deactivated = eventRepository.deactivateSeedEvents();
+        int featured = eventRepository.featureTicketmasterEvents();
+        int completed = eventRepository.completePastTicketmasterEvents(java.time.Instant.now());
+        log.info("Ticketmaster activation: {} seed deactivated, {} TM featured, {} past completed",
+                deactivated, featured, completed);
+        return java.util.Map.of(
+                "seedEventsDeactivated", deactivated,
+                "ticketmasterEventsFeatured", featured,
+                "pastEventsCompleted", completed);
+    }
 }
