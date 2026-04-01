@@ -19,6 +19,7 @@ import com.mockhub.event.entity.Category;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.CategoryRepository;
 import com.mockhub.event.repository.EventRepository;
+import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse;
 import com.mockhub.ticketmaster.dto.TicketmasterVenueResponse;
 import com.mockhub.venue.entity.Venue;
@@ -190,8 +191,12 @@ public class TicketmasterSyncService {
         if (existing.getSpotifyArtistId() == null && tmEvent.embedded() != null
                 && tmEvent.embedded().attractions() != null
                 && !tmEvent.embedded().attractions().isEmpty()) {
-            String spotifyId = eventMapper.extractSpotifyArtistId(
-                    tmEvent.embedded().attractions().getFirst());
+            TicketmasterAttractionResponse attraction = tmEvent.embedded().attractions().getFirst();
+            log.info("Backfill check for '{}': attraction='{}', externalLinks={}",
+                    existing.getName(), attraction.name(),
+                    attraction.externalLinks() != null ? attraction.externalLinks().keySet() : "NULL");
+            String spotifyId = eventMapper.extractSpotifyArtistId(attraction);
+            log.info("Backfill result for '{}': spotifyId={}", existing.getName(), spotifyId);
             if (spotifyId != null) {
                 existing.setSpotifyArtistId(spotifyId);
                 changed = true;
