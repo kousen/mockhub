@@ -74,11 +74,15 @@ public class TicketmasterEventMapper {
         venue.setCapacity(DEFAULT_VENUE_CAPACITY);
         venue.setVenueType("ARENA");
 
-        venue.setAddressLine1(response.address() != null ? response.address().line1() : "");
-        venue.setCity(response.city() != null ? response.city().name() : "");
-        venue.setState(response.state() != null ? response.state().stateCode() : "");
-        venue.setZipCode(response.postalCode() != null ? response.postalCode() : "");
-        venue.setCountry(response.country() != null ? response.country().countryCode() : "US");
+        venue.setAddressLine1(response.address() != null && response.address().line1() != null
+                ? response.address().line1() : "Unknown");
+        venue.setCity(response.city() != null && response.city().name() != null
+                ? response.city().name() : "Unknown");
+        venue.setState(response.state() != null && response.state().stateCode() != null
+                ? response.state().stateCode() : "N/A");
+        venue.setZipCode(response.postalCode() != null ? response.postalCode() : "00000");
+        venue.setCountry(response.country() != null && response.country().countryCode() != null
+                ? response.country().countryCode() : "US");
 
         if (response.location() != null) {
             if (response.location().latitude() != null) {
@@ -222,6 +226,9 @@ public class TicketmasterEventMapper {
     }
 
     private String generateSlug(String name, String externalId) {
+        if (name == null) {
+            name = "unknown";
+        }
         String base = name.toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9\\s-]", "")
                 .replaceAll("\\s+", "-")
