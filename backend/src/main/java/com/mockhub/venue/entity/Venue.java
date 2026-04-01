@@ -60,6 +60,9 @@ public class Venue extends BaseEntity {
     @Column(name = "svg_map_url", length = 500)
     private String svgMapUrl;
 
+    @Column(name = "ticketmaster_venue_id", unique = true, length = 100)
+    private String ticketmasterVenueId;
+
     @OneToMany(mappedBy = "venue", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @OrderBy("sortOrder ASC")
     private List<Section> sections = new ArrayList<>();
@@ -177,6 +180,14 @@ public class Venue extends BaseEntity {
 
     public void setSvgMapUrl(String svgMapUrl) {
         this.svgMapUrl = svgMapUrl;
+    }
+
+    public String getTicketmasterVenueId() {
+        return ticketmasterVenueId;
+    }
+
+    public void setTicketmasterVenueId(String ticketmasterVenueId) {
+        this.ticketmasterVenueId = ticketmasterVenueId;
     }
 
     public List<Section> getSections() {

@@ -112,6 +112,10 @@ mockhub:
     token-encryption-key: ${SPOTIFY_TOKEN_ENCRYPTION_KEY:}
   oauth2:
     frontend-redirect-url: ${OAUTH2_FRONTEND_REDIRECT_URL:http://localhost:5173}
+  ticketmaster:
+    api-key: ${TICKETMASTER_API_KEY:}
+    sync-cron: "0 0 4 * * *"
+    events-per-category: 50
   images:
     upload-dir: ${UPLOAD_DIR:./uploads}
     max-size-mb: 10
