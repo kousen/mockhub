@@ -115,6 +115,12 @@ public class TicketmasterSyncService {
             return SyncResult.SKIPPED;
         }
 
+        // Skip past events
+        Instant eventDate = eventMapper.parseEventDate(tmEvent.dates());
+        if (eventDate.isBefore(Instant.now())) {
+            return SyncResult.SKIPPED;
+        }
+
         // Check if event already exists
         Optional<Event> existingEvent = eventRepository.findByTicketmasterEventId(tmEvent.id());
         if (existingEvent.isPresent()) {

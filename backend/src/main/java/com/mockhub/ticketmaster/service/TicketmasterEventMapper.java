@@ -41,7 +41,7 @@ public class TicketmasterEventMapper {
         event.setVenue(venue);
         event.setCategory(category);
         event.setStatus(mapStatus(response.dates()));
-        event.setFeatured(false);
+        event.setFeatured(true);
 
         Instant eventDate = parseEventDate(response.dates());
         event.setEventDate(eventDate);
