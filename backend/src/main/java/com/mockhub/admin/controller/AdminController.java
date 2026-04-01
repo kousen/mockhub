@@ -1,6 +1,7 @@
 package com.mockhub.admin.controller;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +27,7 @@ import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.event.dto.EventCreateRequest;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.order.dto.OrderSummaryDto;
+import com.mockhub.ticketmaster.service.TicketmasterSyncService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -38,9 +40,12 @@ import jakarta.validation.Valid;
 public class AdminController {
 
     private final AdminService adminService;
+    private final Optional<TicketmasterSyncService> ticketmasterSyncService;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService,
+                           Optional<TicketmasterSyncService> ticketmasterSyncService) {
         this.adminService = adminService;
+        this.ticketmasterSyncService = ticketmasterSyncService;
     }
 
     @GetMapping("/dashboard")
@@ -138,5 +143,19 @@ public class AdminController {
     public ResponseEntity<Map<String, Integer>> generateTickets(@PathVariable Long id) {
         int ticketCount = adminService.generateTicketsForEvent(id);
         return ResponseEntity.ok(Map.of("ticketsGenerated", ticketCount));
+    }
+
+    @PostMapping("/ticketmaster/sync")
+    @Operation(summary = "Trigger Ticketmaster sync (admin)",
+            description = "Manually trigger a Ticketmaster event sync. Requires the ticketmaster profile to be active.")
+    @ApiResponse(responseCode = "200", description = "Sync triggered")
+    @ApiResponse(responseCode = "503", description = "Ticketmaster integration not active")
+    public ResponseEntity<Map<String, String>> triggerTicketmasterSync() {
+        if (ticketmasterSyncService.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Ticketmaster integration is not active. Enable the 'ticketmaster' profile."));
+        }
+        ticketmasterSyncService.get().syncEvents();
+        return ResponseEntity.ok(Map.of("status", "Sync completed"));
     }
 }
