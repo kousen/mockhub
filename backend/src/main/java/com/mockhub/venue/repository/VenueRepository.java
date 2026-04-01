@@ -14,5 +14,9 @@ public interface VenueRepository extends JpaRepository<Venue, Long> {
 
     Optional<Venue> findBySlug(String slug);
 
+    Optional<Venue> findByTicketmasterVenueId(String ticketmasterVenueId);
+
+    Optional<Venue> findByNameAndCity(String name, String city);
+
     Page<Venue> findByCity(String city, Pageable pageable);
 }

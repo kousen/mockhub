@@ -18,6 +18,8 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
 
     Optional<Event> findBySlug(String slug);
 
+    Optional<Event> findByTicketmasterEventId(String ticketmasterEventId);
+
     @Query("SELECT e FROM Event e WHERE e.isFeatured = true AND e.status = 'ACTIVE' ORDER BY e.eventDate ASC")
     List<Event> findFeaturedEvents();
 

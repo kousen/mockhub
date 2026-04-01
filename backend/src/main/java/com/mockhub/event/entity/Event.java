@@ -74,6 +74,9 @@ public class Event extends BaseEntity {
     @Column(name = "spotify_artist_id", length = 30)
     private String spotifyArtistId;
 
+    @Column(name = "ticketmaster_event_id", unique = true, length = 100)
+    private String ticketmasterEventId;
+
     @Column(name = "search_vector", insertable = false, updatable = false,
             columnDefinition = "TSVECTOR")
     private String searchVector;
@@ -227,6 +230,14 @@ public class Event extends BaseEntity {
 
     public String getSearchVector() {
         return searchVector;
+    }
+
+    public String getTicketmasterEventId() {
+        return ticketmasterEventId;
+    }
+
+    public void setTicketmasterEventId(String ticketmasterEventId) {
+        this.ticketmasterEventId = ticketmasterEventId;
     }
 
     public Set<Tag> getTags() {
