@@ -227,10 +227,17 @@ public class TicketmasterEventMapper {
             return null;
         }
         TicketmasterAttractionResponse attraction = response.embedded().attractions().getFirst();
-        log.info("Attraction '{}' for event '{}' — externalLinks: {}",
+        String spotifyId = extractSpotifyArtistId(attraction);
+        log.info("Attraction '{}' for event '{}' — externalLinks: {} — spotifyId: {}",
                 attraction.name(), response.name(),
-                attraction.externalLinks() != null ? attraction.externalLinks().keySet() : "NULL");
-        return extractSpotifyArtistId(attraction);
+                attraction.externalLinks() != null ? attraction.externalLinks().keySet() : "NULL",
+                spotifyId);
+        if (spotifyId == null && attraction.externalLinks() != null
+                && attraction.externalLinks().containsKey("spotify")) {
+            log.warn("Spotify key exists but extraction failed. Raw value: {}",
+                    attraction.externalLinks().get("spotify"));
+        }
+        return spotifyId;
     }
 
     private String extractArtistName(TicketmasterEventResponse response) {
