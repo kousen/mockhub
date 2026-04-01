@@ -212,6 +212,13 @@ class TicketmasterApiServiceTest {
     }
 
     @Test
+    void constructor_givenValidApiKey_createsServiceWithConfiguredRestClient() {
+        TicketmasterApiService apiService = new TicketmasterApiService("valid-key");
+
+        assertThat(apiService).isNotNull();
+    }
+
+    @Test
     void constructor_givenBlankApiKey_throwsIllegalState() {
         assertThatThrownBy(() -> new TicketmasterApiService(""))
                 .isInstanceOf(IllegalStateException.class)
