@@ -200,6 +200,108 @@ class TicketmasterSyncServiceTest {
         assertThat(resolved).isNull();
     }
 
+    @Test
+    void syncEvents_givenEventsFromApi_processesAll() {
+        TicketmasterEventResponse tmEvent = createSampleEvent("TM-SYNC-1", "Sync Test");
+        Category category = createCategory("concerts");
+        Venue venue = createVenue("Test Venue", "Test City");
+
+        when(ticketmasterService.searchEvents(anyString(), anyString(), anyString(),
+                org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(List.of(tmEvent));
+        when(eventRepository.findByTicketmasterEventId("TM-SYNC-1")).thenReturn(Optional.empty());
+        when(venueRepository.findByTicketmasterVenueId("VENUE-001")).thenReturn(Optional.of(venue));
+        when(categoryRepository.findBySlug("concerts")).thenReturn(Optional.of(category));
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        syncService.syncEvents();
+
+        verify(ticketmasterService, org.mockito.Mockito.times(3)).searchEvents(
+                anyString(), anyString(), anyString(),
+                org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    void syncEvents_givenApiError_continuesWithOtherClassifications() {
+        when(ticketmasterService.searchEvents(org.mockito.ArgumentMatchers.eq("music"),
+                anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt()))
+                .thenThrow(new org.springframework.web.client.RestClientException("API error"));
+        when(ticketmasterService.searchEvents(org.mockito.ArgumentMatchers.eq("sports"),
+                anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(List.of());
+        when(ticketmasterService.searchEvents(org.mockito.ArgumentMatchers.eq("arts & theatre"),
+                anyString(), anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(List.of());
+
+        syncService.syncEvents();
+
+        verify(ticketmasterService, org.mockito.Mockito.times(3)).searchEvents(
+                anyString(), anyString(), anyString(),
+                org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt());
+    }
+
+    @Test
+    void processEvent_givenNullId_skips() {
+        TicketmasterEventResponse tmEvent = new TicketmasterEventResponse(
+                null, "No ID Event", null,
+                new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
+                        "America/New_York", new Status("onsale")),
+                null, null, null, null);
+
+        TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
+
+        assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.SKIPPED);
+    }
+
+    @Test
+    void processEvent_givenNullName_skips() {
+        TicketmasterEventResponse tmEvent = new TicketmasterEventResponse(
+                "TM-001", null, null,
+                new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
+                        "America/New_York", new Status("onsale")),
+                null, null, null, null);
+
+        TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
+
+        assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.SKIPPED);
+    }
+
+    @Test
+    void processEvent_givenNoVenue_skips() {
+        TicketmasterEventResponse tmEvent = createSampleEvent("TM-NO-VENUE", "No Venue");
+        // Override with no embedded venues
+        TicketmasterEventResponse noVenue = new TicketmasterEventResponse(
+                "TM-NO-VENUE", "No Venue", null, tmEvent.dates(),
+                tmEvent.classifications(), tmEvent.images(), tmEvent.priceRanges(), null);
+
+        when(eventRepository.findByTicketmasterEventId("TM-NO-VENUE")).thenReturn(Optional.empty());
+
+        TicketmasterSyncService.SyncResult result = syncService.processEvent(noVenue);
+
+        assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.SKIPPED);
+    }
+
+    @Test
+    void processEvent_givenExistingEventWithDateChange_updates() {
+        TicketmasterEventResponse tmEvent = createSampleEvent("TM-DATE", "Date Change Event");
+        Event existing = new Event();
+        existing.setTicketmasterEventId("TM-DATE");
+        existing.setStatus("ACTIVE");
+        existing.setEventDate(java.time.Instant.parse("2026-01-01T00:00:00Z"));
+        existing.setPrimaryImageUrl("https://example.com/large.jpg");
+
+        when(eventRepository.findByTicketmasterEventId("TM-DATE")).thenReturn(Optional.of(existing));
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
+
+        assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.UPDATED);
+        assertThat(existing.getEventDate()).isEqualTo(java.time.Instant.parse("2026-04-11T03:30:00Z"));
+    }
+
     // --- Helper methods ---
 
     private TicketmasterEventResponse createSampleEvent(String id, String name) {

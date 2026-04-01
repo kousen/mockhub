@@ -5,7 +5,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.security.SecureRandom;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -37,7 +37,7 @@ public class TicketmasterTicketGenerator {
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
     private final VenueRepository venueRepository;
-    private final Random random = new Random();
+    private final SecureRandom random = new SecureRandom();
 
     public TicketmasterTicketGenerator(TicketRepository ticketRepository,
                                        ListingRepository listingRepository,

@@ -226,7 +226,7 @@ public class TicketmasterEventMapper {
                 .replaceAll("[^a-z0-9\\s-]", "")
                 .replaceAll("\\s+", "-")
                 .replaceAll("-+", "-")
-                .replaceAll("^-|-$", "");
+                .replaceAll("(^-)|(-$)", "");
 
         // Append a short hash of the external ID for uniqueness
         int hash = Math.abs(externalId.hashCode() % 10000);

@@ -191,6 +191,47 @@ class TicketmasterApiServiceTest {
     }
 
     @Test
+    void searchEvents_givenServerError_throwsException() {
+        mockServer.expect(requestTo(org.hamcrest.Matchers.containsString("/events.json")))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+
+        assertThatThrownBy(() -> service.searchEvents("music",
+                "2026-04-01T00:00:00Z", "2026-10-01T00:00:00Z", 20, 0))
+                .isInstanceOf(org.springframework.web.client.RestClientException.class);
+    }
+
+    @Test
+    void searchEvents_givenNullResponse_returnsEmptyList() {
+        mockServer.expect(requestTo(org.hamcrest.Matchers.containsString("/events.json")))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        List<TicketmasterEventResponse> events = service.searchEvents("music",
+                "2026-04-01T00:00:00Z", "2026-10-01T00:00:00Z", 20, 0);
+
+        assertThat(events).isEmpty();
+    }
+
+    @Test
+    void constructor_givenBlankApiKey_throwsIllegalState() {
+        assertThatThrownBy(() -> new TicketmasterApiService(""))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("TICKETMASTER_API_KEY");
+    }
+
+    @Test
+    void constructor_givenNullApiKey_throwsIllegalState() {
+        assertThatThrownBy(() -> new TicketmasterApiService(null))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void parseRetryAfter_givenInvalidHeader_returnsExponentialBackoff() {
+        long waitMs = service.parseRetryAfter("not-a-number", 1);
+
+        assertThat(waitMs).isEqualTo(2000); // 1000 * 2^1
+    }
+
+    @Test
     void parseRetryAfter_givenHeader_returnsMsValue() {
         long waitMs = service.parseRetryAfter("2", 0);
 
