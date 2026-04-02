@@ -367,6 +367,25 @@ public class AdminService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public List<java.util.Map<String, Object>> getSpotifyStatusForEvents(String nameQuery) {
+        List<java.util.Map<String, Object>> results = new ArrayList<>();
+        List<Event> events = eventRepository.findAll().stream()
+                .filter(event -> event.getName().toLowerCase().contains(nameQuery.toLowerCase()))
+                .limit(20)
+                .toList();
+        for (Event event : events) {
+            results.add(java.util.Map.of(
+                    "id", event.getId(),
+                    "name", event.getName(),
+                    "spotifyArtistId", event.getSpotifyArtistId() != null ? event.getSpotifyArtistId() : "NULL",
+                    "spotifyArtistIdLength", event.getSpotifyArtistId() != null ? event.getSpotifyArtistId().length() : -1,
+                    "ticketmasterEventId", event.getTicketmasterEventId() != null ? event.getTicketmasterEventId() : "NULL",
+                    "artistName", event.getArtistName() != null ? event.getArtistName() : "NULL"));
+        }
+        return results;
+    }
+
     @Transactional
     public java.util.Map<String, Integer> activateTicketmasterEvents() {
         int deactivated = eventRepository.deactivateSeedEvents();

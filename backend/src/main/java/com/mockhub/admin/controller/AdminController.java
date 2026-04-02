@@ -1,5 +1,6 @@
 package com.mockhub.admin.controller;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -162,6 +163,13 @@ public class AdminController {
         }
         ticketmasterSyncService.get().syncEvents();
         return ResponseEntity.accepted().body(Map.of("status", "Sync triggered successfully"));
+    }
+
+    @GetMapping("/ticketmaster/spotify-status")
+    @Operation(summary = "Check Spotify ID status for Ticketmaster events (admin)")
+    public ResponseEntity<List<Map<String, Object>>> spotifyStatus(
+            @RequestParam(defaultValue = "Eagles") String query) {
+        return ResponseEntity.ok(adminService.getSpotifyStatusForEvents(query));
     }
 
     @PostMapping("/ticketmaster/backfill-spotify")
