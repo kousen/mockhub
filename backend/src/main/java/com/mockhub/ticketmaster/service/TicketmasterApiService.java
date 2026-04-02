@@ -13,8 +13,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse;
 import com.mockhub.ticketmaster.dto.TicketmasterSearchResponse;
 
@@ -28,7 +26,6 @@ public class TicketmasterApiService implements TicketmasterService {
     private static final long BASE_BACKOFF_MS = 1000;
 
     private final RestClient restClient;
-    private final ObjectMapper objectMapper;
     private final String apiKey;
 
     @Autowired
@@ -39,8 +36,6 @@ public class TicketmasterApiService implements TicketmasterService {
                     "TICKETMASTER_API_KEY must be set when 'ticketmaster' profile is active");
         }
         this.apiKey = apiKey;
-        this.objectMapper = new ObjectMapper();
-        this.objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         this.restClient = RestClient.builder()
                 .baseUrl("https://app.ticketmaster.com/discovery/v2")
                 .build();
@@ -49,8 +44,6 @@ public class TicketmasterApiService implements TicketmasterService {
     TicketmasterApiService(RestClient restClient, String apiKey) {
         this.restClient = restClient;
         this.apiKey = apiKey;
-        this.objectMapper = new ObjectMapper();
-        this.objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
     @Override
@@ -79,7 +72,7 @@ public class TicketmasterApiService implements TicketmasterService {
                                                        int page) {
         for (int attempt = 0; attempt <= MAX_RETRIES; attempt++) {
             try {
-                String json = restClient.get()
+                return restClient.get()
                         .uri(uriBuilder -> uriBuilder
                                 .path("/events.json")
                                 .queryParam("apikey", apiKey)
@@ -91,12 +84,7 @@ public class TicketmasterApiService implements TicketmasterService {
                                 .queryParam("sort", "relevance,desc")
                                 .build())
                         .retrieve()
-                        .body(String.class);
-                try {
-                    return objectMapper.readValue(json, TicketmasterSearchResponse.class);
-                } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-                    throw new RestClientException("Failed to parse Ticketmaster response", e);
-                }
+                        .body(TicketmasterSearchResponse.class);
             } catch (HttpClientErrorException.TooManyRequests e) {
                 if (attempt == MAX_RETRIES) {
                     log.error("Ticketmaster rate limit exceeded after {} retries", MAX_RETRIES);

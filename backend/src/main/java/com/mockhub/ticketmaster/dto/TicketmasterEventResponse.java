@@ -14,6 +14,8 @@ public record TicketmasterEventResponse(
         List<Classification> classifications,
         List<Image> images,
         List<PriceRange> priceRanges,
+        Ticketing ticketing,
+        DoorsTimes doorsTimes,
         @JsonProperty("_embedded") Embedded embedded
 ) {
 
@@ -39,6 +41,28 @@ public record TicketmasterEventResponse(
     public record Status(
             String code
     ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record DoorsTimes(
+            String localDate,
+            String localTime,
+            String dateTime
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Ticketing(
+            AllInclusivePricing allInclusivePricing
+    ) {
+        public boolean isAllInclusivePricing() {
+            return allInclusivePricing != null
+                    && Boolean.TRUE.equals(allInclusivePricing.enabled());
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record AllInclusivePricing(Boolean enabled) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -95,5 +119,13 @@ public record TicketmasterEventResponse(
             List<TicketmasterVenueResponse> venues,
             List<TicketmasterAttractionResponse> attractions
     ) {
+    }
+
+    /**
+     * Whether this event uses all-inclusive pricing (fees baked in).
+     * Events with AIP never have priceRanges in the Discovery API.
+     */
+    public boolean isAllInclusivePricing() {
+        return ticketing != null && ticketing.isAllInclusivePricing();
     }
 }

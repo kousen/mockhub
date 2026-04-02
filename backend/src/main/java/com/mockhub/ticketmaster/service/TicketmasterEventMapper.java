@@ -14,12 +14,15 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
 import com.mockhub.event.entity.Category;
 import com.mockhub.event.entity.Event;
 import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse;
+import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse.ExternalLink;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Classification;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Dates;
@@ -38,6 +41,14 @@ public class TicketmasterEventMapper {
     private static final BigDecimal MAX_PRICE_FACTOR = new BigDecimal("2.50");
     private static final int DEFAULT_VENUE_CAPACITY = 1000;
 
+    // Standard artist URL: /artist/{22-char-id} with boundary to prevent overlong matches
+    private static final Pattern ARTIST_URL_PATTERN =
+            Pattern.compile("open\\.spotify\\.com/artist/([a-zA-Z0-9]{22})(?:[?/]|$)");
+
+    // Mangled URI in user path: /user/spotify:artist:{22-char-id}
+    private static final Pattern MANGLED_ARTIST_PATTERN =
+            Pattern.compile("open\\.spotify\\.com/user/spotify:artist:([a-zA-Z0-9]{22})(?:[?/]|$)");
+
     public Event mapToEvent(TicketmasterEventResponse response, Venue venue, Category category) {
         Event event = new Event();
         event.setName(response.name());
@@ -50,7 +61,8 @@ public class TicketmasterEventMapper {
 
         Instant eventDate = parseEventDate(response.dates());
         event.setEventDate(eventDate);
-        event.setDoorsOpenAt(eventDate.minusSeconds(3600));
+        Instant doorsOpen = parseDoorsTimes(response.doorsTimes(), response.dates());
+        event.setDoorsOpenAt(doorsOpen != null ? doorsOpen : eventDate.minusSeconds(3600));
 
         BigDecimal basePrice = extractBasePrice(response.priceRanges());
         event.setBasePrice(basePrice);
@@ -136,24 +148,49 @@ public class TicketmasterEventMapper {
             return null;
         }
 
-        List<Map<String, String>> spotifyLinks = attraction.externalLinks().get("spotify");
+        List<ExternalLink> spotifyLinks = attraction.externalLinks().get("spotify");
         if (spotifyLinks == null || spotifyLinks.isEmpty()) {
             return null;
         }
 
-        String url = spotifyLinks.getFirst().get("url");
-        if (url == null || !url.contains("/artist/")) {
+        for (ExternalLink link : spotifyLinks) {
+            String url = link.url();
+            if (url == null) {
+                continue;
+            }
+            String artistId = extractArtistIdFromUrl(url);
+            if (artistId != null) {
+                return artistId;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Extract a Spotify artist ID from a URL. Handles two formats found in
+     * Ticketmaster production data:
+     * <ul>
+     *   <li>Standard: {@code open.spotify.com/artist/{22-char-id}}</li>
+     *   <li>Mangled:  {@code open.spotify.com/user/spotify:artist:{22-char-id}}</li>
+     * </ul>
+     * Returns null for playlists, user profiles, non-Spotify URLs, and other
+     * formats that don't contain a recoverable artist ID.
+     */
+    String extractArtistIdFromUrl(String url) {
+        if (url == null) {
             return null;
         }
-
-        // Extract artist ID from URL: https://open.spotify.com/artist/{id}
-        String artistId = url.substring(url.lastIndexOf("/artist/") + "/artist/".length());
-        // Strip query params if present
-        int queryIndex = artistId.indexOf('?');
-        if (queryIndex > 0) {
-            artistId = artistId.substring(0, queryIndex);
+        Matcher artistMatcher = ARTIST_URL_PATTERN.matcher(url);
+        if (artistMatcher.find()) {
+            return artistMatcher.group(1);
         }
-        return artistId.isEmpty() ? null : artistId;
+
+        Matcher mangledMatcher = MANGLED_ARTIST_PATTERN.matcher(url);
+        if (mangledMatcher.find()) {
+            return mangledMatcher.group(1);
+        }
+
+        return null;
     }
 
     public String selectBestImage(List<Image> images) {
@@ -208,6 +245,34 @@ public class TicketmasterEventMapper {
         return ZonedDateTime.of(localDate, localTime, zone).toInstant();
     }
 
+    public Instant parseDoorsTimes(TicketmasterEventResponse.DoorsTimes doorsTimes, Dates dates) {
+        if (doorsTimes == null) {
+            return null;
+        }
+
+        try {
+            // Prefer UTC dateTime if available
+            if (doorsTimes.dateTime() != null) {
+                return Instant.parse(doorsTimes.dateTime());
+            }
+
+            // Fall back to localDate + localTime + event timezone
+            if (doorsTimes.localDate() != null && doorsTimes.localTime() != null) {
+                LocalDate localDate = LocalDate.parse(doorsTimes.localDate());
+                LocalTime localTime = LocalTime.parse(doorsTimes.localTime());
+                ZoneId zone = dates != null && dates.timezone() != null
+                        ? ZoneId.of(dates.timezone())
+                        : ZoneId.of("America/New_York");
+                return ZonedDateTime.of(localDate, localTime, zone).toInstant();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse doorsTimes ({}), falling back to default: {}",
+                    doorsTimes, e.getMessage());
+        }
+
+        return null;
+    }
+
     private String mapStatus(Dates dates) {
         if (dates == null || dates.status() == null || dates.status().code() == null) {
             return "ACTIVE";
@@ -227,14 +292,15 @@ public class TicketmasterEventMapper {
         }
         TicketmasterAttractionResponse attraction = response.embedded().attractions().getFirst();
         String spotifyId = extractSpotifyArtistId(attraction);
-        log.info("Attraction '{}' for event '{}' — externalLinks: {} — spotifyId: {}",
-                attraction.name(), response.name(),
-                attraction.externalLinks() != null ? attraction.externalLinks().keySet() : "NULL",
-                spotifyId);
-        if (spotifyId == null && attraction.externalLinks() != null
+        if (spotifyId != null) {
+            log.debug("Extracted Spotify ID '{}' for attraction '{}' on event '{}'",
+                    spotifyId, attraction.name(), response.name());
+        } else if (attraction.externalLinks() != null
                 && attraction.externalLinks().containsKey("spotify")) {
-            log.warn("Spotify key exists but extraction failed. Raw value: {}",
-                    attraction.externalLinks().get("spotify"));
+            List<ExternalLink> links = attraction.externalLinks().get("spotify");
+            log.warn("Spotify key exists but no artist ID extracted for '{}'. URLs: {}",
+                    attraction.name(),
+                    links != null ? links.stream().map(ExternalLink::url).toList() : "null");
         }
         return spotifyId;
     }

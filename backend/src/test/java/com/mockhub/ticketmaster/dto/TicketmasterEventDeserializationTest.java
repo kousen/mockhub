@@ -50,7 +50,7 @@ class TicketmasterEventDeserializationTest {
         assertThat(attraction.name()).isEqualTo("Eagles");
         assertThat(attraction.externalLinks()).isNotNull();
         assertThat(attraction.externalLinks()).containsKey("spotify");
-        assertThat(attraction.externalLinks().get("spotify").getFirst().get("url"))
+        assertThat(attraction.externalLinks().get("spotify").getFirst().url())
                 .isEqualTo("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL");
     }
 
@@ -93,7 +93,86 @@ class TicketmasterEventDeserializationTest {
 
         TicketmasterEventResponse event = response.embedded().events().getFirst();
         TicketmasterAttractionResponse attraction = event.embedded().attractions().getFirst();
-        assertThat(attraction.externalLinks().get("spotify").getFirst().get("url"))
+        assertThat(attraction.externalLinks().get("spotify").getFirst().url())
                 .contains("0ECwFtbIWEVNwjlrfc6xoL");
+    }
+
+    @Test
+    void deserialize_eventWithAllInclusivePricing_parsesTicketing() throws Exception {
+        String json = """
+                {
+                    "id": "TM-AIP-001",
+                    "name": "Eagles Live at Sphere",
+                    "dates": {
+                        "start": {"localDate": "2026-04-10", "dateTime": "2026-04-11T03:00:00Z"},
+                        "status": {"code": "onsale"}
+                    },
+                    "ticketing": {
+                        "safeTix": {"enabled": true},
+                        "allInclusivePricing": {"enabled": true}
+                    },
+                    "_embedded": {
+                        "venues": [{"id": "V1", "name": "Sphere"}],
+                        "attractions": []
+                    }
+                }
+                """;
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
+        TicketmasterEventResponse event = mapper.readValue(json, TicketmasterEventResponse.class);
+
+        assertThat(event.isAllInclusivePricing()).isTrue();
+        assertThat(event.priceRanges()).isNull();
+    }
+
+    @Test
+    void deserialize_eventWithDoorsTimes_parsesDoorsTimes() throws Exception {
+        String json = """
+                {
+                    "id": "TM-DOORS-001",
+                    "name": "Test Concert",
+                    "dates": {
+                        "start": {"localDate": "2026-04-10", "dateTime": "2026-04-11T01:00:00Z"},
+                        "status": {"code": "onsale"}
+                    },
+                    "doorsTimes": {
+                        "localDate": "2026-04-10",
+                        "localTime": "18:30:00",
+                        "dateTime": "2026-04-10T22:30:00Z"
+                    }
+                }
+                """;
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
+        TicketmasterEventResponse event = mapper.readValue(json, TicketmasterEventResponse.class);
+
+        assertThat(event.doorsTimes()).isNotNull();
+        assertThat(event.doorsTimes().localTime()).isEqualTo("18:30:00");
+        assertThat(event.doorsTimes().dateTime()).isEqualTo("2026-04-10T22:30:00Z");
+    }
+
+    @Test
+    void isAllInclusivePricing_givenNullTicketing_returnsFalse() throws Exception {
+        String json = """
+                {
+                    "id": "TM-NULL-001",
+                    "name": "No Ticketing",
+                    "dates": {
+                        "start": {"localDate": "2026-04-10"},
+                        "status": {"code": "onsale"}
+                    }
+                }
+                """;
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
+        TicketmasterEventResponse event = mapper.readValue(json, TicketmasterEventResponse.class);
+
+        assertThat(event.isAllInclusivePricing()).isFalse();
     }
 }
