@@ -109,7 +109,7 @@ public class TicketmasterSyncService {
      */
     @Transactional
     public int backfillSpotifyIds() {
-        List<Event> missingSpotify = eventRepository.findBySpotifyArtistIdIsNullAndTicketmasterEventIdIsNotNull();
+        List<Event> missingSpotify = eventRepository.findMissingSpotifyWithTicketmasterId();
         log.info("Spotify backfill: found {} events missing Spotify IDs", missingSpotify.size());
 
         int updated = 0;
