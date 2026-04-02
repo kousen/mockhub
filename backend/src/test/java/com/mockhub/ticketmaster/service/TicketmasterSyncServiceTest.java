@@ -16,6 +16,7 @@ import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.CategoryRepository;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse;
+import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse.ExternalLink;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Classification;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Dates;
@@ -158,7 +159,7 @@ class TicketmasterSyncServiceTest {
     @Test
     void processEvent_givenNoDate_skips() {
         TicketmasterEventResponse tmEvent = new TicketmasterEventResponse(
-                "TM-001", "No Date Event", null, null, null, null, null, null);
+                "TM-001", "No Date Event", null, null, null, null, null, null, null, null);
 
         TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
 
@@ -216,7 +217,7 @@ class TicketmasterSyncServiceTest {
                 "TM-001", "Test", null,
                 new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
                         "America/New_York", new Status("onsale")),
-                null, null, null, null);
+                null, null, null, null, null, null);
 
         Venue resolved = syncService.resolveVenue(tmEvent);
 
@@ -272,7 +273,7 @@ class TicketmasterSyncServiceTest {
                 null, "No ID Event", null,
                 new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
                         "America/New_York", new Status("onsale")),
-                null, null, null, null);
+                null, null, null, null, null, null);
 
         TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
 
@@ -285,7 +286,7 @@ class TicketmasterSyncServiceTest {
                 "TM-001", null, null,
                 new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
                         "America/New_York", new Status("onsale")),
-                null, null, null, null);
+                null, null, null, null, null, null);
 
         TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
 
@@ -298,7 +299,7 @@ class TicketmasterSyncServiceTest {
         // Override with no embedded venues
         TicketmasterEventResponse noVenue = new TicketmasterEventResponse(
                 "TM-NO-VENUE", "No Venue", null, tmEvent.dates(),
-                tmEvent.classifications(), tmEvent.images(), tmEvent.priceRanges(), null);
+                tmEvent.classifications(), tmEvent.images(), tmEvent.priceRanges(), null, null, null);
 
         when(eventRepository.findByTicketmasterEventId("TM-NO-VENUE")).thenReturn(Optional.empty());
 
@@ -340,6 +341,7 @@ class TicketmasterSyncServiceTest {
                         new SubGenre("1", "Pop"))),
                 List.of(new Image("https://example.com/large.jpg", "16_9", 2048, 1152, false)),
                 List.of(new PriceRange("standard", "USD", 75.0, 250.0)),
+                null, null,
                 new Embedded(
                         List.of(new TicketmasterVenueResponse(
                                 "VENUE-001", "Sphere",
@@ -352,7 +354,7 @@ class TicketmasterSyncServiceTest {
                         List.of(new TicketmasterAttractionResponse(
                                 "ATTR-001", "Eagles",
                                 Map.of("spotify", List.of(
-                                        Map.of("url", "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL")))))));
+                                        new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))));
     }
 
     private TicketmasterEventResponse createSampleEventWithStatus(String id, String statusCode) {
@@ -362,7 +364,7 @@ class TicketmasterSyncServiceTest {
                         new Start("2026-04-10", "20:30:00", "2026-04-11T03:30:00Z", false, false),
                         "America/Los_Angeles",
                         new Status(statusCode)),
-                null, null, null,
+                null, null, null, null, null,
                 new Embedded(
                         List.of(new TicketmasterVenueResponse(
                                 "VENUE-001", "Sphere",

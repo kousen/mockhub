@@ -6,13 +6,16 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.mockhub.event.entity.Category;
 import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse;
+import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse.ExternalLink;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Classification;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Dates;
+import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.DoorsTimes;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Embedded;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Genre;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Image;
@@ -37,6 +40,8 @@ class TicketmasterEventMapperTest {
         mapper = new TicketmasterEventMapper();
     }
 
+    // --- Category resolution ---
+
     @Test
     void resolveCategory_givenMusicSegment_returnsConcerts() {
         List<Classification> classifications = List.of(
@@ -45,9 +50,7 @@ class TicketmasterEventMapperTest {
                         new Genre("1", "Rock"),
                         new SubGenre("1", "Pop")));
 
-        String slug = mapper.resolveCategorySlug(classifications);
-
-        assertThat(slug).isEqualTo("concerts");
+        assertThat(mapper.resolveCategorySlug(classifications)).isEqualTo("concerts");
     }
 
     @Test
@@ -58,9 +61,7 @@ class TicketmasterEventMapperTest {
                         new Genre("1", "Basketball"),
                         new SubGenre("1", "NBA")));
 
-        String slug = mapper.resolveCategorySlug(classifications);
-
-        assertThat(slug).isEqualTo("sports");
+        assertThat(mapper.resolveCategorySlug(classifications)).isEqualTo("sports");
     }
 
     @Test
@@ -71,9 +72,7 @@ class TicketmasterEventMapperTest {
                         new Genre("1", "Theatre"),
                         new SubGenre("1", "Musical")));
 
-        String slug = mapper.resolveCategorySlug(classifications);
-
-        assertThat(slug).isEqualTo("theater");
+        assertThat(mapper.resolveCategorySlug(classifications)).isEqualTo("theater");
     }
 
     @Test
@@ -84,9 +83,7 @@ class TicketmasterEventMapperTest {
                         new Genre("1", "Comedy"),
                         new SubGenre("1", "Stand-Up")));
 
-        String slug = mapper.resolveCategorySlug(classifications);
-
-        assertThat(slug).isEqualTo("comedy");
+        assertThat(mapper.resolveCategorySlug(classifications)).isEqualTo("comedy");
     }
 
     @Test
@@ -97,58 +94,119 @@ class TicketmasterEventMapperTest {
                         new Genre("1", "Rock"),
                         new SubGenre("1", "Pop")));
 
-        String slug = mapper.resolveCategorySlug(classifications);
-
-        assertThat(slug).isEqualTo("concerts");
+        assertThat(mapper.resolveCategorySlug(classifications)).isEqualTo("concerts");
     }
 
     @Test
     void resolveCategory_givenNullClassifications_returnsOther() {
-        String slug = mapper.resolveCategorySlug(null);
-
-        assertThat(slug).isEqualTo("other");
+        assertThat(mapper.resolveCategorySlug(null)).isEqualTo("other");
     }
 
     @Test
     void resolveCategory_givenEmptyClassifications_returnsOther() {
-        String slug = mapper.resolveCategorySlug(List.of());
-
-        assertThat(slug).isEqualTo("other");
+        assertThat(mapper.resolveCategorySlug(List.of())).isEqualTo("other");
     }
 
-    @Test
-    void extractSpotifyArtistId_givenSpotifyUrl_returnsArtistId() {
-        TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                "K8vZ9171ob7", "Eagles",
-                Map.of("spotify", List.of(
-                        Map.of("url", "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL"))));
+    // --- Spotify extraction ---
 
-        String spotifyId = mapper.extractSpotifyArtistId(attraction);
+    @Nested
+    class SpotifyExtraction {
 
-        assertThat(spotifyId).isEqualTo("0ECwFtbIWEVNwjlrfc6xoL");
+        @Test
+        void extractSpotifyArtistId_givenStandardUrl_returnsArtistId() {
+            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
+                    "K8vZ9171ob7", "Eagles",
+                    Map.of("spotify", List.of(
+                            new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null))));
+
+            assertThat(mapper.extractSpotifyArtistId(attraction)).isEqualTo("0ECwFtbIWEVNwjlrfc6xoL");
+        }
+
+        @Test
+        void extractSpotifyArtistId_givenMangledUri_recoversArtistId() {
+            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
+                    "K8vZ917abc", "Luna",
+                    Map.of("spotify", List.of(
+                            new ExternalLink("https://open.spotify.com/user/spotify:artist:2AACqFGo8offvHCKGvrWxq", null))));
+
+            assertThat(mapper.extractSpotifyArtistId(attraction)).isEqualTo("2AACqFGo8offvHCKGvrWxq");
+        }
+
+        @Test
+        void extractSpotifyArtistId_givenUserProfileUrl_returnsNull() {
+            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
+                    "K8vZ917def", "Black Joe Lewis",
+                    Map.of("spotify", List.of(
+                            new ExternalLink("https://open.spotify.com/user/blackjoelewismusic", null))));
+
+            assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
+        }
+
+        @Test
+        void extractSpotifyArtistId_givenPlaylistUrl_returnsNull() {
+            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
+                    "K8vZ917ghi", "Emo Night",
+                    Map.of("spotify", List.of(
+                            new ExternalLink("https://open.spotify.com/playlist/3vwjBackAZ0Rl9hueMkOwp", null))));
+
+            assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
+        }
+
+        @Test
+        void extractSpotifyArtistId_givenAppleMusicUrl_returnsNull() {
+            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
+                    "K8vZ917jkl", "Microwave",
+                    Map.of("spotify", List.of(
+                            new ExternalLink("https://music.apple.com/us/artist/microwave/613522668", null))));
+
+            assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
+        }
+
+        @Test
+        void extractSpotifyArtistId_givenUnrelatedUrl_returnsNull() {
+            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
+                    "K8vZ917mno", "Trap Karaoke",
+                    Map.of("spotify", List.of(
+                            new ExternalLink("https://trapkaraoke.com/", null))));
+
+            assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
+        }
+
+        @Test
+        void extractSpotifyArtistId_givenNoExternalLinks_returnsNull() {
+            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
+                    "K8vZ9171ob7", "Eagles", null);
+
+            assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
+        }
+
+        @Test
+        void extractSpotifyArtistId_givenNoSpotifyLink_returnsNull() {
+            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
+                    "K8vZ9171ob7", "Eagles",
+                    Map.of("youtube", List.of(
+                            new ExternalLink("https://youtube.com/test", null))));
+
+            assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
+        }
+
+        @Test
+        void extractSpotifyArtistId_givenUrlWithQueryParams_extractsCleanId() {
+            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
+                    "K8vZ917pqr", "Taylor Swift",
+                    Map.of("spotify", List.of(
+                            new ExternalLink("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=abc123", null))));
+
+            assertThat(mapper.extractSpotifyArtistId(attraction)).isEqualTo("06HL4z0CvFAxyc27GXpf02");
+        }
+
+        @Test
+        void extractArtistIdFromUrl_givenNullUrl_returnsNull() {
+            assertThat(mapper.extractArtistIdFromUrl(null)).isNull();
+        }
     }
 
-    @Test
-    void extractSpotifyArtistId_givenNoExternalLinks_returnsNull() {
-        TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                "K8vZ9171ob7", "Eagles", null);
-
-        String spotifyId = mapper.extractSpotifyArtistId(attraction);
-
-        assertThat(spotifyId).isNull();
-    }
-
-    @Test
-    void extractSpotifyArtistId_givenNoSpotifyLink_returnsNull() {
-        TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                "K8vZ9171ob7", "Eagles",
-                Map.of("youtube", List.of(
-                        Map.of("url", "https://youtube.com/test"))));
-
-        String spotifyId = mapper.extractSpotifyArtistId(attraction);
-
-        assertThat(spotifyId).isNull();
-    }
+    // --- Image selection ---
 
     @Test
     void selectBestImage_givenMultipleImages_returnsLargest16x9() {
@@ -157,9 +215,7 @@ class TicketmasterEventMapperTest {
                 new Image("https://example.com/large.jpg", "16_9", 2048, 1152, false),
                 new Image("https://example.com/medium.jpg", "3_2", 1024, 683, false));
 
-        String url = mapper.selectBestImage(images);
-
-        assertThat(url).isEqualTo("https://example.com/large.jpg");
+        assertThat(mapper.selectBestImage(images)).isEqualTo("https://example.com/large.jpg");
     }
 
     @Test
@@ -167,9 +223,7 @@ class TicketmasterEventMapperTest {
         List<Image> images = List.of(
                 new Image("https://example.com/portrait.jpg", "3_2", 640, 427, false));
 
-        String url = mapper.selectBestImage(images);
-
-        assertThat(url).isEqualTo("https://example.com/portrait.jpg");
+        assertThat(mapper.selectBestImage(images)).isEqualTo("https://example.com/portrait.jpg");
     }
 
     @Test
@@ -178,33 +232,27 @@ class TicketmasterEventMapperTest {
                 new Image("https://example.com/nowidth.jpg", "16_9", null, null, null),
                 new Image("https://example.com/withwidth.jpg", "16_9", 1024, 576, false));
 
-        String url = mapper.selectBestImage(images);
-
-        assertThat(url).isEqualTo("https://example.com/withwidth.jpg");
+        assertThat(mapper.selectBestImage(images)).isEqualTo("https://example.com/withwidth.jpg");
     }
 
     @Test
     void selectBestImage_givenNullImages_returnsNull() {
-        String url = mapper.selectBestImage(null);
-
-        assertThat(url).isNull();
+        assertThat(mapper.selectBestImage(null)).isNull();
     }
+
+    // --- Price extraction ---
 
     @Test
     void extractBasePrice_givenPriceRanges_returnsMin() {
         List<PriceRange> ranges = List.of(
                 new PriceRange("standard", "USD", 75.0, 250.0));
 
-        BigDecimal price = mapper.extractBasePrice(ranges);
-
-        assertThat(price).isEqualByComparingTo(new BigDecimal("75.00"));
+        assertThat(mapper.extractBasePrice(ranges)).isEqualByComparingTo(new BigDecimal("75.00"));
     }
 
     @Test
     void extractBasePrice_givenEmptyPriceRanges_returnsDefault() {
-        BigDecimal price = mapper.extractBasePrice(List.of());
-
-        assertThat(price).isEqualByComparingTo(new BigDecimal("50.00"));
+        assertThat(mapper.extractBasePrice(List.of())).isEqualByComparingTo(new BigDecimal("50.00"));
     }
 
     @Test
@@ -212,17 +260,15 @@ class TicketmasterEventMapperTest {
         List<PriceRange> ranges = List.of(
                 new PriceRange("standard", "USD", null, 250.0));
 
-        BigDecimal price = mapper.extractBasePrice(ranges);
-
-        assertThat(price).isEqualByComparingTo(new BigDecimal("50.00"));
+        assertThat(mapper.extractBasePrice(ranges)).isEqualByComparingTo(new BigDecimal("50.00"));
     }
 
     @Test
     void extractBasePrice_givenNullPriceRanges_returnsDefault() {
-        BigDecimal price = mapper.extractBasePrice(null);
-
-        assertThat(price).isEqualByComparingTo(new BigDecimal("50.00"));
+        assertThat(mapper.extractBasePrice(null)).isEqualByComparingTo(new BigDecimal("50.00"));
     }
+
+    // --- Date parsing ---
 
     @Test
     void parseEventDate_givenUtcDateTime_returnsInstant() {
@@ -231,9 +277,7 @@ class TicketmasterEventMapperTest {
                 "America/Los_Angeles",
                 new Status("onsale"));
 
-        Instant eventDate = mapper.parseEventDate(dates);
-
-        assertThat(eventDate).isEqualTo(Instant.parse("2026-04-11T03:30:00Z"));
+        assertThat(mapper.parseEventDate(dates)).isEqualTo(Instant.parse("2026-04-11T03:30:00Z"));
     }
 
     @Test
@@ -243,10 +287,54 @@ class TicketmasterEventMapperTest {
                 "America/Los_Angeles",
                 new Status("onsale"));
 
-        Instant eventDate = mapper.parseEventDate(dates);
-
-        assertThat(eventDate).isNotNull();
+        assertThat(mapper.parseEventDate(dates)).isNotNull();
     }
+
+    // --- Doors times parsing ---
+
+    @Nested
+    class DoorsTimesParsing {
+
+        @Test
+        void parseDoorsTimes_givenUtcDateTime_returnsInstant() {
+            DoorsTimes doorsTimes = new DoorsTimes("2026-04-10", "18:30:00", "2026-04-11T01:30:00Z");
+
+            Instant result = mapper.parseDoorsTimes(doorsTimes, null);
+
+            assertThat(result).isEqualTo(Instant.parse("2026-04-11T01:30:00Z"));
+        }
+
+        @Test
+        void parseDoorsTimes_givenLocalOnly_usesEventTimezone() {
+            DoorsTimes doorsTimes = new DoorsTimes("2026-04-10", "18:30:00", null);
+            Dates dates = new Dates(null, "America/Los_Angeles", null);
+
+            Instant result = mapper.parseDoorsTimes(doorsTimes, dates);
+
+            assertThat(result).isNotNull();
+        }
+
+        @Test
+        void parseDoorsTimes_givenNull_returnsNull() {
+            assertThat(mapper.parseDoorsTimes(null, null)).isNull();
+        }
+
+        @Test
+        void parseDoorsTimes_givenNullLocalFields_returnsNull() {
+            DoorsTimes doorsTimes = new DoorsTimes(null, null, null);
+
+            assertThat(mapper.parseDoorsTimes(doorsTimes, null)).isNull();
+        }
+
+        @Test
+        void parseDoorsTimes_givenMalformedDateTime_returnsNullInsteadOfThrowing() {
+            DoorsTimes doorsTimes = new DoorsTimes("not-a-date", "bad-time", "garbage");
+
+            assertThat(mapper.parseDoorsTimes(doorsTimes, null)).isNull();
+        }
+    }
+
+    // --- Event mapping ---
 
     @Test
     void mapToEvent_givenFullResponse_createsEventEntity() {
@@ -273,6 +361,32 @@ class TicketmasterEventMapperTest {
     }
 
     @Test
+    void mapToEvent_givenDoorsTimes_usesExplicitDoorsOpen() {
+        TicketmasterEventResponse response = createEventResponseWithDoorsTimes();
+        Venue venue = createSampleVenue();
+        Category category = createSampleCategory();
+
+        Event event = mapper.mapToEvent(response, venue, category);
+
+        // Doors time is 18:30 UTC, event is 20:00 UTC — doors should be before event
+        assertThat(event.getDoorsOpenAt()).isBefore(event.getEventDate());
+        // Should use the explicit doors time, not event - 1 hour
+        assertThat(event.getDoorsOpenAt()).isEqualTo(Instant.parse("2026-04-10T22:30:00Z"));
+    }
+
+    @Test
+    void mapToEvent_givenNoDoorsTimes_defaultsToOneHourBefore() {
+        TicketmasterEventResponse response = createSampleEventResponse();
+        Venue venue = createSampleVenue();
+        Category category = createSampleCategory();
+
+        Event event = mapper.mapToEvent(response, venue, category);
+
+        Instant eventDate = event.getEventDate();
+        assertThat(event.getDoorsOpenAt()).isEqualTo(eventDate.minusSeconds(3600));
+    }
+
+    @Test
     void mapToEvent_givenCancelledStatus_setsStatusCancelled() {
         TicketmasterEventResponse response = createEventResponseWithStatus("cancelled");
         Venue venue = createSampleVenue();
@@ -282,6 +396,28 @@ class TicketmasterEventMapperTest {
 
         assertThat(event.getStatus()).isEqualTo("CANCELLED");
     }
+
+    @Test
+    void mapToEvent_givenNoAttractions_setsNullArtistAndSpotifyId() {
+        TicketmasterEventResponse response = new TicketmasterEventResponse(
+                "TM-NO-ARTIST", "Festival Event", null,
+                new Dates(
+                        new Start("2026-08-01", "18:00:00", "2026-08-01T22:00:00Z", false, false),
+                        "America/New_York", new Status("onsale")),
+                List.of(new Classification(true,
+                        new Segment("1", "Music"), new Genre("1", "Rock"), new SubGenre("1", "Pop"))),
+                null, null, null, null,
+                new TicketmasterEventResponse.Embedded(null, null));
+        Venue venue = createSampleVenue();
+        Category category = createSampleCategory();
+
+        Event event = mapper.mapToEvent(response, venue, category);
+
+        assertThat(event.getArtistName()).isNull();
+        assertThat(event.getSpotifyArtistId()).isNull();
+    }
+
+    // --- Venue mapping ---
 
     @Test
     void mapToVenue_givenVenueResponse_createsVenueEntity() {
@@ -315,11 +451,7 @@ class TicketmasterEventMapperTest {
 
         assertThat(venue.getState()).isEqualTo("N/A");
         assertThat(venue.getCity()).isEqualTo("Unknown");
-        assertThat(venue.getAddressLine1()).isEqualTo("Unknown");
-        assertThat(venue.getZipCode()).isEqualTo("00000");
         assertThat(venue.getCountry()).isEqualTo("ZA");
-        assertThat(venue.getLatitude()).isNull();
-        assertThat(venue.getLongitude()).isNull();
     }
 
     @Test
@@ -334,25 +466,6 @@ class TicketmasterEventMapperTest {
         Venue venue = mapper.mapToVenue(venueResponse);
 
         assertThat(venue.getCountry()).isEqualTo("US");
-    }
-
-    @Test
-    void mapToEvent_givenNoAttractions_setsNullArtistAndSpotifyId() {
-        TicketmasterEventResponse response = new TicketmasterEventResponse(
-                "TM-NO-ARTIST", "Festival Event", null,
-                new Dates(
-                        new Start("2026-08-01", "18:00:00", "2026-08-01T22:00:00Z", false, false),
-                        "America/New_York", new Status("onsale")),
-                List.of(new Classification(true,
-                        new Segment("1", "Music"), new Genre("1", "Rock"), new SubGenre("1", "Pop"))),
-                null, null, new TicketmasterEventResponse.Embedded(null, null));
-        Venue venue = createSampleVenue();
-        Category category = createSampleCategory();
-
-        Event event = mapper.mapToEvent(response, venue, category);
-
-        assertThat(event.getArtistName()).isNull();
-        assertThat(event.getSpotifyArtistId()).isNull();
     }
 
     // --- Helper methods ---
@@ -372,12 +485,29 @@ class TicketmasterEventMapperTest {
                         new SubGenre("1", "Pop"))),
                 List.of(new Image("https://example.com/large.jpg", "16_9", 2048, 1152, false)),
                 List.of(new PriceRange("standard", "USD", 75.0, 250.0)),
+                null, null,
                 new Embedded(
                         List.of(createSampleVenueResponse()),
                         List.of(new TicketmasterAttractionResponse(
                                 "K8vZ9171ob7", "Eagles",
                                 Map.of("spotify", List.of(
-                                        Map.of("url", "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL")))))));
+                                        new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))));
+    }
+
+    private TicketmasterEventResponse createEventResponseWithDoorsTimes() {
+        return new TicketmasterEventResponse(
+                "TM-DOORS-001",
+                "Concert With Doors Time",
+                null,
+                new Dates(
+                        new Start("2026-04-10", "20:00:00", "2026-04-11T00:00:00Z", false, false),
+                        "America/New_York",
+                        new Status("onsale")),
+                List.of(new Classification(true,
+                        new Segment("1", "Music"), new Genre("1", "Rock"), new SubGenre("1", "Pop"))),
+                null, null, null,
+                new DoorsTimes("2026-04-10", "18:30:00", "2026-04-10T22:30:00Z"),
+                new Embedded(null, null));
     }
 
     private TicketmasterEventResponse createEventResponseWithStatus(String statusCode) {
@@ -393,7 +523,7 @@ class TicketmasterEventMapperTest {
                         new Segment("KZFzniwnSyZfZ7v7nJ", "Music"),
                         new Genre("1", "Rock"),
                         new SubGenre("1", "Pop"))),
-                null, null, null);
+                null, null, null, null, null);
     }
 
     private TicketmasterVenueResponse createSampleVenueResponse() {

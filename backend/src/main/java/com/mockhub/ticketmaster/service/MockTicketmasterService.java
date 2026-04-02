@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse;
+import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse.ExternalLink;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Classification;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Dates;
@@ -57,6 +58,7 @@ public class MockTicketmasterService implements TicketmasterService {
                         new SubGenre("1", "Alternative"))),
                 List.of(new Image("https://example.com/mock-image.jpg", "16_9", 1024, 576, false)),
                 List.of(new PriceRange("standard", "USD", 45.0, 125.0)),
+                null, null,
                 new Embedded(
                         List.of(new TicketmasterVenueResponse(
                                 "MOCK-VENUE-001", "Mock Arena",
@@ -69,6 +71,6 @@ public class MockTicketmasterService implements TicketmasterService {
                         List.of(new TicketmasterAttractionResponse(
                                 "MOCK-ATTR-001", "Test Artist",
                                 Map.of("spotify", List.of(
-                                        Map.of("url", "https://open.spotify.com/artist/4Z8W4fKeB5YxbusRsdQVPb")))))));
+                                        new ExternalLink("https://open.spotify.com/artist/4Z8W4fKeB5YxbusRsdQVPb", null)))))));
     }
 }
