@@ -263,6 +263,68 @@ class RecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("getRecommendations - given AI call fails with rate limit - returns fallback recommendations")
+    void getRecommendations_givenAiRateLimit_returnsFallbackRecommendations() {
+        List<Event> events = List.of(
+                createTestEvent(1L, "Rock Festival", "rock-festival", "MSG", "New York"),
+                createTestEvent(2L, "Jazz Night", "jazz-night", "Blue Note", "New York")
+        );
+        when(eventRepository.findFeaturedEvents()).thenReturn(events);
+
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(anyString())).thenReturn(requestSpec);
+        when(requestSpec.call()).thenThrow(new RuntimeException(
+                "429: {type=error, error={type=rate_limit_error, message=Rate limit exceeded}}"));
+        stubEvalRunnerPassing();
+
+        List<RecommendationDto> recommendations = recommendationService.getRecommendations(null);
+
+        assertNotNull(recommendations);
+        assertEquals(2, recommendations.size());
+        assertEquals("Rock Festival", recommendations.get(0).eventName());
+        assertEquals("Featured event", recommendations.get(0).reason());
+        assertEquals(0.5, recommendations.get(0).relevanceScore());
+    }
+
+    @Test
+    @DisplayName("getRecommendations - given AI call fails - still includes Spotify match badges")
+    void getRecommendations_givenAiFails_stillIncludesSpotifyMatches() {
+        Event spotifyEvent = createTestEvent(1L, "Beyoncé Concert", "beyonce", "Arena", "LA");
+        spotifyEvent.setSpotifyArtistId("6vWDO969PvNqNYHIOW5v0m");
+
+        @SuppressWarnings("unchecked")
+        SpotifyListeningService mockListeningService =
+                org.mockito.Mockito.mock(SpotifyListeningService.class);
+        RecommendationService serviceWithSpotify = new RecommendationService(
+                chatClient, eventRepository, evalRunner, favoriteRepository,
+                orderItemRepository, java.util.Optional.of(mockListeningService));
+
+        SpotifyListeningDto listeningData = new SpotifyListeningDto(
+                List.of("6vWDO969PvNqNYHIOW5v0m"), List.of("Beyoncé"),
+                List.of("pop"), List.of("6vWDO969PvNqNYHIOW5v0m"),
+                true, false);
+        when(mockListeningService.getListeningData(42L)).thenReturn(listeningData);
+
+        when(eventRepository.findFeaturedEvents()).thenReturn(List.of(spotifyEvent));
+        when(eventRepository.findBySpotifyArtistIdIn(any())).thenReturn(List.of(spotifyEvent));
+        when(favoriteRepository.findByUserIdWithEventDetails(42L)).thenReturn(List.of());
+        when(orderItemRepository.findDistinctPurchasedEventsByUserId(42L)).thenReturn(List.of());
+
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.user(anyString())).thenReturn(requestSpec);
+        when(requestSpec.call()).thenThrow(new RuntimeException("AI unavailable"));
+
+        stubEvalRunnerPassing();
+
+        com.mockhub.ai.dto.RecommendationsResponse response =
+                serviceWithSpotify.getRecommendations(42L, null);
+
+        assertTrue(response.spotifyConnected());
+        assertEquals(1, response.recommendations().size());
+        assertTrue(response.recommendations().getFirst().spotifyMatch());
+    }
+
+    @Test
     @DisplayName("getRecommendations - given no events - returns empty list")
     void getRecommendations_givenNoEvents_returnsEmptyList() {
         when(eventRepository.findFeaturedEvents()).thenReturn(List.of());

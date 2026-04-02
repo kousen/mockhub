@@ -232,6 +232,53 @@ class TicketmasterApiServiceTest {
     }
 
     @Test
+    void getEvent_givenValidResponse_returnsEvent() {
+        String responseJson = """
+                {
+                  "id": "1A9ZkoaGkePdD04",
+                  "name": "Eagles Live at Sphere",
+                  "dates": {
+                    "start": { "localDate": "2026-04-10", "dateTime": "2026-04-11T03:30:00Z" },
+                    "status": { "code": "onsale" }
+                  },
+                  "_embedded": {
+                    "venues": [{ "id": "V1", "name": "Sphere" }],
+                    "attractions": [{
+                      "id": "K8vZ9171ob7",
+                      "name": "Eagles",
+                      "externalLinks": {
+                        "spotify": [{ "url": "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL" }]
+                      }
+                    }]
+                  }
+                }
+                """;
+
+        mockServer.expect(requestTo(org.hamcrest.Matchers.containsString("/events/1A9ZkoaGkePdD04.json")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(responseJson, MediaType.APPLICATION_JSON));
+
+        TicketmasterEventResponse event = service.getEvent("1A9ZkoaGkePdD04");
+
+        assertThat(event).isNotNull();
+        assertThat(event.name()).isEqualTo("Eagles Live at Sphere");
+        assertThat(event.embedded().attractions()).hasSize(1);
+        assertThat(event.embedded().attractions().getFirst().externalLinks()).containsKey("spotify");
+        mockServer.verify();
+    }
+
+    @Test
+    void getEvent_givenServerError_returnsNull() {
+        mockServer.expect(requestTo(org.hamcrest.Matchers.containsString("/events/bad-id.json")))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        TicketmasterEventResponse event = service.getEvent("bad-id");
+
+        assertThat(event).isNull();
+        mockServer.verify();
+    }
+
+    @Test
     void parseRetryAfter_givenInvalidHeader_returnsExponentialBackoff() {
         long waitMs = service.parseRetryAfter("not-a-number", 1);
 
