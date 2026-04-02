@@ -164,6 +164,24 @@ public class AdminController {
         return ResponseEntity.accepted().body(Map.of("status", "Sync triggered successfully"));
     }
 
+    @PostMapping("/ticketmaster/backfill-spotify")
+    @Operation(summary = "Backfill Spotify artist IDs (admin)",
+            description = "Fetch individual event details from Ticketmaster to fill in missing Spotify artist IDs.")
+    @ApiResponse(responseCode = "200", description = "Backfill completed")
+    @ApiResponse(responseCode = "503", description = "Ticketmaster integration not active")
+    public ResponseEntity<Map<String, Object>> backfillSpotifyIds() {
+        if (ticketmasterSyncService.isEmpty()) {
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Ticketmaster integration is not active. Enable the 'ticketmaster' profile.");
+            problem.setTitle("Ticketmaster Not Available");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("detail", problem.getDetail(), "title", problem.getTitle()));
+        }
+        int updated = ticketmasterSyncService.get().backfillSpotifyIds();
+        return ResponseEntity.ok(Map.of("status", "Backfill completed", "eventsUpdated", updated));
+    }
+
     @PostMapping("/ticketmaster/activate")
     @Operation(summary = "Activate Ticketmaster events (admin)",
             description = "Deactivate seed events, feature Ticketmaster events, and complete past events.")

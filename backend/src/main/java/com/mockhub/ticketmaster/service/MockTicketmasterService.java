@@ -30,6 +30,12 @@ public class MockTicketmasterService implements TicketmasterService {
     private static final Logger log = LoggerFactory.getLogger(MockTicketmasterService.class);
 
     @Override
+    public TicketmasterEventResponse getEvent(String eventId) {
+        log.info("Mock Ticketmaster: getEvent not supported, returning null for '{}'", eventId);
+        return null;
+    }
+
+    @Override
     public List<TicketmasterEventResponse> searchEvents(String classificationName,
                                                          String startDateTime,
                                                          String endDateTime,

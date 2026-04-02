@@ -102,6 +102,46 @@ public class TicketmasterSyncService {
                 newEvents, updatedEvents, skippedEvents);
     }
 
+    /**
+     * Backfill Spotify artist IDs for events that have a Ticketmaster event ID
+     * but are missing a Spotify artist ID. Fetches each event individually from
+     * the Ticketmaster Discovery API to get the full attraction data.
+     */
+    @Transactional
+    public int backfillSpotifyIds() {
+        List<Event> missingSpotify = eventRepository.findBySpotifyArtistIdIsNullAndTicketmasterEventIdIsNotNull();
+        log.info("Spotify backfill: found {} events missing Spotify IDs", missingSpotify.size());
+
+        int updated = 0;
+        for (Event event : missingSpotify) {
+            try {
+                TicketmasterEventResponse tmEvent = ticketmasterService.getEvent(
+                        event.getTicketmasterEventId());
+                if (tmEvent == null || tmEvent.embedded() == null
+                        || tmEvent.embedded().attractions() == null
+                        || tmEvent.embedded().attractions().isEmpty()) {
+                    continue;
+                }
+
+                TicketmasterAttractionResponse attraction = tmEvent.embedded().attractions().getFirst();
+                String spotifyId = eventMapper.extractSpotifyArtistId(attraction);
+                if (spotifyId != null) {
+                    event.setSpotifyArtistId(spotifyId);
+                    eventRepository.save(event);
+                    log.info("Backfilled Spotify ID '{}' for event '{}' (artist: '{}')",
+                            spotifyId, event.getName(), attraction.name());
+                    updated++;
+                }
+            } catch (Exception e) {
+                log.warn("Failed to backfill Spotify for event '{}' (TM ID: {}): {}",
+                        event.getName(), event.getTicketmasterEventId(), e.getMessage());
+            }
+        }
+
+        log.info("Spotify backfill complete: {}/{} events updated", updated, missingSpotify.size());
+        return updated;
+    }
+
     @Transactional
     SyncResult processEvent(TicketmasterEventResponse tmEvent) {
         if (tmEvent.id() == null || tmEvent.name() == null) {

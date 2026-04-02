@@ -57,6 +57,23 @@ public class TicketmasterApiService implements TicketmasterService {
     }
 
     @Override
+    public TicketmasterEventResponse getEvent(String eventId) {
+        try {
+            String json = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/events/{id}.json")
+                            .queryParam("apikey", apiKey)
+                            .build(eventId))
+                    .retrieve()
+                    .body(String.class);
+            return jsonMapper.readValue(json, TicketmasterEventResponse.class);
+        } catch (RestClientException e) {
+            log.warn("Failed to fetch Ticketmaster event {}: {}", eventId, e.getMessage());
+            return null;
+        }
+    }
+
+    @Override
     public List<TicketmasterEventResponse> searchEvents(String classificationName,
                                                          String startDateTime,
                                                          String endDateTime,

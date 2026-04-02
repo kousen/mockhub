@@ -11,4 +11,10 @@ public interface TicketmasterService {
                                                   String endDateTime,
                                                   int size,
                                                   int page);
+
+    /**
+     * Fetch a single event by its Ticketmaster ID.
+     * Returns null if the event is not found or the API call fails.
+     */
+    TicketmasterEventResponse getEvent(String eventId);
 }
