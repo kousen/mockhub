@@ -118,19 +118,19 @@ public class TicketmasterSyncService {
                 TicketmasterEventResponse tmEvent = ticketmasterService.getEvent(
                         event.getTicketmasterEventId());
                 if (tmEvent == null) {
-                    log.info("Backfill: no TM response for '{}'", event.getName());
+                    log.debug("Backfill: no TM response for '{}'", event.getName());
                     continue;
                 }
                 if (tmEvent.embedded() == null
                         || tmEvent.embedded().attractions() == null
                         || tmEvent.embedded().attractions().isEmpty()) {
-                    log.info("Backfill: no attractions for '{}' (embedded={})",
+                    log.debug("Backfill: no attractions for '{}' (embedded={})",
                             event.getName(), tmEvent.embedded() != null ? "present" : "null");
                     continue;
                 }
 
                 TicketmasterAttractionResponse attraction = tmEvent.embedded().attractions().getFirst();
-                log.info("Backfill: '{}' attraction='{}' externalLinks={}",
+                log.debug("Backfill: '{}' attraction='{}' externalLinks={}",
                         event.getName(), attraction.name(),
                         attraction.externalLinks() != null ? attraction.externalLinks().keySet() : "NULL");
                 String spotifyId = eventMapper.extractSpotifyArtistId(attraction);
