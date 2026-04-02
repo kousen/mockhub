@@ -76,12 +76,18 @@ public class RecommendationService {
         String userContext = buildUserContext(userId, listeningData);
         String prompt = buildPrompt(eventList, userContext);
 
-        String aiResponse = chatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
+        List<RecommendationDto> recommendations;
+        try {
+            String aiResponse = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
 
-        List<RecommendationDto> recommendations = parseRecommendations(aiResponse, events, spotifyMatchedIds);
+            recommendations = parseRecommendations(aiResponse, events, spotifyMatchedIds);
+        } catch (Exception e) {
+            log.warn("AI recommendation call failed, using fallback: {}", e.getMessage());
+            recommendations = buildFallbackRecommendations(events, spotifyMatchedIds);
+        }
 
         EvalContext evalContext = EvalContext.forRecommendations(recommendations);
         EvalSummary evalSummary = evalRunner.evaluate(evalContext);
@@ -297,20 +303,25 @@ public class RecommendationService {
                     .toList();
         } catch (Exception e) {
             log.warn("Failed to parse AI recommendations response: {}", aiResponse, e);
-            return events.stream()
-                    .map(event -> new RecommendationDto(
-                            event.getId(),
-                            event.getName(),
-                            event.getSlug(),
-                            event.getVenue() != null ? event.getVenue().getName() : null,
-                            event.getVenue() != null ? event.getVenue().getCity() : null,
-                            event.getEventDate(),
-                            event.getMinPrice(),
-                            0.5,
-                            "Featured event",
-                            spotifyMatchedIds.contains(event.getId())
-                    ))
-                    .toList();
+            return buildFallbackRecommendations(events, spotifyMatchedIds);
         }
+    }
+
+    private List<RecommendationDto> buildFallbackRecommendations(List<Event> events,
+                                                                   Set<Long> spotifyMatchedIds) {
+        return events.stream()
+                .map(event -> new RecommendationDto(
+                        event.getId(),
+                        event.getName(),
+                        event.getSlug(),
+                        event.getVenue() != null ? event.getVenue().getName() : null,
+                        event.getVenue() != null ? event.getVenue().getCity() : null,
+                        event.getEventDate(),
+                        event.getMinPrice(),
+                        0.5,
+                        "Featured event",
+                        spotifyMatchedIds.contains(event.getId())
+                ))
+                .toList();
     }
 }

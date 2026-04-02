@@ -326,6 +326,67 @@ class TicketmasterSyncServiceTest {
         assertThat(existing.getEventDate()).isEqualTo(java.time.Instant.parse("2026-04-11T03:30:00Z"));
     }
 
+    @Test
+    void backfillSpotifyIds_givenEventWithSpotifyAttraction_updatesSpotifyId() {
+        Event event = new Event();
+        event.setId(1L);
+        event.setName("Eagles Concert");
+        event.setTicketmasterEventId("TM-001");
+        event.setSpotifyArtistId(null);
+
+        TicketmasterEventResponse tmEvent = createSampleEvent("TM-001", "Eagles Concert");
+        when(eventRepository.findMissingSpotifyWithTicketmasterId()).thenReturn(List.of(event));
+        when(ticketmasterService.getEvent("TM-001")).thenReturn(tmEvent);
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        int updated = syncService.backfillSpotifyIds();
+
+        assertThat(updated).isEqualTo(1);
+        assertThat(event.getSpotifyArtistId()).isEqualTo("0ECwFtbIWEVNwjlrfc6xoL");
+        verify(eventRepository).save(event);
+    }
+
+    @Test
+    void backfillSpotifyIds_givenEventWithNoAttractions_skips() {
+        Event event = new Event();
+        event.setId(1L);
+        event.setName("Hamilton");
+        event.setTicketmasterEventId("TM-HAMILTON");
+        event.setSpotifyArtistId(null);
+
+        TicketmasterEventResponse tmEvent = new TicketmasterEventResponse(
+                "TM-HAMILTON", "Hamilton", null,
+                new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
+                        "America/New_York", new Status("onsale")),
+                null, null, null, null, null,
+                new TicketmasterEventResponse.Embedded(null, null));
+
+        when(eventRepository.findMissingSpotifyWithTicketmasterId()).thenReturn(List.of(event));
+        when(ticketmasterService.getEvent("TM-HAMILTON")).thenReturn(tmEvent);
+
+        int updated = syncService.backfillSpotifyIds();
+
+        assertThat(updated).isEqualTo(0);
+        verify(eventRepository, never()).save(any());
+    }
+
+    @Test
+    void backfillSpotifyIds_givenApiReturnsNull_skips() {
+        Event event = new Event();
+        event.setId(1L);
+        event.setName("Missing Event");
+        event.setTicketmasterEventId("TM-GONE");
+        event.setSpotifyArtistId(null);
+
+        when(eventRepository.findMissingSpotifyWithTicketmasterId()).thenReturn(List.of(event));
+        when(ticketmasterService.getEvent("TM-GONE")).thenReturn(null);
+
+        int updated = syncService.backfillSpotifyIds();
+
+        assertThat(updated).isEqualTo(0);
+        verify(eventRepository, never()).save(any());
+    }
+
     // --- Helper methods ---
 
     private TicketmasterEventResponse createSampleEvent(String id, String name) {
