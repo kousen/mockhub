@@ -1,9 +1,6 @@
 package com.mockhub.acp.service;
 
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -14,12 +11,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.mockhub.acp.dto.AcpCatalogItem;
 import com.mockhub.acp.dto.AcpActionRequest;
 import com.mockhub.acp.dto.AcpCheckoutRequest;
 import com.mockhub.acp.dto.AcpCheckoutResponse;
 import com.mockhub.acp.dto.AcpCompleteRequest;
-import com.mockhub.acp.dto.AcpListingItem;
 import com.mockhub.acp.dto.AcpLineItem;
 import com.mockhub.acp.dto.AcpLineItemResponse;
 import com.mockhub.acp.dto.AcpPricing;
@@ -28,15 +23,11 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.cart.dto.CartDto;
-import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.eval.dto.EvalContext;
 import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
-import com.mockhub.event.dto.EventSearchRequest;
-import com.mockhub.event.dto.EventSummaryDto;
-import com.mockhub.event.service.EventService;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.dto.CheckoutRequest;
@@ -54,13 +45,11 @@ public class AcpCheckoutService {
 
     private static final Logger log = LoggerFactory.getLogger(AcpCheckoutService.class);
     private static final String CURRENCY_USD = "USD";
-    private static final String STATUS_ACTIVE = "ACTIVE";
     private static final String STATUS_CANCELLED = "CANCELLED";
 
     private final UserRepository userRepository;
     private final CartService cartService;
     private final OrderService orderService;
-    private final EventService eventService;
     private final ListingRepository listingRepository;
     private final EvalRunner evalRunner;
     private final PaymentService paymentService;
@@ -68,14 +57,12 @@ public class AcpCheckoutService {
     public AcpCheckoutService(UserRepository userRepository,
                               CartService cartService,
                               OrderService orderService,
-                              EventService eventService,
                               ListingRepository listingRepository,
                               EvalRunner evalRunner,
                               PaymentService paymentService) {
         this.userRepository = userRepository;
         this.cartService = cartService;
         this.orderService = orderService;
-        this.eventService = eventService;
         this.listingRepository = listingRepository;
         this.evalRunner = evalRunner;
         this.paymentService = paymentService;
@@ -258,114 +245,6 @@ public class AcpCheckoutService {
         );
     }
 
-    @Transactional(readOnly = true)
-    public PagedResponse<AcpCatalogItem> getCatalog(String query, String category,
-                                                     String city, int page, int size) {
-        EventSearchRequest searchRequest = new EventSearchRequest(
-                query, category, null, city, null, null, null, null, STATUS_ACTIVE, "eventDate", page, size
-        );
-
-        PagedResponse<EventSummaryDto> eventPage = eventService.listEvents(searchRequest);
-
-        List<AcpCatalogItem> catalogItems = eventPage.content().stream()
-                .map(event -> new AcpCatalogItem(
-                        event.slug(),
-                        event.name(),
-                        event.artistName() != null ? event.artistName() : event.name(),
-                        event.categoryName(),
-                        event.venueName(),
-                        event.city(),
-                        event.eventDate(),
-                        event.minPrice(),
-                        event.minPrice(), // EventSummaryDto only has minPrice
-                        event.availableTickets(),
-                        "/events/" + event.slug()
-                ))
-                .toList();
-
-        return new PagedResponse<>(
-                catalogItems,
-                eventPage.page(),
-                eventPage.size(),
-                eventPage.totalElements(),
-                eventPage.totalPages()
-        );
-    }
-
-    @Transactional(readOnly = true)
-    public PagedResponse<AcpListingItem> getListings(String query, String category,
-                                                     String city, Instant dateFrom, Instant dateTo,
-                                                     BigDecimal minPrice, BigDecimal maxPrice,
-                                                     String section, int page, int size) {
-        List<EventSummaryDto> allEvents = new ArrayList<>();
-        int eventPage = 0;
-        int eventPageSize = 100;
-        PagedResponse<EventSummaryDto> eventBatch;
-        do {
-            EventSearchRequest searchRequest = new EventSearchRequest(
-                    query, category, null, city,
-                    dateFrom, dateTo, minPrice, maxPrice,
-                    STATUS_ACTIVE, "eventDate", eventPage, eventPageSize
-            );
-            eventBatch = eventService.listEvents(searchRequest);
-            allEvents.addAll(eventBatch.content());
-            eventPage++;
-        } while (eventPage < eventBatch.totalPages());
-
-        List<AcpListingItem> allListings = new ArrayList<>();
-
-        for (EventSummaryDto event : allEvents) {
-            List<Listing> eventListings = listingRepository.findByEventIdAndStatus(event.id(), STATUS_ACTIVE);
-            for (Listing listing : eventListings) {
-                if (!matchesFilters(listing, minPrice, maxPrice, section)) {
-                    continue;
-                }
-
-                String rowLabel = null;
-                String seatNumber = null;
-                if (listing.getTicket().getSeat() != null) {
-                    rowLabel = listing.getTicket().getSeat().getRow().getRowLabel();
-                    seatNumber = listing.getTicket().getSeat().getSeatNumber();
-                }
-
-                allListings.add(new AcpListingItem(
-                        listing.getId(),
-                        event.slug(),
-                        event.name(),
-                        event.slug(),
-                        event.artistName() != null ? event.artistName() : event.name(),
-                        event.categoryName(),
-                        event.venueName(),
-                        event.city(),
-                        event.eventDate(),
-                        listing.getTicket().getSection().getName(),
-                        rowLabel,
-                        seatNumber,
-                        listing.getComputedPrice(),
-                        "/events/" + event.slug()
-                ));
-            }
-        }
-
-        List<AcpListingItem> sortedListings = allListings.stream()
-                .sorted(Comparator.comparing(AcpListingItem::price))
-                .toList();
-
-        int safePage = Math.max(page, 0);
-        int safeSize = size <= 0 ? 20 : Math.min(size, 100);
-        int start = Math.min(safePage * safeSize, sortedListings.size());
-        int end = Math.min(start + safeSize, sortedListings.size());
-        int totalPages = sortedListings.isEmpty() ? 0 : (int) Math.ceil((double) sortedListings.size() / safeSize);
-
-        return new PagedResponse<>(
-                sortedListings.subList(start, end),
-                safePage,
-                safeSize,
-                sortedListings.size(),
-                totalPages
-        );
-    }
-
     private User resolveUser(String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Buyer email is required");
@@ -404,15 +283,6 @@ public class AcpCheckoutService {
                     .collect(Collectors.joining("; "));
             throw new ConflictException("ACP cart validation failed: " + failureMessage);
         }
-    }
-
-    private boolean matchesFilters(Listing listing, BigDecimal minPrice,
-                                   BigDecimal maxPrice, String section) {
-        boolean priceAboveMin = minPrice == null || listing.getComputedPrice().compareTo(minPrice) >= 0;
-        boolean priceBelowMax = maxPrice == null || listing.getComputedPrice().compareTo(maxPrice) <= 0;
-        boolean sectionMatches = section == null || section.isBlank()
-                || section.strip().equalsIgnoreCase(listing.getTicket().getSection().getName());
-        return priceAboveMin && priceBelowMax && sectionMatches;
     }
 
     private void validateStoredAgentContext(Order order, String agentId, String mandateId) {

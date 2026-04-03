@@ -13,7 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.mockhub.acp.dto.AcpCatalogItem;
 import com.mockhub.acp.dto.AcpCheckoutRequest;
 import com.mockhub.acp.dto.AcpCheckoutResponse;
 import com.mockhub.acp.dto.AcpLineItem;
@@ -22,15 +21,11 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
 import com.mockhub.cart.service.CartService;
-import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.eval.dto.EvalResult;
 import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
-import com.mockhub.event.dto.EventSearchRequest;
-import com.mockhub.event.dto.EventSummaryDto;
-import com.mockhub.event.service.EventService;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
@@ -63,9 +58,6 @@ class AcpCheckoutServiceTest {
 
     @Mock
     private OrderService orderService;
-
-    @Mock
-    private EventService eventService;
 
     @Mock
     private ListingRepository listingRepository;
@@ -443,96 +435,6 @@ class AcpCheckoutServiceTest {
     }
 
     @Test
-    @DisplayName("getCatalog - given events exist - returns catalog items")
-    void getCatalog_givenEventsExist_returnsCatalogItems() {
-        EventSummaryDto event = new EventSummaryDto(
-                1L, "Rock Festival", "rock-festival", "Band A",
-                "Madison Square Garden", "NYC", Instant.now(),
-                new BigDecimal("75.00"), 50, null, "rock", true);
-        PagedResponse<EventSummaryDto> eventPage = new PagedResponse<>(
-                List.of(event), 0, 20, 1, 1);
-
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventPage);
-
-        PagedResponse<AcpCatalogItem> result = acpCheckoutService.getCatalog(
-                "rock", "rock", "NYC", 0, 20);
-
-        assertNotNull(result);
-        assertEquals(1, result.content().size());
-        AcpCatalogItem item = result.content().getFirst();
-        assertEquals("rock-festival", item.productId());
-        assertEquals("Rock Festival", item.name());
-        assertEquals("Band A", item.description());
-        assertEquals("rock", item.category());
-        assertEquals("Madison Square Garden", item.venue());
-        assertEquals("NYC", item.city());
-        assertEquals(new BigDecimal("75.00"), item.minPrice());
-        assertEquals(50, item.availableTickets());
-        assertEquals("/events/rock-festival", item.url());
-    }
-
-    @Test
-    @DisplayName("getCatalog - given no events - returns empty catalog")
-    void getCatalog_givenNoEvents_returnsEmptyCatalog() {
-        PagedResponse<EventSummaryDto> emptyPage = new PagedResponse<>(
-                List.of(), 0, 20, 0, 0);
-
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(emptyPage);
-
-        PagedResponse<AcpCatalogItem> result = acpCheckoutService.getCatalog(
-                null, null, null, 0, 20);
-
-        assertNotNull(result);
-        assertEquals(0, result.content().size());
-        assertEquals(0, result.totalElements());
-    }
-
-    @Test
-    @DisplayName("getCatalog - given event with null artistName - uses event name as description")
-    void getCatalog_givenEventWithNullArtistName_usesEventNameAsDescription() {
-        EventSummaryDto event = new EventSummaryDto(
-                1L, "Sports Game", "sports-game", null,
-                "Stadium", "Chicago", Instant.now(),
-                new BigDecimal("100.00"), 200, null, "sports", false);
-        PagedResponse<EventSummaryDto> eventPage = new PagedResponse<>(
-                List.of(event), 0, 20, 1, 1);
-
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventPage);
-
-        PagedResponse<AcpCatalogItem> result = acpCheckoutService.getCatalog(
-                null, null, null, 0, 20);
-
-        assertNotNull(result);
-        assertEquals("Sports Game", result.content().getFirst().description());
-    }
-
-    @Test
-    @DisplayName("getListings - given matching events and listings - returns priced offer items")
-    void getListings_givenMatchingEventsAndListings_returnsOfferItems() {
-        EventSummaryDto event = new EventSummaryDto(
-                1L, "Rock Festival", "rock-festival", "Band A",
-                "Madison Square Garden", "NYC", Instant.now(),
-                new BigDecimal("75.00"), 50, null, "rock", true);
-        PagedResponse<EventSummaryDto> eventPage = new PagedResponse<>(
-                List.of(event), 0, 20, 1, 1);
-
-        Listing listing = createListing(10L);
-        listing.setComputedPrice(new BigDecimal("80.00"));
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventPage);
-        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE")).thenReturn(List.of(listing));
-
-        PagedResponse<com.mockhub.acp.dto.AcpListingItem> result = acpCheckoutService.getListings(
-                "rock", "rock", "NYC", null, null,
-                new BigDecimal("50.00"), new BigDecimal("100.00"), null, 0, 20);
-
-        assertNotNull(result);
-        assertEquals(1, result.content().size());
-        assertEquals(10L, result.content().getFirst().listingId());
-        assertEquals("Rock Festival", result.content().getFirst().eventName());
-        assertEquals(new BigDecimal("80.00"), result.content().getFirst().price());
-    }
-
-    @Test
     @DisplayName("resolveUser - given null email - throws IllegalArgumentException")
     void resolveUser_givenNullEmail_throwsIllegalArgumentException() {
         AcpCheckoutRequest request = createCheckoutRequest(
@@ -648,46 +550,6 @@ class AcpCheckoutServiceTest {
                 acpCheckoutService.updateCheckout("MH-20260323-0001", updateRequest, "buyer@test.com"));
 
         verify(orderService, never()).failOrder(any());
-    }
-
-    @Test
-    @DisplayName("getListings - given filters - returns filtered results")
-    void getListings_givenFilters_returnsFilteredResults() {
-        EventSummaryDto event = new EventSummaryDto(
-                1L, "Rock Festival", "rock-festival", "Band A",
-                "Madison Square Garden", "NYC", Instant.now(),
-                new BigDecimal("50.00"), 100, null, "rock", true);
-        PagedResponse<EventSummaryDto> eventPage = new PagedResponse<>(
-                List.of(event), 0, 100, 1, 1);
-
-        // Create listing at $80 in "Floor" section
-        Listing floorListing = createListing(10L);
-        floorListing.setComputedPrice(new BigDecimal("80.00"));
-
-        // Create listing at $200 in "VIP" section (should be filtered out by maxPrice)
-        Listing vipListing = createListing(20L);
-        vipListing.setComputedPrice(new BigDecimal("200.00"));
-        com.mockhub.venue.entity.Section vipSection = new com.mockhub.venue.entity.Section();
-        vipSection.setName("VIP");
-        vipListing.getTicket().setSection(vipSection);
-
-        // Create listing at $30 in "Floor" section (should be filtered out by minPrice)
-        Listing cheapListing = createListing(30L);
-        cheapListing.setComputedPrice(new BigDecimal("30.00"));
-
-        when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(eventPage);
-        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE"))
-                .thenReturn(List.of(floorListing, vipListing, cheapListing));
-
-        PagedResponse<com.mockhub.acp.dto.AcpListingItem> result = acpCheckoutService.getListings(
-                "rock", "rock", "NYC", null, null,
-                new BigDecimal("50.00"), new BigDecimal("150.00"), "Floor", 0, 20);
-
-        assertNotNull(result);
-        assertEquals(1, result.content().size(), "Only the $80 Floor listing should match all filters");
-        assertEquals(10L, result.content().getFirst().listingId());
-        assertEquals(new BigDecimal("80.00"), result.content().getFirst().price());
-        assertEquals("Floor", result.content().getFirst().sectionName());
     }
 
     @Test
