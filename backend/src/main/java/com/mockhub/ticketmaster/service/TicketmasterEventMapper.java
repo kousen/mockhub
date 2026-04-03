@@ -141,7 +141,7 @@ public class TicketmasterEventMapper {
             case "Music" -> "concerts";
             case "Sports" -> "sports";
             case "Arts & Theatre" -> "theater";
-            default -> "other";
+            default -> CATEGORY_OTHER;
         };
     }
 
