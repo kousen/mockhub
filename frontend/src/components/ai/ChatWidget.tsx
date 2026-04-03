@@ -12,7 +12,7 @@ import type { ChatMessage } from '@/types/ai';
  * and anchor tags for external URLs.
  */
 function MessageContent({ content }: { content: string }) {
-  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const linkRegex = /\[([^\]]{1,500})\]\(([^)]{1,2000})\)/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
