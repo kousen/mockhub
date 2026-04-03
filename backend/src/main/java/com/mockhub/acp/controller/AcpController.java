@@ -22,8 +22,10 @@ import com.mockhub.acp.dto.AcpCheckoutResponse;
 import com.mockhub.acp.dto.AcpCompleteRequest;
 import com.mockhub.acp.dto.AcpListingItem;
 import com.mockhub.acp.dto.AcpUpdateRequest;
+import com.mockhub.acp.service.AcpCatalogService;
 import com.mockhub.acp.service.AcpCheckoutService;
 import com.mockhub.common.dto.PagedResponse;
+import com.mockhub.ticket.dto.ListingSearchCriteria;
 
 import jakarta.validation.Valid;
 
@@ -32,9 +34,12 @@ import jakarta.validation.Valid;
 public class AcpController {
 
     private final AcpCheckoutService acpCheckoutService;
+    private final AcpCatalogService acpCatalogService;
 
-    public AcpController(AcpCheckoutService acpCheckoutService) {
+    public AcpController(AcpCheckoutService acpCheckoutService,
+                         AcpCatalogService acpCatalogService) {
         this.acpCheckoutService = acpCheckoutService;
+        this.acpCatalogService = acpCatalogService;
     }
 
     @PostMapping("/checkout")
@@ -86,7 +91,7 @@ public class AcpController {
             @RequestParam(required = false) String city,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        PagedResponse<AcpCatalogItem> response = acpCheckoutService.getCatalog(
+        PagedResponse<AcpCatalogItem> response = acpCatalogService.getCatalog(
                 query, category, city, page, size);
         return ResponseEntity.ok(response);
     }
@@ -103,8 +108,9 @@ public class AcpController {
             @RequestParam(required = false) String section,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        PagedResponse<AcpListingItem> response = acpCheckoutService.getListings(
-                query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, page, size);
+        ListingSearchCriteria criteria = new ListingSearchCriteria(
+                query, category, city, minPrice, maxPrice, section, dateFrom, dateTo, size);
+        PagedResponse<AcpListingItem> response = acpCatalogService.getListings(criteria, page, size);
         return ResponseEntity.ok(response);
     }
 }

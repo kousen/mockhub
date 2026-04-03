@@ -20,6 +20,7 @@ import com.mockhub.acp.dto.AcpCheckoutResponse;
 import com.mockhub.acp.dto.AcpListingItem;
 import com.mockhub.acp.dto.AcpLineItemResponse;
 import com.mockhub.acp.dto.AcpPricing;
+import com.mockhub.acp.service.AcpCatalogService;
 import com.mockhub.acp.service.AcpCheckoutService;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.auth.security.JwtAuthenticationFilter;
@@ -29,6 +30,7 @@ import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.config.SecurityConfig;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -47,6 +49,9 @@ class AcpControllerTest {
 
     @MockitoBean
     private AcpCheckoutService acpCheckoutService;
+
+    @MockitoBean
+    private AcpCatalogService acpCatalogService;
 
     @MockitoBean
     private UserRepository userRepository;
@@ -244,7 +249,7 @@ class AcpControllerTest {
                         new BigDecimal("50.00"), new BigDecimal("50.00"), 10,
                         "/events/test-concert")),
                 0, 20, 1, 1);
-        when(acpCheckoutService.getCatalog(null, null, null, 0, 20)).thenReturn(catalogResponse);
+        when(acpCatalogService.getCatalog(null, null, null, 0, 20)).thenReturn(catalogResponse);
 
         mockMvc.perform(get("/acp/v1/catalog")
                         .header("X-API-Key", "test-api-key"))
@@ -257,7 +262,7 @@ class AcpControllerTest {
     @DisplayName("GET /acp/v1/catalog - valid key with query params - returns 200")
     void getCatalog_validKeyWithQueryParams_returns200() throws Exception {
         PagedResponse<AcpCatalogItem> catalogResponse = new PagedResponse<>(List.of(), 0, 10, 0, 0);
-        when(acpCheckoutService.getCatalog("rock", "music", "NYC", 0, 10)).thenReturn(catalogResponse);
+        when(acpCatalogService.getCatalog("rock", "music", "NYC", 0, 10)).thenReturn(catalogResponse);
 
         mockMvc.perform(get("/acp/v1/catalog")
                         .header("X-API-Key", "test-api-key")
@@ -279,7 +284,7 @@ class AcpControllerTest {
                         "rock", "Test Venue", "NYC", Instant.now(),
                         "Floor", "A", "1", new BigDecimal("50.00"), "/events/test-concert")),
                 0, 20, 1, 1);
-        when(acpCheckoutService.getListings(null, null, null, null, null, null, null, null, 0, 20))
+        when(acpCatalogService.getListings(any(), eq(0), eq(20)))
                 .thenReturn(listingsResponse);
 
         mockMvc.perform(get("/acp/v1/listings")
