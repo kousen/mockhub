@@ -13,7 +13,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.mockhub.admin.dto.DashboardStatsDto;
-import com.mockhub.admin.service.AdminService;
+import com.mockhub.admin.service.AdminDashboardService;
+import com.mockhub.admin.service.AdminEventService;
+import com.mockhub.admin.service.AdminOrderService;
+import com.mockhub.admin.service.AdminUserService;
 import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
@@ -35,7 +38,16 @@ class AdminControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private AdminService adminService;
+    private AdminDashboardService adminDashboardService;
+
+    @MockitoBean
+    private AdminEventService adminEventService;
+
+    @MockitoBean
+    private AdminUserService adminUserService;
+
+    @MockitoBean
+    private AdminOrderService adminOrderService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -67,7 +79,7 @@ class AdminControllerTest {
     void getDashboardStats_admin_returns200WithStats() throws Exception {
         DashboardStatsDto stats = new DashboardStatsDto(
                 100L, 50L, new BigDecimal("10000.00"), 25L, 500L, List.of());
-        when(adminService.getDashboardStats()).thenReturn(stats);
+        when(adminDashboardService.getDashboardStats()).thenReturn(stats);
 
         mockMvc.perform(get("/api/v1/admin/dashboard"))
                 .andExpect(status().isOk())
@@ -129,7 +141,7 @@ class AdminControllerTest {
     @DisplayName("POST /api/v1/admin/ticketmaster/activate - admin - returns 200 with counts")
     @WithMockUser(authorities = "ROLE_ADMIN")
     void activateTicketmasterEvents_admin_returns200() throws Exception {
-        when(adminService.activateTicketmasterEvents())
+        when(adminEventService.activateTicketmasterEvents())
                 .thenReturn(java.util.Map.of(
                         "seedEventsDeactivated", 100,
                         "ticketmasterEventsFeatured", 83,

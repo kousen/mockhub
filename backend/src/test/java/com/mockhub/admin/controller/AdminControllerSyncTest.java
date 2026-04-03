@@ -16,7 +16,10 @@ class AdminControllerSyncTest {
     @Test
     void triggerTicketmasterSync_givenNoSyncService_returns503() {
         AdminController controller = new AdminController(
-                mock(com.mockhub.admin.service.AdminService.class),
+                mock(com.mockhub.admin.service.AdminDashboardService.class),
+                mock(com.mockhub.admin.service.AdminEventService.class),
+                mock(com.mockhub.admin.service.AdminUserService.class),
+                mock(com.mockhub.admin.service.AdminOrderService.class),
                 Optional.empty());
 
         ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
@@ -30,7 +33,10 @@ class AdminControllerSyncTest {
         com.mockhub.ticketmaster.service.TicketmasterSyncService syncService =
                 mock(com.mockhub.ticketmaster.service.TicketmasterSyncService.class);
         AdminController controller = new AdminController(
-                mock(com.mockhub.admin.service.AdminService.class),
+                mock(com.mockhub.admin.service.AdminDashboardService.class),
+                mock(com.mockhub.admin.service.AdminEventService.class),
+                mock(com.mockhub.admin.service.AdminUserService.class),
+                mock(com.mockhub.admin.service.AdminOrderService.class),
                 Optional.of(syncService));
 
         ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
