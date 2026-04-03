@@ -127,4 +127,29 @@ describe('CheckoutPage', () => {
     expect(screen.getAllByText('Mock Payment').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Stripe')).toBeDefined();
   });
+
+  it('renders order review with cart items', () => {
+    setCartState(mockCart);
+
+    renderWithProviders(<CheckoutPage />);
+
+    expect(screen.getByText('Taylor Swift - Eras Tour')).toBeDefined();
+    expect(screen.getByText('Kendrick Lamar')).toBeDefined();
+  });
+
+  it('renders checkout heading', () => {
+    setCartState(mockCart);
+
+    renderWithProviders(<CheckoutPage />);
+
+    expect(screen.getByRole('heading', { name: 'Checkout' })).toBeDefined();
+  });
+
+  it('shows stripe tab', () => {
+    setCartState(mockCart);
+
+    renderWithProviders(<CheckoutPage />);
+
+    expect(screen.getByText('Stripe')).toBeDefined();
+  });
 });
