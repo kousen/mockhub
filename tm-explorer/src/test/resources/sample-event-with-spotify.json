@@ -1,0 +1,114 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "name": "Beyoncé - Cowboy Carter Tour",
+        "id": "vvG1fZ9pBkdiRe",
+        "url": "https://www.ticketmaster.com/beyonce-cowboy-carter-tour-new-york/event/vvG1fZ9pBkdiRe",
+        "dates": {
+          "start": {
+            "localDate": "2026-07-15",
+            "localTime": "20:00:00",
+            "dateTime": "2026-07-16T00:00:00Z",
+            "dateTBD": false,
+            "timeTBA": false
+          },
+          "timezone": "America/New_York",
+          "status": {
+            "code": "onsale"
+          }
+        },
+        "classifications": [
+          {
+            "primary": true,
+            "segment": { "id": "KZFzniwnSyZfZ7v7nJ", "name": "Music" },
+            "genre": { "id": "KnvZfZ7vAev", "name": "Pop" },
+            "subGenre": { "id": "KZazBEonSMnZfZ7vk1l", "name": "Pop" }
+          }
+        ],
+        "images": [
+          { "url": "https://s1.ticketm.net/dam/a/1a2/beyonce-16_9.jpg", "ratio": "16_9", "width": 1024, "height": 576, "fallback": false },
+          { "url": "https://s1.ticketm.net/dam/a/1a2/beyonce-3_2.jpg", "ratio": "3_2", "width": 640, "height": 427, "fallback": false }
+        ],
+        "sales": {
+          "public": {
+            "startDateTime": "2026-05-01T14:00:00Z",
+            "endDateTime": "2026-07-16T00:00:00Z",
+            "startTBD": false,
+            "startTBA": false
+          },
+          "presales": [
+            { "startDateTime": "2026-04-28T14:00:00Z", "endDateTime": "2026-05-01T13:59:00Z", "name": "Artist Presale" }
+          ]
+        },
+        "ticketing": {
+          "safeTix": { "enabled": true },
+          "allInclusivePricing": { "enabled": false }
+        },
+        "priceRanges": [
+          { "type": "standard", "currency": "USD", "min": 89.50, "max": 450.00 }
+        ],
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Madison Square Garden",
+              "id": "KovZpZAFnIEA",
+              "postalCode": "10001",
+              "timezone": "America/New_York",
+              "address": { "line1": "4 Pennsylvania Plaza" },
+              "city": { "name": "New York" },
+              "state": { "name": "New York", "stateCode": "NY" },
+              "country": { "name": "United States Of America", "countryCode": "US" },
+              "location": { "latitude": "40.7505", "longitude": "-73.9934" }
+            }
+          ],
+          "attractions": [
+            {
+              "name": "Beyoncé",
+              "id": "K8vZ9171ob7",
+              "locale": "en-us",
+              "externalLinks": {
+                "youtube": [
+                  { "url": "https://www.youtube.com/channel/UCuHzBCaKmtaLcRAOoazhCPA" }
+                ],
+                "twitter": [
+                  { "url": "https://twitter.com/Beyonce" }
+                ],
+                "itunes": [
+                  { "url": "https://music.apple.com/us/artist/beyonc%C3%A9/1419227" }
+                ],
+                "spotify": [
+                  { "url": "https://open.spotify.com/artist/6vWDO969PvNqNYHIOW5v0m" }
+                ],
+                "facebook": [
+                  { "url": "https://www.facebook.com/beyonce" }
+                ],
+                "instagram": [
+                  { "url": "https://www.instagram.com/beyonce" }
+                ],
+                "homepage": [
+                  { "url": "https://www.beyonce.com/" }
+                ]
+              },
+              "classifications": [
+                {
+                  "primary": true,
+                  "segment": { "id": "KZFzniwnSyZfZ7v7nJ", "name": "Music" },
+                  "genre": { "id": "KnvZfZ7vAev", "name": "Pop" },
+                  "subGenre": null
+                }
+              ],
+              "images": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "page": {
+    "size": 1,
+    "totalElements": 42,
+    "totalPages": 42,
+    "number": 0
+  }
+}

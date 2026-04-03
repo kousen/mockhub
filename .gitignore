@@ -3,6 +3,11 @@ backend/build/
 backend/.gradle/
 backend/bin/
 backend/out/
+
+# Ticketmaster Explorer
+tm-explorer/build/
+tm-explorer/.gradle/
+tm-explorer/bin/
 backend/*.jar
 backend/uploads/
 

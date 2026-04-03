@@ -1,0 +1,72 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "name": "Taylor Swift | The Eras Tour",
+        "id": "vvG1fZDEF456",
+        "url": "https://www.ticketmaster.com/taylor-swift-eras-tour/event/vvG1fZDEF456",
+        "dates": {
+          "start": {
+            "localDate": "2026-08-10",
+            "localTime": "19:00:00",
+            "dateTime": "2026-08-10T23:00:00Z",
+            "dateTBD": false,
+            "timeTBA": false
+          },
+          "timezone": "America/New_York",
+          "status": { "code": "onsale" }
+        },
+        "classifications": [
+          {
+            "primary": true,
+            "segment": { "id": "KZFzniwnSyZfZ7v7nJ", "name": "Music" },
+            "genre": { "id": "KnvZfZ7vAev", "name": "Pop" },
+            "subGenre": null
+          }
+        ],
+        "images": [],
+        "_embedded": {
+          "venues": [
+            {
+              "name": "MetLife Stadium",
+              "id": "KovZpZAEdntA",
+              "postalCode": "07073",
+              "timezone": "America/New_York",
+              "address": { "line1": "1 MetLife Stadium Dr" },
+              "city": { "name": "East Rutherford" },
+              "state": { "name": "New Jersey", "stateCode": "NJ" },
+              "country": { "name": "United States Of America", "countryCode": "US" },
+              "location": { "latitude": "40.8128", "longitude": "-74.0742" }
+            }
+          ],
+          "attractions": [
+            {
+              "name": "Taylor Swift",
+              "id": "K8vZ9171K77",
+              "locale": "en-us",
+              "externalLinks": {
+                "spotify": [
+                  { "url": "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02" }
+                ],
+                "youtube": [
+                  { "url": "https://www.youtube.com/channel/UCqECaJ8Gagnn7YCbPEzWH6g" }
+                ],
+                "instagram": [
+                  { "url": "https://www.instagram.com/taylorswift" }
+                ]
+              },
+              "classifications": [],
+              "images": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "page": {
+    "size": 1,
+    "totalElements": 8,
+    "totalPages": 8,
+    "number": 0
+  }
+}

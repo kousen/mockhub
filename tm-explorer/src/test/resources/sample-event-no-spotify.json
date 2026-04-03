@@ -1,0 +1,73 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "name": "New York Knicks vs. Boston Celtics",
+        "id": "vvG1fZABC123",
+        "url": "https://www.ticketmaster.com/knicks-vs-celtics/event/vvG1fZABC123",
+        "dates": {
+          "start": {
+            "localDate": "2026-11-20",
+            "localTime": "19:30:00",
+            "dateTime": "2026-11-21T00:30:00Z",
+            "dateTBD": false,
+            "timeTBA": false
+          },
+          "timezone": "America/New_York",
+          "status": { "code": "onsale" }
+        },
+        "classifications": [
+          {
+            "primary": true,
+            "segment": { "id": "KZFzniwnSyZfZ7v7nE", "name": "Sports" },
+            "genre": { "id": "KnvZfZ7vAde", "name": "Basketball" },
+            "subGenre": { "id": "KZazBEonSMnZfZ7vFJA", "name": "NBA" }
+          }
+        ],
+        "images": [],
+        "priceRanges": null,
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Madison Square Garden",
+              "id": "KovZpZAFnIEA",
+              "postalCode": "10001",
+              "timezone": "America/New_York",
+              "address": { "line1": "4 Pennsylvania Plaza" },
+              "city": { "name": "New York" },
+              "state": { "name": "New York", "stateCode": "NY" },
+              "country": { "name": "United States Of America", "countryCode": "US" },
+              "location": { "latitude": "40.7505", "longitude": "-73.9934" }
+            }
+          ],
+          "attractions": [
+            {
+              "name": "New York Knicks",
+              "id": "K8vZ9171oZ7",
+              "locale": "en-us",
+              "externalLinks": {
+                "twitter": [
+                  { "url": "https://twitter.com/nyknicks" }
+                ],
+                "facebook": [
+                  { "url": "https://www.facebook.com/nyknicks" }
+                ],
+                "homepage": [
+                  { "url": "https://www.nba.com/knicks" }
+                ]
+              },
+              "classifications": [],
+              "images": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "page": {
+    "size": 1,
+    "totalElements": 15,
+    "totalPages": 15,
+    "number": 0
+  }
+}

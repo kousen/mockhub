@@ -1,0 +1,103 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "name": "Eagles Live at Sphere",
+        "id": "1A9ZkoaGkePdD04",
+        "url": "https://www.ticketmaster.com/eagles-live-at-sphere/event/1A9ZkoaGkePdD04",
+        "dates": {
+          "start": {
+            "localDate": "2026-04-10",
+            "localTime": "20:00:00",
+            "dateTime": "2026-04-11T03:00:00Z",
+            "dateTBD": false,
+            "timeTBA": false
+          },
+          "timezone": "America/Los_Angeles",
+          "status": { "code": "onsale" },
+          "spanMultipleDays": false
+        },
+        "sales": {
+          "public": {
+            "startDateTime": "2026-02-20T18:00:00Z",
+            "endDateTime": "2026-04-11T05:30:00Z",
+            "startTBD": false,
+            "startTBA": false
+          },
+          "presales": [
+            { "startDateTime": "2026-02-17T18:00:00Z", "endDateTime": "2026-02-20T17:59:00Z", "name": "Artist Presale" },
+            { "startDateTime": "2026-02-19T18:00:00Z", "endDateTime": "2026-02-20T17:59:00Z", "name": "Venue Presale" }
+          ]
+        },
+        "ticketing": {
+          "safeTix": { "enabled": true },
+          "allInclusivePricing": { "enabled": true }
+        },
+        "doorsTimes": {
+          "localDate": "2026-04-10",
+          "localTime": "18:30:00",
+          "dateTime": "2026-04-11T01:30:00Z"
+        },
+        "classifications": [
+          {
+            "primary": true,
+            "segment": { "id": "KZFzniwnSyZfZ7v7nJ", "name": "Music" },
+            "genre": { "id": "KnvZfZ7vAev", "name": "Rock" },
+            "subGenre": null
+          }
+        ],
+        "images": [],
+        "products": [
+          { "name": "Sphere Parking (Eagles)", "id": "16vjZ_AeaG7w_sD", "url": "https://www.ticketmaster.com/sphere-parking/event/16vjZ_AeaG7w_sD", "type": "Parking" }
+        ],
+        "promoter": {
+          "id": "653",
+          "name": "LIVE NATION MUSIC",
+          "description": "LIVE NATION MUSIC / NTL / USA"
+        },
+        "info": "This event may include immersive elements.",
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Sphere",
+              "id": "KovZpZAJledA",
+              "postalCode": "89158",
+              "timezone": "America/Los_Angeles",
+              "address": { "line1": "255 Sands Ave" },
+              "city": { "name": "Las Vegas" },
+              "state": { "name": "Nevada", "stateCode": "NV" },
+              "country": { "name": "United States Of America", "countryCode": "US" },
+              "location": { "latitude": "36.1215", "longitude": "-115.1739" }
+            }
+          ],
+          "attractions": [
+            {
+              "name": "Eagles",
+              "id": "K8vZ9171ob7",
+              "locale": "en-us",
+              "externalLinks": {
+                "youtube": [{ "url": "https://www.youtube.com/channel/UCPTypnDNlOZVnD7MY30_YBw" }],
+                "itunes": [{ "url": "https://itunes.apple.com/artist/id1053549" }],
+                "lastfm": [{ "url": "https://www.last.fm/music/Eagles" }],
+                "spotify": [{ "url": "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL" }],
+                "facebook": [{ "url": "https://www.facebook.com/EaglesBand" }],
+                "wiki": [{ "url": "https://en.wikipedia.org/wiki/Eagles_(band)" }],
+                "instagram": [{ "url": "https://www.instagram.com/eagles/" }],
+                "musicbrainz": [{ "id": "f46bd570-5768-462e-b84c-c7c993bbf47e", "url": "https://musicbrainz.org/artist/f46bd570-5768-462e-b84c-c7c993bbf47e" }],
+                "homepage": [{ "url": "https://eagles.com/" }]
+              },
+              "classifications": [],
+              "images": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "page": {
+    "size": 1,
+    "totalElements": 5,
+    "totalPages": 5,
+    "number": 0
+  }
+}
