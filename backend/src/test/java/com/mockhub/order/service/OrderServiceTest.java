@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -32,11 +31,6 @@ import com.mockhub.common.exception.UnauthorizedException;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.mandate.service.MandateService;
-import com.mockhub.notification.service.EmailDeliveryService;
-import com.mockhub.notification.entity.NotificationType;
-import com.mockhub.notification.service.NotificationService;
-import com.mockhub.notification.service.SmsDeliveryService;
-import com.mockhub.ticket.service.TicketSigningService;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
@@ -80,16 +74,7 @@ class OrderServiceTest {
     private EventRepository eventRepository;
 
     @Mock
-    private NotificationService notificationService;
-
-    @Mock
-    private SmsDeliveryService smsDeliveryService;
-
-    @Mock
-    private EmailDeliveryService emailDeliveryService;
-
-    @Mock
-    private TicketSigningService ticketSigningService;
+    private OrderNotificationService orderNotificationService;
 
     @Mock
     private MandateService mandateService;
@@ -106,9 +91,7 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         orderService = new OrderService(orderRepository, cartRepository, cartService,
-                ticketService, eventRepository, notificationService,
-                smsDeliveryService, emailDeliveryService, ticketSigningService, mandateService,
-                "http://localhost:5173");
+                ticketService, eventRepository, orderNotificationService, mandateService);
 
         Role buyerRole = new Role("ROLE_BUYER");
         buyerRole.setId(1L);
@@ -298,12 +281,7 @@ class OrderServiceTest {
 
         assertEquals("CONFIRMED", testOrder.getStatus());
         assertNotNull(testOrder.getConfirmedAt());
-        verify(notificationService, times(1)).createNotification(
-                anyLong(),
-                org.mockito.ArgumentMatchers.eq(NotificationType.ORDER_CONFIRMED),
-                anyString(),
-                anyString(),
-                anyString());
+        verify(orderNotificationService, times(1)).sendConfirmationNotifications(any(Order.class));
         verify(eventRepository, times(1)).save(any(Event.class));
         verify(mandateService, times(1)).recordSpend("mandate-123", new BigDecimal("82.50"));
     }
@@ -346,9 +324,8 @@ class OrderServiceTest {
         assertThrows(ConflictException.class,
                 () -> orderService.confirmOrder("MH-20260317-0001"));
 
-        verify(notificationService, org.mockito.Mockito.never())
-                .createNotification(anyLong(), org.mockito.ArgumentMatchers.any(NotificationType.class),
-                        anyString(), anyString(), anyString());
+        verify(orderNotificationService, org.mockito.Mockito.never())
+                .sendConfirmationNotifications(any(Order.class));
     }
 
     @Test
