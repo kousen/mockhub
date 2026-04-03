@@ -28,7 +28,7 @@ public final class SlugUtil {
         slug = NON_LATIN.matcher(slug).replaceAll("");
         slug = CONSECUTIVE_HYPHENS.matcher(slug).replaceAll("-");
         slug = slug.toLowerCase(Locale.ENGLISH);
-        slug = slug.replaceAll("^-|-$", "");
+        slug = slug.replaceAll("(^-)|(-$)", "");
 
         return slug;
     }
