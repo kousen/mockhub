@@ -31,6 +31,7 @@ public class TicketmasterSyncService {
 
     private static final Logger log = LoggerFactory.getLogger(TicketmasterSyncService.class);
 
+    private static final String STATUS_ACTIVE = "ACTIVE";
     private static final List<String> CLASSIFICATIONS_TO_SYNC = List.of(
             "music", "sports", "arts & theatre");
 
@@ -198,7 +199,7 @@ public class TicketmasterSyncService {
         Event savedEvent = eventRepository.save(event);
 
         // Only generate tickets and listings for active events
-        if ("ACTIVE".equals(savedEvent.getStatus())) {
+        if (STATUS_ACTIVE.equals(savedEvent.getStatus())) {
             ticketGenerator.generateForEvent(savedEvent);
 
             // Update ticket counts to match actual generated capacity
@@ -305,12 +306,12 @@ public class TicketmasterSyncService {
     private String mapTmStatus(TicketmasterEventResponse tmEvent) {
         if (tmEvent.dates() == null || tmEvent.dates().status() == null
                 || tmEvent.dates().status().code() == null) {
-            return "ACTIVE";
+            return STATUS_ACTIVE;
         }
         return switch (tmEvent.dates().status().code()) {
             case "cancelled" -> "CANCELLED";
             case "postponed" -> "POSTPONED";
-            default -> "ACTIVE";
+            default -> STATUS_ACTIVE;
         };
     }
 

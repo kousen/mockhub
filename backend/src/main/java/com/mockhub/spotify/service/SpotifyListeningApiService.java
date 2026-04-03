@@ -146,7 +146,6 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
     @SuppressWarnings("unchecked")
     private SpotifyListeningDto doFetchAndCache(Long userId, String accessToken,
                                                  SpotifyListeningCache existingCache) {
-        // Fetch top artists
         Map<String, Object> topArtistsResponse = restClient.get()
                 .uri("/me/top/artists?limit=20&time_range=medium_term")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
@@ -156,43 +155,16 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
         List<String> artistIds = new ArrayList<>();
         List<String> artistNames = new ArrayList<>();
         LinkedHashSet<String> genres = new LinkedHashSet<>();
+        parseTopArtists(topArtistsResponse, artistIds, artistNames, genres);
 
-        if (topArtistsResponse != null && topArtistsResponse.containsKey(ITEMS_KEY)) {
-            List<Map<String, Object>> items = (List<Map<String, Object>>) topArtistsResponse.get(ITEMS_KEY);
-            for (Map<String, Object> artist : items) {
-                artistIds.add((String) artist.get("id"));
-                artistNames.add((String) artist.get("name"));
-                List<String> artistGenres = (List<String>) artist.get("genres");
-                if (artistGenres != null) {
-                    genres.addAll(artistGenres);
-                }
-            }
-        }
-
-        // Fetch recently played
         Map<String, Object> recentlyPlayedResponse = restClient.get()
                 .uri("/me/player/recently-played?limit=50")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .retrieve()
                 .body(Map.class);
 
-        LinkedHashSet<String> recentArtistIds = new LinkedHashSet<>();
-        if (recentlyPlayedResponse != null && recentlyPlayedResponse.containsKey(ITEMS_KEY)) {
-            List<Map<String, Object>> items = (List<Map<String, Object>>) recentlyPlayedResponse.get(ITEMS_KEY);
-            for (Map<String, Object> item : items) {
-                Map<String, Object> track = (Map<String, Object>) item.get("track");
-                if (track != null) {
-                    List<Map<String, Object>> artists = (List<Map<String, Object>>) track.get("artists");
-                    if (artists != null) {
-                        for (Map<String, Object> artist : artists) {
-                            recentArtistIds.add((String) artist.get("id"));
-                        }
-                    }
-                }
-            }
-        }
+        LinkedHashSet<String> recentArtistIds = parseRecentlyPlayed(recentlyPlayedResponse);
 
-        // Upsert cache
         SpotifyListeningCache cache = existingCache != null ? existingCache : new SpotifyListeningCache();
         cache.setUserId(userId);
         cache.setTopArtistIds(artistIds);
@@ -208,6 +180,45 @@ public class SpotifyListeningApiService implements SpotifyListeningService {
         return new SpotifyListeningDto(
                 artistIds, artistNames, new ArrayList<>(genres),
                 new ArrayList<>(recentArtistIds), true, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void parseTopArtists(Map<String, Object> response,
+                                  List<String> artistIds, List<String> artistNames,
+                                  LinkedHashSet<String> genres) {
+        if (response == null || !response.containsKey(ITEMS_KEY)) {
+            return;
+        }
+        List<Map<String, Object>> items = (List<Map<String, Object>>) response.get(ITEMS_KEY);
+        for (Map<String, Object> artist : items) {
+            artistIds.add((String) artist.get("id"));
+            artistNames.add((String) artist.get("name"));
+            List<String> artistGenres = (List<String>) artist.get("genres");
+            if (artistGenres != null) {
+                genres.addAll(artistGenres);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private LinkedHashSet<String> parseRecentlyPlayed(Map<String, Object> response) {
+        LinkedHashSet<String> recentArtistIds = new LinkedHashSet<>();
+        if (response == null || !response.containsKey(ITEMS_KEY)) {
+            return recentArtistIds;
+        }
+        List<Map<String, Object>> items = (List<Map<String, Object>>) response.get(ITEMS_KEY);
+        for (Map<String, Object> item : items) {
+            Map<String, Object> track = (Map<String, Object>) item.get("track");
+            if (track != null) {
+                List<Map<String, Object>> artists = (List<Map<String, Object>>) track.get("artists");
+                if (artists != null) {
+                    for (Map<String, Object> artist : artists) {
+                        recentArtistIds.add((String) artist.get("id"));
+                    }
+                }
+            }
+        }
+        return recentArtistIds;
     }
 
     @SuppressWarnings("unchecked")

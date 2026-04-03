@@ -82,49 +82,64 @@ public class CookieOAuth2AuthorizationRequestRepository
         return authRequest;
     }
 
-    @SuppressWarnings("unchecked")
     private OAuth2AuthorizationRequest getCookieValue(HttpServletRequest request) {
         if (request.getCookies() == null) {
             return null;
         }
         for (Cookie cookie : request.getCookies()) {
             if (COOKIE_NAME.equals(cookie.getName())) {
-                try {
-                    String[] parts = cookie.getValue().split("\\.", 2);
-                    if (parts.length != 2) {
-                        return null;
-                    }
-                    String json = new String(Base64.getUrlDecoder().decode(parts[0]),
-                            StandardCharsets.UTF_8);
-                    String expectedSignature = sign(json);
-                    if (!expectedSignature.equals(parts[1])) {
-                        return null;
-                    }
-                    Map<String, Object> data = objectMapper.readValue(json, Map.class);
-                    String scopesStr = (String) data.get("scopes");
-                    Set<String> scopes = scopesStr != null && !scopesStr.isEmpty()
-                            ? Set.of(scopesStr.split(","))
-                            : Set.of();
-                    String redirectUri = (String) data.get("redirectUri");
-                    String state = (String) data.get("state");
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> attributes = data.get(ATTRIBUTES_KEY) instanceof Map
-                            ? (Map<String, Object>) data.get(ATTRIBUTES_KEY)
-                            : Map.of();
-                    return OAuth2AuthorizationRequest.authorizationCode()
-                            .authorizationUri((String) data.get("authorizationUri"))
-                            .clientId((String) data.get("clientId"))
-                            .redirectUri(redirectUri.isEmpty() ? null : redirectUri)
-                            .state(state.isEmpty() ? null : state)
-                            .scopes(scopes)
-                            .attributes(attrs -> attrs.putAll(attributes))
-                            .build();
-                } catch (Exception e) {
-                    return null;
-                }
+                return parseCookiePayload(cookie.getValue());
             }
         }
         return null;
+    }
+
+    private String verifyAndDecodePayload(String cookieValue) {
+        String[] parts = cookieValue.split("\\.", 2);
+        if (parts.length != 2) {
+            return null;
+        }
+        String json = new String(Base64.getUrlDecoder().decode(parts[0]), StandardCharsets.UTF_8);
+        String expectedSignature = sign(json);
+        if (!expectedSignature.equals(parts[1])) {
+            return null;
+        }
+        return json;
+    }
+
+    @SuppressWarnings("unchecked")
+    private OAuth2AuthorizationRequest parseCookiePayload(String cookieValue) {
+        try {
+            String json = verifyAndDecodePayload(cookieValue);
+            if (json == null) {
+                return null;
+            }
+            Map<String, Object> data = objectMapper.readValue(json, Map.class);
+            return buildAuthorizationRequest(data);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private OAuth2AuthorizationRequest buildAuthorizationRequest(Map<String, Object> data) {
+        String scopesStr = (String) data.get("scopes");
+        Set<String> scopes = scopesStr != null && !scopesStr.isEmpty()
+                ? Set.of(scopesStr.split(","))
+                : Set.of();
+        String redirectUri = (String) data.get("redirectUri");
+        String state = (String) data.get("state");
+        Map<String, Object> attributes = data.get(ATTRIBUTES_KEY) instanceof Map
+                ? (Map<String, Object>) data.get(ATTRIBUTES_KEY)
+                : Map.of();
+        return OAuth2AuthorizationRequest.authorizationCode()
+                .authorizationUri((String) data.get("authorizationUri"))
+                .clientId((String) data.get("clientId"))
+                .redirectUri(redirectUri.isEmpty() ? null : redirectUri)
+                .state(state.isEmpty() ? null : state)
+                .scopes(scopes)
+                .attributes(attrs -> attrs.putAll(attributes))
+                .build();
     }
 
     private String sign(String data) {

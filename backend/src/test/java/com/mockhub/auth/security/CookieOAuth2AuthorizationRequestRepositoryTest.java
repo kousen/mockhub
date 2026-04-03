@@ -125,6 +125,34 @@ class CookieOAuth2AuthorizationRequestRepositoryTest {
     }
 
     @Test
+    @DisplayName("loadAuthorizationRequest - given valid signature but invalid JSON - returns null")
+    void loadAuthorizationRequest_givenValidSignatureInvalidJson_returnsNull() {
+        // Create a cookie with valid HMAC signature but invalid JSON content
+        String invalidJson = "not-valid-json{{{";
+        String payload = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(invalidJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        // Sign using the same key as the repository
+        try {
+            javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
+            mac.init(new javax.crypto.spec.SecretKeySpec(
+                    "dGVzdC1zZWNyZXQta2V5LWZvci1obWFjLXNpZ25pbmctdGVzdA=="
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    "HmacSHA256"));
+            byte[] sig = mac.doFinal(invalidJson.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            String signature = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(sig);
+
+            request.setCookies(new Cookie(
+                    CookieOAuth2AuthorizationRequestRepository.COOKIE_NAME,
+                    payload + "." + signature));
+
+            OAuth2AuthorizationRequest result = repository.loadAuthorizationRequest(request);
+            assertNull(result);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
     @DisplayName("saveAuthorizationRequest - handles null redirectUri and state")
     void saveAuthorizationRequest_nullRedirectUriAndState_roundTrips() {
         OAuth2AuthorizationRequest authRequest = createMinimalRequest();

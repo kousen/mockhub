@@ -32,6 +32,7 @@ public class TicketmasterTicketGenerator {
     private static final Logger log = LoggerFactory.getLogger(TicketmasterTicketGenerator.class);
     private static final double LISTING_PERCENTAGE = 0.35;
     private static final int SEATS_PER_ROW = 20;
+    private static final String TICKET_TYPE_STANDARD = "STANDARD";
 
     private final TicketRepository ticketRepository;
     private final ListingRepository listingRepository;
@@ -85,7 +86,7 @@ public class TicketmasterTicketGenerator {
                     ticket.setEvent(event);
                     ticket.setSeat(seat);
                     ticket.setSection(section);
-                    ticket.setTicketType("STANDARD");
+                    ticket.setTicketType(TICKET_TYPE_STANDARD);
                     ticket.setFaceValue(event.getBasePrice());
                     ticket.setStatus("AVAILABLE");
                     ticket.setBarcode(UUID.randomUUID().toString().substring(0, 12));
@@ -173,7 +174,7 @@ public class TicketmasterTicketGenerator {
                     Seat seat = new Seat();
                     seat.setRow(row);
                     seat.setSeatNumber(String.valueOf(s));
-                    seat.setSeatType("STANDARD");
+                    seat.setSeatType(TICKET_TYPE_STANDARD);
                     seat.setAisle(s == 1 || s == SEATS_PER_ROW);
                     seats.add(seat);
                 }
@@ -199,7 +200,7 @@ public class TicketmasterTicketGenerator {
                     ticket.setEvent(event);
                     ticket.setSeat(seat);
                     ticket.setSection(section);
-                    ticket.setTicketType("STANDARD");
+                    ticket.setTicketType(TICKET_TYPE_STANDARD);
                     ticket.setFaceValue(event.getBasePrice());
                     ticket.setStatus("AVAILABLE");
                     ticket.setBarcode(UUID.randomUUID().toString().substring(0, 12));
