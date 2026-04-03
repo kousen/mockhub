@@ -14,7 +14,7 @@ const mockEvent: EventSummary = {
   eventDate: new Date(Date.now() + 86400000).toISOString(),
   minPrice: 75,
   availableTickets: 500,
-  imageUrl: null,
+  primaryImageUrl: null,
   categoryName: 'Concert',
   isFeatured: true,
 };

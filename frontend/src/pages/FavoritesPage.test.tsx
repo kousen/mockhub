@@ -31,7 +31,7 @@ describe('FavoritesPage', () => {
     mockedUseFavorites.mockReturnValue({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof useFavorites>);
+    } as unknown as ReturnType<typeof useFavorites>);
 
     renderWithProviders(<FavoritesPage />);
     expect(screen.getByText('My Favorites')).toBeDefined();
@@ -41,7 +41,7 @@ describe('FavoritesPage', () => {
     mockedUseFavorites.mockReturnValue({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof useFavorites>);
+    } as unknown as ReturnType<typeof useFavorites>);
 
     const { container } = renderWithProviders(<FavoritesPage />);
     // Skeleton elements are rendered (8 of them)
@@ -55,7 +55,7 @@ describe('FavoritesPage', () => {
     mockedUseFavorites.mockReturnValue({
       data: [],
       isLoading: false,
-    } as ReturnType<typeof useFavorites>);
+    } as unknown as ReturnType<typeof useFavorites>);
 
     renderWithProviders(<FavoritesPage />);
     expect(screen.getByText('No favorites yet')).toBeDefined();
@@ -69,7 +69,7 @@ describe('FavoritesPage', () => {
     mockedUseFavorites.mockReturnValue({
       data: undefined,
       isLoading: false,
-    } as ReturnType<typeof useFavorites>);
+    } as unknown as ReturnType<typeof useFavorites>);
 
     renderWithProviders(<FavoritesPage />);
     expect(screen.getByText('No favorites yet')).toBeDefined();
@@ -99,7 +99,7 @@ describe('FavoritesPage', () => {
         },
       ],
       isLoading: false,
-    } as ReturnType<typeof useFavorites>);
+    } as unknown as ReturnType<typeof useFavorites>);
 
     renderWithProviders(<FavoritesPage />);
     expect(screen.getAllByText('Rock Festival 2026').length).toBeGreaterThan(0);

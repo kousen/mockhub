@@ -65,7 +65,7 @@ function setRecommendations(recs: Recommendation[] | undefined, isLoading = fals
   vi.mocked(useRecommendations).mockReturnValue({
     data,
     isLoading,
-  } as ReturnType<typeof useRecommendations>);
+  } as unknown as ReturnType<typeof useRecommendations>);
 }
 
 describe('RecommendationsSection', () => {

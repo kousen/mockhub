@@ -71,7 +71,7 @@ describe('FavoriteButton', () => {
 
   it('calls addFavorite when clicked and not yet favorited', async () => {
     setAuthenticated(true);
-    vi.mocked(useCheckFavorite).mockReturnValue({ data: false } as ReturnType<
+    vi.mocked(useCheckFavorite).mockReturnValue({ data: false } as unknown as ReturnType<
       typeof useCheckFavorite
     >);
 
@@ -83,7 +83,7 @@ describe('FavoriteButton', () => {
 
   it('calls removeFavorite when clicked and already favorited', async () => {
     setAuthenticated(true);
-    vi.mocked(useCheckFavorite).mockReturnValue({ data: true } as ReturnType<
+    vi.mocked(useCheckFavorite).mockReturnValue({ data: true } as unknown as ReturnType<
       typeof useCheckFavorite
     >);
 
@@ -95,7 +95,7 @@ describe('FavoriteButton', () => {
 
   it('has accessible label for unfavorited state', () => {
     setAuthenticated(true);
-    vi.mocked(useCheckFavorite).mockReturnValue({ data: false } as ReturnType<
+    vi.mocked(useCheckFavorite).mockReturnValue({ data: false } as unknown as ReturnType<
       typeof useCheckFavorite
     >);
 
@@ -105,7 +105,7 @@ describe('FavoriteButton', () => {
 
   it('has accessible label for favorited state', () => {
     setAuthenticated(true);
-    vi.mocked(useCheckFavorite).mockReturnValue({ data: true } as ReturnType<
+    vi.mocked(useCheckFavorite).mockReturnValue({ data: true } as unknown as ReturnType<
       typeof useCheckFavorite
     >);
 

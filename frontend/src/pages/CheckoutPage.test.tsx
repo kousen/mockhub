@@ -78,7 +78,7 @@ function setCartState(data: Cart | undefined, isLoading = false) {
   vi.mocked(useCart).mockReturnValue({
     data,
     isLoading,
-  } as ReturnType<typeof useCart>);
+  } as unknown as ReturnType<typeof useCart>);
 }
 
 describe('CheckoutPage', () => {

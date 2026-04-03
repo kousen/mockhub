@@ -39,7 +39,7 @@ describe('CartPage', () => {
     mockedUseCart.mockReturnValue({
       data: undefined,
       isLoading: true,
-    } as ReturnType<typeof useCart>);
+    } as unknown as ReturnType<typeof useCart>);
 
     const { container } = renderWithProviders(<CartPage />);
     const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
@@ -50,7 +50,7 @@ describe('CartPage', () => {
     mockedUseCart.mockReturnValue({
       data: { id: 1, userId: 1, items: [], subtotal: 0, itemCount: 0, expiresAt: null },
       isLoading: false,
-    } as ReturnType<typeof useCart>);
+    } as unknown as ReturnType<typeof useCart>);
 
     renderWithProviders(<CartPage />);
     expect(screen.getByText('Your cart is empty')).toBeDefined();
@@ -64,7 +64,7 @@ describe('CartPage', () => {
     mockedUseCart.mockReturnValue({
       data: undefined,
       isLoading: false,
-    } as ReturnType<typeof useCart>);
+    } as unknown as ReturnType<typeof useCart>);
 
     renderWithProviders(<CartPage />);
     expect(screen.getByText('Your cart is empty')).toBeDefined();
@@ -95,7 +95,7 @@ describe('CartPage', () => {
         expiresAt: null,
       },
       isLoading: false,
-    } as ReturnType<typeof useCart>);
+    } as unknown as ReturnType<typeof useCart>);
 
     renderWithProviders(<CartPage />);
     expect(screen.getByText('Shopping Cart')).toBeDefined();
