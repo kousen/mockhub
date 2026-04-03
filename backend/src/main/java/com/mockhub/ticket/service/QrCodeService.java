@@ -34,9 +34,9 @@ public class QrCodeService {
             MatrixToImageWriter.writeToStream(bitMatrix, "PNG", outputStream);
             return outputStream.toByteArray();
         } catch (WriterException exception) {
-            throw new RuntimeException("Failed to generate QR code for content: " + content, exception);
+            throw new IllegalStateException("Failed to generate QR code for content: " + content, exception);
         } catch (IOException exception) {
-            throw new RuntimeException("Failed to write QR code image to byte array", exception);
+            throw new java.io.UncheckedIOException("Failed to write QR code image to byte array", exception);
         }
     }
 }

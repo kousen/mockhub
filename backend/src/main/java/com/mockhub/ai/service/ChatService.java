@@ -31,11 +31,14 @@ public class ChatService {
     }
 
     public ChatResponse chat(ChatRequest request, String userEmail) {
-        String conversationId = request.conversationId() != null
-                ? String.valueOf(request.conversationId())
-                : (userEmail != null && !userEmail.isBlank())
-                        ? "user-" + userEmail.strip()
-                        : DEFAULT_CONVERSATION_ID;
+        String conversationId;
+        if (request.conversationId() != null) {
+            conversationId = String.valueOf(request.conversationId());
+        } else if (userEmail != null && !userEmail.isBlank()) {
+            conversationId = "user-" + userEmail.strip();
+        } else {
+            conversationId = DEFAULT_CONVERSATION_ID;
+        }
 
         String userMessage = request.message();
         if (userEmail != null && !userEmail.isBlank()) {

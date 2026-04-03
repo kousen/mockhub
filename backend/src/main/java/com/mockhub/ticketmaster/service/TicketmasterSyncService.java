@@ -80,17 +80,11 @@ public class TicketmasterSyncService {
                         classification, startDateTime, endDateTime, eventsPerCategory, 0);
 
                 for (TicketmasterEventResponse tmEvent : events) {
-                    try {
-                        SyncResult result = processEvent(tmEvent);
-                        switch (result) {
-                            case NEW -> newEvents++;
-                            case UPDATED -> updatedEvents++;
-                            case SKIPPED -> skippedEvents++;
-                        }
-                    } catch (Exception e) {
-                        log.error("Failed to process Ticketmaster event '{}' ({}): {}",
-                                tmEvent.name(), tmEvent.id(), e.getMessage());
-                        skippedEvents++;
+                    SyncResult result = processSafely(tmEvent);
+                    switch (result) {
+                        case NEW -> newEvents++;
+                        case UPDATED -> updatedEvents++;
+                        case SKIPPED -> skippedEvents++;
                     }
                 }
             } catch (Exception e) {
@@ -150,6 +144,16 @@ public class TicketmasterSyncService {
 
         log.info("Spotify backfill complete: {}/{} events updated", updated, missingSpotify.size());
         return updated;
+    }
+
+    private SyncResult processSafely(TicketmasterEventResponse tmEvent) {
+        try {
+            return processEvent(tmEvent);
+        } catch (Exception e) {
+            log.error("Failed to process Ticketmaster event '{}' ({}): {}",
+                    tmEvent.name(), tmEvent.id(), e.getMessage());
+            return SyncResult.SKIPPED;
+        }
     }
 
     @Transactional

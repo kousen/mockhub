@@ -215,7 +215,7 @@ export function ChatWidget() {
               <div className="space-y-3">
                 {messages.map((msg, index) => (
                   <div
-                    key={index}
+                    key={`${msg.role}-${msg.timestamp}-${index}`}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div

@@ -112,7 +112,7 @@ export function CheckoutPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 w-full" />
+              <Skeleton key={`skeleton-${index}`} className="h-24 w-full" />
             ))}
           </div>
           <Skeleton className="h-64 w-full" />

@@ -232,7 +232,7 @@ public class TicketPdfService {
             return outputStream.toByteArray();
 
         } catch (IOException exception) {
-            throw new RuntimeException("Failed to generate ticket PDF", exception);
+            throw new java.io.UncheckedIOException("Failed to generate ticket PDF", exception);
         }
     }
 

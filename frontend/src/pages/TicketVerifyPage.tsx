@@ -90,13 +90,12 @@ export function TicketVerifyPage() {
 
         <Badge
           variant="secondary"
-          className={
-            result.valid && !result.alreadyScanned
-              ? 'mt-2 bg-emerald-100 text-emerald-800'
-              : result.valid && result.alreadyScanned
-                ? 'mt-2 bg-amber-100 text-amber-800'
-                : 'mt-2 bg-red-100 text-red-800'
-          }
+          className={(() => {
+            if (result.valid && !result.alreadyScanned)
+              return 'mt-2 bg-emerald-100 text-emerald-800';
+            if (result.valid && result.alreadyScanned) return 'mt-2 bg-amber-100 text-amber-800';
+            return 'mt-2 bg-red-100 text-red-800';
+          })()}
         >
           {result.message}
         </Badge>

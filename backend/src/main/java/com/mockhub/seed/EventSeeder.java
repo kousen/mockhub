@@ -254,7 +254,7 @@ public class EventSeeder {
                 .replaceAll("[^a-z0-9\\s-]", "")
                 .replaceAll("\\s+", "-")
                 .replaceAll("-+", "-")
-                .replaceAll("(?:^-)|(?:-$)", "");
+                .replaceAll("^-|-$", "");
     }
 
     private List<EventData> getEventData() {

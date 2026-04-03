@@ -34,13 +34,15 @@ export function AdminDashboardPage() {
       <h1 className="text-2xl font-bold">Dashboard</h1>
 
       {/* Stats cards */}
-      {statsLoading ? (
+      {statsLoading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-lg" />
+            <Skeleton key={`stat-skeleton-${i}`} className="h-28 rounded-lg" />
           ))}
         </div>
-      ) : stats ? (
+      )}
+
+      {!statsLoading && stats && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             label="Total Users"
@@ -67,12 +69,12 @@ export function AdminDashboardPage() {
             trend={stats.eventsTrend}
           />
         </div>
-      ) : null}
+      )}
 
       {/* Recent orders */}
       <div>
         <h2 className="mb-4 text-lg font-semibold">Recent Orders</h2>
-        {ordersLoading ? (
+        {ordersLoading && (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -87,7 +89,7 @@ export function AdminDashboardPage() {
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
+                  <TableRow key={`order-skeleton-${i}`}>
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
@@ -111,7 +113,9 @@ export function AdminDashboardPage() {
               </TableBody>
             </Table>
           </div>
-        ) : orders.length > 0 ? (
+        )}
+
+        {!ordersLoading && orders.length > 0 && (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -149,7 +153,9 @@ export function AdminDashboardPage() {
               </TableBody>
             </Table>
           </div>
-        ) : (
+        )}
+
+        {!ordersLoading && orders.length === 0 && (
           <p className="py-8 text-center text-muted-foreground">No orders yet.</p>
         )}
       </div>

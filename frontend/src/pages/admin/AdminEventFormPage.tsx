@@ -47,7 +47,7 @@ export function AdminEventFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-  const eventId = id ? parseInt(id, 10) : 0;
+  const eventId = id ? Number.parseInt(id, 10) : 0;
 
   const { data: existingEvent, isLoading: eventLoading } = useAdminEvent(eventId);
   const { data: categories, isLoading: categoriesLoading } = useCategories();
@@ -83,11 +83,11 @@ export function AdminEventFormPage() {
       const data: UpdateEventRequest = {
         name: form.name,
         artistName: form.artistName || null,
-        venueId: parseInt(form.venueId, 10),
-        categoryId: parseInt(form.categoryId, 10),
+        venueId: Number.parseInt(form.venueId, 10),
+        categoryId: Number.parseInt(form.categoryId, 10),
         eventDate: form.eventDate,
         doorsOpenAt: form.doorsOpenAt || null,
-        basePrice: parseFloat(form.basePrice),
+        basePrice: Number.parseFloat(form.basePrice),
         description: form.description || null,
       };
       updateEvent.mutate(data, {
@@ -97,11 +97,11 @@ export function AdminEventFormPage() {
       const data: CreateEventRequest = {
         name: form.name,
         artistName: form.artistName || null,
-        venueId: parseInt(form.venueId, 10),
-        categoryId: parseInt(form.categoryId, 10),
+        venueId: Number.parseInt(form.venueId, 10),
+        categoryId: Number.parseInt(form.categoryId, 10),
         eventDate: form.eventDate,
         doorsOpenAt: form.doorsOpenAt || null,
-        basePrice: parseFloat(form.basePrice),
+        basePrice: Number.parseFloat(form.basePrice),
         description: form.description || null,
       };
       createEvent.mutate(data, {
@@ -229,7 +229,11 @@ export function AdminEventFormPage() {
 
             <div className="flex gap-3">
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : isEditing ? 'Update Event' : 'Create Event'}
+                {(() => {
+                  if (isSubmitting) return 'Saving...';
+                  if (isEditing) return 'Update Event';
+                  return 'Create Event';
+                })()}
               </Button>
               <Button type="button" variant="outline" onClick={() => navigate(ROUTES.ADMIN_EVENTS)}>
                 Cancel

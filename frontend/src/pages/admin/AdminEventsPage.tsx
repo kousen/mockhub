@@ -52,7 +52,7 @@ export function AdminEventsPage() {
         </Button>
       </div>
 
-      {isLoading ? (
+      {isLoading && (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -67,7 +67,7 @@ export function AdminEventsPage() {
             </TableHeader>
             <TableBody>
               {Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={i}>
+                <TableRow key={`event-skeleton-${i}`}>
                   <TableCell>
                     <Skeleton className="h-4 w-32" />
                   </TableCell>
@@ -91,7 +91,9 @@ export function AdminEventsPage() {
             </TableBody>
           </Table>
         </div>
-      ) : events.length > 0 ? (
+      )}
+
+      {!isLoading && events.length > 0 && (
         <>
           <div className="rounded-md border">
             <Table>
@@ -180,7 +182,9 @@ export function AdminEventsPage() {
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {!isLoading && events.length === 0 && (
         <p className="py-8 text-center text-muted-foreground">
           No events found. Create your first event to get started.
         </p>

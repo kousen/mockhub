@@ -35,13 +35,15 @@ export function CartDrawer() {
           </SheetTitle>
         </SheetHeader>
 
-        {isLoading ? (
+        {isLoading && (
           <div className="flex-1 space-y-3 p-4">
             {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-20 w-full" />
+              <Skeleton key={`skeleton-${index}`} className="h-20 w-full" />
             ))}
           </div>
-        ) : !cart || cart.items.length === 0 ? (
+        )}
+
+        {!isLoading && (!cart || cart.items.length === 0) && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
             <ShoppingCart className="h-12 w-12 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">Your cart is empty</p>
@@ -49,7 +51,9 @@ export function CartDrawer() {
               <Link to={ROUTES.EVENTS}>Browse Events</Link>
             </Button>
           </div>
-        ) : (
+        )}
+
+        {!isLoading && cart && cart.items.length > 0 && (
           <>
             <div className="flex-1 overflow-y-auto space-y-2 px-4">
               {cart.items.map((item) => (

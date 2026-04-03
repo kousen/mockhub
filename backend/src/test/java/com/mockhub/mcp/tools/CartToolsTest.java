@@ -414,7 +414,7 @@ class CartToolsTest {
             CartDto cartDto = new CartDto(null, null, null, null, 0, null);
             when(cartService.addToCart(realUser, 1L)).thenReturn(cartDto);
 
-            String result = cartTools.addToCart("attacker@example.com", 1L, AGENT_ID, MANDATE_ID);
+            cartTools.addToCart("attacker@example.com", 1L, AGENT_ID, MANDATE_ID);
 
             verify(userRepository).findByEmail("real@example.com");
             verify(userRepository, never()).findByEmail("attacker@example.com");
