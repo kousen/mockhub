@@ -40,6 +40,8 @@ public class TicketmasterEventMapper {
     private static final BigDecimal MIN_PRICE_FACTOR = new BigDecimal("0.80");
     private static final BigDecimal MAX_PRICE_FACTOR = new BigDecimal("2.50");
     private static final int DEFAULT_VENUE_CAPACITY = 1000;
+    private static final String CATEGORY_OTHER = "other";
+    private static final String LINK_KEY_SPOTIFY = "spotify";
 
     // Standard artist URL: /artist/{22-char-id} with boundary to prevent overlong matches
     private static final Pattern ARTIST_URL_PATTERN =
@@ -118,7 +120,7 @@ public class TicketmasterEventMapper {
 
     public String resolveCategorySlug(List<Classification> classifications) {
         if (classifications == null || classifications.isEmpty()) {
-            return "other";
+            return CATEGORY_OTHER;
         }
 
         Classification primary = classifications.stream()
@@ -132,7 +134,7 @@ public class TicketmasterEventMapper {
         }
 
         if (primary.segment() == null || primary.segment().name() == null) {
-            return "other";
+            return CATEGORY_OTHER;
         }
 
         return switch (primary.segment().name()) {
@@ -148,7 +150,7 @@ public class TicketmasterEventMapper {
             return null;
         }
 
-        List<ExternalLink> spotifyLinks = attraction.externalLinks().get("spotify");
+        List<ExternalLink> spotifyLinks = attraction.externalLinks().get(LINK_KEY_SPOTIFY);
         if (spotifyLinks == null || spotifyLinks.isEmpty()) {
             return null;
         }
@@ -296,8 +298,8 @@ public class TicketmasterEventMapper {
             log.debug("Extracted Spotify ID '{}' for attraction '{}' on event '{}'",
                     spotifyId, attraction.name(), response.name());
         } else if (attraction.externalLinks() != null
-                && attraction.externalLinks().containsKey("spotify")) {
-            List<ExternalLink> links = attraction.externalLinks().get("spotify");
+                && attraction.externalLinks().containsKey(LINK_KEY_SPOTIFY)) {
+            List<ExternalLink> links = attraction.externalLinks().get(LINK_KEY_SPOTIFY);
             log.warn("Spotify key exists but no artist ID extracted for '{}'. URLs: {}",
                     attraction.name(),
                     links != null ? links.stream().map(ExternalLink::url).toList() : "null");
