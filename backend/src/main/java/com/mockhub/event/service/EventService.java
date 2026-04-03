@@ -30,6 +30,12 @@ import com.mockhub.event.repository.CategoryRepository;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.event.repository.TagRepository;
 import com.mockhub.event.specification.EventSpecification;
+import com.mockhub.pricing.dto.PriceHistoryDto;
+import com.mockhub.pricing.service.PriceHistoryService;
+import com.mockhub.ticket.dto.ListingDto;
+import com.mockhub.ticket.service.ListingService;
+import com.mockhub.ticket.service.TicketService;
+import com.mockhub.venue.dto.SectionAvailabilityDto;
 import com.mockhub.venue.dto.VenueSummaryDto;
 import com.mockhub.venue.entity.Venue;
 import com.mockhub.venue.repository.VenueRepository;
@@ -43,15 +49,24 @@ public class EventService {
     private final CategoryRepository categoryRepository;
     private final TagRepository tagRepository;
     private final VenueRepository venueRepository;
+    private final ListingService listingService;
+    private final PriceHistoryService priceHistoryService;
+    private final TicketService ticketService;
 
     public EventService(EventRepository eventRepository,
                         CategoryRepository categoryRepository,
                         TagRepository tagRepository,
-                        VenueRepository venueRepository) {
+                        VenueRepository venueRepository,
+                        ListingService listingService,
+                        PriceHistoryService priceHistoryService,
+                        TicketService ticketService) {
         this.eventRepository = eventRepository;
         this.categoryRepository = categoryRepository;
         this.tagRepository = tagRepository;
         this.venueRepository = venueRepository;
+        this.listingService = listingService;
+        this.priceHistoryService = priceHistoryService;
+        this.ticketService = ticketService;
     }
 
     @Transactional(readOnly = true)
@@ -195,6 +210,21 @@ public class EventService {
         return tagRepository.findAll(Sort.by("name").ascending()).stream()
                 .map(this::toTagDto)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ListingDto> getActiveListingsByEventSlug(String eventSlug) {
+        return listingService.getActiveListingsByEventSlug(eventSlug);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PriceHistoryDto> getPriceHistoryByEventSlug(String eventSlug) {
+        return priceHistoryService.getByEventSlug(eventSlug);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SectionAvailabilityDto> getSectionAvailability(String eventSlug) {
+        return ticketService.getSectionAvailability(eventSlug);
     }
 
     private Specification<Event> buildSpecification(EventSearchRequest request) {

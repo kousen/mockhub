@@ -23,9 +23,8 @@ import com.mockhub.event.dto.CategoryDto;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
-import com.mockhub.pricing.service.PriceHistoryService;
-import com.mockhub.ticket.service.ListingService;
-import com.mockhub.ticket.service.TicketService;
+import com.mockhub.pricing.dto.PriceHistoryDto;
+import com.mockhub.venue.dto.SectionAvailabilityDto;
 import com.mockhub.venue.dto.VenueSummaryDto;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -43,15 +42,6 @@ class EventControllerTest {
 
     @MockitoBean
     private EventService eventService;
-
-    @MockitoBean
-    private ListingService listingService;
-
-    @MockitoBean
-    private PriceHistoryService priceHistoryService;
-
-    @MockitoBean
-    private TicketService ticketService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -132,11 +122,45 @@ class EventControllerTest {
     @Test
     @DisplayName("GET /api/v1/events/{slug}/listings - returns event listings")
     void getEventListings_returnsEventListings() throws Exception {
-        when(listingService.getActiveListingsByEventSlug("rock-festival"))
+        when(eventService.getActiveListingsByEventSlug("rock-festival"))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/api/v1/events/rock-festival/listings"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/events/{slug}/price-history - returns price history")
+    void getPriceHistory_returnsPriceHistory() throws Exception {
+        PriceHistoryDto priceHistory = new PriceHistoryDto(
+                1L, 1L, new BigDecimal("85.00"), new BigDecimal("1.13"),
+                new BigDecimal("0.65"), new BigDecimal("0.70"), 25, Instant.now());
+        when(eventService.getPriceHistoryByEventSlug("rock-festival"))
+                .thenReturn(List.of(priceHistory));
+
+        mockMvc.perform(get("/api/v1/events/rock-festival/price-history"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].price").value(85.00));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/events/{slug}/sections - returns section availability")
+    void getEventSections_returnsSectionAvailability() throws Exception {
+        SectionAvailabilityDto section = new SectionAvailabilityDto(
+                1L, "Floor", "FLOOR", 200, 150,
+                new BigDecimal("75.00"), new BigDecimal("100.00"),
+                "#FF5733", "section-floor",
+                new BigDecimal("10"), new BigDecimal("20"),
+                new BigDecimal("100"), new BigDecimal("50"));
+        when(eventService.getSectionAvailability("rock-festival"))
+                .thenReturn(List.of(section));
+
+        mockMvc.perform(get("/api/v1/events/rock-festival/sections"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].sectionName").value("Floor"))
+                .andExpect(jsonPath("$[0].availableTickets").value(150));
     }
 }
