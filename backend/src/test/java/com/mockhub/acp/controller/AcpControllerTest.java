@@ -284,7 +284,7 @@ class AcpControllerTest {
                         "rock", "Test Venue", "NYC", Instant.now(),
                         "Floor", "A", "1", new BigDecimal("50.00"), "/events/test-concert")),
                 0, 20, 1, 1);
-        when(acpCatalogService.getListings(any(), eq(0), eq(20)))
+        when(acpCatalogService.getListings(any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(20)))
                 .thenReturn(listingsResponse);
 
         mockMvc.perform(get("/acp/v1/listings")

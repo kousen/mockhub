@@ -14,7 +14,8 @@ import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
-import com.mockhub.ticket.dto.ListingSearchCriteria;
+import java.time.Instant;
+
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.repository.ListingRepository;
 
@@ -66,15 +67,18 @@ public class AcpCatalogService {
     }
 
     @Transactional(readOnly = true)
-    public PagedResponse<AcpListingItem> getListings(ListingSearchCriteria criteria, int page, int size) {
+    public PagedResponse<AcpListingItem> getListings(String query, String category, String city,
+                                                      Instant dateFrom, Instant dateTo,
+                                                      BigDecimal minPrice, BigDecimal maxPrice,
+                                                      String section, int page, int size) {
         List<EventSummaryDto> allEvents = new ArrayList<>();
         int eventPage = 0;
         int eventPageSize = 100;
         PagedResponse<EventSummaryDto> eventBatch;
         do {
             EventSearchRequest searchRequest = new EventSearchRequest(
-                    criteria.query(), criteria.categorySlug(), null, criteria.city(),
-                    criteria.dateFrom(), criteria.dateTo(), criteria.minPrice(), criteria.maxPrice(),
+                    query, category, null, city,
+                    dateFrom, dateTo, minPrice, maxPrice,
                     STATUS_ACTIVE, "eventDate", eventPage, eventPageSize
             );
             eventBatch = eventService.listEvents(searchRequest);
@@ -87,7 +91,7 @@ public class AcpCatalogService {
         for (EventSummaryDto event : allEvents) {
             List<Listing> eventListings = listingRepository.findByEventIdAndStatus(event.id(), STATUS_ACTIVE);
             for (Listing listing : eventListings) {
-                if (!matchesFilters(listing, criteria.minPrice(), criteria.maxPrice(), criteria.section())) {
+                if (!matchesFilters(listing, minPrice, maxPrice, section)) {
                     continue;
                 }
 

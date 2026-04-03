@@ -18,7 +18,6 @@ import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
-import com.mockhub.ticket.dto.ListingSearchCriteria;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.repository.ListingRepository;
 
@@ -96,9 +95,9 @@ class AcpCatalogServiceTest {
         when(eventService.listEvents(any(EventSearchRequest.class))).thenReturn(new PagedResponse<>(List.of(testEvent), 0, 20, 1, 1));
         Listing listing = createListing(10L, "Floor", new BigDecimal("80.00"));
         when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE")).thenReturn(List.of(listing));
-        ListingSearchCriteria criteria = new ListingSearchCriteria("rock", "rock", "NYC",
-                new BigDecimal("50.00"), new BigDecimal("100.00"), null, null, null, 20);
-        PagedResponse<AcpListingItem> result = acpCatalogService.getListings(criteria, 0, 20);
+        PagedResponse<AcpListingItem> result = acpCatalogService.getListings(
+                "rock", "rock", "NYC", null, null,
+                new BigDecimal("50.00"), new BigDecimal("100.00"), null, 0, 20);
         assertNotNull(result);
         assertEquals(1, result.content().size());
         assertEquals(10L, result.content().getFirst().listingId());
@@ -113,9 +112,9 @@ class AcpCatalogServiceTest {
                 createListing(10L, "Floor", new BigDecimal("80.00")),
                 createListing(20L, "VIP", new BigDecimal("200.00")),
                 createListing(30L, "Floor", new BigDecimal("30.00"))));
-        ListingSearchCriteria criteria = new ListingSearchCriteria("rock", "rock", "NYC",
-                new BigDecimal("50.00"), new BigDecimal("150.00"), "Floor", null, null, 20);
-        PagedResponse<AcpListingItem> result = acpCatalogService.getListings(criteria, 0, 20);
+        PagedResponse<AcpListingItem> result = acpCatalogService.getListings(
+                "rock", "rock", "NYC", null, null,
+                new BigDecimal("50.00"), new BigDecimal("150.00"), "Floor", 0, 20);
         assertNotNull(result);
         assertEquals(1, result.content().size(), "Only the $80 Floor listing should match all filters");
         assertEquals(10L, result.content().getFirst().listingId());

@@ -25,7 +25,6 @@ import com.mockhub.acp.dto.AcpUpdateRequest;
 import com.mockhub.acp.service.AcpCatalogService;
 import com.mockhub.acp.service.AcpCheckoutService;
 import com.mockhub.common.dto.PagedResponse;
-import com.mockhub.ticket.dto.ListingSearchCriteria;
 
 import jakarta.validation.Valid;
 
@@ -108,9 +107,8 @@ public class AcpController {
             @RequestParam(required = false) String section,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        ListingSearchCriteria criteria = new ListingSearchCriteria(
-                query, category, city, minPrice, maxPrice, section, dateFrom, dateTo, size);
-        PagedResponse<AcpListingItem> response = acpCatalogService.getListings(criteria, page, size);
+        PagedResponse<AcpListingItem> response = acpCatalogService.getListings(
+                query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, page, size);
         return ResponseEntity.ok(response);
     }
 }
