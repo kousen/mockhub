@@ -17,7 +17,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.mockhub.admin.controller.AdminController;
-import com.mockhub.admin.service.AdminService;
+import com.mockhub.admin.service.AdminDashboardService;
+import com.mockhub.admin.service.AdminEventService;
+import com.mockhub.admin.service.AdminOrderService;
+import com.mockhub.admin.service.AdminUserService;
 import com.mockhub.auth.entity.Role;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
@@ -66,7 +69,16 @@ class AuthorizationBypassTest {
     private ListingService listingService;
 
     @MockitoBean
-    private AdminService adminService;
+    private AdminDashboardService adminDashboardService;
+
+    @MockitoBean
+    private AdminEventService adminEventService;
+
+    @MockitoBean
+    private AdminUserService adminUserService;
+
+    @MockitoBean
+    private AdminOrderService adminOrderService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;

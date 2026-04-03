@@ -23,7 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mockhub.admin.dto.AdminEventDto;
 import com.mockhub.admin.dto.DashboardStatsDto;
-import com.mockhub.admin.service.AdminService;
+import com.mockhub.admin.service.AdminDashboardService;
+import com.mockhub.admin.service.AdminEventService;
+import com.mockhub.admin.service.AdminOrderService;
+import com.mockhub.admin.service.AdminUserService;
 import com.mockhub.auth.dto.UserDto;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.event.dto.EventCreateRequest;
@@ -41,12 +44,21 @@ import jakarta.validation.Valid;
 @Tag(name = "Admin", description = "Administrative operations (ROLE_ADMIN required)")
 public class AdminController {
 
-    private final AdminService adminService;
+    private final AdminDashboardService adminDashboardService;
+    private final AdminEventService adminEventService;
+    private final AdminUserService adminUserService;
+    private final AdminOrderService adminOrderService;
     private final Optional<TicketmasterSyncService> ticketmasterSyncService;
 
-    public AdminController(AdminService adminService,
+    public AdminController(AdminDashboardService adminDashboardService,
+                           AdminEventService adminEventService,
+                           AdminUserService adminUserService,
+                           AdminOrderService adminOrderService,
                            Optional<TicketmasterSyncService> ticketmasterSyncService) {
-        this.adminService = adminService;
+        this.adminDashboardService = adminDashboardService;
+        this.adminEventService = adminEventService;
+        this.adminUserService = adminUserService;
+        this.adminOrderService = adminOrderService;
         this.ticketmasterSyncService = ticketmasterSyncService;
     }
 
@@ -54,7 +66,7 @@ public class AdminController {
     @Operation(summary = "Get dashboard stats", description = "Return aggregate statistics for the admin dashboard")
     @ApiResponse(responseCode = "200", description = "Dashboard stats returned")
     public ResponseEntity<DashboardStatsDto> getDashboardStats() {
-        return ResponseEntity.ok(adminService.getDashboardStats());
+        return ResponseEntity.ok(adminDashboardService.getDashboardStats());
     }
 
     @GetMapping("/events")
@@ -64,14 +76,14 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("eventDate").descending());
-        return ResponseEntity.ok(adminService.getAllEvents(pageable));
+        return ResponseEntity.ok(adminEventService.getAllEvents(pageable));
     }
 
     @PostMapping("/events")
     @Operation(summary = "Create event (admin)", description = "Create a new event")
     @ApiResponse(responseCode = "201", description = "Event created")
     public ResponseEntity<EventDto> createEvent(@Valid @RequestBody EventCreateRequest request) {
-        EventDto event = adminService.createEvent(request);
+        EventDto event = adminEventService.createEvent(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(event);
     }
 
@@ -82,7 +94,7 @@ public class AdminController {
     public ResponseEntity<EventDto> updateEvent(
             @PathVariable Long id,
             @Valid @RequestBody EventCreateRequest request) {
-        return ResponseEntity.ok(adminService.updateEvent(id, request));
+        return ResponseEntity.ok(adminEventService.updateEvent(id, request));
     }
 
     @DeleteMapping("/events/{id}")
@@ -90,7 +102,7 @@ public class AdminController {
     @ApiResponse(responseCode = "204", description = "Event deleted")
     @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<Void> deleteEvent(@PathVariable Long id) {
-        adminService.deleteEvent(id);
+        adminEventService.deleteEvent(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -101,7 +113,7 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return ResponseEntity.ok(adminService.getAllUsers(pageable));
+        return ResponseEntity.ok(adminUserService.getAllUsers(pageable));
     }
 
     @PutMapping("/users/{id}/roles")
@@ -110,7 +122,7 @@ public class AdminController {
     public ResponseEntity<Void> updateUserRoles(
             @PathVariable Long id,
             @RequestBody Set<String> roles) {
-        adminService.updateUserRoles(id, roles);
+        adminUserService.updateUserRoles(id, roles);
         return ResponseEntity.noContent().build();
     }
 
@@ -124,7 +136,7 @@ public class AdminController {
         if (enabled == null) {
             return ResponseEntity.badRequest().build();
         }
-        adminService.updateUserStatus(id, enabled);
+        adminUserService.updateUserStatus(id, enabled);
         return ResponseEntity.noContent().build();
     }
 
@@ -135,7 +147,7 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return ResponseEntity.ok(adminService.getAllOrders(pageable));
+        return ResponseEntity.ok(adminOrderService.getAllOrders(pageable));
     }
 
     @PostMapping("/events/{id}/generate-tickets")
@@ -143,7 +155,7 @@ public class AdminController {
     @ApiResponse(responseCode = "200", description = "Tickets generated")
     @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<Map<String, Integer>> generateTickets(@PathVariable Long id) {
-        int ticketCount = adminService.generateTicketsForEvent(id);
+        int ticketCount = adminEventService.generateTicketsForEvent(id);
         return ResponseEntity.ok(Map.of("ticketsGenerated", ticketCount));
     }
 
@@ -169,7 +181,7 @@ public class AdminController {
     @Operation(summary = "Check Spotify ID status for Ticketmaster events (admin)")
     public ResponseEntity<List<Map<String, Object>>> spotifyStatus(
             @RequestParam(defaultValue = "Eagles") String query) {
-        return ResponseEntity.ok(adminService.getSpotifyStatusForEvents(query));
+        return ResponseEntity.ok(adminEventService.getSpotifyStatusForEvents(query));
     }
 
     @PostMapping("/ticketmaster/backfill-spotify")
@@ -195,6 +207,6 @@ public class AdminController {
             description = "Deactivate seed events, feature Ticketmaster events, and complete past events.")
     @ApiResponse(responseCode = "200", description = "Activation complete")
     public ResponseEntity<Map<String, Integer>> activateTicketmasterEvents() {
-        return ResponseEntity.ok(adminService.activateTicketmasterEvents());
+        return ResponseEntity.ok(adminEventService.activateTicketmasterEvents());
     }
 }
