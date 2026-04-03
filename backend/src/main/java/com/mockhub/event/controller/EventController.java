@@ -22,11 +22,8 @@ import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
 import com.mockhub.pricing.dto.PriceHistoryDto;
-import com.mockhub.pricing.service.PriceHistoryService;
 import com.mockhub.ticket.dto.ListingDto;
-import com.mockhub.ticket.service.ListingService;
 import com.mockhub.venue.dto.SectionAvailabilityDto;
-import com.mockhub.ticket.service.TicketService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -39,18 +36,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class EventController {
 
     private final EventService eventService;
-    private final ListingService listingService;
-    private final PriceHistoryService priceHistoryService;
-    private final TicketService ticketService;
 
-    public EventController(EventService eventService,
-                           ListingService listingService,
-                           PriceHistoryService priceHistoryService,
-                           TicketService ticketService) {
+    public EventController(EventService eventService) {
         this.eventService = eventService;
-        this.listingService = listingService;
-        this.priceHistoryService = priceHistoryService;
-        this.ticketService = ticketService;
     }
 
     @GetMapping
@@ -83,21 +71,21 @@ public class EventController {
     @ApiResponse(responseCode = "200", description = "Listings returned")
     @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<List<ListingDto>> getEventListings(@PathVariable String slug) {
-        return ResponseEntity.ok(listingService.getActiveListingsByEventSlug(slug));
+        return ResponseEntity.ok(eventService.getActiveListingsByEventSlug(slug));
     }
 
     @GetMapping("/{slug}/price-history")
     @Operation(summary = "Get price history", description = "Return historical price data for an event")
     @ApiResponse(responseCode = "200", description = "Price history returned")
     public ResponseEntity<List<PriceHistoryDto>> getPriceHistory(@PathVariable String slug) {
-        return ResponseEntity.ok(priceHistoryService.getByEventSlug(slug));
+        return ResponseEntity.ok(eventService.getPriceHistoryByEventSlug(slug));
     }
 
     @GetMapping("/{slug}/sections")
     @Operation(summary = "Get section availability", description = "Return seat availability by section for an event")
     @ApiResponse(responseCode = "200", description = "Section availability returned")
     public ResponseEntity<List<SectionAvailabilityDto>> getEventSections(@PathVariable String slug) {
-        return ResponseEntity.ok(ticketService.getSectionAvailability(slug));
+        return ResponseEntity.ok(eventService.getSectionAvailability(slug));
     }
 
     @PostMapping

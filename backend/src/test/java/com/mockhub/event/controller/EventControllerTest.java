@@ -23,9 +23,6 @@ import com.mockhub.event.dto.CategoryDto;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
-import com.mockhub.pricing.service.PriceHistoryService;
-import com.mockhub.ticket.service.ListingService;
-import com.mockhub.ticket.service.TicketService;
 import com.mockhub.venue.dto.VenueSummaryDto;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -43,15 +40,6 @@ class EventControllerTest {
 
     @MockitoBean
     private EventService eventService;
-
-    @MockitoBean
-    private ListingService listingService;
-
-    @MockitoBean
-    private PriceHistoryService priceHistoryService;
-
-    @MockitoBean
-    private TicketService ticketService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -132,7 +120,7 @@ class EventControllerTest {
     @Test
     @DisplayName("GET /api/v1/events/{slug}/listings - returns event listings")
     void getEventListings_returnsEventListings() throws Exception {
-        when(listingService.getActiveListingsByEventSlug("rock-festival"))
+        when(eventService.getActiveListingsByEventSlug("rock-festival"))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/api/v1/events/rock-festival/listings"))

@@ -11,7 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -30,6 +29,12 @@ import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.CategoryRepository;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.event.repository.TagRepository;
+import com.mockhub.pricing.dto.PriceHistoryDto;
+import com.mockhub.pricing.service.PriceHistoryService;
+import com.mockhub.ticket.dto.ListingDto;
+import com.mockhub.ticket.service.ListingService;
+import com.mockhub.ticket.service.TicketService;
+import com.mockhub.venue.dto.SectionAvailabilityDto;
 import com.mockhub.venue.entity.Venue;
 import com.mockhub.venue.repository.VenueRepository;
 
@@ -56,7 +61,15 @@ class EventServiceTest {
     @Mock
     private VenueRepository venueRepository;
 
-    @InjectMocks
+    @Mock
+    private ListingService listingService;
+
+    @Mock
+    private PriceHistoryService priceHistoryService;
+
+    @Mock
+    private TicketService ticketService;
+
     private EventService eventService;
 
     private Event testEvent;
@@ -65,6 +78,10 @@ class EventServiceTest {
 
     @BeforeEach
     void setUp() {
+        eventService = new EventService(eventRepository, categoryRepository,
+                tagRepository, venueRepository, listingService,
+                priceHistoryService, ticketService);
+
         testVenue = new Venue();
         testVenue.setId(1L);
         testVenue.setName("Madison Square Garden");
@@ -243,5 +260,44 @@ class EventServiceTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> eventService.updateEvent(999L, request),
                 "Should throw ResourceNotFoundException for unknown event");
+    }
+
+    @Test
+    @DisplayName("getActiveListingsByEventSlug - delegates to ListingService")
+    void getActiveListingsByEventSlug_delegatesToListingService() {
+        List<ListingDto> expectedListings = List.of();
+        when(listingService.getActiveListingsByEventSlug("rock-festival"))
+                .thenReturn(expectedListings);
+
+        List<ListingDto> result = eventService.getActiveListingsByEventSlug("rock-festival");
+
+        assertEquals(expectedListings, result, "Should return listings from ListingService");
+        verify(listingService).getActiveListingsByEventSlug("rock-festival");
+    }
+
+    @Test
+    @DisplayName("getPriceHistoryByEventSlug - delegates to PriceHistoryService")
+    void getPriceHistoryByEventSlug_delegatesToPriceHistoryService() {
+        List<PriceHistoryDto> expectedHistory = List.of();
+        when(priceHistoryService.getByEventSlug("rock-festival"))
+                .thenReturn(expectedHistory);
+
+        List<PriceHistoryDto> result = eventService.getPriceHistoryByEventSlug("rock-festival");
+
+        assertEquals(expectedHistory, result, "Should return price history from PriceHistoryService");
+        verify(priceHistoryService).getByEventSlug("rock-festival");
+    }
+
+    @Test
+    @DisplayName("getSectionAvailability - delegates to TicketService")
+    void getSectionAvailability_delegatesToTicketService() {
+        List<SectionAvailabilityDto> expectedSections = List.of();
+        when(ticketService.getSectionAvailability("rock-festival"))
+                .thenReturn(expectedSections);
+
+        List<SectionAvailabilityDto> result = eventService.getSectionAvailability("rock-festival");
+
+        assertEquals(expectedSections, result, "Should return section availability from TicketService");
+        verify(ticketService).getSectionAvailability("rock-festival");
     }
 }
