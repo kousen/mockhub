@@ -19,7 +19,7 @@ export function TicketGridView({ sections, isLoading, onSectionClick }: TicketGr
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, index) => (
-          <Skeleton key={index} className="h-32 w-full rounded-lg" />
+          <Skeleton key={`skeleton-${index}`} className="h-32 w-full rounded-lg" />
         ))}
       </div>
     );
@@ -78,17 +78,21 @@ export function TicketGridView({ sections, isLoading, onSectionClick }: TicketGr
                       {section.availableTickets} available
                     </Badge>
                     <div className="text-right text-sm">
-                      {section.minPrice !== null && section.maxPrice !== null ? (
-                        section.minPrice === section.maxPrice ? (
-                          <span className="font-medium">{formatCurrency(section.minPrice)}</span>
-                        ) : (
+                      {(() => {
+                        if (section.minPrice === null || section.maxPrice === null) {
+                          return <span className="text-muted-foreground">-</span>;
+                        }
+                        if (section.minPrice === section.maxPrice) {
+                          return (
+                            <span className="font-medium">{formatCurrency(section.minPrice)}</span>
+                          );
+                        }
+                        return (
                           <span className="font-medium">
                             {formatCurrency(section.minPrice)} - {formatCurrency(section.maxPrice)}
                           </span>
-                        )
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
                 </CardContent>

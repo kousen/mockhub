@@ -68,8 +68,8 @@ export function SellPage() {
       e.preventDefault();
       if (!selectedEvent) return;
 
-      const price = parseFloat(listedPrice);
-      if (isNaN(price) || price <= 0) {
+      const price = Number.parseFloat(listedPrice);
+      if (Number.isNaN(price) || price <= 0) {
         toast.error('Please enter a valid price greater than $0.');
         return;
       }
@@ -109,20 +109,23 @@ export function SellPage() {
               />
             )}
             <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                step === s
-                  ? 'bg-primary text-primary-foreground'
-                  : ['event', 'seat', 'price'].indexOf(s) < ['event', 'seat', 'price'].indexOf(step)
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-muted text-muted-foreground'
-              }`}
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${(() => {
+                const steps = ['event', 'seat', 'price'] as const;
+                if (step === s) return 'bg-primary text-primary-foreground';
+                if (steps.indexOf(s) < steps.indexOf(step)) return 'bg-primary/20 text-primary';
+                return 'bg-muted text-muted-foreground';
+              })()}`}
             >
               {index + 1}
             </div>
             <span
               className={`hidden text-sm sm:inline ${step === s ? 'font-medium' : 'text-muted-foreground'}`}
             >
-              {s === 'event' ? 'Event' : s === 'seat' ? 'Seat Details' : 'Set Price'}
+              {(() => {
+                if (s === 'event') return 'Event';
+                if (s === 'seat') return 'Seat Details';
+                return 'Set Price';
+              })()}
             </span>
           </div>
         ))}

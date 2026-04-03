@@ -80,7 +80,7 @@ export function PriceHistoryChart({ data, isLoading }: PriceHistoryChartProps) {
     );
   }
 
-  const chartData: ChartDataPoint[] = data
+  const chartData: ChartDataPoint[] = [...data]
     .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())
     .map((entry) => ({
       date: formatShortDate(entry.recordedAt),

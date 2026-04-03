@@ -51,8 +51,8 @@ function PriceEditor({ listing, onClose }: { listing: SellerListing; onClose: ()
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      const price = parseFloat(newPrice);
-      if (isNaN(price) || price <= 0) {
+      const price = Number.parseFloat(newPrice);
+      if (Number.isNaN(price) || price <= 0) {
         toast.error('Please enter a valid price.');
         return;
       }
@@ -206,7 +206,7 @@ export function MyListingsPage() {
         <Skeleton className="mb-4 h-10 w-80" />
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={index} className="h-20 w-full" />
+            <Skeleton key={`skeleton-${index}`} className="h-20 w-full" />
           ))}
         </div>
       </div>

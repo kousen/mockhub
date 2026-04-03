@@ -42,8 +42,7 @@ export function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Find Your Next
-              <span className="text-primary"> Live Experience</span>
+              Find Your Next <span className="text-primary">Live Experience</span>
             </h1>
             <p className="mt-4 text-lg text-muted-foreground sm:text-xl">
               MockHub is a secondary ticket marketplace where fans buy and sell tickets to concerts,

@@ -16,19 +16,23 @@ export function FavoritesPage() {
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="mb-6 text-2xl font-bold tracking-tight sm:text-3xl">My Favorites</h1>
 
-      {isLoading ? (
+      {isLoading && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <EventCardSkeleton key={i} />
+            <EventCardSkeleton key={`skeleton-${i}`} />
           ))}
         </div>
-      ) : favorites && favorites.length > 0 ? (
+      )}
+
+      {!isLoading && favorites && favorites.length > 0 && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {favorites.map((favorite) => (
             <EventCard key={favorite.id} event={favorite.event} />
           ))}
         </div>
-      ) : (
+      )}
+
+      {!isLoading && (!favorites || favorites.length === 0) && (
         <EmptyState
           icon={Heart}
           title="No favorites yet"

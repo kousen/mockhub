@@ -12,7 +12,7 @@ import type { ChatMessage } from '@/types/ai';
  * and anchor tags for external URLs.
  */
 function MessageContent({ content }: { content: string }) {
-  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const linkRegex = /\[([^\]]{1,500})\]\(([^)]{1,2000})\)/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -215,7 +215,7 @@ export function ChatWidget() {
               <div className="space-y-3">
                 {messages.map((msg, index) => (
                   <div
-                    key={index}
+                    key={`${msg.role}-${msg.timestamp}-${index}`}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     <div

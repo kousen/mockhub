@@ -63,7 +63,7 @@ function setListings(data: SellerListing[] | undefined, isLoading = false) {
   vi.mocked(useMyListings).mockReturnValue({
     data,
     isLoading,
-  } as ReturnType<typeof useMyListings>);
+  } as unknown as ReturnType<typeof useMyListings>);
 }
 
 describe('MyListingsPage', () => {

@@ -188,11 +188,13 @@ export function EventListPage() {
           {/* Sort Bar */}
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              {data?.totalElements !== undefined
-                ? `${data.totalElements} event${data.totalElements !== 1 ? 's' : ''} found`
-                : isLoading
-                  ? 'Loading...'
-                  : ''}
+              {(() => {
+                if (data?.totalElements !== undefined) {
+                  return `${data.totalElements} event${data.totalElements !== 1 ? 's' : ''} found`;
+                }
+                if (isLoading) return 'Loading...';
+                return '';
+              })()}
             </p>
             <div className="flex items-center gap-2">
               <ArrowUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />

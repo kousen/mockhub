@@ -53,7 +53,7 @@ function setOrderState(data: Order | undefined, isLoading = false) {
   vi.mocked(useOrder).mockReturnValue({
     data,
     isLoading,
-  } as ReturnType<typeof useOrder>);
+  } as unknown as ReturnType<typeof useOrder>);
 }
 
 describe('OrderConfirmationPage', () => {

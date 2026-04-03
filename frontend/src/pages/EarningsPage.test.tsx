@@ -49,7 +49,7 @@ function setEarnings(data: EarningsSummary | undefined, isLoading = false) {
   vi.mocked(useEarnings).mockReturnValue({
     data,
     isLoading,
-  } as ReturnType<typeof useEarnings>);
+  } as unknown as ReturnType<typeof useEarnings>);
 }
 
 describe('EarningsPage', () => {

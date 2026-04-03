@@ -71,7 +71,7 @@ describe('VenueMap', () => {
       <VenueMap sections={mockSections} selectedSectionId={null} onSectionSelect={vi.fn()} />,
     );
 
-    const svg = screen.getByRole('img', { name: 'Venue seating map' });
+    const svg = screen.getByLabelText('Venue seating map');
     expect(svg).toBeDefined();
 
     const sectionButtons = screen.getAllByRole('button');

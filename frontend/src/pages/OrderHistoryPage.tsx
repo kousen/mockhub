@@ -21,7 +21,7 @@ export function OrderHistoryPage() {
         <Skeleton className="mb-6 h-8 w-48" />
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="rounded-lg border p-4 space-y-2">
+            <div key={`skeleton-${index}`} className="rounded-lg border p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-5 w-20 rounded-full" />

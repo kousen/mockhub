@@ -27,14 +27,14 @@ export function usePagination(
 
   const page = useMemo(() => {
     const pageParam = searchParams.get('page');
-    const parsed = pageParam ? parseInt(pageParam, 10) : 0;
-    return isNaN(parsed) || parsed < 0 ? 0 : parsed;
+    const parsed = pageParam ? Number.parseInt(pageParam, 10) : 0;
+    return Number.isNaN(parsed) || parsed < 0 ? 0 : parsed;
   }, [searchParams]);
 
   const size = useMemo(() => {
     const sizeParam = searchParams.get('size');
-    const parsed = sizeParam ? parseInt(sizeParam, 10) : defaultSize;
-    return isNaN(parsed) || parsed < 1 ? defaultSize : parsed;
+    const parsed = sizeParam ? Number.parseInt(sizeParam, 10) : defaultSize;
+    return Number.isNaN(parsed) || parsed < 1 ? defaultSize : parsed;
   }, [searchParams, defaultSize]);
 
   const goToPage = useCallback(

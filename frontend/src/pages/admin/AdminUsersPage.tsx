@@ -48,7 +48,7 @@ export function AdminUsersPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Users</h1>
 
-      {isLoading ? (
+      {isLoading && (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -63,7 +63,7 @@ export function AdminUsersPage() {
             </TableHeader>
             <TableBody>
               {Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={i}>
+                <TableRow key={`user-skeleton-${i}`}>
                   <TableCell>
                     <Skeleton className="h-4 w-28" />
                   </TableCell>
@@ -87,7 +87,9 @@ export function AdminUsersPage() {
             </TableBody>
           </Table>
         </div>
-      ) : users.length > 0 ? (
+      )}
+
+      {!isLoading && users.length > 0 && (
         <>
           <div className="rounded-md border">
             <Table>
@@ -184,7 +186,9 @@ export function AdminUsersPage() {
             </div>
           )}
         </>
-      ) : (
+      )}
+
+      {!isLoading && users.length === 0 && (
         <p className="py-8 text-center text-muted-foreground">No users found.</p>
       )}
     </div>

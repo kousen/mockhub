@@ -194,7 +194,7 @@ class McpProtocolIntegrationTest {
                 case "getBestMandate" -> hasGetBestMandate = true;
                 case "getCalendarEntry" -> hasGetCalendarEntry = true;
                 case "refreshCart" -> hasRefreshCart = true;
-                default -> { }
+                default -> { /* other tools verified individually */ }
             }
         }
         assertTrue(hasFindTickets, "Should include findTickets tool");

@@ -578,7 +578,7 @@ class OrderToolsTest {
             when(orderService.checkout(eq(realUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID)))
                     .thenReturn(orderDto);
 
-            String result = orderTools.checkout("attacker@example.com", "mock", AGENT_ID, MANDATE_ID);
+            orderTools.checkout("attacker@example.com", "mock", AGENT_ID, MANDATE_ID);
 
             verify(userRepository).findByEmail("real@example.com");
             verify(userRepository, never()).findByEmail("attacker@example.com");
@@ -595,7 +595,7 @@ class OrderToolsTest {
             OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null);
             when(orderService.getOrder(realUser, "MH-001")).thenReturn(orderDto);
 
-            String result = orderTools.getOrder("attacker@example.com", "MH-001");
+            orderTools.getOrder("attacker@example.com", "MH-001");
 
             verify(userRepository).findByEmail("real@example.com");
             verify(userRepository, never()).findByEmail("attacker@example.com");
@@ -608,7 +608,7 @@ class OrderToolsTest {
             OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-001")).thenReturn(orderDto);
 
-            String result = orderTools.getOrder("buyer@example.com", "MH-001");
+            orderTools.getOrder("buyer@example.com", "MH-001");
 
             verify(userRepository).findByEmail("buyer@example.com");
         }

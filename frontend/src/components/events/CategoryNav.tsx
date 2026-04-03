@@ -19,7 +19,7 @@ export function CategoryNav({ activeCategory, onCategoryChange }: CategoryNavPro
     return (
       <div className="flex gap-2 overflow-x-auto pb-2">
         {Array.from({ length: 6 }).map((_, index) => (
-          <Skeleton key={index} className="h-7 w-20 shrink-0 rounded-full" />
+          <Skeleton key={`skeleton-${index}`} className="h-7 w-20 shrink-0 rounded-full" />
         ))}
       </div>
     );

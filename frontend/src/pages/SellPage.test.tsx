@@ -66,7 +66,7 @@ function setEvents(data: PageResponse<EventSummary> | undefined, isLoading = fal
   vi.mocked(useEvents).mockReturnValue({
     data,
     isLoading,
-  } as ReturnType<typeof useEvents>);
+  } as unknown as ReturnType<typeof useEvents>);
 }
 
 describe('SellPage', () => {

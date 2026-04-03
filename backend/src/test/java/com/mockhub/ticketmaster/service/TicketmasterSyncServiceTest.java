@@ -141,7 +141,6 @@ class TicketmasterSyncServiceTest {
     @Test
     void processEvent_givenCancelledNewEvent_doesNotGenerateTickets() {
         TicketmasterEventResponse tmEvent = createSampleEventWithStatus("TM-CANCELLED", "cancelled");
-        Category category = createCategory("concerts");
         Venue venue = createVenue("Sphere", "Las Vegas");
 
         when(eventRepository.findByTicketmasterEventId("TM-CANCELLED")).thenReturn(Optional.empty());

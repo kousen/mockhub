@@ -11,6 +11,25 @@ interface VenueMapProps {
   isLoading?: boolean;
 }
 
+function buildAriaLabel(section: SectionAvailability): string {
+  const parts = [`${section.sectionName} section`];
+  parts.push(
+    `${section.availableTickets} ticket${section.availableTickets !== 1 ? 's' : ''} available`,
+  );
+  if (section.minPrice !== null) {
+    parts.push(`from ${formatCurrency(section.minPrice)}`);
+  }
+  return parts.join(', ');
+}
+
+function buildSubLabel(section: SectionAvailability): string {
+  const count = `${section.availableTickets} ticket${section.availableTickets !== 1 ? 's' : ''}`;
+  if (section.minPrice !== null) {
+    return `${count} from ${formatCurrency(section.minPrice)}`;
+  }
+  return count;
+}
+
 export function VenueMap({
   sections,
   selectedSectionId,
@@ -49,28 +68,10 @@ export function VenueMap({
     }
   }
 
-  function buildAriaLabel(section: SectionAvailability): string {
-    const parts = [`${section.sectionName} section`];
-    parts.push(
-      `${section.availableTickets} ticket${section.availableTickets !== 1 ? 's' : ''} available`,
-    );
-    if (section.minPrice !== null) {
-      parts.push(`from ${formatCurrency(section.minPrice)}`);
-    }
-    return parts.join(', ');
-  }
-
-  function buildSubLabel(section: SectionAvailability): string {
-    const count = `${section.availableTickets} ticket${section.availableTickets !== 1 ? 's' : ''}`;
-    if (section.minPrice !== null) {
-      return `${count} from ${formatCurrency(section.minPrice)}`;
-    }
-    return count;
-  }
-
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <svg viewBox="0 0 600 400" role="img" aria-label="Venue seating map" className="w-full">
+      <svg viewBox="0 0 600 400" aria-label="Venue seating map" className="w-full">
+        <title>Venue seating map</title>
         {/* Stage indicator */}
         <rect x={200} y={5} width={200} height={30} rx={4} fill="#374151" />
         <text x={300} y={25} textAnchor="middle" fill="#e5e7eb" fontSize={14} fontWeight="bold">
