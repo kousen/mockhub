@@ -6,7 +6,3 @@ mockhub:
   mcp:
     oauth2:
       issuer-uri: ${MCP_OAUTH2_ISSUER_URI:http://localhost:8080}
-
-logging:
-  level:
-    org.springframework.security: TRACE
