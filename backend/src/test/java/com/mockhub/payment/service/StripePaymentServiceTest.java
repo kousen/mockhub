@@ -17,6 +17,7 @@ import com.mockhub.auth.entity.Role;
 import com.mockhub.auth.entity.User;
 import com.mockhub.common.exception.PaymentException;
 import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.entity.TransactionLog;
 import com.mockhub.payment.repository.TransactionLogRepository;
@@ -74,7 +75,7 @@ class StripePaymentServiceTest {
         testOrder.setSubtotal(new BigDecimal("150.00"));
         testOrder.setServiceFee(new BigDecimal("15.00"));
         testOrder.setTotal(new BigDecimal("165.00"));
-        testOrder.setStatus("PENDING");
+        testOrder.setStatus(OrderStatus.PENDING);
         testOrder.setPaymentMethod("STRIPE");
     }
 
@@ -162,7 +163,7 @@ class StripePaymentServiceTest {
         confirmedOrder.setSubtotal(new BigDecimal("150.00"));
         confirmedOrder.setServiceFee(new BigDecimal("15.00"));
         confirmedOrder.setTotal(new BigDecimal("165.00"));
-        confirmedOrder.setStatus("CONFIRMED");
+        confirmedOrder.setStatus(OrderStatus.CONFIRMED);
         confirmedOrder.setPaymentMethod("STRIPE");
 
         when(orderService.getOrderEntityForUpdate("MH-20260319-0001"))
@@ -221,7 +222,7 @@ class StripePaymentServiceTest {
         failedOrder.setSubtotal(new BigDecimal("150.00"));
         failedOrder.setServiceFee(new BigDecimal("15.00"));
         failedOrder.setTotal(new BigDecimal("165.00"));
-        failedOrder.setStatus("FAILED");
+        failedOrder.setStatus(OrderStatus.FAILED);
         failedOrder.setPaymentMethod("STRIPE");
 
         when(orderService.getOrderEntityForUpdate("MH-20260319-0001"))

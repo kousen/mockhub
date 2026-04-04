@@ -29,7 +29,6 @@ public class StripePaymentService implements PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(StripePaymentService.class);
     private static final String STATUS_SUCCEEDED = "SUCCEEDED";
-    private static final String STATUS_FAILED = "FAILED";
     private static final String METADATA_ORDER_NUMBER = "order_number";
     private static final String PROVIDER = "STRIPE";
     private static final String CURRENCY = "USD";
@@ -107,13 +106,13 @@ public class StripePaymentService implements PaymentService {
 
             Order order = orderService.getOrderEntityForUpdate(orderNumber);
 
-            if ("CONFIRMED".equals(order.getStatus())) {
+            if (order.getStatus() == com.mockhub.order.entity.OrderStatus.CONFIRMED) {
                 log.info("Stripe payment {} already confirmed for order {}", paymentIntentId, orderNumber);
                 return new PaymentConfirmation(paymentIntentId, STATUS_SUCCEEDED, orderNumber);
             }
 
-            if (STATUS_FAILED.equals(order.getStatus()) || "CANCELLED".equals(order.getStatus())) {
-                log.info("Stripe payment {} rejected for {} order {}", paymentIntentId, order.getStatus().toLowerCase(), orderNumber);
+            if (order.getStatus() == com.mockhub.order.entity.OrderStatus.FAILED || order.getStatus() == com.mockhub.order.entity.OrderStatus.CANCELLED) {
+                log.info("Stripe payment {} rejected for {} order {}", paymentIntentId, order.getStatus().name().toLowerCase(), orderNumber);
                 return new PaymentConfirmation(paymentIntentId, STATUS_FAILED, orderNumber);
             }
 

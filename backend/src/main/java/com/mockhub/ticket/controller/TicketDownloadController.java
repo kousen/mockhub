@@ -60,7 +60,7 @@ public class TicketDownloadController {
             throw new UnauthorizedException("You do not own this order");
         }
 
-        if (!"CONFIRMED".equals(orderItem.getOrder().getStatus())) {
+        if (orderItem.getOrder().getStatus() != com.mockhub.order.entity.OrderStatus.CONFIRMED) {
             throw new ConflictException("Order is not confirmed");
         }
 

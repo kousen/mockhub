@@ -79,7 +79,7 @@ public class PublicTicketViewController {
             return ResponseEntity.notFound().build();
         }
 
-        if (!"CONFIRMED".equals(order.getStatus())) {
+        if (order.getStatus() != com.mockhub.order.entity.OrderStatus.CONFIRMED) {
             return ResponseEntity.status(409).build();
         }
 
@@ -118,7 +118,7 @@ public class PublicTicketViewController {
 
         PublicOrderViewDto dto = new PublicOrderViewDto(
                 orderNumber,
-                order.getStatus(),
+                order.getStatus().name(),
                 event.getName(),
                 eventDate,
                 venue.getName(),

@@ -75,14 +75,14 @@ public class MockPaymentService implements PaymentService {
         Order order = resolveOrderForUpdate(paymentIntentId);
         String orderNumber = order.getOrderNumber();
 
-        if ("CONFIRMED".equals(order.getStatus())) {
+        if (order.getStatus() == com.mockhub.order.entity.OrderStatus.CONFIRMED) {
             paymentIntentToOrder.remove(paymentIntentId);
             log.info("Mock payment {} already confirmed for order {}", paymentIntentId, orderNumber);
             return new PaymentConfirmation(paymentIntentId, STATUS_SUCCEEDED, orderNumber);
         }
 
-        if ("FAILED".equals(order.getStatus()) || "CANCELLED".equals(order.getStatus())) {
-            throw new PaymentException("Cannot confirm payment for " + order.getStatus().toLowerCase() + " order " + orderNumber);
+        if (order.getStatus() == com.mockhub.order.entity.OrderStatus.FAILED || order.getStatus() == com.mockhub.order.entity.OrderStatus.CANCELLED) {
+            throw new PaymentException("Cannot confirm payment for " + order.getStatus().name().toLowerCase() + " order " + orderNumber);
         }
 
         // Simulate processing delay

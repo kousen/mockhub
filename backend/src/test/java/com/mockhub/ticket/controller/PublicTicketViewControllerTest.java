@@ -22,6 +22,7 @@ import com.mockhub.config.SecurityConfig;
 import com.mockhub.event.entity.Event;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.repository.OrderItemRepository;
 import com.mockhub.order.repository.OrderRepository;
 import com.mockhub.ticket.entity.Listing;
@@ -121,7 +122,7 @@ class PublicTicketViewControllerTest {
 
         Order order = new Order();
         order.setOrderNumber(orderNumber);
-        order.setStatus("CONFIRMED");
+        order.setStatus(OrderStatus.CONFIRMED);
         order.setUser(user);
         order.setTotal(new BigDecimal("113.40"));
         order.setItems(List.of(item));
@@ -183,7 +184,7 @@ class PublicTicketViewControllerTest {
         String orderNumber = "MH-20260322-0004";
         Claims claims = createOrderViewClaims(orderNumber);
         Order order = createTestOrder(orderNumber);
-        order.setStatus("PENDING");
+        order.setStatus(OrderStatus.PENDING);
 
         when(ticketSigningService.verifyOrderViewToken("pending-token")).thenReturn(claims);
         when(orderRepository.findByOrderNumber(orderNumber)).thenReturn(Optional.of(order));

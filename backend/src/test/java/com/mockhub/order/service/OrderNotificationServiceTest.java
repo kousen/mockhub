@@ -19,6 +19,7 @@ import com.mockhub.notification.service.NotificationService;
 import com.mockhub.notification.service.SmsDeliveryService;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.ticket.service.TicketSigningService;
@@ -100,7 +101,7 @@ class OrderNotificationServiceTest {
         testOrder.setId(1L);
         testOrder.setUser(testUser);
         testOrder.setOrderNumber("MH-20260317-0001");
-        testOrder.setStatus("CONFIRMED");
+        testOrder.setStatus(OrderStatus.CONFIRMED);
         testOrder.setSubtotal(new BigDecimal("75.00"));
         testOrder.setServiceFee(new BigDecimal("7.50"));
         testOrder.setTotal(new BigDecimal("82.50"));

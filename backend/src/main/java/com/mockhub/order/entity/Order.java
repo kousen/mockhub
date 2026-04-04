@@ -11,6 +11,8 @@ import com.mockhub.common.entity.BaseEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -28,8 +30,9 @@ public class Order extends BaseEntity {
     @Column(name = "order_number", nullable = false, unique = true, length = 20)
     private String orderNumber;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
-    private String status;
+    private OrderStatus status;
 
     @Column(name = "subtotal", nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
@@ -80,12 +83,20 @@ public class Order extends BaseEntity {
         this.orderNumber = orderNumber;
     }
 
-    public String getStatus() {
+    public OrderStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(OrderStatus status) {
         this.status = status;
+    }
+
+    /**
+     * Transitions the order to the target status, enforcing the state machine rules.
+     * Throws {@link IllegalStateException} if the transition is not allowed.
+     */
+    public void transitionTo(OrderStatus target) {
+        this.status = this.status.transitionTo(target);
     }
 
     public BigDecimal getSubtotal() {

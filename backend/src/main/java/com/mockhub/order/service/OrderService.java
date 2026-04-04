@@ -36,6 +36,7 @@ import com.mockhub.order.dto.OrderItemDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.repository.OrderRepository;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
@@ -49,10 +50,6 @@ public class OrderService {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final String ORDER_RESOURCE = "Order";
     private static final String ORDER_NUMBER_FIELD = "orderNumber";
-    private static final String STATUS_PENDING = "PENDING";
-    private static final String STATUS_CONFIRMED = "CONFIRMED";
-    private static final String STATUS_FAILED = "FAILED";
-    private static final String STATUS_CANCELLED = "CANCELLED";
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
@@ -114,16 +111,16 @@ public class OrderService {
         Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
-        if (STATUS_CONFIRMED.equals(order.getStatus())) {
+        if (order.getStatus() == OrderStatus.CONFIRMED) {
             log.info("Order {} is already confirmed; skipping duplicate confirmation", orderNumber);
             return;
         }
 
-        if (STATUS_FAILED.equals(order.getStatus()) || STATUS_CANCELLED.equals(order.getStatus())) {
-            throw new ConflictException("Cannot confirm " + order.getStatus().toLowerCase() + " order " + orderNumber);
+        if (!order.getStatus().canTransitionTo(OrderStatus.CONFIRMED)) {
+            throw new ConflictException("Cannot confirm " + order.getStatus().name().toLowerCase() + " order " + orderNumber);
         }
 
-        order.setStatus(STATUS_CONFIRMED);
+        order.transitionTo(OrderStatus.CONFIRMED);
         order.setConfirmedAt(Instant.now());
         markTicketsAsSold(order);
         orderRepository.save(order);
@@ -141,17 +138,17 @@ public class OrderService {
         Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
-        if (STATUS_FAILED.equals(order.getStatus())) {
+        if (order.getStatus() == OrderStatus.FAILED) {
             log.info("Order {} is already failed; skipping duplicate failure handling",
                     order.getOrderNumber());
             return;
         }
 
-        if (STATUS_CONFIRMED.equals(order.getStatus())) {
-            throw new ConflictException("Cannot fail confirmed order " + orderNumber);
+        if (!order.getStatus().canTransitionTo(OrderStatus.FAILED)) {
+            throw new ConflictException("Cannot fail " + order.getStatus().name().toLowerCase() + " order " + orderNumber);
         }
 
-        order.setStatus(STATUS_FAILED);
+        order.transitionTo(OrderStatus.FAILED);
         releaseOrderTickets(order);
         orderRepository.save(order);
         log.info("Failed order {}, released {} tickets", order.getOrderNumber(), order.getItems().size());
@@ -162,16 +159,16 @@ public class OrderService {
         Order order = orderRepository.findByOrderNumberForUpdate(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_RESOURCE, ORDER_NUMBER_FIELD, orderNumber));
 
-        if (STATUS_CANCELLED.equals(order.getStatus())) {
+        if (order.getStatus() == OrderStatus.CANCELLED) {
             log.info("Order {} is already cancelled; skipping duplicate cancellation", orderNumber);
             return;
         }
 
-        if (!STATUS_CONFIRMED.equals(order.getStatus())) {
+        if (!order.getStatus().canTransitionTo(OrderStatus.CANCELLED)) {
             throw new ConflictException("Can only cancel confirmed orders");
         }
 
-        order.setStatus(STATUS_CANCELLED);
+        order.transitionTo(OrderStatus.CANCELLED);
         releaseOrderTickets(order);
         restoreEventAvailability(order);
 
@@ -225,7 +222,7 @@ public class OrderService {
                     return new OrderSummaryDto(
                             order.getId(),
                             order.getOrderNumber(),
-                            order.getStatus(),
+                            order.getStatus().name(),
                             order.getTotal(),
                             order.getItems().size(),
                             order.getCreatedAt(),
@@ -318,7 +315,7 @@ public class OrderService {
         Order order = new Order();
         order.setUser(user);
         order.setOrderNumber(generateOrderNumber());
-        order.setStatus(STATUS_PENDING);
+        order.setStatus(OrderStatus.PENDING);
         order.setSubtotal(subtotal);
         order.setServiceFee(serviceFee);
         order.setTotal(total);
@@ -423,7 +420,7 @@ public class OrderService {
         return new OrderDto(
                 order.getId(),
                 order.getOrderNumber(),
-                order.getStatus(),
+                order.getStatus().name(),
                 order.getSubtotal(),
                 order.getServiceFee(),
                 order.getTotal(),
