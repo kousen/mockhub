@@ -110,8 +110,10 @@ public class McpOAuth2SecurityConfig {
             JwtDecoder mcpJwtDecoder,
             @Value("${mockhub.mcp.oauth2.issuer-uri}") String issuerUri) throws Exception {
         return http
-                .securityMatcher("/mcp/**")
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .securityMatcher("/mcp/**", "/.well-known/oauth-protected-resource")
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/.well-known/oauth-protected-resource").permitAll()
+                        .anyRequest().authenticated())
                 .with(McpServerOAuth2Configurer.mcpServerOAuth2(), mcp -> {
                     mcp.authorizationServer(issuerUri);
                     mcp.resourcePath("/mcp");
