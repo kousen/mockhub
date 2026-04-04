@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.common.exception.PaymentException;
 import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentConfirmation;
 import com.mockhub.payment.dto.PaymentIntentDto;
@@ -107,13 +108,13 @@ public class StripePaymentService implements PaymentService {
 
             Order order = orderService.getOrderEntityForUpdate(orderNumber);
 
-            if ("CONFIRMED".equals(order.getStatus())) {
+            if (order.getStatus() == OrderStatus.CONFIRMED) {
                 log.info("Stripe payment {} already confirmed for order {}", paymentIntentId, orderNumber);
                 return new PaymentConfirmation(paymentIntentId, STATUS_SUCCEEDED, orderNumber);
             }
 
-            if (STATUS_FAILED.equals(order.getStatus()) || "CANCELLED".equals(order.getStatus())) {
-                log.info("Stripe payment {} rejected for {} order {}", paymentIntentId, order.getStatus().toLowerCase(), orderNumber);
+            if (order.getStatus() == OrderStatus.FAILED || order.getStatus() == OrderStatus.CANCELLED) {
+                log.info("Stripe payment {} rejected for {} order {}", paymentIntentId, order.getStatus().name().toLowerCase(), orderNumber);
                 return new PaymentConfirmation(paymentIntentId, STATUS_FAILED, orderNumber);
             }
 

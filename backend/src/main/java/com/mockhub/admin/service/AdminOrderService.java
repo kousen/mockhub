@@ -61,7 +61,7 @@ public class AdminOrderService {
     public BigDecimal getTotalRevenue() {
         BigDecimal totalRevenue = BigDecimal.ZERO;
         List<Order> confirmedOrders = orderRepository.findAll().stream()
-                .filter(order -> "CONFIRMED".equals(order.getStatus()))
+                .filter(order -> order.getStatus() == com.mockhub.order.entity.OrderStatus.CONFIRMED)
                 .toList();
         for (Order order : confirmedOrders) {
             totalRevenue = totalRevenue.add(order.getTotal());
@@ -92,7 +92,7 @@ public class AdminOrderService {
         return new OrderSummaryDto(
                 order.getId(),
                 order.getOrderNumber(),
-                order.getStatus(),
+                order.getStatus().name(),
                 order.getTotal(),
                 order.getItems().size(),
                 order.getCreatedAt(),

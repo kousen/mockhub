@@ -36,6 +36,7 @@ import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.repository.OrderRepository;
 import com.mockhub.ticket.dto.TicketDto;
 import com.mockhub.ticket.entity.Listing;
@@ -157,7 +158,7 @@ class OrderServiceTest {
         testOrder.setId(1L);
         testOrder.setUser(testUser);
         testOrder.setOrderNumber("MH-20260317-0001");
-        testOrder.setStatus("PENDING");
+        testOrder.setStatus(OrderStatus.PENDING);
         testOrder.setSubtotal(new BigDecimal("75.00"));
         testOrder.setServiceFee(new BigDecimal("7.50"));
         testOrder.setTotal(new BigDecimal("82.50"));
@@ -228,7 +229,7 @@ class OrderServiceTest {
         existingOrder.setId(99L);
         existingOrder.setUser(testUser);
         existingOrder.setOrderNumber("MH-20260319-0001");
-        existingOrder.setStatus("PENDING");
+        existingOrder.setStatus(OrderStatus.PENDING);
         existingOrder.setSubtotal(new BigDecimal("75.00"));
         existingOrder.setServiceFee(new BigDecimal("7.50"));
         existingOrder.setTotal(new BigDecimal("82.50"));
@@ -279,7 +280,7 @@ class OrderServiceTest {
         orderService.confirmOrder("MH-20260317-0001");
         orderService.confirmOrder("MH-20260317-0001");
 
-        assertEquals("CONFIRMED", testOrder.getStatus());
+        assertEquals(OrderStatus.CONFIRMED, testOrder.getStatus());
         assertNotNull(testOrder.getConfirmedAt());
         verify(orderNotificationService, times(1)).sendConfirmationNotifications(any(Order.class));
         verify(eventRepository, times(1)).save(any(Event.class));
@@ -309,7 +310,7 @@ class OrderServiceTest {
         orderService.failOrder("MH-20260317-0001");
         orderService.failOrder("MH-20260317-0001");
 
-        assertEquals("FAILED", testOrder.getStatus());
+        assertEquals(OrderStatus.FAILED, testOrder.getStatus());
         verify(ticketService, times(1)).releaseTicket(1L);
         verify(orderRepository, times(1)).save(testOrder);
     }
@@ -317,7 +318,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("confirmOrder - failed order cannot be confirmed")
     void confirmOrder_givenFailedOrder_throwsConflictException() {
-        testOrder.setStatus("FAILED");
+        testOrder.setStatus(OrderStatus.FAILED);
         when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
                 .thenReturn(Optional.of(testOrder));
 
@@ -331,7 +332,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("failOrder - confirmed order cannot be failed")
     void failOrder_givenConfirmedOrder_throwsConflictException() {
-        testOrder.setStatus("CONFIRMED");
+        testOrder.setStatus(OrderStatus.CONFIRMED);
         when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
                 .thenReturn(Optional.of(testOrder));
 
@@ -377,7 +378,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("cancelOrder - given confirmed order with mandate - reverses spend and releases tickets")
     void cancelOrder_givenConfirmedOrderWithMandate_reversesSpendAndReleasesTickets() {
-        testOrder.setStatus("CONFIRMED");
+        testOrder.setStatus(OrderStatus.CONFIRMED);
         testOrder.setMandateId("mandate-123");
         testListing.setStatus("SOLD");
         Event event = testOrder.getItems().getFirst().getListing().getEvent();
@@ -389,7 +390,7 @@ class OrderServiceTest {
 
         orderService.cancelOrder("MH-20260317-0001");
 
-        assertEquals("CANCELLED", testOrder.getStatus());
+        assertEquals(OrderStatus.CANCELLED, testOrder.getStatus());
         assertEquals("ACTIVE", testListing.getStatus(), "Listing should be re-activated on cancellation");
         verify(ticketService).releaseTicket(1L);
         verify(eventRepository).save(event);
@@ -400,7 +401,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("cancelOrder - given confirmed order without mandate - releases tickets only")
     void cancelOrder_givenConfirmedOrderWithoutMandate_releasesTicketsOnly() {
-        testOrder.setStatus("CONFIRMED");
+        testOrder.setStatus(OrderStatus.CONFIRMED);
         testOrder.setMandateId(null);
 
         when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
@@ -409,7 +410,7 @@ class OrderServiceTest {
 
         orderService.cancelOrder("MH-20260317-0001");
 
-        assertEquals("CANCELLED", testOrder.getStatus());
+        assertEquals(OrderStatus.CANCELLED, testOrder.getStatus());
         verify(ticketService).releaseTicket(1L);
         verify(mandateService, never()).reverseSpend(anyString(), any(BigDecimal.class));
     }
@@ -417,7 +418,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("cancelOrder - given pending order - throws ConflictException")
     void cancelOrder_givenPendingOrder_throwsConflictException() {
-        testOrder.setStatus("PENDING");
+        testOrder.setStatus(OrderStatus.PENDING);
         when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
                 .thenReturn(Optional.of(testOrder));
 
@@ -430,13 +431,13 @@ class OrderServiceTest {
     @Test
     @DisplayName("cancelOrder - given already cancelled order - skips idempotently")
     void cancelOrder_givenAlreadyCancelledOrder_skipsIdempotently() {
-        testOrder.setStatus("CANCELLED");
+        testOrder.setStatus(OrderStatus.CANCELLED);
         when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
                 .thenReturn(Optional.of(testOrder));
 
         orderService.cancelOrder("MH-20260317-0001");
 
-        assertEquals("CANCELLED", testOrder.getStatus());
+        assertEquals(OrderStatus.CANCELLED, testOrder.getStatus());
         verify(ticketService, never()).releaseTicket(anyLong());
         verify(mandateService, never()).reverseSpend(anyString(), any(BigDecimal.class));
         verify(orderRepository, never()).save(any(Order.class));

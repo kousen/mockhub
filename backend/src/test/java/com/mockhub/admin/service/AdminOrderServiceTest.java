@@ -25,6 +25,7 @@ import com.mockhub.event.entity.Event;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.repository.OrderRepository;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.venue.entity.Venue;
@@ -98,7 +99,7 @@ class AdminOrderServiceTest {
         Order order = new Order();
         order.setId(1L);
         order.setOrderNumber("MH-20260329-0001");
-        order.setStatus("CONFIRMED");
+        order.setStatus(OrderStatus.CONFIRMED);
         order.setTotal(new BigDecimal("82.50"));
         order.setCreatedAt(Instant.now());
         order.setItems(List.of(item));
@@ -132,7 +133,7 @@ class AdminOrderServiceTest {
         Order order = new Order();
         order.setId(1L);
         order.setOrderNumber("MH-20260329-0001");
-        order.setStatus("CONFIRMED");
+        order.setStatus(OrderStatus.CONFIRMED);
         order.setTotal(new BigDecimal("82.50"));
         order.setCreatedAt(Instant.now());
         order.setItems(List.of());
@@ -150,15 +151,15 @@ class AdminOrderServiceTest {
     @DisplayName("getTotalRevenue - given confirmed orders - sums totals")
     void getTotalRevenue_givenConfirmedOrders_sumsTotals() {
         Order confirmed1 = new Order();
-        confirmed1.setStatus("CONFIRMED");
+        confirmed1.setStatus(OrderStatus.CONFIRMED);
         confirmed1.setTotal(new BigDecimal("100.00"));
 
         Order confirmed2 = new Order();
-        confirmed2.setStatus("CONFIRMED");
+        confirmed2.setStatus(OrderStatus.CONFIRMED);
         confirmed2.setTotal(new BigDecimal("200.00"));
 
         Order pending = new Order();
-        pending.setStatus("PENDING");
+        pending.setStatus(OrderStatus.PENDING);
         pending.setTotal(new BigDecimal("50.00"));
 
         when(orderRepository.findAll()).thenReturn(List.of(confirmed1, confirmed2, pending));

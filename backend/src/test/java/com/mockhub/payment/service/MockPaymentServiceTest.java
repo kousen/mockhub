@@ -15,6 +15,7 @@ import com.mockhub.auth.entity.Role;
 import com.mockhub.auth.entity.User;
 import com.mockhub.common.exception.PaymentException;
 import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentConfirmation;
 import com.mockhub.payment.dto.PaymentIntentDto;
@@ -64,7 +65,7 @@ class MockPaymentServiceTest {
         testOrder.setSubtotal(new BigDecimal("150.00"));
         testOrder.setServiceFee(new BigDecimal("15.00"));
         testOrder.setTotal(new BigDecimal("165.00"));
-        testOrder.setStatus("PENDING");
+        testOrder.setStatus(OrderStatus.PENDING);
         testOrder.setPaymentMethod("MOCK");
     }
 
@@ -150,7 +151,7 @@ class MockPaymentServiceTest {
         confirmedOrder.setSubtotal(new BigDecimal("150.00"));
         confirmedOrder.setServiceFee(new BigDecimal("15.00"));
         confirmedOrder.setTotal(new BigDecimal("165.00"));
-        confirmedOrder.setStatus("CONFIRMED");
+        confirmedOrder.setStatus(OrderStatus.CONFIRMED);
         confirmedOrder.setPaymentMethod("MOCK");
 
         when(orderService.getOrderEntityForUpdate("ORD-20260318-001")).thenReturn(testOrder);

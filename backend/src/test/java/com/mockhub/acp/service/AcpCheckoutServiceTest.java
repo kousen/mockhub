@@ -27,6 +27,7 @@ import com.mockhub.eval.dto.EvalResult;
 import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
@@ -124,7 +125,7 @@ class AcpCheckoutServiceTest {
         order.setAgentId(AGENT_ID);
         order.setMandateId(MANDATE_ID);
         order.setPaymentMethod(paymentMethod);
-        order.setStatus("PENDING");
+        order.setStatus(OrderStatus.PENDING);
         return order;
     }
 

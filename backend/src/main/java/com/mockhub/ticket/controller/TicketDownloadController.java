@@ -16,6 +16,7 @@ import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.common.exception.UnauthorizedException;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.repository.OrderItemRepository;
 import com.mockhub.ticket.service.TicketPdfService;
 
@@ -60,7 +61,7 @@ public class TicketDownloadController {
             throw new UnauthorizedException("You do not own this order");
         }
 
-        if (!"CONFIRMED".equals(orderItem.getOrder().getStatus())) {
+        if (orderItem.getOrder().getStatus() != OrderStatus.CONFIRMED) {
             throw new ConflictException("Order is not confirmed");
         }
 

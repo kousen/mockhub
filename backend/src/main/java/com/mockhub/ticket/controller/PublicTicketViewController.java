@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mockhub.event.entity.Event;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.repository.OrderItemRepository;
 import com.mockhub.order.repository.OrderRepository;
 import com.mockhub.ticket.dto.PublicOrderViewDto;
@@ -79,7 +80,7 @@ public class PublicTicketViewController {
             return ResponseEntity.notFound().build();
         }
 
-        if (!"CONFIRMED".equals(order.getStatus())) {
+        if (order.getStatus() != OrderStatus.CONFIRMED) {
             return ResponseEntity.status(409).build();
         }
 
@@ -118,7 +119,7 @@ public class PublicTicketViewController {
 
         PublicOrderViewDto dto = new PublicOrderViewDto(
                 orderNumber,
-                order.getStatus(),
+                order.getStatus().name(),
                 event.getName(),
                 eventDate,
                 venue.getName(),

@@ -22,6 +22,7 @@ import com.mockhub.auth.security.SecurityUser;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
 import com.mockhub.config.SecurityConfig;
 import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentConfirmation;
 import com.mockhub.payment.dto.PaymentIntentDto;
@@ -85,7 +86,7 @@ class PaymentControllerTest {
         order.setSubtotal(new BigDecimal("135.00"));
         order.setServiceFee(new BigDecimal("15.00"));
         order.setPaymentMethod("stripe");
-        order.setStatus("PENDING");
+        order.setStatus(OrderStatus.PENDING);
         return order;
     }
 
