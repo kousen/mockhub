@@ -15,9 +15,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 
+import java.time.Duration;
+
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class McpOAuth2SecurityConfigTest {
 
@@ -78,6 +83,47 @@ class McpOAuth2SecurityConfigTest {
         AuthorizationServerSettings settings = config.authorizationServerSettings(issuerUri);
 
         assertEquals(issuerUri, settings.getIssuer());
+    }
+
+    @Test
+    void registeredClientRepository_claudeClientHasRefreshTokenGrant() {
+        RegisteredClientRepository repository = config.registeredClientRepository();
+
+        var client = repository.findByClientId("claude-mcp-client");
+        assertNotNull(client);
+        assertTrue(client.getAuthorizationGrantTypes()
+                        .contains(AuthorizationGrantType.REFRESH_TOKEN),
+                "Client must support refresh_token grant type");
+    }
+
+    @Test
+    void registeredClientRepository_claudeClientHasEightHourAccessToken() {
+        RegisteredClientRepository repository = config.registeredClientRepository();
+
+        var client = repository.findByClientId("claude-mcp-client");
+        assertNotNull(client);
+        Duration accessTokenTtl = client.getTokenSettings().getAccessTokenTimeToLive();
+        assertEquals(Duration.ofHours(8), accessTokenTtl);
+    }
+
+    @Test
+    void registeredClientRepository_claudeClientHasThirtyDayRefreshToken() {
+        RegisteredClientRepository repository = config.registeredClientRepository();
+
+        var client = repository.findByClientId("claude-mcp-client");
+        assertNotNull(client);
+        Duration refreshTokenTtl = client.getTokenSettings().getRefreshTokenTimeToLive();
+        assertEquals(Duration.ofDays(30), refreshTokenTtl);
+    }
+
+    @Test
+    void registeredClientRepository_claudeClientDoesNotReuseRefreshTokens() {
+        RegisteredClientRepository repository = config.registeredClientRepository();
+
+        var client = repository.findByClientId("claude-mcp-client");
+        assertNotNull(client);
+        assertFalse(client.getTokenSettings().isReuseRefreshTokens(),
+                "Refresh tokens should rotate on each use");
     }
 
     @Test

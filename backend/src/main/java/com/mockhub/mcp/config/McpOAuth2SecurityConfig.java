@@ -172,11 +172,14 @@ public class McpOAuth2SecurityConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri("https://claude.ai/api/mcp/auth_callback")
                 .redirectUri("http://localhost:6274/oauth/callback")
                 .redirectUri("http://127.0.0.1:6274/oauth/callback")
                 .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(1))
+                        .accessTokenTimeToLive(Duration.ofHours(8))
+                        .refreshTokenTimeToLive(Duration.ofDays(30))
+                        .reuseRefreshTokens(false)
                         .build())
                 .build();
         return new InMemoryRegisteredClientRepository(claudeClient);
