@@ -17,6 +17,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
@@ -72,17 +73,27 @@ public class McpOAuth2SecurityConfig {
     public SecurityFilterChain authorizationServerFilterChain(HttpSecurity http) throws Exception {
         http.with(McpAuthorizationServerConfigurer.mcpAuthorizationServer(), Customizer.withDefaults());
 
-        // Scope this chain to OAuth2 authorization server endpoints.
+        // Scope this chain to OAuth2 authorization server endpoints + login page.
         // Must be set after the MCP configurer applies, because it configures
         // OAuth2AuthorizationServerConfigurer which registers the endpoint matchers.
         http.oauth2AuthorizationServer(Customizer.withDefaults());
         OAuth2AuthorizationServerConfigurer authzConfigurer =
                 http.getConfigurer(OAuth2AuthorizationServerConfigurer.class);
-        http.securityMatcher(authzConfigurer.getEndpointsMatcher());
+        // Include the login page in this chain's matcher so the form POST is processed
+        // by the formLogin filter in this chain (not the default stateless chain).
+        http.securityMatcher(new OrRequestMatcher(
+                authzConfigurer.getEndpointsMatcher(),
+                request -> "/oauth2/login".equals(request.getServletPath())));
 
         return http
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .formLogin(form -> form.loginPage("/oauth2/login"))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/oauth2/login").permitAll()
+                        .anyRequest().authenticated())
+                .formLogin(form -> form
+                        .loginPage("/oauth2/login")
+                        .loginProcessingUrl("/oauth2/login"))
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/oauth2/login"))
                 .build();
     }
 
@@ -105,6 +116,7 @@ public class McpOAuth2SecurityConfig {
                     mcp.authorizationServer(issuerUri);
                     mcp.resourcePath("/mcp");
                     mcp.jwtDecoder(mcpJwtDecoder);
+                    mcp.validateAudienceClaim(true);
                 })
                 .csrf(csrf -> csrf.disable())
                 .build();
