@@ -55,7 +55,7 @@ export function useMarkAsRead() {
       queryClient.setQueriesData<PageResponse<Notification>>(
         { queryKey: ['notifications'], exact: false },
         (old) => {
-          if (!old || !('content' in old)) return old;
+          if (!old || typeof old !== 'object' || !('content' in old)) return old;
           return {
             ...old,
             content: old.content.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n)),
@@ -95,7 +95,7 @@ export function useMarkAllAsRead() {
       queryClient.setQueriesData<PageResponse<Notification>>(
         { queryKey: ['notifications'], exact: false },
         (old) => {
-          if (!old || !('content' in old)) return old;
+          if (!old || typeof old !== 'object' || !('content' in old)) return old;
           return {
             ...old,
             content: old.content.map((n) => ({ ...n, isRead: true })),
