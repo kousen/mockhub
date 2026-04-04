@@ -268,7 +268,7 @@ The codebase uses Java DOP patterns where they add value:
 - **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `api/`, `actuator/`, `mcp/`, `acp/`, `swagger-ui/`, `v3/` paths
 - **Security:** Static frontend routes (`/`, `/events/**`, `/sell`, `/my/**`, etc.) are `permitAll()` in SecurityConfig. CORS allows the Railway production domain.
 - **Ephemeral filesystem:** Seed images are restored from classpath on every container startup via `restoreSeedImages()` in `EventSeeder`
-- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend` — production datasource, Anthropic AI, mock payment, real SMS and email
+- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend,spotify,ticketmaster,mcp-oauth2` — production datasource, Anthropic AI, mock payment, real SMS and email, Spotify, Ticketmaster, MCP OAuth2
 - **Database:** Railway PostgreSQL with separate `SPRING_DATASOURCE_URL`, `_USERNAME`, `_PASSWORD` env vars (Railway's `DATABASE_URL` format is incompatible with JDBC)
 - **JWT secret:** Must be valid Base64 (no dots or special characters)
 - **Auto-deploy:** Pushes to `main` trigger automatic Railway deployments
