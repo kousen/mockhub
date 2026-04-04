@@ -15,11 +15,13 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @ConditionalOnProperty(name = "mockhub.mcp.enabled", havingValue = "true")
+@Profile("!mcp-oauth2")
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class McpApiKeyFilter extends OncePerRequestFilter {
 

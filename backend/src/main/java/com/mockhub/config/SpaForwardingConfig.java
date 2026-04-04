@@ -32,7 +32,9 @@ public class SpaForwardingConfig implements WebMvcConfigurer {
                                 || resourcePath.startsWith("swagger-ui/")
                                 || resourcePath.startsWith("v3/")
                                 || resourcePath.startsWith("mcp/")
-                                || resourcePath.startsWith("acp/")) {
+                                || resourcePath.startsWith("acp/")
+                                || resourcePath.startsWith("oauth2/")
+                                || resourcePath.startsWith(".well-known/")) {
                             return null;
                         }
 

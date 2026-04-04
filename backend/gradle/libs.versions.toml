@@ -8,6 +8,9 @@ spotless = "7.0.2"
 # Spring AI BOM
 spring-ai = "2.0.0-M3"
 
+# MCP Security
+mcp-security = "0.1.5"
+
 # Security - JWT
 jjwt = "0.12.6"
 
@@ -44,6 +47,12 @@ spring-boot-starter-cache = { module = "org.springframework.boot:spring-boot-sta
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
 spring-boot-starter-mail = { module = "org.springframework.boot:spring-boot-starter-mail" }
 spring-boot-starter-oauth2client = { module = "org.springframework.boot:spring-boot-starter-oauth2-client" }
+spring-boot-starter-oauth2-authorization-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-authorization-server" }
+spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
+
+# MCP Security (non-boot modules for manual SecurityFilterChain control)
+mcp-authorization-server = { module = "org.springaicommunity:mcp-authorization-server", version.ref = "mcp-security" }
+mcp-server-security = { module = "org.springaicommunity:mcp-server-security", version.ref = "mcp-security" }
 spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
 
 # Spring AI (versions managed by Spring AI BOM)

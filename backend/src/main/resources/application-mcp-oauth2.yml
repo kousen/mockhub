@@ -1,0 +1,8 @@
+# OAuth 2.1 configuration for MCP endpoints.
+# Activated by the 'mcp-oauth2' Spring profile.
+# Replaces X-API-Key header auth with OAuth2 Bearer token validation.
+
+mockhub:
+  mcp:
+    oauth2:
+      issuer-uri: ${MCP_OAUTH2_ISSUER_URI:http://localhost:8080}

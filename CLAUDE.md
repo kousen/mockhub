@@ -34,6 +34,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
   - `test` — Testcontainers PostgreSQL, mock payment
   - `mock-payment` / `stripe` — payment implementation (`@Primary` on Stripe resolves conflicts when both active)
   - `ai-anthropic` / `ai-openai` / `ai-ollama` — AI provider (each overrides the base AI exclusion list to enable only its own provider)
+  - `mcp-oauth2` — OAuth 2.1 with DCR on MCP endpoints (replaces API key auth). Without it, falls back to `X-API-Key` header.
   - Base `application.yml` excludes all AI auto-configs. Each `ai-*` profile overrides with a narrower list.
   - To enable AI: `SPRING_PROFILES_ACTIVE=dev,ai-anthropic` (just add the provider to dev)
 
@@ -173,7 +174,15 @@ The codebase uses Java DOP patterns where they add value:
 - **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
-- **MCP server** — 23 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Claude Desktop requires `mcp-remote` bridge for auth headers: `{"command": "npx", "args": ["-y", "mcp-remote", "https://mockhub.kousenit.com/mcp", "--header", "X-API-Key: <key>"]}`.
+- **MCP server** — 23 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`.
+- **MCP auth (two modes, profile-based):**
+  - `mcp-oauth2` profile: OAuth 2.1 with Dynamic Client Registration (DCR). Enables native Claude connector support on all platforms (desktop, web, mobile) without `mcp-remote`. Uses `org.springaicommunity:mcp-authorization-server:0.1.5` and `org.springaicommunity:mcp-server-security:0.1.5`.
+  - Without `mcp-oauth2` profile: Falls back to `X-API-Key` header auth via `McpApiKeyFilter`. Requires `mcp-remote` bridge for Claude Desktop.
+- **OAuth2 SecurityFilterChain architecture** (when `mcp-oauth2` active): Three chains with explicit `@Order` — (1) authorization server chain (OAuth2 endpoints, `/.well-known/**`, DCR), (2) MCP resource server chain (`/mcp/**`, validates Bearer tokens), (3) existing chain (everything else, unchanged). Chains are mutually exclusive with `McpApiKeyFilter` via `@Profile("!mcp-oauth2")`.
+- **OAuth2 authorization server** embedded in MockHub. Ephemeral RSA key pair for JWT signing (regenerated on restart). Pre-registered Claude client with redirect URI `https://claude.ai/api/mcp/auth_callback`. DCR allows additional clients to self-register.
+- **OAuth2 login page** at `/oauth2/login` — minimal form for authorization_code flow. Separate from React SPA login. Uses MockHub's existing `UserDetailsServiceImpl`.
+- **Environment variables:** `MCP_OAUTH2_ISSUER_URI` (must match public URL in production, e.g., `https://mockhub.kousenit.com`).
+- **SPA exclusions:** `oauth2/`, `.well-known/` added to `SpaForwardingConfig`.
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
 - **`findTickets` compound tool** — single-call search with query, category, city, date range, price range, section filter, returning matching listings sorted by price. Uses JPA `Specification` with `findBy` fluent API (no `COUNT` query overhead). `ListingSearchCriteria` record encapsulates all filters; `ListingSearchSpecification` builds predicates dynamically for non-null criteria only. Date parameters are `String` (not `Instant`) because Spring AI MCP can't deserialize ISO-8601 to `Instant`. Reduces agent round-trips from 3 to 1. Server-side execution: ~54ms.
