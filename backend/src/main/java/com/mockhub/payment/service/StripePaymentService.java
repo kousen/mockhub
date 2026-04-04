@@ -29,6 +29,7 @@ public class StripePaymentService implements PaymentService {
 
     private static final Logger log = LoggerFactory.getLogger(StripePaymentService.class);
     private static final String STATUS_SUCCEEDED = "SUCCEEDED";
+    private static final String STATUS_FAILED = "FAILED";
     private static final String METADATA_ORDER_NUMBER = "order_number";
     private static final String PROVIDER = "STRIPE";
     private static final String CURRENCY = "USD";

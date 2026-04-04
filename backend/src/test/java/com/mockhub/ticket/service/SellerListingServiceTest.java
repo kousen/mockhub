@@ -447,7 +447,7 @@ class SellerListingServiceTest {
         Order completedOrder = new Order();
         completedOrder.setId(1L);
         completedOrder.setOrderNumber("MH-20260320-0001");
-        completedOrder.setStatus("COMPLETED");
+        completedOrder.setStatus(com.mockhub.order.entity.OrderStatus.CONFIRMED);
         completedOrder.setConfirmedAt(Instant.now());
 
         OrderItem orderItem = new OrderItem();
