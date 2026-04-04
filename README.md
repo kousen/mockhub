@@ -29,6 +29,7 @@ MockHub mimics the functionality of sites like StubHub and TicketNetwork — reg
 | Testing | JUnit 5, Testcontainers, Vitest, Playwright |
 | Payments | Stripe (test mode) + mock fallback |
 | Notifications | Twilio SMS, Resend email (REST API + SMTP fallback) |
+| MCP Auth | OAuth 2.1 + DCR via Spring Authorization Server + mcp-security |
 
 ## Prerequisites
 
@@ -93,7 +94,7 @@ Any authenticated user can both buy and sell tickets.
 - **AI chat assistant** — ask questions about events and pricing (function-calling enabled)
 - **AI recommendations** — personalized event suggestions with relevance scores
 - **AI price predictions** — trend analysis on event detail pages
-- **MCP server** — 23 tools for AI agent integration (events, cart, orders, pricing, mandates)
+- **MCP server** — 23 tools for AI agent integration (events, cart, orders, pricing, mandates) with OAuth 2.1 authentication and Dynamic Client Registration (DCR) — works natively with Claude (desktop, web, mobile), Cursor, and any MCP-compatible client
 - **Agent mandates** — authorization model for AI agents with spending limits and scope restrictions
 - **ACP endpoints** — Agentic Commerce Protocol checkout API for agent interoperability
 - **Agent discovery** — `llms.txt` at `/llms.txt` describes all API endpoints, MCP tools, and ACP endpoints

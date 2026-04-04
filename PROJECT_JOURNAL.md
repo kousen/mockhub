@@ -962,7 +962,36 @@ Completed all items on the 1.0 release readiness punch list (#120). Addressed 8 
 
 ---
 
-*Last updated: 2026-03-29*
+## Session 2026-04-04: MCP OAuth 2.1 + OrderStatus Enum
+
+### OrderStatus Enum (PRs #178–#180)
+
+Reviewed and merged work done by Claude Code for Web overnight:
+- **#178** — 109 frontend tests, coverage 73.7% → 80.9%
+- **#179** — 21 more tests + fixed real `TypeError` bug in notification optimistic updates
+- **#180** — `OrderStatus` enum replacing string-based status with type-safe state machine (`PENDING → CONFIRMED | FAILED`, `CONFIRMED → CANCELLED`, terminal states). Cleaned up FQCNs, replaced ASCII diagram with Mermaid, removed stale CLAUDE.md section before merging.
+
+### MCP OAuth 2.1 with Dynamic Client Registration (#181, #182)
+
+Replaced `X-API-Key` custom header auth on `/mcp/**` with OAuth 2.1 + DCR, eliminating the `mcp-remote` bridge requirement and enabling mobile access.
+
+**Architecture:** Embedded Spring Authorization Server + OAuth2 resource server in MockHub using `spring-ai-community/mcp-security` v0.1.5 (non-boot modules). Three SecurityFilterChain beans coexist: authorization server (highest precedence), MCP resource server (`/mcp/**`), and existing JWT chain (everything else). Profile-based: `mcp-oauth2` activates OAuth2, API key auth is the fallback.
+
+**Production debugging (3 hot fixes to main):**
+1. `/.well-known/oauth-protected-resource` not in MCP resource server security matcher
+2. RFC 9728 requires suffixed path `/.well-known/oauth-protected-resource/mcp` — Claude requests this
+3. Auth server chain's security matcher didn't include `/oauth2/login`, so form POST fell through to wrong chain
+
+**Verified working on:** Claude Desktop, Claude mobile (Android), Cursor. All connect natively with just the URL — no API keys, no custom headers, no bridge tools.
+
+**UX polish:** Login page clarifies it's for AI agent authorization (not website login). Added "Authorization Complete — you can close this tab" page for post-OAuth flow.
+
+### Issues Closed: #181
+
+### PRs Merged: #178, #179, #180, #182
+
+---
+
+*Last updated: 2026-04-04*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code*
-*~650 tests passing (backend + 120 frontend unit + Playwright E2E across 3 browsers)*
 *Live at: https://mockhub.kousenit.com*

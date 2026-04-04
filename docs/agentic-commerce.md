@@ -105,7 +105,7 @@ CRITICAL failures block the action. WARNING failures are included in the respons
 
 ### The Problem
 
-Without mandates, any agent with the MCP API key can buy anything for anyone. That's fine for demos but unacceptable for real commerce. The fundamental question: **when an autonomous agent initiates a purchase, how do we verify the user authorized it?**
+Without mandates, any authenticated agent can buy anything for anyone. That's fine for demos but unacceptable for real commerce. The fundamental question: **when an autonomous agent initiates a purchase, how do we verify the user authorized it?**
 
 ### The Mandate Concept
 
@@ -194,7 +194,9 @@ MockHub exposes ACP-compatible endpoints at `/acp/v1/`:
 
 ### Authentication
 
-ACP endpoints use the same API key authentication as MCP (`X-API-Key` header, configured via `mockhub.mcp.api-key`). The `AcpApiKeyFilter` handles this independently of the MCP filter.
+**MCP endpoints** use OAuth 2.1 with Dynamic Client Registration (DCR) when the `mcp-oauth2` profile is active. The embedded Spring Authorization Server handles token issuance and client registration. MCP clients (Claude, Cursor, etc.) connect by pointing at `https://mockhub.kousenit.com/mcp` — the OAuth flow is automatic. Without the `mcp-oauth2` profile, MCP falls back to `X-API-Key` header auth via `McpApiKeyFilter`.
+
+**ACP endpoints** use API key authentication (`X-API-Key` header, configured via `mockhub.mcp.api-key`). The `AcpApiKeyFilter` handles this independently.
 
 ### ACP Checkout Flow
 
@@ -275,7 +277,10 @@ The implementation is considered working when all of the following are true:
 ### Properties
 
 ```yaml
-# MCP / ACP API key (shared)
+# MCP OAuth2 (when mcp-oauth2 profile active)
+mockhub.mcp.oauth2.issuer-uri: ${MCP_OAUTH2_ISSUER_URI:http://localhost:8080}
+
+# ACP API key
 mockhub.mcp.api-key: ${MCP_API_KEY:dev-api-key}
 
 # Eval conditions
@@ -287,10 +292,23 @@ mockhub.eval.price-plausibility.max: 10.0
 ### Endpoints Summary
 
 ```
-MCP:  /mcp/**         — Spring AI MCP server (SSE transport)
-ACP:  /acp/v1/**       — ACP-compatible REST endpoints
-REST: /api/v1/**       — Standard REST API (frontend)
+MCP:    /mcp/**         — Spring AI MCP server (Streamable HTTP transport, OAuth2 auth)
+ACP:    /acp/v1/**      — ACP-compatible REST endpoints (API key auth)
+REST:   /api/v1/**      — Standard REST API (JWT auth)
+OAuth2: /oauth2/**      — Authorization server (token, authorize, DCR, login)
 ```
+
+### Connecting MCP Clients
+
+Any MCP client that supports OAuth 2.1 can connect by pointing at the MCP URL:
+
+| Client | Configuration |
+|---|---|
+| **Claude** (desktop/web/mobile) | Settings → Connectors → Add Custom Connector → URL: `https://mockhub.kousenit.com/mcp` |
+| **Cursor** | Add to `mcp.json`: `"mockhub": { "url": "https://mockhub.kousenit.com/mcp" }` |
+| **MCP Inspector** | URL: `https://mockhub.kousenit.com/mcp` (redirect URIs pre-registered) |
+
+The OAuth2 discovery flow is automatic: client requests `/.well-known/oauth-protected-resource/mcp`, discovers the authorization server, registers via DCR, and obtains tokens.
 
 ---
 
@@ -357,3 +375,8 @@ CREATE TABLE mandates (
 ### Phase 3: ACP
 - `backend/src/main/java/com/mockhub/acp/` — controller, service, dto, API key filter
 - `docs/agentic-commerce.md` — this document
+
+### MCP OAuth2 Authentication
+- `backend/src/main/java/com/mockhub/mcp/config/McpOAuth2SecurityConfig.java` — authorization server + resource server chains
+- `backend/src/main/java/com/mockhub/mcp/controller/McpOAuth2LoginController.java` — OAuth2 login and authorized pages
+- `backend/src/main/resources/application-mcp-oauth2.yml` — profile config

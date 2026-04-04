@@ -9,6 +9,7 @@ mockhub/
 ├── backend/                    # Spring Boot 4 application
 │   ├── build.gradle.kts        # Gradle 9.4.0 (Kotlin DSL, version catalog)
 │   └── src/main/java/com/mockhub/
+│       ├── acp/                # Agentic Commerce Protocol endpoints
 │       ├── auth/               # JWT authentication, Spring Security
 │       ├── event/              # Events, categories, tags
 │       ├── venue/              # Venues, sections, seat rows, seats
@@ -22,6 +23,7 @@ mockhub/
 │       ├── ai/                 # Chat, recommendations, price predictions
 │       ├── eval/               # Evaluation conditions (Design by Contract for AI)
 │       ├── mandate/            # Agent mandates (authorization for agentic commerce)
+│       ├── mcp/                # MCP server (tools, OAuth2 security, session recovery)
 │       ├── lifecycle/          # Scheduled cleanup (expired listings, past events, old notifications)
 │       ├── admin/              # Admin dashboard
 │       ├── search/             # Full-text search (tsvector)
@@ -708,9 +710,9 @@ Naming convention: `methodName_givenCondition_expectedResult`
 
 - **URL:** https://mockhub.kousenit.com
 - **Architecture:** Single Docker container serves both Spring Boot API and React SPA (no CORS needed)
-- **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `/api/`, `/actuator/`, `/mcp/`, `/acp/`, `/swagger-ui/`, `/v3/` paths
+- **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `/api/`, `/actuator/`, `/mcp/`, `/acp/`, `/oauth2/`, `/.well-known/`, `/swagger-ui/`, `/v3/` paths
 - **Ephemeral filesystem:** Seed images restored from classpath on every startup
-- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend`
+- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend,spotify,ticketmaster,mcp-oauth2`
 - **Database:** Railway PostgreSQL with `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` (Railway's `DATABASE_URL` format is incompatible with JDBC)
 - **Auto-deploy:** Pushes to `main` trigger automatic deployments
 
@@ -735,7 +737,8 @@ Naming convention: `methodName_givenCondition_expectedResult`
 | `SPOTIFY_CLIENT_ID` | For Spotify | Spotify API client ID |
 | `SPOTIFY_CLIENT_SECRET` | For Spotify | Spotify API client secret |
 | `SPOTIFY_TOKEN_ENCRYPTION_KEY` | For Spotify | AES-256 key (32-byte Base64) for encrypting stored OAuth tokens |
-| `MCP_API_KEY` | For MCP/ACP | API key for MCP and ACP endpoints |
+| `MCP_API_KEY` | For ACP | API key for ACP endpoints (MCP uses OAuth2 when `mcp-oauth2` profile active) |
+| `MCP_OAUTH2_ISSUER_URI` | For MCP OAuth2 | OAuth2 issuer URI (must match public URL, e.g., `https://mockhub.kousenit.com`) |
 | `SPRING_PROFILES_ACTIVE` | Yes | Profile combination (e.g., `dev,ai-anthropic`) |
 
 ### CI (GitHub Actions)
