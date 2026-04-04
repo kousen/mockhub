@@ -15,8 +15,8 @@ vi.mock('axios', () => ({
 describe('ai API', () => {
   it('sendChatMessage posts to /chat', async () => {
     const client = (await import('./client')).default;
-    const result = await sendChatMessage({ message: 'Hello' });
-    expect(client.post).toHaveBeenCalledWith('/chat', { message: 'Hello' });
+    const result = await sendChatMessage({ message: 'Hello', conversationId: null });
+    expect(client.post).toHaveBeenCalledWith('/chat', { message: 'Hello', conversationId: null });
     expect(result).toBe('mock');
   });
 
@@ -44,7 +44,7 @@ describe('ai API', () => {
     vi.mocked(isAxiosError).mockReturnValue(true);
     vi.mocked(client.post).mockRejectedValueOnce({ response: { status: 503 } });
 
-    const result = await sendChatMessage({ message: 'test' });
+    const result = await sendChatMessage({ message: 'test', conversationId: null });
     expect(result).toBeNull();
 
     vi.mocked(isAxiosError).mockReturnValue(false);
@@ -57,7 +57,11 @@ describe('ai API', () => {
     vi.mocked(client.get).mockRejectedValueOnce({ response: { status: 503 } });
 
     const result = await getRecommendations();
-    expect(result).toEqual({ recommendations: [], spotifyConnected: false, scopeUpgradeNeeded: false });
+    expect(result).toEqual({
+      recommendations: [],
+      spotifyConnected: false,
+      scopeUpgradeNeeded: false,
+    });
 
     vi.mocked(isAxiosError).mockReturnValue(false);
   });

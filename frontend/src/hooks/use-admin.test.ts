@@ -106,12 +106,13 @@ describe('use-admin hooks', () => {
 
       result.current.mutate({
         name: 'New Event',
-        slug: 'new-event',
+        artistName: null,
         eventDate: '2026-06-01T19:00:00Z',
+        doorsOpenAt: null,
         venueId: 1,
         categoryId: 1,
         basePrice: 50,
-        status: 'ON_SALE',
+        description: null,
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -177,10 +178,24 @@ describe('use-admin hooks', () => {
       const wrapper = createWrapper();
       const { result } = renderHook(() => useGenerateTickets(), { wrapper });
 
-      result.current.mutate({ eventId: 1, sections: [] });
+      result.current.mutate({
+        eventId: 1,
+        sectionName: 'Orchestra',
+        rowCount: 10,
+        seatsPerRow: 20,
+        ticketType: 'STANDARD',
+        basePrice: 50,
+      });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(adminApi.generateTickets).toHaveBeenCalledWith({ eventId: 1, sections: [] });
+      expect(adminApi.generateTickets).toHaveBeenCalledWith({
+        eventId: 1,
+        sectionName: 'Orchestra',
+        rowCount: 10,
+        seatsPerRow: 20,
+        ticketType: 'STANDARD',
+        basePrice: 50,
+      });
     });
   });
 });

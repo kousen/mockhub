@@ -51,10 +51,10 @@ describe('use-orders hooks', () => {
     const ordersApi = await import('@/api/orders');
     const { result } = renderHook(() => useCheckout(), { wrapper: createWrapper() });
 
-    result.current.mutate({ paymentMethodId: 'pm_test' });
+    result.current.mutate({ paymentMethod: 'MOCK' });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(ordersApi.checkout).toHaveBeenCalledWith({ paymentMethodId: 'pm_test' });
+    expect(ordersApi.checkout).toHaveBeenCalledWith({ paymentMethod: 'MOCK' });
   });
 
   it('useDownloadTicket triggers download on success', async () => {

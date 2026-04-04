@@ -5,7 +5,13 @@ import { AuthCallbackPage } from './AuthCallbackPage';
 vi.mock('@/api/auth', () => ({
   exchangeOAuth2Code: vi.fn().mockResolvedValue({
     accessToken: 'test-token',
-    user: { id: 1, firstName: 'John', lastName: 'Doe', email: 'john@example.com', roles: ['ROLE_USER'] },
+    user: {
+      id: 1,
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john@example.com',
+      roles: ['ROLE_USER'],
+    },
   }),
 }));
 

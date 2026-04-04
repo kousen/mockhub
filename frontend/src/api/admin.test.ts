@@ -86,7 +86,21 @@ describe('admin API', () => {
 
   it('generateTickets', async () => {
     const client = (await import('./client')).default;
-    await generateTickets({ eventId: 1, sections: [] });
-    expect(client.post).toHaveBeenCalledWith('/admin/tickets/generate', { eventId: 1, sections: [] });
+    await generateTickets({
+      eventId: 1,
+      sectionName: 'Orchestra',
+      rowCount: 10,
+      seatsPerRow: 20,
+      ticketType: 'STANDARD',
+      basePrice: 50,
+    });
+    expect(client.post).toHaveBeenCalledWith('/admin/tickets/generate', {
+      eventId: 1,
+      sectionName: 'Orchestra',
+      rowCount: 10,
+      seatsPerRow: 20,
+      ticketType: 'STANDARD',
+      basePrice: 50,
+    });
   });
 });
