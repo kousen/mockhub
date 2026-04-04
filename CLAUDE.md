@@ -281,6 +281,57 @@ The codebase uses Java DOP patterns where they add value:
 - `docs/evaluation-conditions.md` — Eval conditions concept, Design by Contract mapping, architecture, how to add conditions
 - `docs/agentic-commerce.md` — Agentic commerce architecture: MCP tools, mandates, ACP endpoints, protocol landscape, teaching connections
 
+## In-Flight Work (PR #180)
+
+**Branch:** `claude/refactoring-improvements-kH2U0`  
+**PR:** #180 — "Add OrderStatus enum with state machine transition rules"  
+**Status:** Open, not yet merged. Compile errors fixed, but integration tests could not run locally (no Docker daemon in the session environment). CI will be the first full test run.
+
+### What was done
+
+Replaced string-based order status (`"PENDING"`, `"CONFIRMED"`, `"FAILED"`, `"CANCELLED"`) with a type-safe `OrderStatus` enum in `com.mockhub.order.entity`. The enum encodes the valid state machine transitions:
+
+```
+PENDING → CONFIRMED | FAILED
+CONFIRMED → CANCELLED
+FAILED → (terminal)
+CANCELLED → (terminal)
+```
+
+Key methods: `canTransitionTo(target)` (guard), `transitionTo(target)` (enforced, throws `IllegalStateException`). `Order` entity has a convenience `transitionTo()` method.
+
+### Files changed (18 production + test files)
+
+**New files:**
+- `backend/src/main/java/com/mockhub/order/entity/OrderStatus.java` — the enum
+- `backend/src/test/java/com/mockhub/order/entity/OrderStatusTest.java` — 14 tests
+
+**Production code updated (7 files):**
+- `Order.java` — field type `String` → `OrderStatus`, `@Enumerated(EnumType.STRING)`, added `transitionTo()` method
+- `OrderService.java` — removed `STATUS_*` string constants, uses `canTransitionTo()` guards and `order.transitionTo()`, DTO mapping uses `.name()`
+- `AdminOrderService.java` — enum comparison for revenue filter, `.name()` in DTO mapping
+- `MockPaymentService.java` — enum comparisons for idempotency checks
+- `StripePaymentService.java` — enum comparisons (kept `STATUS_FAILED` string constant for `PaymentConfirmation` status, which is a payment status not an order status)
+- `TicketDownloadController.java` — enum comparison
+- `PublicTicketViewController.java` — enum comparison, `.name()` in DTO
+
+**Test code updated (9 files):**
+- `OrderServiceTest.java`, `OrderNotificationServiceTest.java` — already used enum (updated by prior session)
+- `StripePaymentServiceTest.java`, `MockPaymentServiceTest.java`, `PaymentControllerTest.java` — `setStatus()` calls updated
+- `AdminOrderServiceTest.java`, `AcpCheckoutServiceTest.java`, `PublicTicketViewControllerTest.java` — `setStatus()` calls updated
+- `SellerListingServiceTest.java` — changed `"COMPLETED"` (invalid status) to `OrderStatus.CONFIRMED`
+
+### What to verify after merge
+
+1. **CI must pass.** The integration tests (`*IntegrationTest`) require Testcontainers/Docker and could not run in the session. If any fail, it's likely a missed `setStatus()` or `getStatus()` call in an integration test.
+2. **No Flyway migration needed.** `@Enumerated(EnumType.STRING)` persists as the same VARCHAR values (`PENDING`, `CONFIRMED`, etc.) that the DB already stores. Hibernate `validate` mode will confirm this.
+3. **API contract unchanged.** All DTOs (`OrderDto`, `OrderSummaryDto`, `PublicOrderViewDto`, ACP responses) still return `String` status values via `.name()` conversion. Frontend needs no changes.
+4. **Grep check:** Run `grep -rn '"PENDING"\|"CONFIRMED"\|"FAILED"\|"CANCELLED"' backend/src/main/java/com/mockhub/order/` — should find zero hits (all moved to enum). Other packages (ticket, payment, acp, admin) may still have string literals for non-order statuses (listing status, event status, payment confirmation status) — those are correct and intentional.
+
+### Design decision: why not seal OrderStatus?
+
+`OrderStatus` is an enum, not sealed. Enums are inherently closed (can't add values without modifying the source), so sealing adds nothing. The transition rules are encoded in the enum constructor via `allowedTransitions` set, making the state diagram visible in one place.
+
 ## What NOT to Do
 
 - Do not use `var` in Java (use explicit types for readability — this is a teaching codebase)
