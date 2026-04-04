@@ -83,15 +83,17 @@ public class McpOAuth2SecurityConfig {
         // by the formLogin filter in this chain (not the default stateless chain).
         http.securityMatcher(new OrRequestMatcher(
                 authzConfigurer.getEndpointsMatcher(),
-                request -> "/oauth2/login".equals(request.getServletPath())));
+                request -> "/oauth2/login".equals(request.getServletPath())
+                        || "/oauth2/authorized".equals(request.getServletPath())));
 
         return http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/oauth2/login").permitAll()
+                        .requestMatchers("/oauth2/login", "/oauth2/authorized").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form
                         .loginPage("/oauth2/login")
-                        .loginProcessingUrl("/oauth2/login"))
+                        .loginProcessingUrl("/oauth2/login")
+                        .defaultSuccessUrl("/oauth2/authorized", false))
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers("/oauth2/login"))
                 .build();

@@ -49,4 +49,39 @@ class McpOAuth2LoginControllerTest {
         assertTrue(html.contains("viewport"));
         assertTrue(html.contains("width=device-width"));
     }
+
+    @Test
+    void loginPage_explainsThisIsForAgentAuthorization() {
+        String html = controller.loginPage();
+
+        assertTrue(html.contains("AI agent"));
+        assertTrue(html.contains("main site"));
+    }
+
+    // ── Authorized page ───────────────────────────────────────────────
+
+    @Test
+    void authorizedPage_returnsHtml() {
+        String html = controller.authorizedPage();
+
+        assertNotNull(html);
+        assertTrue(html.contains("<!DOCTYPE html>"));
+        assertTrue(html.contains("</html>"));
+    }
+
+    @Test
+    void authorizedPage_showsCompletionMessage() {
+        String html = controller.authorizedPage();
+
+        assertTrue(html.contains("Authorization Complete"));
+        assertTrue(html.contains("close this tab"));
+    }
+
+    @Test
+    void authorizedPage_linksToMainSite() {
+        String html = controller.authorizedPage();
+
+        assertTrue(html.contains("href=\"/\""));
+        assertTrue(html.contains("MockHub"));
+    }
 }
