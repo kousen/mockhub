@@ -34,10 +34,10 @@ describe('use-ai hooks', () => {
     const aiApi = await import('@/api/ai');
     const { result } = renderHook(() => useChat(), { wrapper: createWrapper() });
 
-    result.current.mutate({ message: 'Hello' });
+    result.current.mutate({ message: 'Hello', conversationId: null });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(aiApi.sendChatMessage).toHaveBeenCalledWith({ message: 'Hello' });
+    expect(aiApi.sendChatMessage).toHaveBeenCalledWith({ message: 'Hello', conversationId: null });
   });
 
   it('useRecommendations fetches recommendations', async () => {

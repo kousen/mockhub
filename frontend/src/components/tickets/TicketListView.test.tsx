@@ -22,33 +22,48 @@ vi.mock('./PriceTag', () => ({
 const mockListings: Listing[] = [
   {
     id: 1,
+    ticketId: 1,
+    eventSlug: 'test-event',
     sectionName: 'Orchestra',
     rowLabel: 'A',
     seatNumber: '1',
     ticketType: 'STANDARD',
     computedPrice: 150.0,
     listedPrice: 150.0,
+    priceMultiplier: 1.0,
     status: 'ACTIVE',
+    listedAt: '2026-04-01T10:00:00Z',
+    sellerDisplayName: null,
   },
   {
     id: 2,
+    ticketId: 2,
+    eventSlug: 'test-event',
     sectionName: 'Balcony',
     rowLabel: 'B',
     seatNumber: '5',
     ticketType: 'VIP',
     computedPrice: 250.0,
     listedPrice: 200.0,
+    priceMultiplier: 1.0,
     status: 'ACTIVE',
+    listedAt: '2026-04-01T10:00:00Z',
+    sellerDisplayName: null,
   },
   {
     id: 3,
+    ticketId: 3,
+    eventSlug: 'test-event',
     sectionName: 'Orchestra',
     rowLabel: 'A',
     seatNumber: '2',
     ticketType: 'STANDARD',
     computedPrice: 100.0,
     listedPrice: 100.0,
+    priceMultiplier: 1.0,
     status: 'ACTIVE',
+    listedAt: '2026-04-01T10:00:00Z',
+    sellerDisplayName: null,
   },
 ];
 
@@ -63,9 +78,7 @@ describe('TicketListView', () => {
   });
 
   it('renders loading skeletons when isLoading is true', () => {
-    const { container } = renderWithProviders(
-      <TicketListView listings={[]} isLoading={true} />,
-    );
+    const { container } = renderWithProviders(<TicketListView listings={[]} isLoading={true} />);
 
     // Skeletons are rendered (5 skeleton divs)
     const skeletons = container.querySelectorAll('[class*="animate-pulse"]');
@@ -123,6 +136,8 @@ describe('TicketListView', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john@example.com',
+        phone: null,
+        avatarUrl: null,
         roles: ['ROLE_USER'],
       },
       accessToken: 'test-token',
@@ -144,6 +159,8 @@ describe('TicketListView', () => {
         firstName: 'John',
         lastName: 'Doe',
         email: 'john@example.com',
+        phone: null,
+        avatarUrl: null,
         roles: ['ROLE_USER'],
       },
       accessToken: 'test-token',
@@ -194,7 +211,11 @@ describe('TicketListView', () => {
   it('shows section filter badge when sectionFilter is provided', () => {
     const onClearFilter = vi.fn();
     renderWithProviders(
-      <TicketListView listings={mockListings} sectionFilter="Orchestra" onClearFilter={onClearFilter} />,
+      <TicketListView
+        listings={mockListings}
+        sectionFilter="Orchestra"
+        onClearFilter={onClearFilter}
+      />,
     );
 
     // Should show the filter badge with section name and count
@@ -219,9 +240,7 @@ describe('TicketListView', () => {
   });
 
   it('filters listings by section when sectionFilter is set', () => {
-    renderWithProviders(
-      <TicketListView listings={mockListings} sectionFilter="Balcony" />,
-    );
+    renderWithProviders(<TicketListView listings={mockListings} sectionFilter="Balcony" />);
 
     // Only the Balcony listing should be in the table
     const rows = screen.getAllByRole('row');
@@ -233,13 +252,18 @@ describe('TicketListView', () => {
     const gaListing: Listing[] = [
       {
         id: 10,
+        ticketId: 10,
+        eventSlug: 'test-event',
         sectionName: 'General Admission',
         rowLabel: null,
         seatNumber: null,
         ticketType: 'STANDARD',
         computedPrice: 50.0,
         listedPrice: 50.0,
+        priceMultiplier: 1.0,
         status: 'ACTIVE',
+        listedAt: '2026-04-01T10:00:00Z',
+        sellerDisplayName: null,
       },
     ];
 

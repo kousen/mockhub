@@ -11,8 +11,8 @@ vi.mock('./client', () => ({
 describe('orders API', () => {
   it('checkout posts to /orders/checkout', async () => {
     const client = (await import('./client')).default;
-    await checkout({ paymentMethodId: 'pm_test' });
-    expect(client.post).toHaveBeenCalledWith('/orders/checkout', { paymentMethodId: 'pm_test' });
+    await checkout({ paymentMethod: 'MOCK' });
+    expect(client.post).toHaveBeenCalledWith('/orders/checkout', { paymentMethod: 'MOCK' });
   });
 
   it('getOrders fetches paginated orders', async () => {
@@ -30,7 +30,9 @@ describe('orders API', () => {
   it('downloadTicket fetches blob', async () => {
     const client = (await import('./client')).default;
     await downloadTicket('ORD-001', 1);
-    expect(client.get).toHaveBeenCalledWith('/orders/ORD-001/tickets/1/download', { responseType: 'blob' });
+    expect(client.get).toHaveBeenCalledWith('/orders/ORD-001/tickets/1/download', {
+      responseType: 'blob',
+    });
   });
 
   it('downloadCalendar fetches blob', async () => {

@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getMyListings, createListing, updateListingPrice, deactivateListing, getEarnings } from './seller';
+import {
+  getMyListings,
+  createListing,
+  updateListingPrice,
+  deactivateListing,
+  getEarnings,
+} from './seller';
 
 vi.mock('./client', () => ({
   default: {
@@ -25,8 +31,17 @@ describe('seller API', () => {
 
   it('createListing', async () => {
     const client = (await import('./client')).default;
-    await createListing({ eventSlug: 'e', sectionName: 'S', rowLabel: 'A', seatNumber: '1', price: 100 });
-    expect(client.post).toHaveBeenCalledWith('/listings', expect.objectContaining({ eventSlug: 'e' }));
+    await createListing({
+      eventSlug: 'e',
+      sectionName: 'S',
+      rowLabel: 'A',
+      seatNumber: '1',
+      price: 100,
+    });
+    expect(client.post).toHaveBeenCalledWith(
+      '/listings',
+      expect.objectContaining({ eventSlug: 'e' }),
+    );
   });
 
   it('updateListingPrice', async () => {

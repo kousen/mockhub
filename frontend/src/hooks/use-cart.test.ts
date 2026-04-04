@@ -77,7 +77,19 @@ describe('useCart', () => {
     vi.mocked(cartApi.addToCart).mockResolvedValue(mockCart);
     vi.mocked(cartApi.removeFromCart).mockResolvedValue(mockCart);
     vi.mocked(cartApi.clearCart).mockResolvedValue(undefined);
-    useAuthStore.setState({ isAuthenticated: true, user: { id: 1, firstName: 'J', lastName: 'D', email: 'j@d.com', roles: ['ROLE_USER'] }, accessToken: 'token' });
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: {
+        id: 1,
+        firstName: 'J',
+        lastName: 'D',
+        email: 'j@d.com',
+        phone: null,
+        avatarUrl: null,
+        roles: ['ROLE_USER'],
+      },
+      accessToken: 'token',
+    });
     useCartStore.setState({ itemCount: 0, isDrawerOpen: false });
   });
 
@@ -115,7 +127,10 @@ describe('useAddToCart — optimistic updates', () => {
     // Make the API hang so we can inspect the optimistic state
     let resolveAdd!: (value: Cart) => void;
     vi.mocked(cartApi.addToCart).mockImplementation(
-      () => new Promise((resolve) => { resolveAdd = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveAdd = resolve;
+        }),
     );
 
     const { result } = renderHook(() => useAddToCart(), { wrapper: createWrapper(qc) });
@@ -188,7 +203,10 @@ describe('useRemoveFromCart — optimistic updates', () => {
     const cartApi = await import('@/api/cart');
     let resolveRemove!: (value: Cart) => void;
     vi.mocked(cartApi.removeFromCart).mockImplementation(
-      () => new Promise((resolve) => { resolveRemove = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveRemove = resolve;
+        }),
     );
 
     const { result } = renderHook(() => useRemoveFromCart(), { wrapper: createWrapper(qc) });
@@ -248,7 +266,12 @@ describe('useRemoveFromCart — optimistic updates', () => {
     useCartStore.setState({ itemCount: 1 });
 
     const cartApi = await import('@/api/cart');
-    vi.mocked(cartApi.removeFromCart).mockResolvedValueOnce({ ...singleItemCart, items: [], itemCount: 0, subtotal: 0 });
+    vi.mocked(cartApi.removeFromCart).mockResolvedValueOnce({
+      ...singleItemCart,
+      items: [],
+      itemCount: 0,
+      subtotal: 0,
+    });
 
     const { result } = renderHook(() => useRemoveFromCart(), { wrapper: createWrapper(qc) });
 
@@ -301,7 +324,10 @@ describe('useClearCart — optimistic updates', () => {
     const cartApi = await import('@/api/cart');
     let resolveClear!: (value: void) => void;
     vi.mocked(cartApi.clearCart).mockImplementation(
-      () => new Promise((resolve) => { resolveClear = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveClear = resolve;
+        }),
     );
 
     const { result } = renderHook(() => useClearCart(), { wrapper: createWrapper(qc) });

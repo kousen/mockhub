@@ -11,7 +11,9 @@ describe('search API', () => {
   it('searchEvents calls /events/search with query', async () => {
     const client = (await import('./client')).default;
     await searchEvents('rock', 0, 20);
-    expect(client.get).toHaveBeenCalledWith('/events/search', { params: { q: 'rock', page: 0, size: 20 } });
+    expect(client.get).toHaveBeenCalledWith('/events/search', {
+      params: { q: 'rock', page: 0, size: 20 },
+    });
   });
 
   it('getSuggestions calls /events/suggestions', async () => {

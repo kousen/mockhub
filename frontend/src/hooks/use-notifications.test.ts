@@ -46,6 +46,8 @@ const mockNotifications: PageResponse<Notification> = {
   totalPages: 1,
   size: 10,
   number: 0,
+  first: true,
+  last: true,
 };
 
 vi.mock('@/api/notifications', () => ({
@@ -88,7 +90,15 @@ describe('useNotifications', () => {
     await setupDefaultMocks();
     useAuthStore.setState({
       isAuthenticated: true,
-      user: { id: 1, firstName: 'J', lastName: 'D', email: 'j@d.com', roles: ['ROLE_USER'] },
+      user: {
+        id: 1,
+        firstName: 'J',
+        lastName: 'D',
+        email: 'j@d.com',
+        phone: null,
+        avatarUrl: null,
+        roles: ['ROLE_USER'],
+      },
       accessToken: 'token',
     });
   });
@@ -116,7 +126,15 @@ describe('useUnreadCount', () => {
     await setupDefaultMocks();
     useAuthStore.setState({
       isAuthenticated: true,
-      user: { id: 1, firstName: 'J', lastName: 'D', email: 'j@d.com', roles: ['ROLE_USER'] },
+      user: {
+        id: 1,
+        firstName: 'J',
+        lastName: 'D',
+        email: 'j@d.com',
+        phone: null,
+        avatarUrl: null,
+        roles: ['ROLE_USER'],
+      },
       accessToken: 'token',
     });
   });
@@ -209,7 +227,10 @@ describe('useMarkAllAsRead — optimistic updates', () => {
     const notifApi = await import('@/api/notifications');
     let resolveMarkAll!: (value: void) => void;
     vi.mocked(notifApi.markAllAsRead).mockImplementation(
-      () => new Promise((resolve) => { resolveMarkAll = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveMarkAll = resolve;
+        }),
     );
 
     const { result } = renderHook(() => useMarkAllAsRead(), { wrapper: createWrapper(qc) });
@@ -232,7 +253,10 @@ describe('useMarkAllAsRead — optimistic updates', () => {
     const notifApi = await import('@/api/notifications');
     let resolveMarkAll!: (value: void) => void;
     vi.mocked(notifApi.markAllAsRead).mockImplementation(
-      () => new Promise((resolve) => { resolveMarkAll = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveMarkAll = resolve;
+        }),
     );
 
     const { result } = renderHook(() => useMarkAllAsRead(), { wrapper: createWrapper(qc) });

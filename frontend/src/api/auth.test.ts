@@ -1,5 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
-import { login, register, refreshToken, getMe, updateMe, exchangeOAuth2Code, getLinkedProviders, unlinkProvider } from './auth';
+import {
+  login,
+  register,
+  refreshToken,
+  getMe,
+  updateMe,
+  exchangeOAuth2Code,
+  getLinkedProviders,
+  unlinkProvider,
+} from './auth';
 
 vi.mock('./client', () => ({
   default: {
@@ -21,7 +30,10 @@ describe('auth API', () => {
   it('register posts user data', async () => {
     const client = (await import('./client')).default;
     await register({ email: 'a@b.com', password: 'pass', firstName: 'A', lastName: 'B' });
-    expect(client.post).toHaveBeenCalledWith('/auth/register', expect.objectContaining({ email: 'a@b.com' }));
+    expect(client.post).toHaveBeenCalledWith(
+      '/auth/register',
+      expect.objectContaining({ email: 'a@b.com' }),
+    );
   });
 
   it('refreshToken posts to /auth/refresh', async () => {
