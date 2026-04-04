@@ -5,23 +5,17 @@ import java.util.Set;
 /**
  * Order lifecycle states with explicit transition rules.
  *
- * <pre>
- *                    ┌──────────┐
- *                    │ PENDING  │
- *                    └────┬─────┘
- *                   ╱            ╲
- *          confirm ╱              ╲ fail
- *                ╱                  ╲
- *     ┌──────────┐              ┌────────┐
- *     │CONFIRMED │              │ FAILED │
- *     └────┬─────┘              └────────┘
- *          │
- *          │ cancel
- *          ╲
- *     ┌──────────┐
- *     │CANCELLED │
- *     └──────────┘
- * </pre>
+ * <pre>{@code
+ * stateDiagram-v2
+ *     [*] --> PENDING
+ *     PENDING --> CONFIRMED : confirm
+ *     PENDING --> FAILED : fail
+ *     CONFIRMED --> CANCELLED : cancel
+ *     FAILED --> [*]
+ *     CANCELLED --> [*]
+ * }</pre>
+ *
+ * @see <a href="https://mermaid.js.org/syntax/stateDiagram.html">Mermaid State Diagram</a>
  */
 public enum OrderStatus {
 
