@@ -50,6 +50,12 @@ dependencies {
     // Security - OAuth2 Client
     implementation(libs.spring.boot.starter.oauth2client)
 
+    // Security - MCP OAuth2 (Authorization Server + Resource Server)
+    implementation(libs.spring.boot.starter.oauth2.authorization.server)
+    implementation(libs.spring.boot.starter.oauth2.resource.server)
+    implementation(libs.mcp.authorization.server)
+    implementation(libs.mcp.server.security)
+
     // Security - JWT
     implementation(libs.jjwt.api)
     runtimeOnly(libs.jjwt.impl)
