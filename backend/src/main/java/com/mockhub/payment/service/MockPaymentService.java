@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.common.exception.PaymentException;
 import com.mockhub.order.entity.Order;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentConfirmation;
 import com.mockhub.payment.dto.PaymentIntentDto;
@@ -75,13 +76,13 @@ public class MockPaymentService implements PaymentService {
         Order order = resolveOrderForUpdate(paymentIntentId);
         String orderNumber = order.getOrderNumber();
 
-        if (order.getStatus() == com.mockhub.order.entity.OrderStatus.CONFIRMED) {
+        if (order.getStatus() == OrderStatus.CONFIRMED) {
             paymentIntentToOrder.remove(paymentIntentId);
             log.info("Mock payment {} already confirmed for order {}", paymentIntentId, orderNumber);
             return new PaymentConfirmation(paymentIntentId, STATUS_SUCCEEDED, orderNumber);
         }
 
-        if (order.getStatus() == com.mockhub.order.entity.OrderStatus.FAILED || order.getStatus() == com.mockhub.order.entity.OrderStatus.CANCELLED) {
+        if (order.getStatus() == OrderStatus.FAILED || order.getStatus() == OrderStatus.CANCELLED) {
             throw new PaymentException("Cannot confirm payment for " + order.getStatus().name().toLowerCase() + " order " + orderNumber);
         }
 
