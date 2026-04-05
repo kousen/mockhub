@@ -4,6 +4,7 @@ import { SellPage } from './SellPage';
 import type { EventSummary } from '@/types/event';
 import type { PageResponse } from '@/types/common';
 import type { SectionAvailability } from '@/types/ticket';
+import type { OwnedTicket } from '@/types/seller';
 
 vi.mock('@/hooks/use-events', () => ({
   useEvents: vi.fn(() => ({
@@ -21,10 +22,14 @@ vi.mock('@/hooks/use-seller', () => ({
     mutate: vi.fn(),
     isPending: false,
   })),
+  useMyOwnedTickets: vi.fn(() => ({
+    data: undefined,
+    isLoading: false,
+  })),
 }));
 
 import { useEvents, useEventSections } from '@/hooks/use-events';
-import { useCreateListing } from '@/hooks/use-seller';
+import { useCreateListing, useMyOwnedTickets } from '@/hooks/use-seller';
 
 const mockSections: SectionAvailability[] = [
   {
@@ -105,6 +110,40 @@ function setEvents(data: PageResponse<EventSummary> | undefined, isLoading = fal
     data,
     isLoading,
   } as unknown as ReturnType<typeof useEvents>);
+}
+
+const mockOwnedTickets: OwnedTicket[] = [
+  {
+    ticketId: 101,
+    eventSlug: 'taylor-swift-eras-tour',
+    eventName: 'Taylor Swift - Eras Tour',
+    eventDate: '2026-06-15T20:00:00',
+    venueName: 'SoFi Stadium',
+    sectionName: 'Floor',
+    rowLabel: 'A',
+    seatNumber: '5',
+    ticketType: 'RESERVED',
+    faceValue: 150.0,
+  },
+  {
+    ticketId: 102,
+    eventSlug: 'kendrick-lamar',
+    eventName: 'Kendrick Lamar',
+    eventDate: '2026-07-20T19:30:00',
+    venueName: 'Madison Square Garden',
+    sectionName: 'Section 101',
+    rowLabel: 'C',
+    seatNumber: '12',
+    ticketType: 'RESERVED',
+    faceValue: 85.0,
+  },
+];
+
+function setOwnedTickets(data: OwnedTicket[] | undefined, isLoading = false) {
+  vi.mocked(useMyOwnedTickets).mockReturnValue({
+    data,
+    isLoading,
+  } as unknown as ReturnType<typeof useMyOwnedTickets>);
 }
 
 function setSections(data: SectionAvailability[] | undefined, isLoading = false) {
@@ -319,5 +358,93 @@ describe('SellPage', () => {
     expect(screen.getByText('1')).toBeDefined();
     expect(screen.getByText('2')).toBeDefined();
     expect(screen.getByText('3')).toBeDefined();
+  });
+
+  // -- Owned Tickets (#81) --
+
+  it('shows owned tickets when user has available tickets', () => {
+    setOwnedTickets(mockOwnedTickets);
+    setEvents(undefined);
+
+    renderWithProviders(<SellPage />);
+
+    expect(screen.getByText('Your Tickets')).toBeDefined();
+    expect(screen.getByText('Taylor Swift - Eras Tour')).toBeDefined();
+    expect(screen.getByText('Kendrick Lamar')).toBeDefined();
+    expect(screen.getByText('$150.00')).toBeDefined();
+    expect(screen.getByText('Or Search for a Different Event')).toBeDefined();
+  });
+
+  it('skips to price step when an owned ticket is selected', async () => {
+    setOwnedTickets(mockOwnedTickets);
+    setEvents(undefined);
+    setSections(undefined);
+
+    const user = userEvent.setup();
+    renderWithProviders(<SellPage />);
+
+    // Click the first owned ticket
+    const ticketButtons = screen.getAllByRole('button');
+    const taylorButton = ticketButtons.find((btn) =>
+      btn.textContent?.includes('Taylor Swift - Eras Tour'),
+    );
+    expect(taylorButton).toBeDefined();
+    await user.click(taylorButton!);
+
+    // Should jump directly to step 3 (price)
+    expect(screen.getByText('Set Your Price')).toBeDefined();
+    expect(screen.getByText('Floor · Row A · Seat 5')).toBeDefined();
+  });
+
+  it('shows loading state while owned tickets load', () => {
+    setOwnedTickets(undefined, true);
+    setEvents(undefined);
+
+    renderWithProviders(<SellPage />);
+
+    const spinner = document.querySelector('.animate-spin');
+    expect(spinner).not.toBeNull();
+  });
+
+  it('goes to seat step when owned ticket has no row/seat (GA)', async () => {
+    const gaTickets: OwnedTicket[] = [
+      {
+        ticketId: 201,
+        eventSlug: 'outdoor-festival',
+        eventName: 'Outdoor Festival',
+        eventDate: '2026-08-01T14:00:00',
+        venueName: 'Central Park',
+        sectionName: 'General Admission',
+        rowLabel: null,
+        seatNumber: null,
+        ticketType: 'GENERAL_ADMISSION',
+        faceValue: 50.0,
+      },
+    ];
+    setOwnedTickets(gaTickets);
+    setEvents(undefined);
+    setSections([]);
+
+    const user = userEvent.setup();
+    renderWithProviders(<SellPage />);
+
+    const ticketButton = screen.getByText('Outdoor Festival').closest('button')!;
+    await user.click(ticketButton);
+
+    // Should go to step 2 (seat details) since row/seat are null
+    expect(screen.getAllByText('Seat Details').length).toBeGreaterThan(0);
+    // Section should be pre-filled
+    const sectionInput = screen.getByLabelText('Section') as HTMLInputElement;
+    expect(sectionInput.value).toBe('General Admission');
+  });
+
+  it('shows only search when user has no owned tickets', () => {
+    setOwnedTickets([]);
+    setEvents(undefined);
+
+    renderWithProviders(<SellPage />);
+
+    expect(screen.getByText('Select an Event')).toBeDefined();
+    expect(screen.queryByText('Your Tickets')).toBeNull();
   });
 });

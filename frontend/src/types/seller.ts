@@ -17,6 +17,19 @@ export interface SellerListing {
   createdAt: string;
 }
 
+export interface OwnedTicket {
+  ticketId: number;
+  eventSlug: string;
+  eventName: string;
+  eventDate: string;
+  venueName: string;
+  sectionName: string;
+  rowLabel: string | null;
+  seatNumber: string | null;
+  ticketType: string;
+  faceValue: number;
+}
+
 export interface SellListingRequest {
   eventSlug: string;
   sectionName: string;

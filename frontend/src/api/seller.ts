@@ -4,7 +4,13 @@ import type {
   SellListingRequest,
   UpdatePriceRequest,
   EarningsSummary,
+  OwnedTicket,
 } from '@/types/seller';
+
+export async function getMyOwnedTickets(): Promise<OwnedTicket[]> {
+  const response = await apiClient.get<OwnedTicket[]>('/my/owned-tickets');
+  return response.data;
+}
 
 export async function getMyListings(status?: string): Promise<SellerListing[]> {
   const response = await apiClient.get<SellerListing[]>('/my/listings', {
