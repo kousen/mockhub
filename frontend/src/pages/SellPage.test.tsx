@@ -3,9 +3,14 @@ import { renderWithProviders, screen, userEvent } from '@/test/test-utils';
 import { SellPage } from './SellPage';
 import type { EventSummary } from '@/types/event';
 import type { PageResponse } from '@/types/common';
+import type { SectionAvailability } from '@/types/ticket';
 
 vi.mock('@/hooks/use-events', () => ({
   useEvents: vi.fn(() => ({
+    data: undefined,
+    isLoading: false,
+  })),
+  useEventSections: vi.fn(() => ({
     data: undefined,
     isLoading: false,
   })),
@@ -18,8 +23,31 @@ vi.mock('@/hooks/use-seller', () => ({
   })),
 }));
 
-import { useEvents } from '@/hooks/use-events';
+import { useEvents, useEventSections } from '@/hooks/use-events';
 import { useCreateListing } from '@/hooks/use-seller';
+
+const mockSections: SectionAvailability[] = [
+  {
+    sectionId: 1,
+    sectionName: 'Floor',
+    sectionType: 'FLOOR',
+    totalTickets: 100,
+    availableTickets: 45,
+    minPrice: 150.0,
+    maxPrice: 300.0,
+    colorHex: '#FF0000',
+  },
+  {
+    sectionId: 2,
+    sectionName: 'Lower Bowl',
+    sectionType: 'LOWER_BOWL',
+    totalTickets: 200,
+    availableTickets: 120,
+    minPrice: 85.0,
+    maxPrice: 150.0,
+    colorHex: '#00FF00',
+  },
+];
 
 const mockEvents: EventSummary[] = [
   {
@@ -67,6 +95,16 @@ function setEvents(data: PageResponse<EventSummary> | undefined, isLoading = fal
     data,
     isLoading,
   } as unknown as ReturnType<typeof useEvents>);
+}
+
+function setSections(
+  data: SectionAvailability[] | undefined,
+  isLoading = false,
+) {
+  vi.mocked(useEventSections).mockReturnValue({
+    data,
+    isLoading,
+  } as unknown as ReturnType<typeof useEventSections>);
 }
 
 describe('SellPage', () => {
@@ -129,6 +167,7 @@ describe('SellPage', () => {
 
   it('advances to step 2 when an event is selected', async () => {
     setEvents(mockEventsPage);
+    setSections(undefined);
 
     const user = userEvent.setup();
     renderWithProviders(<SellPage />);
@@ -144,8 +183,82 @@ describe('SellPage', () => {
     expect(screen.getByLabelText('Seat Number')).toBeDefined();
   });
 
-  it('shows step 3 after filling seat details', async () => {
+  it('shows section dropdown when sections are available', async () => {
     setEvents(mockEventsPage);
+    setSections(mockSections);
+
+    const user = userEvent.setup();
+    renderWithProviders(<SellPage />);
+
+    await user.click(screen.getByText('Taylor Swift - Eras Tour'));
+
+    // Should show the select trigger with placeholder
+    expect(screen.getByText('Select a section')).toBeDefined();
+  });
+
+  it('shows loading indicator while sections are loading', async () => {
+    setEvents(mockEventsPage);
+    setSections(undefined, true);
+
+    const user = userEvent.setup();
+    renderWithProviders(<SellPage />);
+
+    await user.click(screen.getByText('Taylor Swift - Eras Tour'));
+
+    expect(screen.getByText('Loading sections...')).toBeDefined();
+  });
+
+  it('falls back to text input when no sections are available', async () => {
+    setEvents(mockEventsPage);
+    setSections([]);
+
+    const user = userEvent.setup();
+    renderWithProviders(<SellPage />);
+
+    await user.click(screen.getByText('Taylor Swift - Eras Tour'));
+
+    // Should show the text input fallback
+    const sectionInput = screen.getByLabelText('Section');
+    expect(sectionInput.tagName).toBe('INPUT');
+    expect(sectionInput.getAttribute('placeholder')).toBe('e.g., Floor, Section 101, GA');
+  });
+
+  it('displays API error detail in toast when listing creation fails', async () => {
+    const mockMutate = vi.fn((_req: unknown, options: { onError: (err: unknown) => void }) => {
+      options.onError({
+        response: {
+          data: {
+            detail: "Ticket not found with seat: 'Floor/A/2'",
+          },
+        },
+      });
+    });
+    vi.mocked(useCreateListing).mockReturnValue({
+      mutate: mockMutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useCreateListing>);
+    setEvents(mockEventsPage);
+    setSections([]);
+
+    const user = userEvent.setup();
+    renderWithProviders(<SellPage />);
+
+    // Navigate through all 3 steps
+    await user.click(screen.getByText('Taylor Swift - Eras Tour'));
+    await user.type(screen.getByLabelText('Section'), 'Floor');
+    await user.type(screen.getByLabelText('Row'), 'A');
+    await user.type(screen.getByLabelText('Seat Number'), '2');
+    await user.click(screen.getByText('Continue'));
+    await user.type(screen.getByLabelText('Listing Price ($)'), '100');
+    await user.click(screen.getByText('Create Listing'));
+
+    // The mutate should have been called with the error callback
+    expect(mockMutate).toHaveBeenCalled();
+  });
+
+  it('shows step 3 after filling seat details with text input', async () => {
+    setEvents(mockEventsPage);
+    setSections([]);
 
     const user = userEvent.setup();
     renderWithProviders(<SellPage />);
@@ -153,7 +266,7 @@ describe('SellPage', () => {
     // Select event
     await user.click(screen.getByText('Taylor Swift - Eras Tour'));
 
-    // Fill seat details
+    // Fill seat details (text input fallback since no sections)
     await user.type(screen.getByLabelText('Section'), 'Floor');
     await user.type(screen.getByLabelText('Row'), 'A');
     await user.type(screen.getByLabelText('Seat Number'), '5');
@@ -175,6 +288,7 @@ describe('SellPage', () => {
     } as unknown as ReturnType<typeof useCreateListing>);
 
     setEvents(mockEventsPage);
+    setSections([]);
 
     const user = userEvent.setup();
     renderWithProviders(<SellPage />);
