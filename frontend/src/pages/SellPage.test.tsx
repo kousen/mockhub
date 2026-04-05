@@ -107,10 +107,7 @@ function setEvents(data: PageResponse<EventSummary> | undefined, isLoading = fal
   } as unknown as ReturnType<typeof useEvents>);
 }
 
-function setSections(
-  data: SectionAvailability[] | undefined,
-  isLoading = false,
-) {
+function setSections(data: SectionAvailability[] | undefined, isLoading = false) {
   vi.mocked(useEventSections).mockReturnValue({
     data,
     isLoading,
