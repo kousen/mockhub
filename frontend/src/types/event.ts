@@ -65,4 +65,4 @@ export interface Tag {
   slug: string;
 }
 
-export type { VenueSummary };
+export type { VenueSummary } from './venue';

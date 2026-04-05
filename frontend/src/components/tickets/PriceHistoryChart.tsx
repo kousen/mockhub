@@ -32,7 +32,6 @@ interface TooltipPayloadEntry {
 interface CustomTooltipProps {
   active?: boolean;
   payload?: TooltipPayloadEntry[];
-  label?: string;
 }
 
 function CustomTooltip({ active, payload }: Readonly<CustomTooltipProps>) {

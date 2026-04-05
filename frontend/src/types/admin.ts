@@ -1,5 +1,4 @@
 import type { EventDetail } from './event';
-import type { VenueSummary } from './venue';
 
 export interface DashboardStats {
   totalUsers: number;
@@ -82,4 +81,4 @@ export interface GenerateTicketsRequest {
   basePrice: number;
 }
 
-export { type VenueSummary };
+export type { VenueSummary } from './venue';
