@@ -87,7 +87,7 @@ Any authenticated user can both buy and sell tickets.
 - **Event browsing** — search, filter by category/city/date/price, sort, paginate
 - **Dynamic pricing** — prices adjust based on supply, demand, and time to event
 - **Shopping cart and checkout** — full purchase flow with Stripe test mode
-- **Seller marketplace** — any user can list tickets, manage listings, track earnings
+- **Seller marketplace** — any user can list tickets (with owned-ticket quick-sell and visual venue map), manage listings, track earnings
 - **OAuth social login** — Google, GitHub, and Spotify sign-in alongside email/password
 - **User profiles** — edit name/phone, view connected OAuth providers
 - **Spotify integration** — embedded player, artist genres, metadata, and personalized recommendations based on listening history (top artists, genres, recently played)

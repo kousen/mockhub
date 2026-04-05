@@ -117,8 +117,11 @@ The codebase uses Java DOP patterns where they add value:
 - **Ownership enforcement:** Update price and deactivate check `listing.seller.id == authenticated user`. Throws `UnauthorizedException` on mismatch.
 - **Duplicate prevention:** `existsByTicketIdAndStatus(ticketId, "ACTIVE")` rejects re-listing an already-listed ticket.
 - **Earnings aggregation:** Computed from `OrderItem` where `listing.seller.id` matches and `order.status = 'COMPLETED'`.
-- **Endpoints:** `POST /api/v1/listings`, `GET /api/v1/my/listings`, `PUT /api/v1/listings/{id}/price`, `DELETE /api/v1/listings/{id}`, `GET /api/v1/my/earnings`
-- **Frontend:** 3 pages (SellPage with 3-step form, MyListingsPage with tab filtering, EarningsPage dashboard), seller API + hooks, nav links visible when authenticated.
+- **Endpoints:** `POST /api/v1/listings`, `GET /api/v1/my/listings`, `PUT /api/v1/listings/{id}/price`, `DELETE /api/v1/listings/{id}`, `GET /api/v1/my/owned-tickets`, `GET /api/v1/my/earnings`
+- **Owned tickets endpoint:** `GET /api/v1/my/owned-tickets` returns tickets from confirmed orders (status `SOLD`) that the user can relist. Queries `OrderItem → Ticket` with eager joins for event/venue/section/seat data. Returns `List<OwnedTicketDto>`.
+- **Frontend:** 3 pages (SellPage, MyListingsPage with tab filtering, EarningsPage dashboard), seller API + hooks, nav links visible when authenticated.
+- **SellPage smart step 1:** Shows owned tickets as selectable cards above the event search. Clicking one pre-fills event/section/row/seat and skips to the price step. GA tickets without row/seat go to the seat details step instead. Falls through to the search flow when user has no owned tickets.
+- **VenueMap in sell form:** Step 2 renders the `VenueMap` component when SVG section data is available. Clicking a section auto-fills the section dropdown. Row and seat remain manual text inputs.
 
 ### OAuth2 Social Login
 
@@ -180,7 +183,7 @@ The codebase uses Java DOP patterns where they add value:
   - Without `mcp-oauth2` profile: Falls back to `X-API-Key` header auth via `McpApiKeyFilter`. Requires `mcp-remote` bridge for Claude Desktop.
 - **OAuth2 SecurityFilterChain architecture** (when `mcp-oauth2` active): Three chains with explicit `@Order` — (1) authorization server chain (OAuth2 endpoints, `/.well-known/**`, DCR), (2) MCP resource server chain (`/mcp/**`, validates Bearer tokens), (3) existing chain (everything else, unchanged). Chains are mutually exclusive with `McpApiKeyFilter` via `@Profile("!mcp-oauth2")`.
 - **OAuth2 authorization server** embedded in MockHub. Ephemeral RSA key pair for JWT signing (regenerated on restart). Pre-registered Claude client with redirect URI `https://claude.ai/api/mcp/auth_callback`. DCR allows additional clients to self-register.
-- **OAuth2 login page** at `/oauth2/login` — minimal form for authorization_code flow. Separate from React SPA login. Uses MockHub's existing `UserDetailsServiceImpl`.
+- **OAuth2 login page** at `/oauth2/login` — form for authorization_code flow. Separate from React SPA login. Uses MockHub's existing `UserDetailsServiceImpl`. After clicking "Authorize", shows "Authorizing..." then transitions to an "Authorization Complete" card with a checkmark, since the OAuth2 redirect chain sends the browser to the client callback URL and may not provide its own feedback.
 - **Environment variables:** `MCP_OAUTH2_ISSUER_URI` (must match public URL in production, e.g., `https://mockhub.kousenit.com`).
 - **SPA exclusions:** `oauth2/`, `.well-known/` added to `SpaForwardingConfig`.
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
@@ -255,7 +258,7 @@ The codebase uses Java DOP patterns where they add value:
 
 - **GitHub Actions** (`.github/workflows/ci.yml`) runs on push to main and PRs: backend tests, frontend lint/typecheck/tests, SonarCloud analysis, Docker build smoke test
 - **SonarCloud** — org: `kousen-it-inc`, project: `kousen_mockhub`. All config is in `sonar-project.properties` at the repo root (both backend and frontend). CI uses `SonarSource/sonarqube-scan-action` (not the Gradle plugin). Token stored as `SONAR_TOKEN` GitHub secret. Both JaCoCo (backend) and lcov (frontend) coverage feed the quality gate.
-- **Issue exclusions** are in `sonar-project.properties`: S1186 (JPA empty constructors), S1192 (seed data literals), S3776 (seed data complexity), S6218 (byte[] record), S6863 (verification endpoint), S7746 (Axios throw style).
+- **Issue exclusions** are in `sonar-project.properties` (16 rules). Key suppressions: S1186 (JPA empty constructors), S1192 (seed data/SQL literals), S3776 (seed data complexity), S6218 (byte[] record), S6863 (verification endpoint), S7746 (Axios throw style), S107 (PDFBox parameter count), S6845 (tooltip tabIndex), S6395 (regex grouping), S125 (regex doc comment), S7764 (window vs globalThis), S7748 (mock data zero fractions), S1075 (filter hardcoded URIs), S7735 (negated ternaries), S135 (sync loop breaks). See `sonar-project.properties` for the complete list with justifications.
 - **SonarQube MCP server** is available in this project. Use it to query SonarCloud for issues, quality gate status, and hotspots. When fixing code, check SonarCloud issues first.
 - **GitHub repo:** `kousen/mockhub` (public, MIT license)
 

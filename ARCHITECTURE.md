@@ -406,6 +406,7 @@ All endpoints are prefixed with `/api/v1`. List endpoints return paginated respo
 | GET | `/my/listings` | List seller's own listings (`?status=ACTIVE\|SOLD\|CANCELLED`) | Authenticated |
 | PUT | `/listings/{id}/price` | Update listing price (owner only) | Authenticated |
 | DELETE | `/listings/{id}` | Deactivate listing (owner only) | Authenticated |
+| GET | `/my/owned-tickets` | Tickets from confirmed orders available to relist | Authenticated |
 | GET | `/my/earnings` | Seller earnings summary with recent sales | Authenticated |
 
 No separate seller role — any authenticated user can sell. `listings.seller_id` is nullable: NULL = platform listing, non-null = user-created resale listing.

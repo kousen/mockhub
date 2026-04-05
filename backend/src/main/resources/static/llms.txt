@@ -65,6 +65,7 @@ POST /api/v1/listings — Create a listing. JSON body: {"eventSlug", "sectionNam
 GET /api/v1/my/listings — List seller's own listings. Query param: status (ACTIVE|SOLD|CANCELLED)
 PUT /api/v1/listings/{id}/price — Update listing price. JSON body: {"price": number}
 DELETE /api/v1/listings/{id} — Deactivate a listing (sets status CANCELLED, returns ticket to available)
+GET /api/v1/my/owned-tickets — Tickets from confirmed orders available to relist. Returns: [{ticketId, eventSlug, eventName, eventDate, venueName, sectionName, rowLabel, seatNumber, ticketType, faceValue}]
 GET /api/v1/my/earnings — Seller earnings summary with recent sales
 
 ## Checkout (requires auth)
