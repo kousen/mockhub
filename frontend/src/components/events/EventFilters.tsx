@@ -28,7 +28,7 @@ interface EventFiltersProps {
   onFiltersChange: (filters: EventSearchParams) => void;
 }
 
-function FilterControls({ filters, onFiltersChange }: EventFiltersProps) {
+function FilterControls({ filters, onFiltersChange }: Readonly<EventFiltersProps>) {
   const { data: categories } = useCategories();
   const { data: tags } = useTags();
 
@@ -223,7 +223,7 @@ function FilterControls({ filters, onFiltersChange }: EventFiltersProps) {
  * On mobile: rendered inside a Sheet (slide-out drawer).
  * On desktop (lg+): rendered as a sidebar panel.
  */
-export function EventFilters({ filters, onFiltersChange }: EventFiltersProps) {
+export function EventFilters({ filters, onFiltersChange }: Readonly<EventFiltersProps>) {
   const activeFilterCount = [
     filters.category,
     filters.tags,

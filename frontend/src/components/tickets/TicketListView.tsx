@@ -38,7 +38,7 @@ export function TicketListView({
   isLoading,
   sectionFilter,
   onClearFilter,
-}: TicketListViewProps) {
+}: Readonly<TicketListViewProps>) {
   const [sortField, setSortField] = useState<SortField>('section');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [addingListingId, setAddingListingId] = useState<number | null>(null);

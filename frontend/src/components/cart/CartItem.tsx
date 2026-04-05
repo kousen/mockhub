@@ -17,7 +17,7 @@ interface CartItemProps {
  * ticket type badge, price, and a remove button.
  * Highlights price changes since the item was added.
  */
-export function CartItem({ item, onRemove, isRemoving, readOnly }: CartItemProps) {
+export function CartItem({ item, onRemove, isRemoving, readOnly }: Readonly<CartItemProps>) {
   const priceChanged = item.currentPrice !== item.priceAtAdd;
   const priceDiff = item.currentPrice - item.priceAtAdd;
 

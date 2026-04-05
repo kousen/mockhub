@@ -16,7 +16,11 @@ const SERVICE_FEE_RATE = 0.1;
  * Cart summary showing subtotal, service fee (10%), and total.
  * Optionally shows a "Proceed to Checkout" button.
  */
-export function CartSummary({ subtotal, itemCount, showCheckoutButton = true }: CartSummaryProps) {
+export function CartSummary({
+  subtotal,
+  itemCount,
+  showCheckoutButton = true,
+}: Readonly<CartSummaryProps>) {
   const serviceFee = subtotal * SERVICE_FEE_RATE;
   const total = subtotal + serviceFee;
 

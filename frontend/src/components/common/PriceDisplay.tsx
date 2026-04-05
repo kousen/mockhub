@@ -13,7 +13,12 @@ interface PriceDisplayProps {
  * Supports optional "From" prefix for price ranges and
  * strikethrough styling for original prices when showing a sale.
  */
-export function PriceDisplay({ price, originalPrice, prefix, className }: PriceDisplayProps) {
+export function PriceDisplay({
+  price,
+  originalPrice,
+  prefix,
+  className,
+}: Readonly<PriceDisplayProps>) {
   const hasDiscount = originalPrice !== undefined && Math.abs(originalPrice - price) > 0.01;
   const isBelow = hasDiscount && price < originalPrice;
 

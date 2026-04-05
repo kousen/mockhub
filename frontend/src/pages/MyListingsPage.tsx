@@ -44,7 +44,10 @@ function formatSeatInfo(listing: SellerListing): string {
 /**
  * Inline price editor shown when a seller clicks "Edit Price" on an active listing.
  */
-function PriceEditor({ listing, onClose }: { listing: SellerListing; onClose: () => void }) {
+function PriceEditor({
+  listing,
+  onClose,
+}: Readonly<{ listing: SellerListing; onClose: () => void }>) {
   const [newPrice, setNewPrice] = useState(listing.listedPrice.toFixed(2));
   const updatePrice = useUpdatePrice();
 
@@ -103,14 +106,14 @@ function ListingCard({
   onCancelEdit,
   onDeactivate,
   isDeactivating,
-}: {
+}: Readonly<{
   listing: SellerListing;
   editingId: number | null;
   onEdit: (id: number) => void;
   onCancelEdit: () => void;
   onDeactivate: (id: number) => void;
   isDeactivating: boolean;
-}) {
+}>) {
   return (
     <div className="rounded-lg border p-4">
       <div className="flex items-start justify-between gap-3">

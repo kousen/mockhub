@@ -12,7 +12,7 @@ interface MockPaymentFormProps {
  * Mock payment form for the testing/demo flow.
  * Provides a simple "Pay Now" button that triggers the mock checkout.
  */
-export function MockPaymentForm({ total, onSubmit, isProcessing }: MockPaymentFormProps) {
+export function MockPaymentForm({ total, onSubmit, isProcessing }: Readonly<MockPaymentFormProps>) {
   return (
     <div className="space-y-4 rounded-lg border p-6">
       <div className="flex items-center gap-2">

@@ -34,7 +34,7 @@ function EventCardSkeleton() {
  * Responsive grid for displaying event cards.
  * Shows skeleton placeholders while loading.
  */
-export function EventGrid({ events, isLoading }: EventGridProps) {
+export function EventGrid({ events, isLoading }: Readonly<EventGridProps>) {
   if (isLoading) {
     return (
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

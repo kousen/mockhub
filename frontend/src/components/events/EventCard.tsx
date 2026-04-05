@@ -34,7 +34,7 @@ function getPlaceholderGradient(name: string): string {
   return gradients[Math.abs(hash) % gradients.length];
 }
 
-export function EventCard({ event }: EventCardProps) {
+export function EventCard({ event }: Readonly<EventCardProps>) {
   const eventUrl = `/events/${event.slug}`;
 
   return (

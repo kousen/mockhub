@@ -14,7 +14,11 @@ interface TicketGridViewProps {
  * Grid of section cards showing section name, type, availability count,
  * and price range. Grouped visually by section type.
  */
-export function TicketGridView({ sections, isLoading, onSectionClick }: TicketGridViewProps) {
+export function TicketGridView({
+  sections,
+  isLoading,
+  onSectionClick,
+}: Readonly<TicketGridViewProps>) {
   if (isLoading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

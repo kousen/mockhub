@@ -18,7 +18,7 @@ interface EmptyStateProps {
  * Reusable empty state component for pages with no data.
  * Displays an icon, title, description, and an optional action button.
  */
-export function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, description, action }: Readonly<EmptyStateProps>) {
   return (
     <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
       <Icon className="h-16 w-16 text-muted-foreground/30" />

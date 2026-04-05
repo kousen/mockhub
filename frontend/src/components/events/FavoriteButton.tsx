@@ -15,7 +15,7 @@ interface FavoriteButtonProps {
  * Shows a filled red heart when the event is favorited.
  * Disabled with a helpful tooltip when the user is not authenticated.
  */
-export function FavoriteButton({ eventId, className }: FavoriteButtonProps) {
+export function FavoriteButton({ eventId, className }: Readonly<FavoriteButtonProps>) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { data: isFavorited } = useCheckFavorite(eventId ?? 0);
   const addFavorite = useAddFavorite();

@@ -21,7 +21,7 @@ function CheckoutForm({
   onSuccess,
   onError,
   isProcessing,
-}: Omit<StripePaymentFormProps, 'clientSecret'>) {
+}: Readonly<Omit<StripePaymentFormProps, 'clientSecret'>>) {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,7 +81,7 @@ export function StripePaymentForm({
   onSuccess,
   onError,
   isProcessing,
-}: StripeWrapperProps) {
+}: Readonly<StripeWrapperProps>) {
   if (!stripePromise) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-center">

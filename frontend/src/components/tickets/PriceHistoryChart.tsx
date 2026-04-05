@@ -35,7 +35,7 @@ interface CustomTooltipProps {
   label?: string;
 }
 
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
+function CustomTooltip({ active, payload }: Readonly<CustomTooltipProps>) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -64,7 +64,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
  * Line chart showing price trends over time for an event.
  * Uses Recharts for the visualization. Responsive to container width.
  */
-export function PriceHistoryChart({ data, isLoading }: PriceHistoryChartProps) {
+export function PriceHistoryChart({ data, isLoading }: Readonly<PriceHistoryChartProps>) {
   if (isLoading) {
     return <Skeleton className="h-[300px] w-full rounded-lg" />;
   }

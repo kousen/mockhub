@@ -43,7 +43,7 @@ function getStatusColor(status: string): string {
  * Card displaying an order summary with event name, status badge, date, total, and item count.
  * Links to the order detail/confirmation page.
  */
-export function OrderCard({ order }: OrderCardProps) {
+export function OrderCard({ order }: Readonly<OrderCardProps>) {
   const statusVariant = getStatusVariant(order.status);
 
   return (

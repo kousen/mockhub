@@ -24,7 +24,7 @@ export function SeatSelector({
   isLoading,
   selectedSectionId,
   onSectionSelect,
-}: SeatSelectorProps) {
+}: Readonly<SeatSelectorProps>) {
   const [localSelected, setLocalSelected] = useState<number | null>(null);
 
   const selected = selectedSectionId !== undefined ? selectedSectionId : localSelected;

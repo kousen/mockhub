@@ -13,7 +13,7 @@ interface PriceTagProps {
  * the listed price is shown struck through. Color indicates
  * whether the price is below (green) or above (red) the listed/face value.
  */
-export function PriceTag({ computedPrice, listedPrice, className }: PriceTagProps) {
+export function PriceTag({ computedPrice, listedPrice, className }: Readonly<PriceTagProps>) {
   const isDifferent = Math.abs(computedPrice - listedPrice) > 0.01;
   const isBelow = computedPrice < listedPrice;
   const isAbove = computedPrice > listedPrice;

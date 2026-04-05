@@ -35,7 +35,7 @@ export function VenueMap({
   selectedSectionId,
   onSectionSelect,
   isLoading = false,
-}: VenueMapProps) {
+}: Readonly<VenueMapProps>) {
   if (isLoading) {
     return (
       <div className="mx-auto w-full max-w-2xl">

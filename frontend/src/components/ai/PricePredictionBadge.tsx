@@ -36,7 +36,7 @@ const trendConfig: Record<
  * Shows predicted price, trend direction, and confidence level.
  * Renders nothing if AI is unavailable or prediction data is missing.
  */
-export function PricePredictionBadge({ slug }: PricePredictionBadgeProps) {
+export function PricePredictionBadge({ slug }: Readonly<PricePredictionBadgeProps>) {
   const { data: prediction } = usePricePrediction(slug);
 
   if (!prediction) {

@@ -11,7 +11,7 @@ import type { ChatMessage } from '@/types/ai';
  * Handles [text](url) patterns, using internal Links for relative URLs
  * and anchor tags for external URLs.
  */
-function MessageContent({ content }: { content: string }) {
+function MessageContent({ content }: Readonly<{ content: string }>) {
   const linkRegex = /\[([^\]]{1,500})\]\(([^)]{1,2000})\)/g;
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;

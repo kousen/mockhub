@@ -10,7 +10,7 @@ interface OrderReviewProps {
  * Read-only review of cart items for the checkout page.
  * Shows all items without remove buttons, plus the order summary.
  */
-export function OrderReview({ cart }: OrderReviewProps) {
+export function OrderReview({ cart }: Readonly<OrderReviewProps>) {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Review Your Order</h2>

@@ -12,7 +12,7 @@ interface CategoryNavProps {
  * Highlights the active category. Clicking a category filters events.
  * Clicking the active category again deselects it.
  */
-export function CategoryNav({ activeCategory, onCategoryChange }: CategoryNavProps) {
+export function CategoryNav({ activeCategory, onCategoryChange }: Readonly<CategoryNavProps>) {
   const { data: categories, isLoading } = useCategories();
 
   if (isLoading) {

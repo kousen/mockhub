@@ -11,7 +11,7 @@ const sizeClasses = {
   lg: 'h-12 w-12 border-3',
 } as const;
 
-export function LoadingSpinner({ className, size = 'md' }: LoadingSpinnerProps) {
+export function LoadingSpinner({ className, size = 'md' }: Readonly<LoadingSpinnerProps>) {
   return (
     <div className={cn('flex items-center justify-center', className)}>
       <output

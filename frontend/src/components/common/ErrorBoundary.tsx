@@ -11,7 +11,7 @@ interface ErrorFallbackProps {
 /**
  * Friendly error display with a retry button.
  */
-export function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
+export function ErrorFallback({ error, onReset }: Readonly<ErrorFallbackProps>) {
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
       <AlertTriangle className="h-16 w-16 text-destructive/60" />

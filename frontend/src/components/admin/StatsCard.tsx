@@ -11,7 +11,7 @@ interface StatsCardProps {
 /**
  * Dashboard statistics card with label, value, optional icon, and trend indicator.
  */
-export function StatsCard({ label, value, icon: Icon, trend }: StatsCardProps) {
+export function StatsCard({ label, value, icon: Icon, trend }: Readonly<StatsCardProps>) {
   return (
     <Card>
       <CardContent className="flex items-center gap-4 p-6">

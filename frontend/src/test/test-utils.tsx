@@ -37,7 +37,7 @@ export function renderWithProviders(
   const queryClient = createTestQueryClient();
   const route = options?.route ?? '/';
 
-  function Wrapper({ children }: WrapperProps) {
+  function Wrapper({ children }: Readonly<WrapperProps>) {
     return (
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>

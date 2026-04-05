@@ -17,7 +17,7 @@ interface OrderItemRowProps {
  * section/row/seat details, ticket type, price paid, and
  * a download button for confirmed orders.
  */
-export function OrderItemRow({ item, orderNumber, orderStatus }: OrderItemRowProps) {
+export function OrderItemRow({ item, orderNumber, orderStatus }: Readonly<OrderItemRowProps>) {
   const { mutate: downloadTicket, isPending } = useDownloadTicket();
 
   const canDownload = orderStatus === 'CONFIRMED' && orderNumber;

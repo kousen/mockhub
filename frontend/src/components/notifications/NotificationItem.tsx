@@ -34,7 +34,7 @@ export function NotificationItem({
   notification,
   onMarkAsRead,
   onNavigate,
-}: NotificationItemProps) {
+}: Readonly<NotificationItemProps>) {
   const Icon = typeIcons[notification.type] ?? Bell;
   const iconColor = typeColors[notification.type] ?? 'text-muted-foreground';
 

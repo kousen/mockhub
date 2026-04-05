@@ -19,7 +19,7 @@ export function EventSearch({
   onChange,
   placeholder = 'Search events, artists, venues...',
   className,
-}: EventSearchProps) {
+}: Readonly<EventSearchProps>) {
   const [localValue, setLocalValue] = useState(value);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
