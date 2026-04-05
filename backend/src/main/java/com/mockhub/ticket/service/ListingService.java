@@ -23,6 +23,7 @@ import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.repository.OrderItemRepository;
 import com.mockhub.ticket.dto.EarningsSummaryDto;
 import com.mockhub.ticket.dto.ListingCreateRequest;
+import com.mockhub.ticket.dto.OwnedTicketDto;
 import com.mockhub.ticket.dto.ListingDto;
 import com.mockhub.ticket.dto.SaleDto;
 import com.mockhub.ticket.dto.SellListingRequest;
@@ -324,6 +325,15 @@ public class ListingService {
     }
 
     @Transactional(readOnly = true)
+    public List<OwnedTicketDto> getOwnedTickets(String userEmail) {
+        User user = resolveUser(userEmail);
+        List<OrderItem> items = orderItemRepository.findOwnedAvailableTicketsByUserId(user.getId());
+        return items.stream()
+                .map(this::toOwnedTicketDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<TicketSearchResultDto> searchTickets(ListingSearchCriteria criteria) {
         Specification<Listing> spec = ListingSearchSpecification.fromCriteria(criteria);
 
@@ -427,6 +437,31 @@ public class ListingService {
                 listing.getStatus(),
                 listing.getListedAt(),
                 listing.getCreatedAt());
+    }
+
+    private OwnedTicketDto toOwnedTicketDto(OrderItem orderItem) {
+        Ticket ticket = orderItem.getTicket();
+        Event event = orderItem.getListing().getEvent();
+        String sectionName = ticket.getSection().getName();
+        String rowLabel = null;
+        String seatNumber = null;
+
+        if (ticket.getSeat() != null) {
+            rowLabel = ticket.getSeat().getRow().getRowLabel();
+            seatNumber = ticket.getSeat().getSeatNumber();
+        }
+
+        return new OwnedTicketDto(
+                ticket.getId(),
+                event.getSlug(),
+                event.getName(),
+                event.getEventDate(),
+                event.getVenue().getName(),
+                sectionName,
+                rowLabel,
+                seatNumber,
+                ticket.getTicketType(),
+                ticket.getFaceValue());
     }
 
     private SaleDto toSaleDto(OrderItem orderItem) {

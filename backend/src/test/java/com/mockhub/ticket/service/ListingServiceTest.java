@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.mockhub.auth.repository.UserRepository;
+import com.mockhub.order.entity.OrderItem;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.event.entity.Event;
@@ -24,6 +25,7 @@ import com.mockhub.event.entity.Category;
 import com.mockhub.ticket.dto.ListingCreateRequest;
 import com.mockhub.ticket.dto.ListingDto;
 import com.mockhub.ticket.dto.ListingSearchCriteria;
+import com.mockhub.ticket.dto.OwnedTicketDto;
 import com.mockhub.ticket.dto.TicketSearchResultDto;
 import com.mockhub.auth.entity.User;
 import com.mockhub.ticket.entity.Listing;
@@ -463,5 +465,97 @@ class ListingServiceTest {
         }
 
         return listing;
+    }
+
+    // -- getOwnedTickets --
+
+    @Test
+    @DisplayName("getOwnedTickets - given user with available tickets - returns owned ticket DTOs")
+    void getOwnedTickets_givenUserWithTickets_returnsOwnedTicketDtos() {
+        User user = new User();
+        user.setId(1L);
+        user.setEmail("buyer@example.com");
+
+        Venue venue = new Venue();
+        venue.setName("Madison Square Garden");
+        testEvent.setVenue(venue);
+
+        SeatRow row = new SeatRow();
+        row.setRowLabel("A");
+        Seat seat = new Seat();
+        seat.setSeatNumber("5");
+        seat.setRow(row);
+        testTicket.setSeat(seat);
+
+        Listing listing = new Listing();
+        listing.setEvent(testEvent);
+
+        OrderItem orderItem = new OrderItem();
+        orderItem.setTicket(testTicket);
+        orderItem.setListing(listing);
+
+        when(userRepository.findByEmail("buyer@example.com"))
+                .thenReturn(Optional.of(user));
+        when(orderItemRepository.findOwnedAvailableTicketsByUserId(1L))
+                .thenReturn(List.of(orderItem));
+
+        List<OwnedTicketDto> result = listingService.getOwnedTickets("buyer@example.com");
+
+        assertEquals(1, result.size());
+        OwnedTicketDto dto = result.get(0);
+        assertEquals(1L, dto.ticketId());
+        assertEquals("test-event", dto.eventSlug());
+        assertEquals("Floor", dto.sectionName());
+        assertEquals("A", dto.rowLabel());
+        assertEquals("5", dto.seatNumber());
+    }
+
+    @Test
+    @DisplayName("getOwnedTickets - given user with no tickets - returns empty list")
+    void getOwnedTickets_givenUserWithNoTickets_returnsEmptyList() {
+        User user = new User();
+        user.setId(2L);
+        user.setEmail("notickets@example.com");
+
+        when(userRepository.findByEmail("notickets@example.com"))
+                .thenReturn(Optional.of(user));
+        when(orderItemRepository.findOwnedAvailableTicketsByUserId(2L))
+                .thenReturn(List.of());
+
+        List<OwnedTicketDto> result = listingService.getOwnedTickets("notickets@example.com");
+
+        assertEquals(0, result.size());
+    }
+
+    @Test
+    @DisplayName("getOwnedTickets - given ticket without seat - returns null row and seat")
+    void getOwnedTickets_givenTicketWithoutSeat_returnsNullRowAndSeat() {
+        User user = new User();
+        user.setId(1L);
+        user.setEmail("buyer@example.com");
+
+        Venue venue = new Venue();
+        venue.setName("Open Air Venue");
+        testEvent.setVenue(venue);
+
+        testTicket.setSeat(null);
+
+        Listing listing = new Listing();
+        listing.setEvent(testEvent);
+
+        OrderItem orderItem = new OrderItem();
+        orderItem.setTicket(testTicket);
+        orderItem.setListing(listing);
+
+        when(userRepository.findByEmail("buyer@example.com"))
+                .thenReturn(Optional.of(user));
+        when(orderItemRepository.findOwnedAvailableTicketsByUserId(1L))
+                .thenReturn(List.of(orderItem));
+
+        List<OwnedTicketDto> result = listingService.getOwnedTickets("buyer@example.com");
+
+        assertEquals(1, result.size());
+        assertNull(result.get(0).rowLabel());
+        assertNull(result.get(0).seatNumber());
     }
 }

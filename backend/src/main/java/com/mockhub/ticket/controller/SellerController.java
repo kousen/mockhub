@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mockhub.auth.security.SecurityUser;
 import com.mockhub.ticket.dto.EarningsSummaryDto;
+import com.mockhub.ticket.dto.OwnedTicketDto;
 import com.mockhub.ticket.dto.SellListingRequest;
 import com.mockhub.ticket.dto.SellerListingDto;
 import com.mockhub.ticket.dto.UpdatePriceRequest;
@@ -91,6 +92,17 @@ public class SellerController {
             @PathVariable Long id) {
         listingService.deactivateListing(id, securityUser.getEmail());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/my/owned-tickets")
+    @Operation(summary = "Get owned tickets",
+            description = "Return tickets from confirmed orders that are available to sell")
+    @ApiResponse(responseCode = "200", description = "Owned tickets returned")
+    public ResponseEntity<List<OwnedTicketDto>> getOwnedTickets(
+            @AuthenticationPrincipal SecurityUser securityUser) {
+        List<OwnedTicketDto> tickets = listingService.getOwnedTickets(
+                securityUser.getEmail());
+        return ResponseEntity.ok(tickets);
     }
 
     @GetMapping("/my/earnings")

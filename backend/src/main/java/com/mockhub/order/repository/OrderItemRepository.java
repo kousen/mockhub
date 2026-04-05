@@ -67,4 +67,21 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             WHERE l.seller.id = :sellerId AND o.status = 'COMPLETED'
             """)
     BigDecimal sumEarningsBySellerId(@Param("sellerId") Long sellerId);
+
+    @Query("""
+            SELECT oi FROM OrderItem oi
+            JOIN FETCH oi.order o
+            JOIN FETCH oi.ticket t
+            JOIN FETCH oi.listing l
+            JOIN FETCH l.event e
+            JOIN FETCH e.venue v
+            JOIN FETCH t.section s
+            LEFT JOIN FETCH t.seat seat
+            LEFT JOIN FETCH seat.row r
+            WHERE o.user.id = :userId
+              AND o.status IN ('CONFIRMED', 'COMPLETED')
+              AND t.status = 'SOLD'
+            ORDER BY e.eventDate ASC
+            """)
+    List<OrderItem> findOwnedAvailableTicketsByUserId(@Param("userId") Long userId);
 }

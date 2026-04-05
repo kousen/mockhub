@@ -23,6 +23,7 @@ import com.mockhub.auth.security.SecurityUser;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
 import com.mockhub.config.SecurityConfig;
 import com.mockhub.ticket.dto.EarningsSummaryDto;
+import com.mockhub.ticket.dto.OwnedTicketDto;
 import com.mockhub.ticket.dto.SaleDto;
 import com.mockhub.ticket.dto.SellerListingDto;
 import com.mockhub.ticket.service.ListingService;
@@ -225,6 +226,57 @@ class SellerControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(listingService).deactivateListing(1L, "seller@example.com");
+    }
+
+    // -- GET /api/v1/my/owned-tickets (unauthenticated) --
+
+    @Test
+    @DisplayName("GET /api/v1/my/owned-tickets - unauthenticated - returns 401")
+    void getOwnedTickets_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(get("/api/v1/my/owned-tickets"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // -- GET /api/v1/my/owned-tickets (authenticated) --
+
+    @Test
+    @DisplayName("GET /api/v1/my/owned-tickets - authenticated - returns 200 with tickets")
+    void getOwnedTickets_authenticated_returns200() throws Exception {
+        authenticateAs(securityUser);
+
+        OwnedTicketDto dto = new OwnedTicketDto(
+                1L, "test-concert", "Test Concert",
+                Instant.parse("2026-06-15T20:00:00Z"),
+                "Madison Square Garden",
+                "Floor", "A", "1", "RESERVED",
+                new BigDecimal("50.00"));
+
+        when(listingService.getOwnedTickets("seller@example.com"))
+                .thenReturn(List.of(dto));
+
+        mockMvc.perform(get("/api/v1/my/owned-tickets"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].ticketId").value(1))
+                .andExpect(jsonPath("$[0].eventSlug").value("test-concert"))
+                .andExpect(jsonPath("$[0].sectionName").value("Floor"))
+                .andExpect(jsonPath("$[0].rowLabel").value("A"))
+                .andExpect(jsonPath("$[0].seatNumber").value("1"));
+
+        verify(listingService).getOwnedTickets("seller@example.com");
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/my/owned-tickets - authenticated with no tickets - returns empty list")
+    void getOwnedTickets_authenticated_noTickets_returnsEmptyList() throws Exception {
+        authenticateAs(securityUser);
+
+        when(listingService.getOwnedTickets("seller@example.com"))
+                .thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/my/owned-tickets"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
     }
 
     // -- GET /api/v1/my/earnings (unauthenticated) --

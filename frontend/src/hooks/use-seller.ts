@@ -1,6 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as sellerApi from '@/api/seller';
 import type { SellListingRequest, UpdatePriceRequest } from '@/types/seller';
+import { useAuthStore } from '@/stores/auth-store';
+
+/**
+ * Hook for fetching the current user's owned tickets that are available to sell.
+ * Only fetches when the user is authenticated.
+ */
+export function useMyOwnedTickets() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  return useQuery({
+    queryKey: ['my-owned-tickets'],
+    queryFn: () => sellerApi.getMyOwnedTickets(),
+    enabled: isAuthenticated,
+  });
+}
 
 /**
  * Hook for fetching the current user's listings.

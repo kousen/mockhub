@@ -14,16 +14,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useEvents, useEventSections } from '@/hooks/use-events';
-import { useCreateListing } from '@/hooks/use-seller';
+import { useCreateListing, useMyOwnedTickets } from '@/hooks/use-seller';
+import { VenueMap } from '@/components/tickets/VenueMap';
 import type { EventSummary } from '@/types/event';
+import type { OwnedTicket } from '@/types/seller';
 import type { SellListingRequest } from '@/types/seller';
 
 type Step = 'event' | 'seat' | 'price';
 
 /**
  * Multi-step form for creating a new ticket listing.
- * Step 1: Search and select an event
- * Step 2: Enter seat details (section, row, seat number)
+ * Shows owned tickets first for quick listing, with fallback to event search.
+ * Step 1: Select from owned tickets or search for an event
+ * Step 2: Enter seat details (section, row, seat number) with optional VenueMap
  * Step 3: Set the listing price
  */
 export function SellPage() {
@@ -37,6 +40,8 @@ export function SellPage() {
   const [rowLabel, setRowLabel] = useState('');
   const [seatNumber, setSeatNumber] = useState('');
   const [listedPrice, setListedPrice] = useState('');
+
+  const { data: ownedTickets, isLoading: ownedTicketsLoading } = useMyOwnedTickets();
 
   const { data: sections, isLoading: sectionsLoading } = useEventSections(
     selectedEvent?.slug ?? '',
@@ -52,7 +57,37 @@ export function SellPage() {
   const handleSelectEvent = useCallback((event: EventSummary) => {
     setSelectedEvent(event);
     setSectionName('');
+    setRowLabel('');
+    setSeatNumber('');
     setStep('seat');
+  }, []);
+
+  const handleSelectOwnedTicket = useCallback((ticket: OwnedTicket) => {
+    const eventSummary: EventSummary = {
+      id: 0,
+      name: ticket.eventName,
+      slug: ticket.eventSlug,
+      artistName: null,
+      venueName: ticket.venueName,
+      city: '',
+      eventDate: ticket.eventDate,
+      categoryName: '',
+      primaryImageUrl: null,
+      minPrice: null,
+      availableTickets: 0,
+      isFeatured: false,
+    };
+    setSelectedEvent(eventSummary);
+    setSectionName(ticket.sectionName);
+    setRowLabel(ticket.rowLabel ?? '');
+    setSeatNumber(ticket.seatNumber ?? '');
+
+    // Skip to price only if we have complete seat info; otherwise go to seat step
+    if (ticket.rowLabel && ticket.seatNumber) {
+      setStep('price');
+    } else {
+      setStep('seat');
+    }
   }, []);
 
   const handleSeatSubmit = useCallback(
@@ -109,6 +144,20 @@ export function SellPage() {
     [selectedEvent, sectionName, rowLabel, seatNumber, listedPrice, createListing, navigate],
   );
 
+  const handleSectionSelect = useCallback(
+    (sectionId: number | null) => {
+      if (sectionId === null || !sections) {
+        setSectionName('');
+        return;
+      }
+      const section = sections.find((s) => s.sectionId === sectionId);
+      if (section) {
+        setSectionName(section.sectionName);
+      }
+    },
+    [sections],
+  );
+
   const renderSectionInput = () => {
     if (sectionsLoading) {
       return (
@@ -144,6 +193,10 @@ export function SellPage() {
       />
     );
   };
+
+  const selectedSectionId = sections?.find((s) => s.sectionName === sectionName)?.sectionId ?? null;
+
+  const hasSvgSections = sections?.some((s) => s.svgX !== null) ?? false;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
@@ -183,72 +236,133 @@ export function SellPage() {
 
       {/* Step 1: Select Event */}
       {step === 'event' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Select an Event</CardTitle>
-            <CardDescription>Search for the event you have tickets for.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search events..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {eventsLoading && (
-              <div className="flex items-center justify-center py-8">
+        <div className="space-y-6">
+          {/* Owned Tickets Section */}
+          {ownedTicketsLoading && (
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            )}
+              </CardContent>
+            </Card>
+          )}
 
-            {!eventsLoading && searchQuery.length >= 2 && events.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No events found. Try a different search term.
-              </p>
-            )}
-
-            {!eventsLoading && searchQuery.length < 2 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                Type at least 2 characters to search for events.
-              </p>
-            )}
-
-            <div className="space-y-2">
-              {events.map((event) => (
-                <button
-                  key={event.id}
-                  onClick={() => handleSelectEvent(event)}
-                  className="w-full rounded-lg border p-4 text-left transition-colors hover:bg-accent"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{event.name}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {new Date(event.eventDate).toLocaleDateString()}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {event.venueName}, {event.city}
+          {ownedTickets && ownedTickets.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Tickets</CardTitle>
+                <CardDescription>Select a ticket you own to list it for sale.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {ownedTickets.map((ticket) => (
+                    <button
+                      key={ticket.ticketId}
+                      onClick={() => handleSelectOwnedTicket(ticket)}
+                      className="w-full rounded-lg border p-4 text-left transition-colors hover:bg-accent"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium">{ticket.eventName}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5" />
+                              {new Date(ticket.eventDate).toLocaleDateString()}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3.5 w-3.5" />
+                              {ticket.venueName}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Ticket className="h-3.5 w-3.5" />
+                              {ticket.sectionName}
+                              {ticket.rowLabel && `, Row ${ticket.rowLabel}`}
+                              {ticket.seatNumber && `, Seat ${ticket.seatNumber}`}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-sm text-muted-foreground">
+                          ${ticket.faceValue.toFixed(2)}
                         </span>
                       </div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Event Search */}
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {ownedTickets && ownedTickets.length > 0
+                  ? 'Or Search for a Different Event'
+                  : 'Select an Event'}
+              </CardTitle>
+              <CardDescription>Search for the event you have tickets for.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search events..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {eventsLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+
+              {!eventsLoading && searchQuery.length >= 2 && events.length === 0 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  No events found. Try a different search term.
+                </p>
+              )}
+
+              {!eventsLoading && searchQuery.length < 2 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Type at least 2 characters to search for events.
+                </p>
+              )}
+
+              <div className="space-y-2">
+                {events.map((event) => (
+                  <button
+                    key={event.id}
+                    onClick={() => handleSelectEvent(event)}
+                    className="w-full rounded-lg border p-4 text-left transition-colors hover:bg-accent"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{event.name}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {new Date(event.eventDate).toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {event.venueName}, {event.city}
+                          </span>
+                        </div>
+                      </div>
+                      {event.minPrice !== null && (
+                        <span className="shrink-0 text-sm text-muted-foreground">
+                          from ${event.minPrice.toFixed(2)}
+                        </span>
+                      )}
                     </div>
-                    {event.minPrice !== null && (
-                      <span className="shrink-0 text-sm text-muted-foreground">
-                        from ${event.minPrice.toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Step 2: Enter Seat Details */}
@@ -262,6 +376,18 @@ export function SellPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* VenueMap for visual section selection */}
+            {hasSvgSections && sections && (
+              <div className="mb-6">
+                <Label className="mb-2 block">Select a section on the map</Label>
+                <VenueMap
+                  sections={sections}
+                  selectedSectionId={selectedSectionId}
+                  onSectionSelect={handleSectionSelect}
+                />
+              </div>
+            )}
+
             <form onSubmit={handleSeatSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="section">Section</Label>
