@@ -157,8 +157,10 @@ class TicketmasterSyncServiceTest {
 
     @Test
     void processEvent_givenNoDate_skips() {
-        TicketmasterEventResponse tmEvent = new TicketmasterEventResponse(
-                "TM-001", "No Date Event", null, null, null, null, null, null, null, null);
+        TicketmasterEventResponse tmEvent = TicketmasterEventResponse.builder()
+                .id("TM-001")
+                .name("No Date Event")
+                .build();
 
         TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
 
@@ -212,11 +214,12 @@ class TicketmasterSyncServiceTest {
 
     @Test
     void resolveVenue_givenNoEmbeddedVenues_returnsNull() {
-        TicketmasterEventResponse tmEvent = new TicketmasterEventResponse(
-                "TM-001", "Test", null,
-                new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
-                        "America/New_York", new Status("onsale")),
-                null, null, null, null, null, null);
+        TicketmasterEventResponse tmEvent = TicketmasterEventResponse.builder()
+                .id("TM-001")
+                .name("Test")
+                .dates(new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
+                        "America/New_York", new Status("onsale")))
+                .build();
 
         Venue resolved = syncService.resolveVenue(tmEvent);
 
@@ -268,11 +271,11 @@ class TicketmasterSyncServiceTest {
 
     @Test
     void processEvent_givenNullId_skips() {
-        TicketmasterEventResponse tmEvent = new TicketmasterEventResponse(
-                null, "No ID Event", null,
-                new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
-                        "America/New_York", new Status("onsale")),
-                null, null, null, null, null, null);
+        TicketmasterEventResponse tmEvent = TicketmasterEventResponse.builder()
+                .name("No ID Event")
+                .dates(new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
+                        "America/New_York", new Status("onsale")))
+                .build();
 
         TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
 
@@ -281,11 +284,11 @@ class TicketmasterSyncServiceTest {
 
     @Test
     void processEvent_givenNullName_skips() {
-        TicketmasterEventResponse tmEvent = new TicketmasterEventResponse(
-                "TM-001", null, null,
-                new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
-                        "America/New_York", new Status("onsale")),
-                null, null, null, null, null, null);
+        TicketmasterEventResponse tmEvent = TicketmasterEventResponse.builder()
+                .id("TM-001")
+                .dates(new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
+                        "America/New_York", new Status("onsale")))
+                .build();
 
         TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
 
@@ -296,9 +299,14 @@ class TicketmasterSyncServiceTest {
     void processEvent_givenNoVenue_skips() {
         TicketmasterEventResponse tmEvent = createSampleEvent("TM-NO-VENUE", "No Venue");
         // Override with no embedded venues
-        TicketmasterEventResponse noVenue = new TicketmasterEventResponse(
-                "TM-NO-VENUE", "No Venue", null, tmEvent.dates(),
-                tmEvent.classifications(), tmEvent.images(), tmEvent.priceRanges(), null, null, null);
+        TicketmasterEventResponse noVenue = TicketmasterEventResponse.builder()
+                .id("TM-NO-VENUE")
+                .name("No Venue")
+                .dates(tmEvent.dates())
+                .classifications(tmEvent.classifications())
+                .images(tmEvent.images())
+                .priceRanges(tmEvent.priceRanges())
+                .build();
 
         when(eventRepository.findByTicketmasterEventId("TM-NO-VENUE")).thenReturn(Optional.empty());
 
@@ -353,12 +361,13 @@ class TicketmasterSyncServiceTest {
         event.setTicketmasterEventId("TM-HAMILTON");
         event.setSpotifyArtistId(null);
 
-        TicketmasterEventResponse tmEvent = new TicketmasterEventResponse(
-                "TM-HAMILTON", "Hamilton", null,
-                new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
-                        "America/New_York", new Status("onsale")),
-                null, null, null, null, null,
-                new TicketmasterEventResponse.Embedded(null, null));
+        TicketmasterEventResponse tmEvent = TicketmasterEventResponse.builder()
+                .id("TM-HAMILTON")
+                .name("Hamilton")
+                .dates(new Dates(new Start("2026-06-01", "20:00:00", "2026-06-01T20:00:00Z", false, false),
+                        "America/New_York", new Status("onsale")))
+                .embedded(new TicketmasterEventResponse.Embedded(null, null))
+                .build();
 
         when(eventRepository.findMissingSpotifyWithTicketmasterId()).thenReturn(List.of(event));
         when(ticketmasterService.getEvent("TM-HAMILTON")).thenReturn(tmEvent);
@@ -389,20 +398,20 @@ class TicketmasterSyncServiceTest {
     // --- Helper methods ---
 
     private TicketmasterEventResponse createSampleEvent(String id, String name) {
-        return new TicketmasterEventResponse(
-                id, name, null,
-                new Dates(
+        return TicketmasterEventResponse.builder()
+                .id(id)
+                .name(name)
+                .dates(new Dates(
                         new Start("2026-04-10", "20:30:00", "2026-04-11T03:30:00Z", false, false),
                         "America/Los_Angeles",
-                        new Status("onsale")),
-                List.of(new Classification(true,
+                        new Status("onsale")))
+                .classifications(List.of(new Classification(true,
                         new Segment("KZFzniwnSyZfZ7v7nJ", "Music"),
                         new Genre("1", "Rock"),
-                        new SubGenre("1", "Pop"))),
-                List.of(new Image("https://example.com/large.jpg", "16_9", 2048, 1152, false)),
-                List.of(new PriceRange("standard", "USD", 75.0, 250.0)),
-                null, null,
-                new Embedded(
+                        new SubGenre("1", "Pop"))))
+                .images(List.of(new Image("https://example.com/large.jpg", "16_9", 2048, 1152, false)))
+                .priceRanges(List.of(new PriceRange("standard", "USD", 75.0, 250.0)))
+                .embedded(new Embedded(
                         List.of(new TicketmasterVenueResponse(
                                 "VENUE-001", "Sphere",
                                 new TicketmasterVenueResponse.Address("255 Sands Ave"),
@@ -414,24 +423,26 @@ class TicketmasterSyncServiceTest {
                         List.of(new TicketmasterAttractionResponse(
                                 "ATTR-001", "Eagles",
                                 Map.of("spotify", List.of(
-                                        new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))));
+                                        new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))))
+                .build();
     }
 
     private TicketmasterEventResponse createSampleEventWithStatus(String id, String statusCode) {
-        return new TicketmasterEventResponse(
-                id, "Test Event", null,
-                new Dates(
+        return TicketmasterEventResponse.builder()
+                .id(id)
+                .name("Test Event")
+                .dates(new Dates(
                         new Start("2026-04-10", "20:30:00", "2026-04-11T03:30:00Z", false, false),
                         "America/Los_Angeles",
-                        new Status(statusCode)),
-                null, null, null, null, null,
-                new Embedded(
+                        new Status(statusCode)))
+                .embedded(new Embedded(
                         List.of(new TicketmasterVenueResponse(
                                 "VENUE-001", "Sphere",
                                 null, new TicketmasterVenueResponse.City("Las Vegas"),
                                 new TicketmasterVenueResponse.State("NV", "NV"),
                                 null, null, null)),
-                        null));
+                        null))
+                .build();
     }
 
     private Category createCategory(String slug) {

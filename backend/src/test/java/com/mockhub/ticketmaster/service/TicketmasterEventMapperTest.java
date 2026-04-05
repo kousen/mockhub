@@ -399,15 +399,16 @@ class TicketmasterEventMapperTest {
 
     @Test
     void mapToEvent_givenNoAttractions_setsNullArtistAndSpotifyId() {
-        TicketmasterEventResponse response = new TicketmasterEventResponse(
-                "TM-NO-ARTIST", "Festival Event", null,
-                new Dates(
+        TicketmasterEventResponse response = TicketmasterEventResponse.builder()
+                .id("TM-NO-ARTIST")
+                .name("Festival Event")
+                .dates(new Dates(
                         new Start("2026-08-01", "18:00:00", "2026-08-01T22:00:00Z", false, false),
-                        "America/New_York", new Status("onsale")),
-                List.of(new Classification(true,
-                        new Segment("1", "Music"), new Genre("1", "Rock"), new SubGenre("1", "Pop"))),
-                null, null, null, null,
-                new TicketmasterEventResponse.Embedded(null, null));
+                        "America/New_York", new Status("onsale")))
+                .classifications(List.of(new Classification(true,
+                        new Segment("1", "Music"), new Genre("1", "Rock"), new SubGenre("1", "Pop"))))
+                .embedded(new TicketmasterEventResponse.Embedded(null, null))
+                .build();
         Venue venue = createSampleVenue();
         Category category = createSampleCategory();
 
@@ -471,59 +472,57 @@ class TicketmasterEventMapperTest {
     // --- Helper methods ---
 
     private TicketmasterEventResponse createSampleEventResponse() {
-        return new TicketmasterEventResponse(
-                "1A9ZkoaGkePdD04",
-                "Eagles Live at Sphere",
-                "https://www.ticketmaster.com/eagles-live-at-sphere",
-                new Dates(
+        return TicketmasterEventResponse.builder()
+                .id("1A9ZkoaGkePdD04")
+                .name("Eagles Live at Sphere")
+                .url("https://www.ticketmaster.com/eagles-live-at-sphere")
+                .dates(new Dates(
                         new Start("2026-04-10", "20:30:00", "2026-04-11T03:30:00Z", false, false),
                         "America/Los_Angeles",
-                        new Status("onsale")),
-                List.of(new Classification(true,
+                        new Status("onsale")))
+                .classifications(List.of(new Classification(true,
                         new Segment("KZFzniwnSyZfZ7v7nJ", "Music"),
                         new Genre("1", "Rock"),
-                        new SubGenre("1", "Pop"))),
-                List.of(new Image("https://example.com/large.jpg", "16_9", 2048, 1152, false)),
-                List.of(new PriceRange("standard", "USD", 75.0, 250.0)),
-                null, null,
-                new Embedded(
+                        new SubGenre("1", "Pop"))))
+                .images(List.of(new Image("https://example.com/large.jpg", "16_9", 2048, 1152, false)))
+                .priceRanges(List.of(new PriceRange("standard", "USD", 75.0, 250.0)))
+                .embedded(new Embedded(
                         List.of(createSampleVenueResponse()),
                         List.of(new TicketmasterAttractionResponse(
                                 "K8vZ9171ob7", "Eagles",
                                 Map.of("spotify", List.of(
-                                        new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))));
+                                        new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))))
+                .build();
     }
 
     private TicketmasterEventResponse createEventResponseWithDoorsTimes() {
-        return new TicketmasterEventResponse(
-                "TM-DOORS-001",
-                "Concert With Doors Time",
-                null,
-                new Dates(
+        return TicketmasterEventResponse.builder()
+                .id("TM-DOORS-001")
+                .name("Concert With Doors Time")
+                .dates(new Dates(
                         new Start("2026-04-10", "20:00:00", "2026-04-11T00:00:00Z", false, false),
                         "America/New_York",
-                        new Status("onsale")),
-                List.of(new Classification(true,
-                        new Segment("1", "Music"), new Genre("1", "Rock"), new SubGenre("1", "Pop"))),
-                null, null, null,
-                new DoorsTimes("2026-04-10", "18:30:00", "2026-04-10T22:30:00Z"),
-                new Embedded(null, null));
+                        new Status("onsale")))
+                .classifications(List.of(new Classification(true,
+                        new Segment("1", "Music"), new Genre("1", "Rock"), new SubGenre("1", "Pop"))))
+                .doorsTimes(new DoorsTimes("2026-04-10", "18:30:00", "2026-04-10T22:30:00Z"))
+                .embedded(new Embedded(null, null))
+                .build();
     }
 
     private TicketmasterEventResponse createEventResponseWithStatus(String statusCode) {
-        return new TicketmasterEventResponse(
-                "1A9ZkoaGkePdD04",
-                "Eagles Live at Sphere",
-                null,
-                new Dates(
+        return TicketmasterEventResponse.builder()
+                .id("1A9ZkoaGkePdD04")
+                .name("Eagles Live at Sphere")
+                .dates(new Dates(
                         new Start("2026-04-10", "20:30:00", "2026-04-11T03:30:00Z", false, false),
                         "America/Los_Angeles",
-                        new Status(statusCode)),
-                List.of(new Classification(true,
+                        new Status(statusCode)))
+                .classifications(List.of(new Classification(true,
                         new Segment("KZFzniwnSyZfZ7v7nJ", "Music"),
                         new Genre("1", "Rock"),
-                        new SubGenre("1", "Pop"))),
-                null, null, null, null, null);
+                        new SubGenre("1", "Pop"))))
+                .build();
     }
 
     private TicketmasterVenueResponse createSampleVenueResponse() {

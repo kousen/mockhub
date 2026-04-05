@@ -128,4 +128,81 @@ public record TicketmasterEventResponse(
     public boolean isAllInclusivePricing() {
         return ticketing != null && ticketing.isAllInclusivePricing();
     }
+
+    /**
+     * Builder for TicketmasterEventResponse. Avoids fragile 10-argument positional constructors
+     * in test code. All fields default to null so callers only set what they need.
+     */
+    public static final class Builder {
+        private String id;
+        private String name;
+        private String url;
+        private Dates dates;
+        private List<Classification> classifications;
+        private List<Image> images;
+        private List<PriceRange> priceRanges;
+        private Ticketing ticketing;
+        private DoorsTimes doorsTimes;
+        private Embedded embedded;
+
+        public Builder id(String id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder url(String url) {
+            this.url = url;
+            return this;
+        }
+
+        public Builder dates(Dates dates) {
+            this.dates = dates;
+            return this;
+        }
+
+        public Builder classifications(List<Classification> classifications) {
+            this.classifications = classifications;
+            return this;
+        }
+
+        public Builder images(List<Image> images) {
+            this.images = images;
+            return this;
+        }
+
+        public Builder priceRanges(List<PriceRange> priceRanges) {
+            this.priceRanges = priceRanges;
+            return this;
+        }
+
+        public Builder ticketing(Ticketing ticketing) {
+            this.ticketing = ticketing;
+            return this;
+        }
+
+        public Builder doorsTimes(DoorsTimes doorsTimes) {
+            this.doorsTimes = doorsTimes;
+            return this;
+        }
+
+        public Builder embedded(Embedded embedded) {
+            this.embedded = embedded;
+            return this;
+        }
+
+        public TicketmasterEventResponse build() {
+            return new TicketmasterEventResponse(
+                    id, name, url, dates, classifications, images,
+                    priceRanges, ticketing, doorsTimes, embedded);
+        }
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
 }
