@@ -140,6 +140,15 @@ async function mockSellerEndpoints(page: Page) {
     });
   });
 
+  // Owned tickets for sell page (empty by default so tests exercise the search flow)
+  await page.route(/\/api\/v1\/my\/owned-tickets/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    });
+  });
+
   // Use regex for precise matching — /my/ endpoints first to avoid greedy glob conflicts
   await page.route(/\/api\/v1\/my\/listings/, async (route) => {
     await route.fulfill({
@@ -198,18 +207,14 @@ test.describe('Seller Flow', () => {
       await authenticateUser(page);
       await page.goto('/');
 
-      await expect(
-        page.getByRole('banner').getByRole('link', { name: 'Sell' }),
-      ).toBeVisible();
+      await expect(page.getByRole('banner').getByRole('link', { name: 'Sell' })).toBeVisible();
     });
 
     test('sell link is not visible when unauthenticated', async ({ page, isMobile }) => {
       test.skip(!!isMobile, 'Desktop nav tested — mobile nav tested separately');
       await page.goto('/');
 
-      await expect(
-        page.getByRole('banner').getByRole('link', { name: 'Sell' }),
-      ).not.toBeVisible();
+      await expect(page.getByRole('banner').getByRole('link', { name: 'Sell' })).not.toBeVisible();
     });
 
     test('unauthenticated user is redirected from /sell', async ({ page }) => {
@@ -411,9 +416,7 @@ test.describe('Seller Flow', () => {
       await page.goto('/sell');
       await page.waitForLoadState('domcontentloaded');
 
-      const results = await new AxeBuilder({ page })
-        .withTags(['wcag2a', 'wcag2aa'])
-        .analyze();
+      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
 
       const criticalViolations = results.violations.filter(
         (v) => v.impact === 'critical' || v.impact === 'serious',
@@ -428,9 +431,7 @@ test.describe('Seller Flow', () => {
       await page.goto('/my/listings');
       await page.waitForLoadState('domcontentloaded');
 
-      const results = await new AxeBuilder({ page })
-        .withTags(['wcag2a', 'wcag2aa'])
-        .analyze();
+      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
 
       const criticalViolations = results.violations.filter(
         (v) => v.impact === 'critical' || v.impact === 'serious',
@@ -445,9 +446,7 @@ test.describe('Seller Flow', () => {
       await page.goto('/my/earnings');
       await page.waitForLoadState('domcontentloaded');
 
-      const results = await new AxeBuilder({ page })
-        .withTags(['wcag2a', 'wcag2aa'])
-        .analyze();
+      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
 
       const criticalViolations = results.violations.filter(
         (v) => v.impact === 'critical' || v.impact === 'serious',
