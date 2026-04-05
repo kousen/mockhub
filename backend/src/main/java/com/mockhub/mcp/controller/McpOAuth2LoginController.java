@@ -81,24 +81,44 @@ public class McpOAuth2LoginController {
                             cursor: pointer;
                         }
                         button:hover { background: #2563eb; }
+                        button:disabled { background: #93c5fd; cursor: not-allowed; }
                         .note { color: #94a3b8; font-size: 0.75rem; margin-top: 1.5rem; line-height: 1.4; }
+                        .success-card { display: none; }
+                        .success-card .check { font-size: 3rem; margin-bottom: 1rem; }
                     </style>
                 </head>
                 <body>
-                    <div class="card">
+                    <div class="card" id="login-card">
                         <h1>MockHub</h1>
                         <p>Sign in to authorize AI agent access</p>
-                        <form method="post" action="/oauth2/login">
+                        <form method="post" action="/oauth2/login" id="login-form">
                             <label for="username">Email</label>
                             <input type="text" id="username" name="username" required autofocus>
                             <label for="password">Password</label>
                             <input type="password" id="password" name="password" required>
-                            <button type="submit">Authorize</button>
+                            <button type="submit" id="submit-btn">Authorize</button>
                         </form>
                         <p class="note">This authorizes an AI agent (Claude, Cursor, etc.) to use
                             MockHub tools on your behalf. To use the MockHub website,
                             <a href="/">go to the main site</a>.</p>
                     </div>
+                    <div class="card success-card" id="success-card">
+                        <div class="check">&#10003;</div>
+                        <h1>Authorization Complete</h1>
+                        <p>Your AI agent now has access to MockHub. You can close this tab.</p>
+                        <p class="note"><a href="/">Go to MockHub</a></p>
+                    </div>
+                    <script>
+                        document.getElementById('login-form').addEventListener('submit', function() {
+                            var btn = document.getElementById('submit-btn');
+                            btn.textContent = 'Authorizing...';
+                            btn.disabled = true;
+                            setTimeout(function() {
+                                document.getElementById('login-card').style.display = 'none';
+                                document.getElementById('success-card').style.display = 'block';
+                            }, 1500);
+                        });
+                    </script>
                 </body>
                 </html>
                 """.formatted(SHARED_STYLES);
