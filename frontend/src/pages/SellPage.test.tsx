@@ -36,6 +36,11 @@ const mockSections: SectionAvailability[] = [
     minPrice: 150.0,
     maxPrice: 300.0,
     colorHex: '#FF0000',
+    svgPathId: null,
+    svgX: null,
+    svgY: null,
+    svgWidth: null,
+    svgHeight: null,
   },
   {
     sectionId: 2,
@@ -46,6 +51,11 @@ const mockSections: SectionAvailability[] = [
     minPrice: 85.0,
     maxPrice: 150.0,
     colorHex: '#00FF00',
+    svgPathId: null,
+    svgX: null,
+    svgY: null,
+    svgWidth: null,
+    svgHeight: null,
   },
 ];
 
