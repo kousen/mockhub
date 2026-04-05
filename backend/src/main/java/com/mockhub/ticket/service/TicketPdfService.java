@@ -122,7 +122,6 @@ public class TicketPdfService {
             float pageWidth = PDRectangle.LETTER.getWidth();
             float pageHeight = PDRectangle.LETTER.getHeight();
             float margin = 60;
-            float contentWidth = pageWidth - 2 * margin;
             float yPosition = pageHeight - margin;
 
             try (PDPageContentStream contentStream =

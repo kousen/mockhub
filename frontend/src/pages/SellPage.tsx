@@ -109,6 +109,42 @@ export function SellPage() {
     [selectedEvent, sectionName, rowLabel, seatNumber, listedPrice, createListing, navigate],
   );
 
+  const renderSectionInput = () => {
+    if (sectionsLoading) {
+      return (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading sections...
+        </div>
+      );
+    }
+    if (sections && sections.length > 0) {
+      return (
+        <Select value={sectionName} onValueChange={setSectionName}>
+          <SelectTrigger id="section">
+            <SelectValue placeholder="Select a section" />
+          </SelectTrigger>
+          <SelectContent>
+            {sections.map((section) => (
+              <SelectItem key={section.sectionId} value={section.sectionName}>
+                {section.sectionName} ({section.availableTickets} available)
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
+    return (
+      <Input
+        id="section"
+        placeholder="e.g., Floor, Section 101, GA"
+        value={sectionName}
+        onChange={(e) => setSectionName(e.target.value)}
+        required
+      />
+    );
+  };
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
       <h1 className="mb-6 text-2xl font-bold">Sell Tickets</h1>
@@ -229,33 +265,7 @@ export function SellPage() {
             <form onSubmit={handleSeatSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="section">Section</Label>
-                {sectionsLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading sections...
-                  </div>
-                ) : sections && sections.length > 0 ? (
-                  <Select value={sectionName} onValueChange={setSectionName}>
-                    <SelectTrigger id="section">
-                      <SelectValue placeholder="Select a section" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sections.map((section) => (
-                        <SelectItem key={section.sectionId} value={section.sectionName}>
-                          {section.sectionName} ({section.availableTickets} available)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    id="section"
-                    placeholder="e.g., Floor, Section 101, GA"
-                    value={sectionName}
-                    onChange={(e) => setSectionName(e.target.value)}
-                    required
-                  />
-                )}
+                {renderSectionInput()}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

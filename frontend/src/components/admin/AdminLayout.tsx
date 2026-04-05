@@ -71,17 +71,10 @@ export function AdminLayout() {
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <>
-            <div
+            <button
+              type="button"
               className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
-              role="button"
-              tabIndex={0}
               onClick={() => setSidebarOpen(false)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setSidebarOpen(false);
-                }
-              }}
               aria-label="Close sidebar"
             />
             <div className="fixed inset-y-0 left-0 z-50 w-64 border-r bg-background pt-20 md:hidden">
