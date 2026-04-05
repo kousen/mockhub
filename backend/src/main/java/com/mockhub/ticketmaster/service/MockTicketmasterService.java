@@ -50,22 +50,21 @@ public class MockTicketmasterService implements TicketmasterService {
     }
 
     private TicketmasterEventResponse createMockMusicEvent() {
-        return new TicketmasterEventResponse(
-                "MOCK-TM-001",
-                "Mock Concert - Test Artist",
-                "https://www.ticketmaster.com/mock",
-                new Dates(
+        return TicketmasterEventResponse.builder()
+                .id("MOCK-TM-001")
+                .name("Mock Concert - Test Artist")
+                .url("https://www.ticketmaster.com/mock")
+                .dates(new Dates(
                         new Start("2026-08-15", "20:00:00", "2026-08-16T01:00:00Z", false, false),
                         "America/New_York",
-                        new Status("onsale")),
-                List.of(new Classification(true,
+                        new Status("onsale")))
+                .classifications(List.of(new Classification(true,
                         new Segment("KZFzniwnSyZfZ7v7nJ", "Music"),
                         new Genre("1", "Rock"),
-                        new SubGenre("1", "Alternative"))),
-                List.of(new Image("https://example.com/mock-image.jpg", "16_9", 1024, 576, false)),
-                List.of(new PriceRange("standard", "USD", 45.0, 125.0)),
-                null, null,
-                new Embedded(
+                        new SubGenre("1", "Alternative"))))
+                .images(List.of(new Image("https://example.com/mock-image.jpg", "16_9", 1024, 576, false)))
+                .priceRanges(List.of(new PriceRange("standard", "USD", 45.0, 125.0)))
+                .embedded(new Embedded(
                         List.of(new TicketmasterVenueResponse(
                                 "MOCK-VENUE-001", "Mock Arena",
                                 new TicketmasterVenueResponse.Address("123 Test St"),
@@ -77,6 +76,7 @@ public class MockTicketmasterService implements TicketmasterService {
                         List.of(new TicketmasterAttractionResponse(
                                 "MOCK-ATTR-001", "Test Artist",
                                 Map.of("spotify", List.of(
-                                        new ExternalLink("https://open.spotify.com/artist/4Z8W4fKeB5YxbusRsdQVPb", null)))))));
+                                        new ExternalLink("https://open.spotify.com/artist/4Z8W4fKeB5YxbusRsdQVPb", null)))))))
+                .build();
     }
 }

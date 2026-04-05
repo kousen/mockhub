@@ -15,6 +15,20 @@ global.ResizeObserver = class {
   }
 };
 
+// Radix UI Select/Popover components use pointer capture and scrollIntoView which jsdom doesn't provide
+if (!HTMLElement.prototype.hasPointerCapture) {
+  HTMLElement.prototype.hasPointerCapture = () => false;
+}
+if (!HTMLElement.prototype.setPointerCapture) {
+  HTMLElement.prototype.setPointerCapture = () => {};
+}
+if (!HTMLElement.prototype.releasePointerCapture) {
+  HTMLElement.prototype.releasePointerCapture = () => {};
+}
+if (!HTMLElement.prototype.scrollIntoView) {
+  HTMLElement.prototype.scrollIntoView = () => {};
+}
+
 // Start MSW server before all tests
 beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }));
 

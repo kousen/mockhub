@@ -6,7 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useEvents } from '@/hooks/use-events';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useEvents, useEventSections } from '@/hooks/use-events';
 import { useCreateListing } from '@/hooks/use-seller';
 import type { EventSummary } from '@/types/event';
 import type { SellListingRequest } from '@/types/seller';
@@ -31,6 +38,10 @@ export function SellPage() {
   const [seatNumber, setSeatNumber] = useState('');
   const [listedPrice, setListedPrice] = useState('');
 
+  const { data: sections, isLoading: sectionsLoading } = useEventSections(
+    selectedEvent?.slug ?? '',
+  );
+
   const { data: eventsPage, isLoading: eventsLoading } = useEvents({
     q: searchQuery.length >= 2 ? searchQuery : undefined,
     size: 10,
@@ -40,6 +51,7 @@ export function SellPage() {
 
   const handleSelectEvent = useCallback((event: EventSummary) => {
     setSelectedEvent(event);
+    setSectionName('');
     setStep('seat');
   }, []);
 
@@ -87,8 +99,10 @@ export function SellPage() {
           toast.success('Listing created successfully!');
           navigate('/my/listings');
         },
-        onError: () => {
-          toast.error('Failed to create listing. Please try again.');
+        onError: (error: unknown) => {
+          const apiError = error as { response?: { data?: { detail?: string } } };
+          const detail = apiError?.response?.data?.detail;
+          toast.error(detail || 'Failed to create listing. Please try again.');
         },
       });
     },
@@ -215,13 +229,33 @@ export function SellPage() {
             <form onSubmit={handleSeatSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="section">Section</Label>
-                <Input
-                  id="section"
-                  placeholder="e.g., Floor, Section 101, GA"
-                  value={sectionName}
-                  onChange={(e) => setSectionName(e.target.value)}
-                  required
-                />
+                {sectionsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading sections...
+                  </div>
+                ) : sections && sections.length > 0 ? (
+                  <Select value={sectionName} onValueChange={setSectionName}>
+                    <SelectTrigger id="section">
+                      <SelectValue placeholder="Select a section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sections.map((section) => (
+                        <SelectItem key={section.sectionId} value={section.sectionName}>
+                          {section.sectionName} ({section.availableTickets} available)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="section"
+                    placeholder="e.g., Floor, Section 101, GA"
+                    value={sectionName}
+                    onChange={(e) => setSectionName(e.target.value)}
+                    required
+                  />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
