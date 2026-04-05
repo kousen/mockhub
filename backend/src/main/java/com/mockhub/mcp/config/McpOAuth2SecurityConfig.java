@@ -57,6 +57,9 @@ import com.nimbusds.jose.proc.SecurityContext;
 @ConditionalOnProperty(name = "mockhub.mcp.enabled", havingValue = "true")
 public class McpOAuth2SecurityConfig {
 
+    private static final String OAUTH2_LOGIN_PATH = "/oauth2/login";
+    private static final String OAUTH2_AUTHORIZED_PATH = "/oauth2/authorized";
+
     /**
      * Authorization server SecurityFilterChain.
      *
@@ -83,19 +86,19 @@ public class McpOAuth2SecurityConfig {
         // by the formLogin filter in this chain (not the default stateless chain).
         http.securityMatcher(new OrRequestMatcher(
                 authzConfigurer.getEndpointsMatcher(),
-                request -> "/oauth2/login".equals(request.getServletPath())
-                        || "/oauth2/authorized".equals(request.getServletPath())));
+                request -> OAUTH2_LOGIN_PATH.equals(request.getServletPath())
+                        || OAUTH2_AUTHORIZED_PATH.equals(request.getServletPath())));
 
         return http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/oauth2/login", "/oauth2/authorized").permitAll()
+                        .requestMatchers(OAUTH2_LOGIN_PATH, OAUTH2_AUTHORIZED_PATH).permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form
-                        .loginPage("/oauth2/login")
-                        .loginProcessingUrl("/oauth2/login")
-                        .defaultSuccessUrl("/oauth2/authorized", false))
+                        .loginPage(OAUTH2_LOGIN_PATH)
+                        .loginProcessingUrl(OAUTH2_LOGIN_PATH)
+                        .defaultSuccessUrl(OAUTH2_AUTHORIZED_PATH, false))
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/oauth2/login"))
+                        .ignoringRequestMatchers(OAUTH2_LOGIN_PATH))
                 .build();
     }
 
