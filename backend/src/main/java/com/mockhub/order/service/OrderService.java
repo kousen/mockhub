@@ -12,6 +12,7 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -283,7 +284,9 @@ public class OrderService {
             throw new ConflictException("Cart is empty");
         }
 
-        // Validate and reserve each item in the same loop to minimize TOCTOU window
+        // Validate and reserve each item in the same loop to minimize TOCTOU window.
+        // @Version on Ticket ensures that if two checkouts race on the same ticket,
+        // the second save throws OptimisticLockingFailureException.
         for (CartItem cartItem : cartItems) {
             Listing listing = cartItem.getListing();
             if (!"ACTIVE".equals(listing.getStatus())) {
@@ -297,7 +300,13 @@ public class OrderService {
                         "Ticket for " + listing.getEvent().getName() + " is no longer available");
             }
 
-            ticketService.reserveTicket(ticket.getId());
+            try {
+                ticketService.reserveTicket(ticket.getId());
+            } catch (OptimisticLockingFailureException ex) {
+                throw new ConflictException(
+                        "Ticket for " + listing.getEvent().getName()
+                                + " was just purchased by another buyer");
+            }
         }
 
         return cartItems;
@@ -345,9 +354,11 @@ public class OrderService {
             item.getTicket().setStatus("SOLD");
             item.getListing().setStatus("SOLD");
 
-            Event event = item.getListing().getEvent();
-            event.setAvailableTickets(Math.max(0, event.getAvailableTickets() - 1));
-            eventRepository.save(event);
+            int updated = eventRepository.decrementAvailableTickets(item.getListing().getEvent().getId());
+            if (updated == 0) {
+                log.warn("Failed to decrement available tickets for event {}",
+                        item.getListing().getEvent().getId());
+            }
         }
     }
 
@@ -362,9 +373,7 @@ public class OrderService {
 
     private void restoreEventAvailability(Order order) {
         for (OrderItem item : order.getItems()) {
-            Event event = item.getListing().getEvent();
-            event.setAvailableTickets(event.getAvailableTickets() + 1);
-            eventRepository.save(event);
+            eventRepository.incrementAvailableTickets(item.getListing().getEvent().getId());
         }
     }
 

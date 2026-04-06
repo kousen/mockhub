@@ -93,12 +93,12 @@ class TicketServiceTest {
     @DisplayName("reserveTicket - given available ticket - sets status to RESERVED")
     void reserveTicket_givenAvailableTicket_setsStatusToReserved() {
         when(ticketRepository.findById(1L)).thenReturn(Optional.of(testTicket));
-        when(ticketRepository.save(any(Ticket.class))).thenReturn(testTicket);
+        when(ticketRepository.saveAndFlush(any(Ticket.class))).thenReturn(testTicket);
 
         TicketDto result = ticketService.reserveTicket(1L);
 
         assertNotNull(result, "Result should not be null");
-        verify(ticketRepository).save(any(Ticket.class));
+        verify(ticketRepository).saveAndFlush(any(Ticket.class));
     }
 
     @Test

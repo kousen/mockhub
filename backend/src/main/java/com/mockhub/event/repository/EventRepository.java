@@ -73,4 +73,12 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
     @Modifying
     @Query("UPDATE Event e SET e.status = 'COMPLETED' WHERE e.ticketmasterEventId IS NOT NULL AND e.eventDate < :now AND e.status = 'ACTIVE'")
     int completePastTicketmasterEvents(@Param("now") Instant now);
+
+    @Modifying
+    @Query("UPDATE Event e SET e.availableTickets = e.availableTickets - 1 WHERE e.id = :eventId AND e.availableTickets > 0")
+    int decrementAvailableTickets(@Param("eventId") Long eventId);
+
+    @Modifying
+    @Query("UPDATE Event e SET e.availableTickets = e.availableTickets + 1 WHERE e.id = :eventId")
+    int incrementAvailableTickets(@Param("eventId") Long eventId);
 }
