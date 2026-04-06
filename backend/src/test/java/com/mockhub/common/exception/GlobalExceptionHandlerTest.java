@@ -3,6 +3,7 @@ package com.mockhub.common.exception;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -109,5 +110,22 @@ class GlobalExceptionHandlerTest {
         assertEquals("Event not found with slug: 'rock-fest'", body.getDetail());
         assertEquals("Not Found", body.getTitle());
         assertEquals(404, body.getStatus());
+    }
+
+    @Test
+    @DisplayName("handleOptimisticLock - returns 409 ProblemDetail with retry message")
+    void handleOptimisticLock_returns409ProblemDetail() {
+        OptimisticLockingFailureException ex =
+                new OptimisticLockingFailureException("Row was updated by another transaction");
+
+        ResponseEntity<ProblemDetail> response = handler.handleOptimisticLock(ex);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        ProblemDetail body = response.getBody();
+        assertNotNull(body);
+        assertEquals(409, body.getStatus());
+        assertEquals("Conflict", body.getTitle());
+        assertEquals("This item was modified by another transaction. Please try again.",
+                body.getDetail());
     }
 }

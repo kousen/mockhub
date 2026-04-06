@@ -48,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -283,7 +284,7 @@ class OrderServiceTest {
         assertEquals(OrderStatus.CONFIRMED, testOrder.getStatus());
         assertNotNull(testOrder.getConfirmedAt());
         verify(orderNotificationService, times(1)).sendConfirmationNotifications(any(Order.class));
-        verify(eventRepository, times(1)).save(any(Event.class));
+        verify(eventRepository, times(1)).decrementAvailableTickets(anyLong());
         verify(mandateService, times(1)).recordSpend("mandate-123", new BigDecimal("82.50"));
     }
 
@@ -393,8 +394,7 @@ class OrderServiceTest {
         assertEquals(OrderStatus.CANCELLED, testOrder.getStatus());
         assertEquals("ACTIVE", testListing.getStatus(), "Listing should be re-activated on cancellation");
         verify(ticketService).releaseTicket(1L);
-        verify(eventRepository).save(event);
-        assertEquals(originalAvailable + 1, event.getAvailableTickets());
+        verify(eventRepository).incrementAvailableTickets(event.getId());
         verify(mandateService).reverseSpend("mandate-123", new BigDecimal("82.50"));
     }
 
@@ -512,5 +512,19 @@ class OrderServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> orderService.getOrderEntityWithItems("MH-MISSING"));
+    }
+
+    @Test
+    @DisplayName("checkout - given optimistic lock failure on ticket - throws ConflictException")
+    void checkout_givenOptimisticLockFailure_throwsConflictException() {
+        CheckoutRequest request = new CheckoutRequest("mock");
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
+        when(ticketService.reserveTicket(anyLong()))
+                .thenThrow(new org.springframework.dao.OptimisticLockingFailureException("concurrent modification"));
+
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> orderService.checkout(testUser, request, null));
+
+        assertTrue(ex.getMessage().contains("was just purchased by another buyer"));
     }
 }

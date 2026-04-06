@@ -58,7 +58,7 @@ public class TicketService {
         }
 
         ticket.setStatus("RESERVED");
-        Ticket saved = ticketRepository.save(ticket);
+        Ticket saved = ticketRepository.saveAndFlush(ticket);
         log.info("Ticket {} reserved", ticketId);
         return toTicketDto(saved);
     }
