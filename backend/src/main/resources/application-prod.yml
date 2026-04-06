@@ -1,8 +1,12 @@
 server:
   port: ${PORT:8080}
   forward-headers-strategy: framework
+  shutdown: graceful
 
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}

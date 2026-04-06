@@ -257,7 +257,50 @@ ACP is one of several emerging standards for agentic commerce:
 | **ACP** | Checkout & merchant integration | Stripe + OpenAI | Implemented (Layer 3) |
 | **AP2** | Trust & authorization | Google | Conceptually implemented via mandates (Layer 2) |
 | **UCP** | Cross-vertical coordination | Google | Not implemented (orchestration layer) |
-| **x402** | Machine-to-machine micropayments | Coinbase | Not applicable (ticket sales, not API micropayments) |
+| **x402** | Machine-to-machine micropayments | Coinbase | Not implemented — interesting pattern, different problem ([details](#x402-http-402-for-machine-to-machine-payments)) |
+
+## x402: HTTP 402 for Machine-to-Machine Payments
+
+### What Is It?
+
+[x402](https://www.x402.org/) is an open protocol that repurposes HTTP's long-dormant `402 Payment Required` status code for machine-to-machine API payments. The flow:
+
+1. Client requests a protected endpoint (no auth needed)
+2. Server responds `402 Payment Required` with pricing metadata
+3. Client pays via USDC stablecoin (Base or Solana)
+4. Client retries the request with a payment proof header
+5. Server verifies payment and serves the response
+
+Integration is middleware-based — sellers annotate routes with prices and wallet addresses, and the middleware handles the 402 handshake automatically. SDKs exist for Express, Next.js, FastAPI, Flask, and Go.
+
+### Why MockHub Doesn't Implement It
+
+x402 solves a different problem than MockHub. It monetizes **API access itself** (e.g., $0.001 per weather query). MockHub's agents are buying **products** (tickets) through the API — the API access is free, the tickets cost money.
+
+| Concern | MockHub | x402 |
+|---|---|---|
+| What's being paid for | Concert tickets (products) | API calls (access) |
+| Payment rails | Stripe (fiat currency) | USDC stablecoins (crypto) |
+| Auth model | Mandates + OAuth2 | Crypto wallet signatures |
+| Infrastructure | Standard web stack | Requires crypto wallet + facilitator service |
+
+### The Interesting Idea vs. the Implementation
+
+The *protocol pattern* — a server declaring "this endpoint costs $X, here's how to pay" in a machine-readable HTTP response — is genuinely useful. It's a clean, standards-based way for agents to discover and pay for API access without pre-registration or API keys.
+
+However, the payment rails are a design choice, not a technical necessity. The same 402 handshake pattern could work with Stripe, PayPal, or any payment processor. The coupling to stablecoins adds wallet management, chain selection, and facilitator dependencies — infrastructure complexity that may or may not be justified depending on the use case.
+
+### Teaching Takeaway
+
+x402 is a good case study for students learning to evaluate emerging protocols:
+
+- **Separate the pattern from the implementation.** HTTP 402 as a machine-readable payment signal is a good idea. Whether it requires crypto is a different question.
+- **Ask who benefits from the coupling.** When a useful idea (API monetization) is bundled with an unrelated technology (blockchain), examine the incentive structure.
+- **Consider the alternatives.** Stripe already handles micropayments. What does the crypto layer add that justifies the additional complexity?
+
+For further reading: [x402 documentation](https://docs.x402.org/)
+
+---
 
 ## Success Conditions
 
