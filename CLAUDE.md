@@ -155,6 +155,21 @@ The codebase uses Java DOP patterns where they add value:
 - **Caching:** Artist metadata cached 1 hour in `ConcurrentHashMap`.
 - **Profile-based:** `spotify` profile activates `SpotifyApiService` (`@Primary`) and `SpotifyListeningApiService`. Without it, mock implementations return empty/hardcoded data.
 
+### Concurrency Control
+
+- **Optimistic locking** on `Ticket`, `Listing`, and `Order` entities via JPA `@Version` fields (Flyway V30). Hibernate includes `WHERE version = ?` on every UPDATE and throws `OptimisticLockException` if the row changed since read.
+- **`TicketService.reserveTicket()` uses `saveAndFlush()`** — forces the SQL UPDATE immediately so the version check happens inside the `try/catch` in `OrderService`, not at deferred transaction commit time. Without this, the exception escapes the catch block.
+- **`OrderService.validateAndReserveTickets()`** catches `OptimisticLockingFailureException` and converts it to `ConflictException("was just purchased by another buyer")` — user-friendly 409 response.
+- **`GlobalExceptionHandler`** also catches `OptimisticLockingFailureException` as a safety net for any uncaught optimistic lock failures outside the checkout flow.
+- **Atomic SQL for `Event.availableTickets`** — `decrementAvailableTickets()` and `incrementAvailableTickets()` in `EventRepository` use `UPDATE ... SET available_tickets = available_tickets - 1 WHERE available_tickets > 0`. Avoids version contention when multiple different tickets for the same popular event sell concurrently. Return value is checked — logs a warning if zero rows affected.
+- **Pessimistic locking on Order state transitions** — `confirmOrder()`, `failOrder()`, `cancelOrder()` use `findByOrderNumberForUpdate()` with `@Lock(LockModeType.PESSIMISTIC_WRITE)`. This was pre-existing; optimistic locking on Ticket/Listing complements it.
+- **Concurrency integration test** — `TicketConcurrencyIntegrationTest` uses `ExecutorService` with two threads attempting to checkout the same ticket simultaneously via Testcontainers. Verifies exactly one succeeds.
+
+### Seed Data and Image Restoration
+
+- **`DataSeeder`** — `@Profile("dev")` only. Seeds sample users, venues, events, and tickets. Does NOT run in production.
+- **`SeedImageRestorer`** — no profile restriction, runs on every startup in all environments. Restores event images from classpath to the filesystem. Required because Railway's ephemeral filesystem loses uploaded files on every redeploy. Extracted from `EventSeeder` to separate the production-critical image restoration from dev-only sample data seeding.
+
 ### Lifecycle Cleanup
 
 - **`LifecycleCleanupService`** — `@Scheduled` every 15 min (configurable via `mockhub.lifecycle.cleanup-interval`).
@@ -270,7 +285,8 @@ The codebase uses Java DOP patterns where they add value:
 - **Dockerfile:** Root `Dockerfile` builds frontend (Node), bundles into Spring Boot jar, runs on JRE Alpine
 - **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `api/`, `actuator/`, `mcp/`, `acp/`, `swagger-ui/`, `v3/` paths
 - **Security:** Static frontend routes (`/`, `/events/**`, `/sell`, `/my/**`, etc.) are `permitAll()` in SecurityConfig. CORS allows the Railway production domain.
-- **Ephemeral filesystem:** Seed images are restored from classpath on every container startup via `restoreSeedImages()` in `EventSeeder`
+- **Ephemeral filesystem:** Seed images are restored from classpath on every container startup via `SeedImageRestorer` (runs in all profiles). `DataSeeder` is dev-only — does NOT run in production.
+- **Graceful shutdown:** `server.shutdown=graceful` with `spring.lifecycle.timeout-per-shutdown-phase=30s` in `application-prod.yml`. In-flight requests (especially checkout/payment) complete before the container stops during Railway redeploys.
 - **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend,spotify,ticketmaster,mcp-oauth2` — production datasource, Anthropic AI, mock payment, real SMS and email, Spotify, Ticketmaster, MCP OAuth2
 - **Database:** Railway PostgreSQL with separate `SPRING_DATASOURCE_URL`, `_USERNAME`, `_PASSWORD` env vars (Railway's `DATABASE_URL` format is incompatible with JDBC)
 - **JWT secret:** Must be valid Base64 (no dots or special characters)

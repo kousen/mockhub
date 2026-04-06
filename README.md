@@ -132,7 +132,15 @@ Any authenticated user can both buy and sell tickets.
 
 ![Ticket verification page after scanning QR code](docs/screenshots/ticket-verify.png)
 
+## Concurrency & Data Integrity
+
+- **Optimistic locking** (`@Version`) on Ticket, Listing, and Order prevents double-booking when two users race for the same ticket
+- **Atomic SQL** for event availability counters avoids contention on popular events
+- **Pessimistic locking** on order state transitions (confirm, fail, cancel) ensures exactly-once processing
+
 ## Testing
+
+988 backend tests, 427 frontend tests, E2E across 3 browsers (Chrome, Safari, Mobile iOS) with CI sharding.
 
 ```bash
 # Backend (requires Docker for Testcontainers)
