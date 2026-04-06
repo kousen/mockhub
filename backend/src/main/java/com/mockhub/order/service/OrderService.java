@@ -354,7 +354,11 @@ public class OrderService {
             item.getTicket().setStatus("SOLD");
             item.getListing().setStatus("SOLD");
 
-            eventRepository.decrementAvailableTickets(item.getListing().getEvent().getId());
+            int updated = eventRepository.decrementAvailableTickets(item.getListing().getEvent().getId());
+            if (updated == 0) {
+                log.warn("Failed to decrement available tickets for event {}",
+                        item.getListing().getEvent().getId());
+            }
         }
     }
 
