@@ -32,8 +32,8 @@ class McpOAuth2SecurityConfigTest {
             new JWKMatcher.Builder().keyType(KeyType.RSA).build());
 
     @Test
-    void jwkSource_generatesRsaKeyPair() throws Exception {
-        JWKSource<SecurityContext> jwkSource = config.jwkSource();
+    void jwkSource_givenNoEnvVar_generatesEphemeralRsaKeyPair() throws Exception {
+        JWKSource<SecurityContext> jwkSource = config.jwkSource("");
 
         assertNotNull(jwkSource);
         List<JWK> keys = jwkSource.get(RSA_SELECTOR, null);
@@ -42,17 +42,28 @@ class McpOAuth2SecurityConfigTest {
     }
 
     @Test
-    void jwkSource_generatesUniqueKeysPerCall() throws Exception {
-        JWKSource<SecurityContext> jwkSource1 = config.jwkSource();
-        JWKSource<SecurityContext> jwkSource2 = config.jwkSource();
+    void jwkSource_givenPersistedJwk_loadsFromJson() throws Exception {
+        // Generate a key, serialize it, then verify it round-trips
+        JWKSource<SecurityContext> ephemeral = config.jwkSource("");
+        String jwkJson = ephemeral.get(RSA_SELECTOR, null).getFirst().toJSONString();
 
-        RSAPublicKey key1 = jwkSource1.get(RSA_SELECTOR, null)
-                .getFirst().toRSAKey().toRSAPublicKey();
-        RSAPublicKey key2 = jwkSource2.get(RSA_SELECTOR, null)
-                .getFirst().toRSAKey().toRSAPublicKey();
+        JWKSource<SecurityContext> persisted = config.jwkSource(jwkJson);
 
-        assertNotNull(key1);
-        assertNotNull(key2);
+        List<JWK> keys = persisted.get(RSA_SELECTOR, null);
+        assertEquals(1, keys.size());
+        RSAPublicKey originalKey = ephemeral.get(RSA_SELECTOR, null)
+                .getFirst().toRSAKey().toRSAPublicKey();
+        RSAPublicKey loadedKey = keys.getFirst().toRSAKey().toRSAPublicKey();
+        assertEquals(originalKey, loadedKey, "Persisted key should match original");
+    }
+
+    @Test
+    void jwkSource_givenNullEnvVar_generatesEphemeralKey() throws Exception {
+        JWKSource<SecurityContext> jwkSource = config.jwkSource(null);
+
+        assertNotNull(jwkSource);
+        List<JWK> keys = jwkSource.get(RSA_SELECTOR, null);
+        assertEquals(1, keys.size());
     }
 
     @Test

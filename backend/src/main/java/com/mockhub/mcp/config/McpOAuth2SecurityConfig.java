@@ -7,6 +7,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.UUID;
 
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -57,6 +58,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 @ConditionalOnProperty(name = "mockhub.mcp.enabled", havingValue = "true")
 public class McpOAuth2SecurityConfig {
 
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(McpOAuth2SecurityConfig.class);
     private static final String OAUTH2_LOGIN_PATH = "/oauth2/login";
     private static final String OAUTH2_AUTHORIZED_PATH = "/oauth2/authorized";
 
@@ -144,21 +146,44 @@ public class McpOAuth2SecurityConfig {
     /**
      * JWK source for signing OAuth2 access tokens.
      *
-     * <p>Generates an ephemeral RSA key pair at startup. On Railway redeploys,
-     * the key changes and existing tokens become invalid — this is acceptable
-     * because DCR clients re-register and obtain new tokens.</p>
+     * <p>If {@code MCP_OAUTH2_JWK} environment variable is set, the RSA key pair is
+     * loaded from it (JSON JWK format). This ensures tokens survive Railway redeploys —
+     * without it, every redeploy generates a new key pair and invalidates all existing
+     * tokens. Claude mobile syncs connectors from desktop and cannot force a fresh
+     * token exchange, so stale tokens cause persistent 401 failures.</p>
+     *
+     * <p>If the env var is not set, an ephemeral key pair is generated (suitable for
+     * dev/test where redeploy token invalidation is acceptable).</p>
      */
     @Bean
-    public JWKSource<SecurityContext> jwkSource() {
-        KeyPair keyPair = generateRsaKey();
-        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
-        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
-        RSAKey rsaKey = new RSAKey.Builder(publicKey)
-                .privateKey(privateKey)
-                .keyID(UUID.randomUUID().toString())
-                .build();
+    public JWKSource<SecurityContext> jwkSource(
+            @Value("${MCP_OAUTH2_JWK:}") String jwkJson) {
+        RSAKey rsaKey;
+        if (jwkJson != null && !jwkJson.isBlank()) {
+            rsaKey = parsePersistedJwk(jwkJson);
+            log.info("Loaded MCP OAuth2 RSA key from MCP_OAUTH2_JWK environment variable (kid={})",
+                    rsaKey.getKeyID());
+        } else {
+            KeyPair keyPair = generateRsaKey();
+            RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+            RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+            rsaKey = new RSAKey.Builder(publicKey)
+                    .privateKey(privateKey)
+                    .keyID(UUID.randomUUID().toString())
+                    .build();
+            log.warn("MCP_OAUTH2_JWK not set — using ephemeral RSA key (tokens will not survive redeploys)");
+        }
         JWKSet jwkSet = new JWKSet(rsaKey);
         return new ImmutableJWKSet<>(jwkSet);
+    }
+
+    private RSAKey parsePersistedJwk(String jwkJson) {
+        try {
+            return RSAKey.parse(jwkJson);
+        } catch (java.text.ParseException e) {
+            throw new IllegalStateException(
+                    "Failed to parse MCP_OAUTH2_JWK — must be a valid RSA JWK JSON object", e);
+        }
     }
 
     /**
