@@ -32,7 +32,7 @@ public class PricingTools {
         this.objectMapper = objectMapper;
     }
 
-    @Tool(description = "Get price history for an event showing how ticket prices have changed over time. "
+    @Tool(description = "Get MockHub price history for an event showing how ticket prices have changed over time. "
             + "Returns a list of price snapshots with price, multiplier, supply ratio, and demand score.")
     public String getPriceHistory(
             @ToolParam(description = "Event URL slug to get price history for", required = true) String eventSlug) {
@@ -48,7 +48,7 @@ public class PricingTools {
         }
     }
 
-    @Tool(description = "Get an AI-powered price prediction for an event. "
+    @Tool(description = "Get an AI-powered MockHub price prediction for an event. "
             + "Returns predicted future price, trend direction (RISING/FALLING/STABLE), and confidence score. "
             + "Requires an AI provider to be active.")
     public String getPricePrediction(

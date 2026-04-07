@@ -39,7 +39,7 @@ public class EventTools {
         this.objectMapper = objectMapper;
     }
 
-    @Tool(description = "Search and filter events by query text, category, city, and pagination. "
+    @Tool(description = "Search and filter MockHub events by query text, category, city, and pagination. "
             + "Returns a paginated list of event summaries with name, artist, venue, date, and price.")
     public String searchEvents(
             @ToolParam(description = "Search query text to match event name or artist",
@@ -67,7 +67,7 @@ public class EventTools {
         }
     }
 
-    @Tool(description = "Get full details for a specific event by its URL slug. "
+    @Tool(description = "Get full details for a specific MockHub event by its URL slug. "
             + "Returns event name, description, artist, venue, date, pricing, and ticket availability.")
     public String getEventDetail(
             @ToolParam(description = "Event URL slug (e.g. 'taylor-swift-eras-tour-nyc')",
@@ -84,7 +84,7 @@ public class EventTools {
         }
     }
 
-    @Tool(description = "Get active ticket listings for a specific event with pagination. "
+    @Tool(description = "Get active MockHub ticket listings for a specific event with pagination. "
             + "Returns listing details including section, row, seat, price, and status, "
             + "sorted by price ascending. Also returns totalListings count. "
             + "Price fields: 'computedPrice' is the current price to show users (after dynamic pricing), "
@@ -130,7 +130,7 @@ public class EventTools {
         }
     }
 
-    @Tool(description = "Get details for a specific ticket listing by its ID. "
+    @Tool(description = "Get details for a specific MockHub ticket listing by its ID. "
             + "Returns listing details including section, row, seat, price, status, and seller info.")
     public String getListingDetail(
             @ToolParam(description = "ID of the listing to retrieve", required = true) Long listingId) {
@@ -146,9 +146,9 @@ public class EventTools {
         }
     }
 
-    @Tool(description = "RECOMMENDED for ticket discovery — prefer this over calling searchEvents, "
+    @Tool(description = "RECOMMENDED for MockHub ticket discovery — prefer this over calling searchEvents, "
             + "getEventDetail, and getEventListings separately. "
-            + "Searches for ticket listings across events with filters in a single call. "
+            + "Searches for ticket listings across MockHub events with filters in a single call. "
             + "Returns matching listings sorted by price ascending, including event details. "
             + "For broad queries, ask the user to narrow by city, category, or date range "
             + "before calling — this produces faster, more relevant results.")

@@ -43,7 +43,7 @@ public class CartTools {
         this.objectMapper = objectMapper;
     }
 
-    @Tool(description = "Get the current shopping cart for a user by their email address. "
+    @Tool(description = "Get the current MockHub shopping cart for a user by their email address. "
             + "Returns cart items with listing details, prices, item count, and cart expiration time.")
     public String getCart(
             @ToolParam(description = "User's email address", required = true) String userEmail) {
@@ -57,7 +57,7 @@ public class CartTools {
         }
     }
 
-    @Tool(description = "Add a ticket listing to a user's shopping cart. "
+    @Tool(description = "Add a MockHub ticket listing to a user's shopping cart. "
             + "The listing must be active and not already in the cart. Cart expires after 15 minutes. "
             + "Returns the full updated cart contents, so a separate getCart call is not needed. "
             + "Autonomous agent actions must include both agentId and mandateId.")
@@ -118,7 +118,7 @@ public class CartTools {
         }
     }
 
-    @Tool(description = "Remove a specific item from a user's shopping cart by cart item ID.")
+    @Tool(description = "Remove a specific item from a user's MockHub shopping cart by cart item ID.")
     public String removeFromCart(
             @ToolParam(description = "User's email address", required = true) String userEmail,
             @ToolParam(description = "ID of the cart item to remove", required = true) Long itemId) {
@@ -135,7 +135,7 @@ public class CartTools {
         }
     }
 
-    @Tool(description = "Clear all items from a user's shopping cart.")
+    @Tool(description = "Clear all items from a user's MockHub shopping cart.")
     public String clearCart(
             @ToolParam(description = "User's email address", required = true) String userEmail) {
         try {
@@ -148,7 +148,7 @@ public class CartTools {
         }
     }
 
-    @Tool(description = "Refresh the cart expiration timer without modifying contents. "
+    @Tool(description = "Refresh the MockHub cart expiration timer without modifying contents. "
             + "Useful when an agent needs more time to compare options before completing a purchase. "
             + "Resets the 15-minute TTL. Returns the updated cart with new expiration time. "
             + "If the cart has already expired, returns an empty cart.")

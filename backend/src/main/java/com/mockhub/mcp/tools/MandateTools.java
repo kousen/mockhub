@@ -30,7 +30,7 @@ public class MandateTools {
         this.objectMapper = objectMapper;
     }
 
-    @Tool(description = "Create a new mandate granting an agent permission to act on behalf of a user. "
+    @Tool(description = "Create a new MockHub mandate granting an agent permission to act on behalf of a user. "
             + "Scope can be BROWSE (read-only) or PURCHASE (can buy tickets). "
             + "Spending limits and category/event restrictions are optional.")
     @SuppressWarnings("java:S107") // MCP tool methods require separate params for each tool argument
@@ -60,7 +60,7 @@ public class MandateTools {
         }
     }
 
-    @Tool(description = "Revoke an existing mandate by its mandate ID. "
+    @Tool(description = "Revoke an existing MockHub mandate by its mandate ID. "
             + "The mandate will be marked as REVOKED and can no longer be used.")
     public String revokeMandate(
             @ToolParam(description = "The unique mandate ID (UUID) to revoke", required = true) String mandateId) {
@@ -73,7 +73,7 @@ public class MandateTools {
         }
     }
 
-    @Tool(description = "List all active mandates for a user by their email address.")
+    @Tool(description = "List all active MockHub mandates for a user by their email address.")
     public String listMandates(
             @ToolParam(description = "Email of the user whose mandates to list", required = true) String userEmail) {
         try {
@@ -86,7 +86,7 @@ public class MandateTools {
         }
     }
 
-    @Tool(description = "Validate whether an agent has an active mandate to perform an action for a user. "
+    @Tool(description = "Validate whether an agent has an active MockHub mandate to perform an action for a user. "
             + "Returns whether the action is authorized based on scope, spending limits, "
             + "and optional category/event restrictions. Always pass eventSlug and categorySlug "
             + "when validating a purchase to catch event-specific restrictions early.")
@@ -113,7 +113,7 @@ public class MandateTools {
         }
     }
 
-    @Tool(description = "RECOMMENDED before addToCart — finds the best matching mandate for a specific "
+    @Tool(description = "RECOMMENDED before addToCart — finds the best matching MockHub mandate for a specific "
             + "purchase action. Checks scope, spending limits, category, and event restrictions in one call. "
             + "Returns the matching mandate or an error explaining why none match.")
     public String getBestMandate(

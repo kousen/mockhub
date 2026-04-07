@@ -64,7 +64,7 @@ public class OrderTools {
         this.objectMapper = objectMapper;
     }
 
-    @Tool(description = "Create an order by checking out a user's cart. "
+    @Tool(description = "Create a MockHub order by checking out a user's cart. "
             + "Validates all listings are still available, calculates totals with service fees, "
             + "reserves tickets, and creates a pending order. Cart is cleared after checkout.")
     public String checkout(
@@ -103,7 +103,7 @@ public class OrderTools {
         }
     }
 
-    @Tool(description = "Get details of a specific order by order number. "
+    @Tool(description = "Get details of a specific MockHub order by order number. "
             + "Returns order status, items, pricing breakdown, and confirmation details.")
     public String getOrder(
             @ToolParam(description = "User's email address", required = true) String userEmail,
@@ -121,7 +121,7 @@ public class OrderTools {
         }
     }
 
-    @Tool(description = "List a user's orders with pagination. "
+    @Tool(description = "List a user's MockHub orders with pagination. "
             + "Returns order summaries with order number, status, total, item count, and date.")
     public String listOrders(
             @ToolParam(description = "User's email address", required = true) String userEmail,
@@ -139,7 +139,7 @@ public class OrderTools {
         }
     }
 
-    @Tool(description = "Confirm a pending order, completing the purchase. "
+    @Tool(description = "Confirm a pending MockHub order, completing the purchase. "
             + "In mock-payment mode, this transitions the order from PENDING to CONFIRMED. "
             + "Returns the updated order with confirmation details.")
     @Transactional
@@ -187,7 +187,7 @@ public class OrderTools {
         }
     }
 
-    @Tool(description = "Get a calendar (.ics) entry for a confirmed order. "
+    @Tool(description = "Get a calendar (.ics) entry for a confirmed MockHub order. "
             + "Returns iCalendar content that can be imported into any calendar app. "
             + "Includes event name, date, venue address, doors-open time, and ticket details.")
     public String getCalendarEntry(
