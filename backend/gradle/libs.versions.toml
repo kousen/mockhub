@@ -6,7 +6,7 @@ sonarqube = "7.2.3.7755"
 spotless = "7.0.2"
 
 # Spring AI BOM
-spring-ai = "2.0.0-M3"
+spring-ai = "2.0.0-M4"
 
 # MCP Security
 mcp-security = "0.1.5"
