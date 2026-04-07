@@ -8,7 +8,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 
 - **Backend:** Spring Boot 4, Java 25, Gradle 9.4.0 (Kotlin DSL)
 - **Database:** PostgreSQL 17 (standard — pgvector removed, all search uses tsvector full-text)
-- **AI:** Spring AI 2.0.0-M3 (milestone — requires Spring Milestones repo in Gradle)
+- **AI:** Spring AI 2.0.0-M4 (milestone — requires Spring Milestones repo in Gradle)
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack React Query, Zustand
 - **Testing:** JUnit 5 + Mockito + Testcontainers (backend), Vitest + React Testing Library + MSW (frontend), Playwright (E2E, 3 browsers, sharded CI)
 - **Payments:** Stripe test mode + mock fallback via Spring profiles
