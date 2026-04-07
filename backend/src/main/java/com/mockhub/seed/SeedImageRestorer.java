@@ -14,6 +14,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
@@ -45,6 +46,7 @@ public class SeedImageRestorer implements ApplicationRunner {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public void run(ApplicationArguments args) {
         restoreSeedImages();
     }
