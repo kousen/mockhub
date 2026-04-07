@@ -37,8 +37,8 @@ export function CartDrawer() {
 
         {isLoading && (
           <div className="flex-1 space-y-3 p-4">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={`skeleton-${index}`} className="h-20 w-full" />
+            {Array.from({ length: 3 }, (_, i) => i).map((n) => (
+              <Skeleton key={`skeleton-${n}`} className="h-20 w-full" />
             ))}
           </div>
         )}

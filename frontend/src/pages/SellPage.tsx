@@ -17,8 +17,7 @@ import { useEvents, useEventSections } from '@/hooks/use-events';
 import { useCreateListing, useMyOwnedTickets } from '@/hooks/use-seller';
 import { VenueMap } from '@/components/tickets/VenueMap';
 import type { EventSummary } from '@/types/event';
-import type { OwnedTicket } from '@/types/seller';
-import type { SellListingRequest } from '@/types/seller';
+import type { OwnedTicket, SellListingRequest } from '@/types/seller';
 
 type Step = 'event' | 'seat' | 'price';
 

@@ -22,8 +22,8 @@ export function TicketGridView({
   if (isLoading) {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <Skeleton key={`skeleton-${index}`} className="h-32 w-full rounded-lg" />
+        {Array.from({ length: 6 }, (_, i) => i).map((n) => (
+          <Skeleton key={`skeleton-${n}`} className="h-32 w-full rounded-lg" />
         ))}
       </div>
     );

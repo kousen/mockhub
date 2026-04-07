@@ -10,8 +10,8 @@ import { formatCurrency, formatShortDate } from '@/lib/formatters';
 function RecommendationSkeleton() {
   return (
     <div className="flex gap-4 overflow-x-auto pb-2">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div key={`skeleton-${index}`} className="w-72 shrink-0">
+      {Array.from({ length: 4 }, (_, i) => i).map((n) => (
+        <div key={`skeleton-${n}`} className="w-72 shrink-0">
           <Card className="h-full">
             <CardContent className="space-y-3">
               <Skeleton className="h-5 w-3/4" />

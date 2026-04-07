@@ -62,8 +62,8 @@ export function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={`user-skeleton-${i}`}>
+              {Array.from({ length: 8 }, (_, i) => i).map((n) => (
+                <TableRow key={`user-skeleton-${n}`}>
                   <TableCell>
                     <Skeleton className="h-4 w-28" />
                   </TableCell>

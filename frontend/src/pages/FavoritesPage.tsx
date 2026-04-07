@@ -18,8 +18,8 @@ export function FavoritesPage() {
 
       {isLoading && (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <EventCardSkeleton key={`skeleton-${i}`} />
+          {Array.from({ length: 8 }, (_, i) => i).map((n) => (
+            <EventCardSkeleton key={`skeleton-${n}`} />
           ))}
         </div>
       )}

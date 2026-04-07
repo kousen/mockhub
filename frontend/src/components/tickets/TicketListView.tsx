@@ -101,8 +101,8 @@ export function TicketListView({
   if (isLoading) {
     return (
       <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <Skeleton key={`skeleton-${index}`} className="h-12 w-full" />
+        {Array.from({ length: 5 }, (_, i) => i).map((n) => (
+          <Skeleton key={`skeleton-${n}`} className="h-12 w-full" />
         ))}
       </div>
     );

@@ -383,7 +383,6 @@ class OrderServiceTest {
         testOrder.setMandateId("mandate-123");
         testListing.setStatus("SOLD");
         Event event = testOrder.getItems().getFirst().getListing().getEvent();
-        int originalAvailable = event.getAvailableTickets();
 
         when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
                 .thenReturn(Optional.of(testOrder));

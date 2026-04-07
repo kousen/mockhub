@@ -23,8 +23,8 @@ export function EarningsPage() {
       <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
         <Skeleton className="mb-6 h-8 w-48" />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={`skeleton-${index}`} className="h-32 w-full" />
+          {Array.from({ length: 3 }, (_, i) => i).map((n) => (
+            <Skeleton key={`skeleton-${n}`} className="h-32 w-full" />
           ))}
         </div>
         <Skeleton className="mt-8 h-64 w-full" />

@@ -30,8 +30,8 @@ export function CartPage() {
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
         <Skeleton className="mb-6 h-8 w-48" />
         <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <Skeleton key={`skeleton-${index}`} className="h-24 w-full" />
+          {Array.from({ length: 3 }, (_, i) => i).map((n) => (
+            <Skeleton key={`skeleton-${n}`} className="h-24 w-full" />
           ))}
         </div>
         <Skeleton className="mt-6 h-48 w-full" />

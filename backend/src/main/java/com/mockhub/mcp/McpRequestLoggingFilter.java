@@ -46,9 +46,14 @@ public class McpRequestLoggingFilter extends OncePerRequestFilter {
         String sessionId = request.getHeader("Mcp-Session-Id");
         String userAgent = request.getHeader("User-Agent");
         String auth = request.getHeader("Authorization");
-        String authSummary = auth == null ? "none"
-                : auth.startsWith("Bearer ") ? "Bearer (len=" + auth.length() + ")"
-                : "other";
+        String authSummary;
+        if (auth == null) {
+            authSummary = "none";
+        } else if (auth.startsWith("Bearer ")) {
+            authSummary = "Bearer (len=" + auth.length() + ")";
+        } else {
+            authSummary = "other";
+        }
 
         // For POST requests, capture the request body to see the JSON-RPC method
         ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request, 4096);

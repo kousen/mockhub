@@ -18,8 +18,8 @@ export function CategoryNav({ activeCategory, onCategoryChange }: Readonly<Categ
   if (isLoading) {
     return (
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <Skeleton key={`skeleton-${index}`} className="h-7 w-20 shrink-0 rounded-full" />
+        {Array.from({ length: 6 }, (_, i) => i).map((n) => (
+          <Skeleton key={`skeleton-${n}`} className="h-7 w-20 shrink-0 rounded-full" />
         ))}
       </div>
     );

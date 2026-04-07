@@ -36,8 +36,8 @@ export function AdminDashboardPage() {
       {/* Stats cards */}
       {statsLoading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={`stat-skeleton-${i}`} className="h-28 rounded-lg" />
+          {Array.from({ length: 4 }, (_, i) => i).map((n) => (
+            <Skeleton key={`stat-skeleton-${n}`} className="h-28 rounded-lg" />
           ))}
         </div>
       )}
@@ -88,8 +88,8 @@ export function AdminDashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={`order-skeleton-${i}`}>
+                {Array.from({ length: 5 }, (_, i) => i).map((n) => (
+                  <TableRow key={`order-skeleton-${n}`}>
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>

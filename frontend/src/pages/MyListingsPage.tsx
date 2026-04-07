@@ -208,8 +208,8 @@ export function MyListingsPage() {
         <Skeleton className="mb-6 h-8 w-48" />
         <Skeleton className="mb-4 h-10 w-80" />
         <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={`skeleton-${index}`} className="h-20 w-full" />
+          {Array.from({ length: 5 }, (_, i) => i).map((n) => (
+            <Skeleton key={`skeleton-${n}`} className="h-20 w-full" />
           ))}
         </div>
       </div>

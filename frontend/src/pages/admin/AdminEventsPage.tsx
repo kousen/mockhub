@@ -66,8 +66,8 @@ export function AdminEventsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={`event-skeleton-${i}`}>
+              {Array.from({ length: 8 }, (_, i) => i).map((n) => (
+                <TableRow key={`event-skeleton-${n}`}>
                   <TableCell>
                     <Skeleton className="h-4 w-32" />
                   </TableCell>

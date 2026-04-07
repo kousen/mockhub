@@ -15,7 +15,7 @@ import {
 import { useSpotifyConnection, useDisconnectSpotify } from '@/hooks/use-spotify';
 import type { UserDto } from '@/types/auth';
 
-function ProfileForm({ user }: { user: UserDto }) {
+function ProfileForm({ user }: Readonly<{ user: UserDto }>) {
   const updateProfile = useUpdateProfile();
 
   const [firstName, setFirstName] = useState(user.firstName);
