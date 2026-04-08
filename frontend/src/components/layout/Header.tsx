@@ -9,6 +9,7 @@ import {
   Settings,
   Tag,
   DollarSign,
+  Shield,
 } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Button } from '@/components/ui/button';
@@ -136,6 +137,12 @@ export function Header() {
                   <Link to={ROUTES.EARNINGS}>
                     <DollarSign className="mr-2 h-4 w-4" />
                     Earnings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={ROUTES.MANDATES}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Mandates
                   </Link>
                 </DropdownMenuItem>
                 {user.roles?.includes('ROLE_ADMIN') && (

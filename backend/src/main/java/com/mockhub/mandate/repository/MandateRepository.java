@@ -17,6 +17,8 @@ public interface MandateRepository extends JpaRepository<Mandate, Long> {
 
     List<Mandate> findByUserEmailAndStatus(String userEmail, String status);
 
+    List<Mandate> findByUserEmail(String userEmail);
+
     Optional<Mandate> findByMandateId(String mandateId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

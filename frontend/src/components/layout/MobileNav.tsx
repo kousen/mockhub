@@ -3,6 +3,7 @@ import {
   Bell,
   DollarSign,
   Heart,
+  Shield,
   LogOut,
   Settings,
   ShoppingCart,
@@ -133,6 +134,14 @@ export function MobileNav() {
               >
                 <DollarSign className="h-4 w-4" />
                 Earnings
+              </Link>
+              <Link
+                to={ROUTES.MANDATES}
+                onClick={closeMobileNav}
+                className={navLinkClass(ROUTES.MANDATES)}
+              >
+                <Shield className="h-4 w-4" />
+                Mandates
               </Link>
               {isAdmin && (
                 <>
