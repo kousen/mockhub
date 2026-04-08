@@ -89,6 +89,9 @@ class AuthorizationBypassTest {
     @MockitoBean
     private com.mockhub.ticketmaster.service.TicketmasterSyncService ticketmasterSyncService;
 
+    @MockitoBean
+    private com.mockhub.admin.service.DemoResetService demoResetService;
+
     private SecurityUser userA;
     private User userAEntity;
 

@@ -23,7 +23,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mockhub.admin.dto.AdminEventDto;
 import com.mockhub.admin.dto.DashboardStatsDto;
+import com.mockhub.admin.dto.DemoResetResultDto;
 import com.mockhub.admin.service.AdminDashboardService;
+import com.mockhub.admin.service.DemoResetService;
 import com.mockhub.admin.service.AdminEventService;
 import com.mockhub.admin.service.AdminOrderService;
 import com.mockhub.admin.service.AdminUserService;
@@ -49,17 +51,20 @@ public class AdminController {
     private final AdminUserService adminUserService;
     private final AdminOrderService adminOrderService;
     private final Optional<TicketmasterSyncService> ticketmasterSyncService;
+    private final DemoResetService demoResetService;
 
     public AdminController(AdminDashboardService adminDashboardService,
                            AdminEventService adminEventService,
                            AdminUserService adminUserService,
                            AdminOrderService adminOrderService,
-                           Optional<TicketmasterSyncService> ticketmasterSyncService) {
+                           Optional<TicketmasterSyncService> ticketmasterSyncService,
+                           DemoResetService demoResetService) {
         this.adminDashboardService = adminDashboardService;
         this.adminEventService = adminEventService;
         this.adminUserService = adminUserService;
         this.adminOrderService = adminOrderService;
         this.ticketmasterSyncService = ticketmasterSyncService;
+        this.demoResetService = demoResetService;
     }
 
     @GetMapping("/dashboard")
@@ -208,5 +213,20 @@ public class AdminController {
     @ApiResponse(responseCode = "200", description = "Activation complete")
     public ResponseEntity<Map<String, Integer>> activateTicketmasterEvents() {
         return ResponseEntity.ok(adminEventService.activateTicketmasterEvents());
+    }
+
+    @PostMapping("/demo/reset")
+    @Operation(summary = "Reset demo user state (admin)",
+            description = "Clear cart, cancel orders, revoke mandates for a user. For repeatable demo recordings.")
+    @ApiResponse(responseCode = "200", description = "Demo state reset")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    public ResponseEntity<DemoResetResultDto> resetDemoUser(
+            @RequestBody Map<String, String> body) {
+        String userEmail = body.get("userEmail");
+        if (userEmail == null || userEmail.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        DemoResetResultDto result = demoResetService.resetUser(userEmail);
+        return ResponseEntity.ok(result);
     }
 }
