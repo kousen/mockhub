@@ -16,6 +16,7 @@ export const ROUTES = {
   SELL: '/sell',
   MY_LISTINGS: '/my/listings',
   EARNINGS: '/my/earnings',
+  MANDATES: '/my/mandates',
   ADMIN: '/admin',
   ADMIN_DASHBOARD: '/admin',
   ADMIN_EVENTS: '/admin/events',

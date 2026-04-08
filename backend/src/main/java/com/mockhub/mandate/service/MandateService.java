@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.common.exception.ResourceNotFoundException;
+import com.mockhub.common.exception.UnauthorizedException;
 import com.mockhub.mandate.dto.CreateMandateRequest;
 import com.mockhub.mandate.dto.MandateDto;
 import com.mockhub.mandate.entity.Mandate;
@@ -72,6 +73,27 @@ public class MandateService {
         return mandates.stream()
                 .map(this::toDto)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<MandateDto> listAllMandates(String userEmail) {
+        List<Mandate> mandates = mandateRepository.findByUserEmail(userEmail);
+        return mandates.stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    @Transactional
+    public void revokeMandate(String mandateId, String userEmail) {
+        Mandate mandate = mandateRepository.findByMandateId(mandateId)
+                .orElseThrow(() -> new ResourceNotFoundException(MANDATE_RESOURCE, MANDATE_ID_FIELD, mandateId));
+        if (!mandate.getUserEmail().equals(userEmail)) {
+            throw new UnauthorizedException("You do not own this mandate");
+        }
+        mandate.setStatus("REVOKED");
+        mandate.setRevokedAt(Instant.now());
+        mandateRepository.save(mandate);
+        log.info("Revoked mandate {} by user {}", mandateId, userEmail);
     }
 
     @Transactional(readOnly = true)
