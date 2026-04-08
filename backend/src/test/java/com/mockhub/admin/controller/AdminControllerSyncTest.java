@@ -20,7 +20,8 @@ class AdminControllerSyncTest {
                 mock(com.mockhub.admin.service.AdminEventService.class),
                 mock(com.mockhub.admin.service.AdminUserService.class),
                 mock(com.mockhub.admin.service.AdminOrderService.class),
-                Optional.empty());
+                Optional.empty(),
+                mock(com.mockhub.admin.service.DemoResetService.class));
 
         ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
 
@@ -37,7 +38,8 @@ class AdminControllerSyncTest {
                 mock(com.mockhub.admin.service.AdminEventService.class),
                 mock(com.mockhub.admin.service.AdminUserService.class),
                 mock(com.mockhub.admin.service.AdminOrderService.class),
-                Optional.of(syncService));
+                Optional.of(syncService),
+                mock(com.mockhub.admin.service.DemoResetService.class));
 
         ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
 

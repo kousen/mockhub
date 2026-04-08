@@ -8,15 +8,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.mockhub.admin.dto.DashboardStatsDto;
+import com.mockhub.admin.dto.DemoResetResultDto;
 import com.mockhub.admin.service.AdminDashboardService;
 import com.mockhub.admin.service.AdminEventService;
 import com.mockhub.admin.service.AdminOrderService;
 import com.mockhub.admin.service.AdminUserService;
+import com.mockhub.admin.service.DemoResetService;
+import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
@@ -57,6 +61,9 @@ class AdminControllerTest {
 
     @MockitoBean
     private TicketmasterSyncService ticketmasterSyncService;
+
+    @MockitoBean
+    private DemoResetService demoResetService;
 
     @Test
     @DisplayName("GET /api/v1/admin/dashboard - unauthenticated - returns 401")
@@ -151,5 +158,79 @@ class AdminControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.seedEventsDeactivated").value(100))
                 .andExpect(jsonPath("$.ticketmasterEventsFeatured").value(83));
+    }
+
+    // -- POST /api/v1/admin/demo/reset (unauthenticated) --
+
+    @Test
+    @DisplayName("POST /api/v1/admin/demo/reset - unauthenticated - returns 401")
+    void resetDemoUser_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/demo/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userEmail\": \"buyer@mockhub.com\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // -- POST /api/v1/admin/demo/reset (non-admin) --
+
+    @Test
+    @DisplayName("POST /api/v1/admin/demo/reset - non-admin - returns 403")
+    @WithMockUser(roles = "BUYER")
+    void resetDemoUser_nonAdmin_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/demo/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userEmail\": \"buyer@mockhub.com\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    // -- POST /api/v1/admin/demo/reset (admin, valid) --
+
+    @Test
+    @DisplayName("POST /api/v1/admin/demo/reset - admin - returns 200 with summary")
+    @WithMockUser(authorities = "ROLE_ADMIN")
+    void resetDemoUser_admin_returns200WithSummary() throws Exception {
+        DemoResetResultDto result = new DemoResetResultDto(
+                "buyer@mockhub.com", true,
+                List.of("MH-20260408-0001"), List.of("mandate-001"));
+
+        when(demoResetService.resetUser("buyer@mockhub.com")).thenReturn(result);
+
+        mockMvc.perform(post("/api/v1/admin/demo/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userEmail\": \"buyer@mockhub.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userEmail").value("buyer@mockhub.com"))
+                .andExpect(jsonPath("$.cartCleared").value(true))
+                .andExpect(jsonPath("$.cancelledOrders[0]").value("MH-20260408-0001"))
+                .andExpect(jsonPath("$.revokedMandates[0]").value("mandate-001"));
+
+        verify(demoResetService).resetUser("buyer@mockhub.com");
+    }
+
+    // -- POST /api/v1/admin/demo/reset (missing email) --
+
+    @Test
+    @DisplayName("POST /api/v1/admin/demo/reset - missing email - returns 400")
+    @WithMockUser(authorities = "ROLE_ADMIN")
+    void resetDemoUser_missingEmail_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/demo/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userEmail\": \"\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // -- POST /api/v1/admin/demo/reset (user not found) --
+
+    @Test
+    @DisplayName("POST /api/v1/admin/demo/reset - user not found - returns 404")
+    @WithMockUser(authorities = "ROLE_ADMIN")
+    void resetDemoUser_userNotFound_returns404() throws Exception {
+        when(demoResetService.resetUser("unknown@example.com"))
+                .thenThrow(new ResourceNotFoundException("User", "email", "unknown@example.com"));
+
+        mockMvc.perform(post("/api/v1/admin/demo/reset")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userEmail\": \"unknown@example.com\"}"))
+                .andExpect(status().isNotFound());
     }
 }
