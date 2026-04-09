@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router';
-import { CalendarPlus, CheckCircle } from 'lucide-react';
+import { Bot, CalendarPlus, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -83,6 +83,12 @@ export function OrderConfirmationPage() {
         >
           {order.status}
         </Badge>
+        {order.agentId && (
+          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300">
+            <Bot className="h-3.5 w-3.5" />
+            Purchased by agent: {order.agentId}
+          </div>
+        )}
       </div>
 
       {/* Order Details */}

@@ -99,7 +99,9 @@ class AcpCheckoutServiceTest {
                 "mock",
                 null,
                 Instant.now(),
-                orderItems
+                orderItems,
+                null,
+                null
         );
 
         lenient().when(evalRunner.evaluate(any())).thenReturn(new EvalSummary(List.of(EvalResult.pass("ok"))));
@@ -236,7 +238,9 @@ class AcpCheckoutServiceTest {
                 "mock",
                 Instant.now(),
                 Instant.now(),
-                testOrderDto.items()
+                testOrderDto.items(),
+                null,
+                null
         );
 
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
@@ -307,7 +311,9 @@ class AcpCheckoutServiceTest {
                 "mock",
                 Instant.now(),
                 Instant.now(),
-                testOrderDto.items()
+                testOrderDto.items(),
+                null,
+                null
         );
 
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
@@ -346,7 +352,7 @@ class AcpCheckoutServiceTest {
         OrderDto pendingOrder = new OrderDto(
                 1L, "MH-20260323-0001", "PENDING",
                 new BigDecimal("110.00"), new BigDecimal("11.00"), new BigDecimal("121.00"),
-                "mock", null, Instant.now(), existingItems);
+                "mock", null, Instant.now(), existingItems, null, null);
 
         OrderDto newOrder = new OrderDto(
                 2L, "MH-20260323-0002", "PENDING",
@@ -356,7 +362,7 @@ class AcpCheckoutServiceTest {
                         "Floor", "A", "1", "GENERAL", new BigDecimal("50.00")),
                 new OrderItemDto(3L, 30L, 300L, "Concert C", "concert-c",
                         "VIP", "C", "3", "GENERAL", new BigDecimal("30.00"))
-        ));
+        ), null, null);
 
         AcpUpdateRequest updateRequest = createUpdateRequest(List.of(new AcpLineItem(30L, 1)), List.of(20L));
 
@@ -389,7 +395,7 @@ class AcpCheckoutServiceTest {
         OrderDto newOrder = new OrderDto(
                 2L, "MH-20260323-0002", "PENDING",
                 new BigDecimal("100.00"), new BigDecimal("10.00"), new BigDecimal("110.00"),
-                "mock", null, Instant.now(), testOrderDto.items());
+                "mock", null, Instant.now(), testOrderDto.items(), null, null);
 
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
         when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
@@ -418,7 +424,7 @@ class AcpCheckoutServiceTest {
         OrderDto newOrder = new OrderDto(
                 2L, "MH-20260323-0002", "PENDING",
                 new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
-                "mock", null, Instant.now(), testOrderDto.items());
+                "mock", null, Instant.now(), testOrderDto.items(), null, null);
 
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
         when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
@@ -490,7 +496,7 @@ class AcpCheckoutServiceTest {
         OrderDto confirmedOrder = new OrderDto(
                 1L, "MH-20260323-0001", "CONFIRMED",
                 new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
-                "mock", Instant.now(), Instant.now(), testOrderDto.items());
+                "mock", Instant.now(), Instant.now(), testOrderDto.items(), null, null);
 
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
         when(orderService.getOrder(testUser, "MH-20260323-0001"))
@@ -513,7 +519,7 @@ class AcpCheckoutServiceTest {
         OrderDto failedOrder = new OrderDto(
                 1L, "MH-20260323-0001", "FAILED",
                 new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
-                "mock", null, Instant.now(), testOrderDto.items());
+                "mock", null, Instant.now(), testOrderDto.items(), null, null);
 
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
         when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(failedOrder);
@@ -559,7 +565,7 @@ class AcpCheckoutServiceTest {
         OrderDto unknownOrder = new OrderDto(
                 1L, "MH-20260323-0001", "PROCESSING",
                 new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
-                "mock", null, Instant.now(), testOrderDto.items());
+                "mock", null, Instant.now(), testOrderDto.items(), null, null);
 
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
         when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(unknownOrder);

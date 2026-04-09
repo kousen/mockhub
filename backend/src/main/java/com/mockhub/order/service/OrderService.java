@@ -229,7 +229,8 @@ public class OrderService {
                             order.getCreatedAt(),
                             eventName,
                             eventDate,
-                            venueName
+                            venueName,
+                            order.getAgentId()
                     );
                 })
                 .toList();
@@ -436,7 +437,9 @@ public class OrderService {
                 order.getPaymentMethod(),
                 order.getConfirmedAt(),
                 order.getCreatedAt(),
-                itemDtos
+                itemDtos,
+                order.getAgentId(),
+                order.getMandateId()
         );
     }
 }

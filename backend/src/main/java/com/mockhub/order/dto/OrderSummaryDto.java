@@ -12,6 +12,7 @@ public record OrderSummaryDto(
         Instant createdAt,
         String eventName,
         Instant eventDate,
-        String venueName
+        String venueName,
+        String agentId
 ) {
 }

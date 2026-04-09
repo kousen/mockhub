@@ -24,6 +24,7 @@ const mockOrders: OrderSummary[] = [
     eventName: 'Taylor Swift - Eras Tour',
     eventDate: '2026-09-15T20:00:00Z',
     venueName: 'Madison Square Garden',
+    agentId: null,
   },
   {
     id: 2,
@@ -35,6 +36,7 @@ const mockOrders: OrderSummary[] = [
     eventName: null,
     eventDate: null,
     venueName: null,
+    agentId: null,
   },
 ];
 
@@ -129,5 +131,22 @@ describe('OrderHistoryPage', () => {
     expect(screen.getByText('Previous')).toBeDefined();
     expect(screen.getByText('Next')).toBeDefined();
     expect(screen.getByText('Page 1 of 2')).toBeDefined();
+  });
+
+  it('shows bot icon for agent-initiated orders', () => {
+    setOrdersState({
+      content: [{ ...mockOrders[0], agentId: 'claude-desktop' }],
+      totalElements: 1,
+      totalPages: 1,
+      size: 20,
+      number: 0,
+      first: true,
+      last: true,
+    });
+
+    renderWithProviders(<OrderHistoryPage />);
+
+    const agentIndicator = screen.getByTitle('Purchased by agent: claude-desktop');
+    expect(agentIndicator).toBeDefined();
   });
 });
