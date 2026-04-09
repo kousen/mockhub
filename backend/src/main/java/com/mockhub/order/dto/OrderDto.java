@@ -14,6 +14,8 @@ public record OrderDto(
         String paymentMethod,
         Instant confirmedAt,
         Instant createdAt,
-        List<OrderItemDto> items
+        List<OrderItemDto> items,
+        String agentId,
+        String mandateId
 ) {
 }

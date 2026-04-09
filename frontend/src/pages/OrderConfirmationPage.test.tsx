@@ -34,6 +34,8 @@ const mockOrder: Order = {
   paymentMethod: 'MOCK',
   confirmedAt: '2026-03-20T10:05:00',
   createdAt: '2026-03-20T10:00:00',
+  agentId: null,
+  mandateId: null,
   items: [
     {
       id: 201,
@@ -107,5 +109,29 @@ describe('OrderConfirmationPage', () => {
 
     expect(screen.getByText('View Order History')).toBeDefined();
     expect(screen.getByText('Continue Browsing')).toBeDefined();
+  });
+
+  it('shows agent attribution badge for agent-initiated orders', () => {
+    setOrderState({
+      ...mockOrder,
+      agentId: 'claude-desktop',
+      mandateId: 'mandate-001',
+    });
+
+    renderWithProviders(<OrderConfirmationPage />);
+
+    expect(screen.getByText(/claude-desktop/)).toBeDefined();
+  });
+
+  it('does not show agent badge for human orders', () => {
+    setOrderState({
+      ...mockOrder,
+      agentId: null,
+      mandateId: null,
+    });
+
+    renderWithProviders(<OrderConfirmationPage />);
+
+    expect(screen.queryByText(/Purchased by agent/)).toBeNull();
   });
 });

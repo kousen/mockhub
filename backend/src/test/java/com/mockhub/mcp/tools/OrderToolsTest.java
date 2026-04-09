@@ -139,7 +139,7 @@ class OrderToolsTest {
             when(cartService.getCartDto(testUser)).thenReturn(new CartDto(null, 1L, List.of(), java.math.BigDecimal.TEN, 1, null));
             stubPassingEval();
             OrderDto orderDto = new OrderDto(
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null, null);
             when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID)))
                     .thenReturn(orderDto);
 
@@ -212,7 +212,7 @@ class OrderToolsTest {
             stubUserLookup("buyer@example.com");
             Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
             OrderDto orderDto = new OrderDto(
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
             when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
             stubPassingEval();
@@ -252,7 +252,7 @@ class OrderToolsTest {
             stubUserLookup("buyer@example.com");
             Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
             OrderDto orderDto = new OrderDto(
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
             when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
             stubPassingEval();
@@ -290,7 +290,7 @@ class OrderToolsTest {
             stubUserLookup("buyer@example.com");
             Order orderEntity = createAgentOrderEntity("MH-INVALID");
             when(orderService.getOrder(testUser, "MH-INVALID")).thenReturn(
-                    new OrderDto(null, null, null, null, null, null, null, null, null, null));
+                    new OrderDto(null, null, null, null, null, null, null, null, null, null, null, null));
             when(orderService.getOrderEntity("MH-INVALID")).thenReturn(orderEntity);
             stubPassingEval();
             when(paymentService.createPaymentIntent(orderEntity))
@@ -310,7 +310,7 @@ class OrderToolsTest {
             Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
             orderEntity.setPaymentIntentId("pi_existing");
             OrderDto orderDto = new OrderDto(
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
             when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
             stubPassingEval();
@@ -331,7 +331,7 @@ class OrderToolsTest {
             orderEntity.setPaymentMethod("stripe");
             orderEntity.setPaymentIntentId(null);
             OrderDto orderDto = new OrderDto(
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
             when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
             stubPassingEval();
@@ -351,7 +351,7 @@ class OrderToolsTest {
             stubUserLookup("buyer@example.com");
             Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
             OrderDto orderDto = new OrderDto(
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
             when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
             when(evalRunner.evaluate(any())).thenReturn(new EvalSummary(List.of(
@@ -376,7 +376,7 @@ class OrderToolsTest {
         void givenValidEmailAndOrderNumber_returnsOrderJson() {
             stubUserLookup("buyer@example.com");
             OrderDto orderDto = new OrderDto(
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
 
             String result = orderTools.getOrder("buyer@example.com", "MH-20260319-0001");
@@ -408,7 +408,7 @@ class OrderToolsTest {
         void givenOrderNumberWithWhitespace_stripsWhitespace() {
             stubUserLookup("buyer@example.com");
             OrderDto orderDto = new OrderDto(
-                    null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
 
             orderTools.getOrder("buyer@example.com", "  MH-20260319-0001  ");
@@ -519,7 +519,7 @@ class OrderToolsTest {
         void givenValidOrder_returnsIcsContent() {
             stubUserLookup("buyer@example.com");
             OrderDto orderDto = new OrderDto(
-                    null, "MH-20260326-0001", null, null, null, null, null, null, null, null);
+                    null, "MH-20260326-0001", null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-20260326-0001")).thenReturn(orderDto);
             Order order = new Order();
             order.setOrderNumber("MH-20260326-0001");
@@ -574,7 +574,7 @@ class OrderToolsTest {
             CartDto cartDto = new CartDto(null, null, null, java.math.BigDecimal.TEN, 1, null);
             when(cartService.getCartDto(realUser)).thenReturn(cartDto);
             when(evalRunner.evaluate(any())).thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
-            OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null);
+            OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null, null, null);
             when(orderService.checkout(eq(realUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID)))
                     .thenReturn(orderDto);
 
@@ -592,7 +592,7 @@ class OrderToolsTest {
             realUser.setId(2L);
             realUser.setEmail("real@example.com");
             when(userRepository.findByEmail("real@example.com")).thenReturn(Optional.of(realUser));
-            OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null);
+            OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(realUser, "MH-001")).thenReturn(orderDto);
 
             orderTools.getOrder("attacker@example.com", "MH-001");
@@ -605,7 +605,7 @@ class OrderToolsTest {
         @DisplayName("given no ChatContext - uses parameter email (external MCP)")
         void givenNoChatContext_usesParameterEmail() {
             stubUserLookup("buyer@example.com");
-            OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null);
+            OrderDto orderDto = new OrderDto(1L, "MH-001", null, null, null, null, null, null, null, null, null, null);
             when(orderService.getOrder(testUser, "MH-001")).thenReturn(orderDto);
 
             orderTools.getOrder("buyer@example.com", "MH-001");

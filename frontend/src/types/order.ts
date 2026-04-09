@@ -21,6 +21,8 @@ export interface Order {
   confirmedAt: string | null;
   createdAt: string;
   items: OrderItem[];
+  agentId: string | null;
+  mandateId: string | null;
 }
 
 export interface OrderSummary {
@@ -33,6 +35,7 @@ export interface OrderSummary {
   eventName: string | null;
   eventDate: string | null;
   venueName: string | null;
+  agentId: string | null;
 }
 
 export interface CheckoutRequest {

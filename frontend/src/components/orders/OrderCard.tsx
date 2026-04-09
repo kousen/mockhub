@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { ChevronRight } from 'lucide-react';
+import { Bot, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatCurrency, formatShortDate } from '@/lib/formatters';
@@ -58,6 +58,14 @@ export function OrderCard({ order }: Readonly<OrderCardProps>) {
               <Badge variant={statusVariant} className={getStatusColor(order.status)}>
                 {order.status}
               </Badge>
+              {order.agentId && (
+                <span
+                  className="flex items-center gap-0.5 text-xs text-blue-600 dark:text-blue-400"
+                  title={`Purchased by agent: ${order.agentId}`}
+                >
+                  <Bot className="h-3 w-3" />
+                </span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               {order.eventDate

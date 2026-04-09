@@ -98,7 +98,8 @@ public class AdminOrderService {
                 order.getCreatedAt(),
                 eventName,
                 eventDate,
-                venueName
+                venueName,
+                order.getAgentId()
         );
     }
 }
