@@ -63,8 +63,8 @@ public class AgentCardController {
                                 + "category, city, date range, price range, and section",
                         List.of("search", "events", "tickets"),
                         List.of(
-                                "Find jazz concerts in New York",
-                                "Search for tickets to Yo-Yo Ma under $150"
+                                "Find concerts in New York under $150",
+                                "Search for orchestra seats under $150"
                         ),
                         null, null
                 ),
@@ -75,7 +75,7 @@ public class AgentCardController {
                                 + "and confirm order. Requires an active mandate.",
                         List.of("purchase", "cart", "checkout", "orders"),
                         List.of(
-                                "Buy the cheapest orchestra ticket for the Yo-Yo Ma concert",
+                                "Buy the cheapest ticket that matches my budget",
                                 "Add listing 42 to my cart and check out"
                         ),
                         null, null
@@ -97,7 +97,7 @@ public class AgentCardController {
                         "Price Analysis",
                         "Get price history and AI-powered price predictions for events",
                         List.of("pricing", "analytics", "predictions"),
-                        List.of("What's the price trend for Taylor Swift tickets?"),
+                        List.of("What's the price trend for the top result in this search?"),
                         null, null
                 )
         );

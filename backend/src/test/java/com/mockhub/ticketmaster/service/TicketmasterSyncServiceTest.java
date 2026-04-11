@@ -87,7 +87,7 @@ class TicketmasterSyncServiceTest {
         Event existing = new Event();
         existing.setTicketmasterEventId("TM-001");
         existing.setStatus("ACTIVE");
-        existing.setEventDate(java.time.Instant.parse("2026-04-11T03:30:00Z"));
+        existing.setEventDate(java.time.Instant.parse("2027-06-15T03:30:00Z"));
         existing.setPrimaryImageUrl("https://example.com/large.jpg");
         existing.setSpotifyArtistId("0ECwFtbIWEVNwjlrfc6xoL");
         existing.setArtistName("Eagles");
@@ -106,7 +106,7 @@ class TicketmasterSyncServiceTest {
         Event existing = new Event();
         existing.setTicketmasterEventId("TM-BACKFILL");
         existing.setStatus("ACTIVE");
-        existing.setEventDate(java.time.Instant.parse("2026-04-11T03:30:00Z"));
+        existing.setEventDate(java.time.Instant.parse("2027-06-15T03:30:00Z"));
         existing.setPrimaryImageUrl("https://example.com/large.jpg");
         existing.setSpotifyArtistId(null);
         existing.setArtistName(null);
@@ -127,7 +127,7 @@ class TicketmasterSyncServiceTest {
         Event existing = new Event();
         existing.setTicketmasterEventId("TM-001");
         existing.setStatus("ACTIVE");
-        existing.setEventDate(java.time.Instant.parse("2026-04-11T03:30:00Z"));
+        existing.setEventDate(java.time.Instant.parse("2027-06-15T03:30:00Z"));
 
         when(eventRepository.findByTicketmasterEventId("TM-001")).thenReturn(Optional.of(existing));
         when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -330,7 +330,7 @@ class TicketmasterSyncServiceTest {
         TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
 
         assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.UPDATED);
-        assertThat(existing.getEventDate()).isEqualTo(java.time.Instant.parse("2026-04-11T03:30:00Z"));
+        assertThat(existing.getEventDate()).isEqualTo(java.time.Instant.parse("2027-06-15T03:30:00Z"));
     }
 
     @Test
@@ -402,7 +402,7 @@ class TicketmasterSyncServiceTest {
                 .id(id)
                 .name(name)
                 .dates(new Dates(
-                        new Start("2026-04-10", "20:30:00", "2026-04-11T03:30:00Z", false, false),
+                        new Start("2027-06-14", "20:30:00", "2027-06-15T03:30:00Z", false, false),
                         "America/Los_Angeles",
                         new Status("onsale")))
                 .classifications(List.of(new Classification(true,
@@ -432,7 +432,7 @@ class TicketmasterSyncServiceTest {
                 .id(id)
                 .name("Test Event")
                 .dates(new Dates(
-                        new Start("2026-04-10", "20:30:00", "2026-04-11T03:30:00Z", false, false),
+                        new Start("2027-06-14", "20:30:00", "2027-06-15T03:30:00Z", false, false),
                         "America/Los_Angeles",
                         new Status(statusCode)))
                 .embedded(new Embedded(
