@@ -2,6 +2,15 @@
 
 Scripted scenarios for repeatable demo recordings. Each scenario documents setup requirements, exact inputs, expected outputs, and recovery steps.
 
+## Two Demo Modes
+
+Use one of these modes deliberately:
+
+- **Local deterministic mode**: run a fresh local dev database so seed dates are regenerated relative to now. Best when you want more predictable fixture-like behavior.
+- **Live/deployed adaptive mode**: use criteria-based prompts and let the agent choose from whatever active events exist today. Best when recording against Railway or any environment with evolving data.
+
+The scenarios below are now written to work in **live/deployed adaptive mode** by default.
+
 **Prerequisites:**
 - MockHub running locally or on Railway with `dev` profile (seed data loaded)
 - Claude Desktop connected via MCP (`mcp-remote` or native OAuth2 connector)
@@ -32,34 +41,36 @@ Expected response:
 
 **Video:** Agentic Commerce (full purchase flow)
 **Duration:** ~3 minutes
-**Shows:** Mandate creation, agent search, cart, checkout, confirmation, notifications
+**Shows:** Agent-native authorization, mandate creation by the agent, search, cart, checkout, confirmation, notifications
 
 ### Setup
 
-1. Log in as `buyer@mockhub.com` in the browser
-2. Navigate to `/my/mandates` and click **New Mandate**
-3. Fill in the form:
-   - Agent ID: `claude-desktop`
-   - Scope: **Purchase**
-   - Per-Transaction Limit: `200`
-   - Total Budget: `1000`
-   - Allowed Categories: `concerts`
-   - Expires: *(set to 1 hour from now)*
-4. Click **Create Mandate** — note the mandate appears in the Active tab
-5. Switch to Claude Desktop
+1. Run the demo reset for `buyer@mockhub.com`
+2. Ensure no active mandates exist for the buyer
+3. Open Claude Desktop connected to MockHub
+4. Optional: keep the browser open and logged in as `buyer@mockhub.com` for visual confirmation at `/my/mandates` after the mandate is created
 
 ### Script
 
-**You:** "Use MockHub to find classical concerts in New York"
+**You:** "Use MockHub to buy me a ticket to a classical concert in New York. If you need authorization first, propose sensible mandate settings and ask me."
 
-> Agent calls `findTickets` with `query: "classical"`, `city: "New York"`
-> Expected: Yo-Yo Ma — Bach Cello Suites shows up (~$120–$180 range)
+> Agent checks for authorization / available mandates
+> Agent determines none exist
+> Agent proposes mandate settings:
+>   - PURCHASE scope
+>   - $200 per transaction
+>   - $1000 total
+>   - category restricted to concerts/classical
+> User approves in-chat
+> Agent calls `createMandate`
+> Agent calls `findTickets` with criteria like `query: "classical"`, `city: "New York"`
+> Expected: One or more active listings appear that satisfy the constraints, or the agent broadens the search slightly and explains the fallback
 
-**You:** "Buy me a ticket to the Yo-Yo Ma concert, something in the Orchestra section under $150"
+**You:** "Buy me the best orchestra or comparable seated option under $150"
 
 > Agent calls `getBestMandate` → finds the mandate created above
-> Agent calls `findTickets` with `query: "Yo-Yo Ma"`, `section: "Orchestra"`, `maxPrice: 150`
-> Agent calls `addToCart` with the cheapest listing
+> Agent narrows the current search with `section: "Orchestra"` or the closest equivalent seating filter available
+> Agent calls `addToCart` with the best matching listing under budget
 > Agent calls `checkout` with `paymentMethod: "pm_card_visa"`
 > Agent calls `confirmOrder`
 > Expected: Order confirmed, SMS + email sent to buyer
@@ -73,16 +84,18 @@ Expected response:
 
 | Time | Screen | What's happening |
 |------|--------|-----------------|
-| 0:00 | Browser — `/my/mandates` | Human creates the mandate (the "permission slip") |
-| 0:30 | Claude Desktop | Agent searches, finds Yo-Yo Ma |
-| 1:00 | Claude Desktop | Agent adds to cart, checks out |
-| 1:30 | Browser — `/orders` | Show the confirmed order appeared |
-| 2:00 | Claude Desktop | Agent returns calendar entry |
-| 2:30 | Browser — `/my/mandates` | Show spending updated on the mandate |
+| 0:00 | Claude Desktop | User asks for purchase; agent says it needs authorization |
+| 0:20 | Claude Desktop | Agent proposes mandate settings; user approves |
+| 0:35 | Claude Desktop | Agent creates the mandate |
+| 0:50 | Claude Desktop | Agent searches and finds a suitable current event |
+| 1:20 | Claude Desktop | Agent adds to cart, checks out, confirms |
+| 1:50 | Browser — confirmation / order history | Show confirmed order + agent attribution |
+| 2:10 | Browser — `/my/mandates` | Optional: show newly created mandate and updated spending |
+| 2:30 | Claude Desktop | Agent returns calendar entry |
 
 ### Recovery
 
-If the agent picks a ticket over $200 (per-transaction limit), it will be blocked by `MandateCondition`. Ask for a cheaper ticket. If something goes wrong mid-flow, run the demo reset and start over.
+If the first search is too narrow, let the agent broaden the query once while preserving the spending cap. If it picks a ticket over $200 (per-transaction limit), it will be blocked by `MandateCondition`. If something goes wrong mid-flow, run the demo reset and start over.
 
 ---
 
@@ -94,15 +107,18 @@ If the agent picks a ticket over $200 (per-transaction limit), it will be blocke
 
 ### Setup
 
-1. Same mandate as Scenario 1: `claude-desktop`, PURCHASE scope, $200/transaction, `concerts` category only
-2. Switch to Claude Desktop
+1. Use the same buyer account after Scenario 1 or create a fresh restricted mandate through the agent:
+   - PURCHASE scope
+   - $200 per transaction
+   - category restricted to `concerts`
+2. Optional: keep `/my/mandates` open in the browser for visual confirmation
 
 ### Script
 
-**You:** "Find me tickets to the next NBA game"
+**You:** "Find me tickets in a category my current mandate does not allow, like sports or theater"
 
-> Agent calls `findTickets` with `category: "sports"`
-> Expected: Returns sports events (NBA games)
+> Agent calls `findTickets` with a category outside the allowed scope
+> Expected: Returns listings the agent can see but should not be allowed to buy
 
 **You:** "Buy me a ticket to that game"
 
@@ -110,10 +126,10 @@ If the agent picks a ticket over $200 (per-transaction limit), it will be blocke
 > Agent calls `addToCart` → `MandateCondition` returns CRITICAL: mandate does not allow category 'sports'
 > Expected: Agent reports it cannot purchase sports tickets under the current mandate
 
-**You:** "OK, find me front-row tickets to Taylor Swift"
+**You:** "OK, find me any ticket over $200"
 
-> Agent calls `findTickets` with `query: "Taylor Swift"`, `section: "Floor"`
-> Expected: Listings at ~$400+ (Taylor Swift base price is $450)
+> Agent searches for expensive listings, or broadens to premium/floor/front-row style inventory
+> Expected: Returns at least one listing above the per-transaction limit, or the agent reports none are currently available
 
 **You:** "Buy the cheapest one"
 
@@ -124,9 +140,9 @@ If the agent picks a ticket over $200 (per-transaction limit), it will be blocke
 
 | Time | Screen | What's happening |
 |------|--------|-----------------|
-| 0:00 | Claude Desktop | Agent searches sports → finds NBA games |
+| 0:00 | Claude Desktop | Agent searches outside the allowed category |
 | 0:30 | Claude Desktop | Agent tries to buy → category blocked |
-| 1:00 | Claude Desktop | Agent searches Taylor Swift → finds expensive tickets |
+| 1:00 | Claude Desktop | Agent searches for any listing above the spend cap |
 | 1:30 | Claude Desktop | Agent tries to buy → spending limit blocked |
 
 ### Recovery
@@ -143,32 +159,32 @@ No state changes to recover from — the mandate correctly blocked all purchases
 
 ### Setup
 
-1. Log in as `buyer@mockhub.com`
-2. Create a mandate at `/my/mandates`:
+1. Open Claude Desktop as `buyer@mockhub.com`
+2. Ask the agent to create a short-lived BROWSE mandate:
    - Agent ID: `claude-desktop`
-   - Scope: **Browse**
-   - Expires: *(set to 2 minutes from now)*
-3. Switch to Claude Desktop
+   - Scope: **BROWSE**
+   - Expires: 2 minutes from now
+3. Optional: keep `/my/mandates` open in the browser to show the active/expired/revoked state visually
 
 ### Script
 
-**You:** "Search MockHub for jazz concerts"
+**You:** "Search MockHub for upcoming concerts in New York"
 
-> Agent calls `findTickets` with `query: "jazz"`
-> Expected: Returns jazz events (Wynton Marsalis, Kamasi Washington, etc.)
+> Agent calls `findTickets` with broad browse criteria
+> Expected: Returns current active events
 
 *(Wait for the mandate to expire — ~2 minutes. Show the clock or fast-forward in editing.)*
 
-**You:** "Search again for jazz concerts"
+**You:** "Search again for upcoming concerts in New York"
 
 > Agent calls `findTickets` → `MandateCondition` returns CRITICAL: no active mandate found
 > Expected: Agent reports the mandate has expired
 
-*(Switch to browser)*
+*(Switch to browser if you want the visual confirmation.)*
 
 **Alternative — revocation instead of waiting:**
 
-1. Create a new mandate with no expiration
+1. Create a new mandate through the agent with no expiration
 2. Agent browses successfully
 3. Switch to browser → `/my/mandates` → click **Revoke** on the active mandate
 4. Switch back to Claude Desktop → agent tries to browse → blocked
@@ -177,10 +193,10 @@ No state changes to recover from — the mandate correctly blocked all purchases
 
 | Time | Screen | What's happening |
 |------|--------|-----------------|
-| 0:00 | Browser — `/my/mandates` | Create short-lived mandate |
+| 0:00 | Claude Desktop | Agent creates short-lived BROWSE mandate |
 | 0:20 | Claude Desktop | Agent browses — works |
-| 0:40 | Browser — `/my/mandates` | Show mandate in Active tab, or wait for expiry |
-| 1:00 | Browser — `/my/mandates` | Mandate moves to Expired tab (or click Revoke) |
+| 0:40 | Browser — `/my/mandates` | Optional: show mandate in Active tab, or wait for expiry |
+| 1:00 | Browser — `/my/mandates` | Optional: mandate moves to Expired tab (or click Revoke) |
 | 1:20 | Claude Desktop | Agent tries again — blocked |
 
 ### Recovery
@@ -200,7 +216,8 @@ Run demo reset to clear any mandates. No orders to worry about (BROWSE-only mand
 1. Open two browser tabs (or two browsers)
 2. Tab 1: Log in as `buyer@mockhub.com` / `buyer123`
 3. Tab 2: Log in as `seller@mockhub.com` / `seller123`
-4. Both navigate to the same event detail page (e.g., `/events/yo-yo-ma-bach-cello-suites-1`)
+4. In both tabs, navigate to the same currently active event detail page with at least one available listing
+5. Choose one specific listing that both users will try to buy
 
 ### Script
 
@@ -277,15 +294,11 @@ No state changes — browse-only. No reset needed.
 | Buyer | `buyer@mockhub.com` | `buyer123` | ROLE_USER |
 | Seller | `seller@mockhub.com` | `seller123` | ROLE_USER |
 
-### Key events for demos
+### Demo target strategy
 
-| Event | Slug | Category | Base Price |
-|-------|------|----------|-----------|
-| Yo-Yo Ma — Bach Cello Suites | `yo-yo-ma-bach-cello-suites-*` | concerts | $150 |
-| Wynton Marsalis Quintet | `wynton-marsalis-quintet-*` | concerts | $65 |
-| Taylor Swift — Eras Tour | `taylor-swift-eras-tour-*` | concerts | $450 |
-
-*Note: Slug suffixes are numeric based on seed order. Use `findTickets` to discover exact slugs.*
+- Prefer **criteria-based prompts** over named-artist prompts when recording against live or long-lived environments.
+- If you want deterministic named fixtures, start from a **fresh local dev database** so seeded event dates regenerate relative to the current date.
+- For live recordings, let the agent select from whatever active events satisfy the budget/category/time constraints at recording time.
 
 ### Categories
 

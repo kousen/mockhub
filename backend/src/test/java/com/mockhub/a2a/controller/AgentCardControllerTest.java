@@ -79,7 +79,7 @@ class AgentCardControllerTest {
     void agentCard_skillsHaveExamples() throws Exception {
         mockMvc.perform(get("/.well-known/agent.json"))
                 .andExpect(jsonPath("$.skills[0].examples.length()").value(2))
-                .andExpect(jsonPath("$.skills[0].examples[0]").value("Find jazz concerts in New York"));
+                .andExpect(jsonPath("$.skills[0].examples[0]").value("Find concerts in New York under $150"));
     }
 
     @Test

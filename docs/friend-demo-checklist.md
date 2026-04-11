@@ -11,7 +11,7 @@ Use this for a quick live walkthrough of the agentic commerce flow.
   cd backend && ./gradlew test
   ```
 - Confirm at least one active mandate can be created for the demo buyer.
-- Confirm the target event exists in current seed data, for example a Yo-Yo Ma event in New York within the seeded future window.
+- Confirm your target demo is criteria-based rather than tied to a specific artist, unless you are running against a freshly seeded local database.
 
 ## API-First Flow
 
@@ -27,7 +27,7 @@ Use this for a quick live walkthrough of the agentic commerce flow.
 1. Log in as the demo buyer.
 2. Open the website chat assistant.
 3. Ask for a time-bounded search, for example:
-   `Find Yo-Yo Ma tickets in New York in the next month and buy the first option under $200 if available.`
+   `Find me a concert ticket in New York in the next month and buy the first good option under $200 if available. If you need authorization first, propose sensible mandate settings and ask me.`
 4. Confirm the assistant used the purchase flow with mandate-backed tools.
 5. Show the resulting order page, ticket download, and public ticket view.
 

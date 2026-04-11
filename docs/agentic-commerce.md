@@ -42,7 +42,7 @@ MockHub exposes 20 MCP tools across 5 tool classes:
 An agent can now execute a full purchase on behalf of a user:
 
 ```
-1. findTickets(query="Taylor Swift", city="NYC", dateFrom="2026-04-01T00:00:00Z",
+1. findTickets(query="concert", city="New York", dateFrom="2026-04-01T00:00:00Z",
                dateTo="2026-04-30T23:59:59Z", maxPrice=200)
    → Returns matching listings with event/date metadata, sorted by price
 
@@ -307,7 +307,7 @@ For further reading: [x402 documentation](https://docs.x402.org/)
 The implementation is considered working when all of the following are true:
 
 1. An autonomous purchase cannot proceed without both `agentId` and a valid `mandateId`.
-2. `findTickets` and `GET /acp/v1/listings` can answer a time-bounded query like "Yo-Yo Ma in New York next month" with actionable offers.
+2. `findTickets` and `GET /acp/v1/listings` can answer a time-bounded query like "find me a concert in New York next month under $200" with actionable offers.
 3. ACP and MCP purchase completion routes through `PaymentService`, not direct order confirmation.
 4. Duplicate confirm/cancel/payment callbacks do not double-sell inventory, double-send notifications, or double-record mandate spend.
 5. Successful confirmation increments mandate `totalSpent` exactly once.
