@@ -207,6 +207,24 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("status", "Backfill completed", "eventsUpdated", updated));
     }
 
+    @PostMapping("/ticketmaster/repair-listings")
+    @Operation(summary = "Repair missing Ticketmaster listings (admin)",
+            description = "Create missing active listings for future Ticketmaster events that have no offers.")
+    @ApiResponse(responseCode = "200", description = "Repair completed")
+    @ApiResponse(responseCode = "503", description = "Ticketmaster integration not active")
+    public ResponseEntity<Map<String, Object>> repairTicketmasterListings() {
+        if (ticketmasterSyncService.isEmpty()) {
+            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Ticketmaster integration is not active. Enable the 'ticketmaster' profile.");
+            problem.setTitle("Ticketmaster Not Available");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("detail", problem.getDetail(), "title", problem.getTitle()));
+        }
+        int repaired = ticketmasterSyncService.get().repairMissingListings();
+        return ResponseEntity.ok(Map.of("status", "Repair completed", "eventsRepaired", repaired));
+    }
+
     @PostMapping("/ticketmaster/activate")
     @Operation(summary = "Activate Ticketmaster events (admin)",
             description = "Deactivate seed events, feature Ticketmaster events, and complete past events.")

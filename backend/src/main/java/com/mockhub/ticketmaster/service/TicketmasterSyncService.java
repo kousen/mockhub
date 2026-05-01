@@ -146,6 +146,19 @@ public class TicketmasterSyncService {
         return updated;
     }
 
+    @Transactional
+    public int repairMissingListings() {
+        List<Event> events = eventRepository.findActiveFutureTicketmasterEvents(Instant.now());
+        int repaired = 0;
+        for (Event event : events) {
+            if (ticketGenerator.repairMissingListingsForEvent(event)) {
+                repaired++;
+            }
+        }
+        log.info("Ticketmaster listing repair complete: {}/{} events repaired", repaired, events.size());
+        return repaired;
+    }
+
     private SyncResult processSafely(TicketmasterEventResponse tmEvent) {
         try {
             return processEvent(tmEvent);
@@ -265,8 +278,16 @@ public class TicketmasterSyncService {
             changed = true;
         }
 
+        boolean inventoryRepaired = false;
+        if (STATUS_ACTIVE.equals(existing.getStatus())) {
+            inventoryRepaired = ticketGenerator.repairMissingListingsForEvent(existing);
+        }
+
         if (changed) {
             eventRepository.save(existing);
+            return SyncResult.UPDATED;
+        }
+        if (inventoryRepaired) {
             return SyncResult.UPDATED;
         }
         return SyncResult.SKIPPED;

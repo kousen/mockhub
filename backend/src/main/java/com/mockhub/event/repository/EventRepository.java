@@ -33,6 +33,15 @@ public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecific
     @Query("SELECT e FROM Event e WHERE e.spotifyArtistId IN :artistIds AND e.status = 'ACTIVE' ORDER BY e.eventDate ASC")
     List<Event> findBySpotifyArtistIdIn(@Param("artistIds") List<String> artistIds);
 
+    @Query("""
+            SELECT e FROM Event e
+            WHERE e.ticketmasterEventId IS NOT NULL
+            AND e.status = 'ACTIVE'
+            AND e.eventDate > :now
+            ORDER BY e.eventDate ASC
+            """)
+    List<Event> findActiveFutureTicketmasterEvents(@Param("now") Instant now);
+
     @Query(value = "SELECT e.* FROM events e "
             + "WHERE e.search_vector @@ plainto_tsquery('english', :query) "
             + "AND e.status = 'ACTIVE' "

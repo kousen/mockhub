@@ -33,6 +33,11 @@ public class TicketmasterTicketGenerator {
     private static final double LISTING_PERCENTAGE = 0.35;
     private static final int SEATS_PER_ROW = 20;
     private static final String TICKET_TYPE_STANDARD = "STANDARD";
+    private static final String STATUS_ACTIVE = "ACTIVE";
+    private static final String STATUS_AVAILABLE = "AVAILABLE";
+    private static final String STATUS_LISTED = "LISTED";
+    private static final String STATUS_RESERVED = "RESERVED";
+    private static final String STATUS_SOLD = "SOLD";
 
     private final TicketRepository ticketRepository;
     private final ListingRepository listingRepository;
@@ -88,7 +93,7 @@ public class TicketmasterTicketGenerator {
                     ticket.setSection(section);
                     ticket.setTicketType(TICKET_TYPE_STANDARD);
                     ticket.setFaceValue(event.getBasePrice());
-                    ticket.setStatus("AVAILABLE");
+                    ticket.setStatus(STATUS_AVAILABLE);
                     ticket.setBarcode(UUID.randomUUID().toString().substring(0, 12));
                     sectionTickets.add(ticket);
                 }
@@ -112,20 +117,20 @@ public class TicketmasterTicketGenerator {
                     listing.setComputedPrice(listedPrice);
                     listing.setPriceMultiplier(BigDecimal.valueOf(priceVariation)
                             .setScale(3, RoundingMode.HALF_UP));
-                    listing.setStatus("ACTIVE");
+                    listing.setStatus(STATUS_ACTIVE);
                     listing.setListedAt(Instant.now());
                     listing.setSeller(sellers.get(sellerIndex % sellers.size()));
                     sellerIndex++;
 
                     sectionListings.add(listing);
-                    ticket.setStatus("LISTED");
+                    ticket.setStatus(STATUS_LISTED);
                 }
             }
 
             if (!sectionListings.isEmpty()) {
                 listingRepository.saveAll(sectionListings);
                 ticketRepository.saveAll(savedTickets.stream()
-                        .filter(t -> "LISTED".equals(t.getStatus()))
+                        .filter(t -> STATUS_LISTED.equals(t.getStatus()))
                         .toList());
                 totalListings += sectionListings.size();
             }
@@ -133,6 +138,58 @@ public class TicketmasterTicketGenerator {
 
         log.info("Generated {} tickets and {} listings for event: {}",
                 totalTickets, totalListings, event.getName());
+    }
+
+    @Transactional
+    public boolean repairMissingListingsForEvent(Event event) {
+        long activeListings = listingRepository.countByEventIdAndStatus(event.getId(), STATUS_ACTIVE);
+        if (activeListings > 0) {
+            return false;
+        }
+
+        long existingTickets = ticketRepository.countByEventIdAndStatus(event.getId(), STATUS_AVAILABLE)
+                + ticketRepository.countByEventIdAndStatus(event.getId(), STATUS_LISTED)
+                + ticketRepository.countByEventIdAndStatus(event.getId(), STATUS_SOLD)
+                + ticketRepository.countByEventIdAndStatus(event.getId(), STATUS_RESERVED);
+        if (existingTickets == 0) {
+            generateForEvent(event);
+            return listingRepository.countByEventIdAndStatus(event.getId(), STATUS_ACTIVE) > 0;
+        }
+
+        List<Ticket> availableTickets = ticketRepository.findByEventIdAndStatus(event.getId(), STATUS_AVAILABLE);
+        if (availableTickets.isEmpty()) {
+            log.warn("Event '{}' has tickets but no AVAILABLE tickets to list", event.getName());
+            return false;
+        }
+
+        List<User> sellers = findSellers();
+        if (sellers.isEmpty()) {
+            log.warn("No sellers available to repair listings for event: {}", event.getName());
+            return false;
+        }
+
+        List<Listing> listings = new ArrayList<>();
+        int sellerIndex = 0;
+        for (Ticket ticket : availableTickets) {
+            if (random.nextDouble() < LISTING_PERCENTAGE) {
+                listings.add(createListing(event, ticket, sellers.get(sellerIndex % sellers.size())));
+                ticket.setStatus(STATUS_LISTED);
+                sellerIndex++;
+            }
+        }
+
+        if (listings.isEmpty()) {
+            Listing listing = createListing(event, availableTickets.getFirst(), sellers.getFirst());
+            listings.add(listing);
+            availableTickets.getFirst().setStatus(STATUS_LISTED);
+        }
+
+        listingRepository.saveAll(listings);
+        ticketRepository.saveAll(availableTickets.stream()
+                .filter(t -> STATUS_LISTED.equals(t.getStatus()))
+                .toList());
+        log.info("Repaired {} missing listings for event: {}", listings.size(), event.getName());
+        return true;
     }
 
     void createGenericSections(Venue venue) {
@@ -202,7 +259,7 @@ public class TicketmasterTicketGenerator {
                     ticket.setSection(section);
                     ticket.setTicketType(TICKET_TYPE_STANDARD);
                     ticket.setFaceValue(event.getBasePrice());
-                    ticket.setStatus("AVAILABLE");
+                    ticket.setStatus(STATUS_AVAILABLE);
                     ticket.setBarcode(UUID.randomUUID().toString().substring(0, 12));
                     sectionTickets.add(ticket);
                 }
@@ -211,5 +268,30 @@ public class TicketmasterTicketGenerator {
             totalTickets += sectionTickets.size();
         }
         log.info("Generated {} tickets (no listings) for event: {}", totalTickets, event.getName());
+    }
+
+    private List<User> findSellers() {
+        return userRepository.findAll().stream()
+                .filter(u -> !u.getEmail().equals("admin@mockhub.com"))
+                .toList();
+    }
+
+    private Listing createListing(Event event, Ticket ticket, User seller) {
+        Listing listing = new Listing();
+        listing.setTicket(ticket);
+        listing.setEvent(event);
+
+        double priceVariation = 0.80 + (random.nextDouble() * 0.40);
+        BigDecimal listedPrice = event.getBasePrice()
+                .multiply(BigDecimal.valueOf(priceVariation))
+                .setScale(2, RoundingMode.HALF_UP);
+        listing.setListedPrice(listedPrice);
+        listing.setComputedPrice(listedPrice);
+        listing.setPriceMultiplier(BigDecimal.valueOf(priceVariation)
+                .setScale(3, RoundingMode.HALF_UP));
+        listing.setStatus(STATUS_ACTIVE);
+        listing.setListedAt(Instant.now());
+        listing.setSeller(seller);
+        return listing;
     }
 }

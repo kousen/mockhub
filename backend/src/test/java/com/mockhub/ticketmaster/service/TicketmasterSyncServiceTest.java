@@ -101,6 +101,27 @@ class TicketmasterSyncServiceTest {
     }
 
     @Test
+    void processEvent_givenExistingActiveEventWithMissingListings_repairsInventory() {
+        TicketmasterEventResponse tmEvent = createSampleEvent("TM-REPAIR", "Eagles Concert");
+        Event existing = new Event();
+        existing.setTicketmasterEventId("TM-REPAIR");
+        existing.setStatus("ACTIVE");
+        existing.setEventDate(java.time.Instant.parse("2027-06-15T03:30:00Z"));
+        existing.setPrimaryImageUrl("https://example.com/large.jpg");
+        existing.setSpotifyArtistId("0ECwFtbIWEVNwjlrfc6xoL");
+        existing.setArtistName("Eagles");
+
+        when(eventRepository.findByTicketmasterEventId("TM-REPAIR")).thenReturn(Optional.of(existing));
+        when(ticketGenerator.repairMissingListingsForEvent(existing)).thenReturn(true);
+
+        TicketmasterSyncService.SyncResult result = syncService.processEvent(tmEvent);
+
+        assertThat(result).isEqualTo(TicketmasterSyncService.SyncResult.UPDATED);
+        verify(ticketGenerator).repairMissingListingsForEvent(existing);
+        verify(eventRepository, never()).save(any(Event.class));
+    }
+
+    @Test
     void processEvent_givenExistingEventMissingSpotify_backfills() {
         TicketmasterEventResponse tmEvent = createSampleEvent("TM-BACKFILL", "Eagles Concert");
         Event existing = new Event();
@@ -393,6 +414,25 @@ class TicketmasterSyncServiceTest {
 
         assertThat(updated).isEqualTo(0);
         verify(eventRepository, never()).save(any());
+    }
+
+    @Test
+    void repairMissingListings_givenRepairableEvents_returnsRepairCount() {
+        Event repairedEvent = new Event();
+        repairedEvent.setName("Repairable");
+        Event healthyEvent = new Event();
+        healthyEvent.setName("Healthy");
+
+        when(eventRepository.findActiveFutureTicketmasterEvents(any()))
+                .thenReturn(List.of(repairedEvent, healthyEvent));
+        when(ticketGenerator.repairMissingListingsForEvent(repairedEvent)).thenReturn(true);
+        when(ticketGenerator.repairMissingListingsForEvent(healthyEvent)).thenReturn(false);
+
+        int repaired = syncService.repairMissingListings();
+
+        assertThat(repaired).isEqualTo(1);
+        verify(ticketGenerator).repairMissingListingsForEvent(repairedEvent);
+        verify(ticketGenerator).repairMissingListingsForEvent(healthyEvent);
     }
 
     // --- Helper methods ---

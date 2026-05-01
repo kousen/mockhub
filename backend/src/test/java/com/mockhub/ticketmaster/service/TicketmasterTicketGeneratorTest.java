@@ -45,6 +45,8 @@ class TicketmasterTicketGeneratorTest {
 
     @Captor
     private ArgumentCaptor<List<Ticket>> ticketCaptor;
+    @Captor
+    private ArgumentCaptor<List<Listing>> listingCaptor;
 
     private TicketmasterTicketGenerator generator;
 
@@ -141,6 +143,51 @@ class TicketmasterTicketGeneratorTest {
         assertThat(venue.getCapacity()).isEqualTo(500);
     }
 
+    @Test
+    void repairMissingListingsForEvent_givenAvailableTickets_createsActiveListings() {
+        Event event = createEventWithVenue();
+        event.setId(99L);
+        List<Ticket> tickets = createAvailableTickets(event, 3);
+        User seller = createSeller();
+
+        when(listingRepository.countByEventIdAndStatus(99L, "ACTIVE")).thenReturn(0L);
+        when(ticketRepository.countByEventIdAndStatus(99L, "AVAILABLE")).thenReturn(3L);
+        when(ticketRepository.countByEventIdAndStatus(99L, "LISTED")).thenReturn(0L);
+        when(ticketRepository.countByEventIdAndStatus(99L, "SOLD")).thenReturn(0L);
+        when(ticketRepository.countByEventIdAndStatus(99L, "RESERVED")).thenReturn(0L);
+        when(ticketRepository.findByEventIdAndStatus(99L, "AVAILABLE")).thenReturn(tickets);
+        when(userRepository.findAll()).thenReturn(List.of(seller));
+        when(listingRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(ticketRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        boolean repaired = generator.repairMissingListingsForEvent(event);
+
+        assertThat(repaired).isTrue();
+        verify(listingRepository).saveAll(listingCaptor.capture());
+        List<Listing> listings = listingCaptor.getValue();
+        assertThat(listings).isNotEmpty();
+        assertThat(listings).allSatisfy(listing -> {
+            assertThat(listing.getEvent()).isEqualTo(event);
+            assertThat(listing.getStatus()).isEqualTo("ACTIVE");
+            assertThat(listing.getSeller()).isEqualTo(seller);
+            assertThat(listing.getListedAt()).isNotNull();
+        });
+        assertThat(tickets).anySatisfy(ticket -> assertThat(ticket.getStatus()).isEqualTo("LISTED"));
+    }
+
+    @Test
+    void repairMissingListingsForEvent_givenActiveListingsAlreadyExist_skipsRepair() {
+        Event event = createEventWithVenue();
+        event.setId(99L);
+        when(listingRepository.countByEventIdAndStatus(99L, "ACTIVE")).thenReturn(2L);
+
+        boolean repaired = generator.repairMissingListingsForEvent(event);
+
+        assertThat(repaired).isFalse();
+        verify(ticketRepository, org.mockito.Mockito.never()).findByEventIdAndStatus(any(), any());
+        verify(listingRepository, org.mockito.Mockito.never()).saveAll(anyList());
+    }
+
     // --- Helpers ---
 
     private Event createEventWithVenue() {
@@ -182,6 +229,21 @@ class TicketmasterTicketGeneratorTest {
         event.setVenue(venue);
 
         return event;
+    }
+
+    private List<Ticket> createAvailableTickets(Event event, int count) {
+        List<Ticket> tickets = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            Ticket ticket = new Ticket();
+            ticket.setEvent(event);
+            ticket.setSection(event.getVenue().getSections().getFirst());
+            ticket.setFaceValue(event.getBasePrice());
+            ticket.setTicketType("STANDARD");
+            ticket.setStatus("AVAILABLE");
+            ticket.setBarcode("barcode-" + i);
+            tickets.add(ticket);
+        }
+        return tickets;
     }
 
     private User createSeller() {
