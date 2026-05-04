@@ -223,6 +223,7 @@ The codebase uses Java DOP patterns where they add value:
 - **Tooltip testing:** Use `findByRole('tooltip')` not `findByText` — Radix renders tooltip content in two DOM locations (visible + accessible hidden), causing `findByText` to fail with duplicate matches.
 - E2E tests: Playwright configured for Chrome, Safari, Mobile iOS (3 browsers covering all rendering engines). Sharded across 2 CI jobs for faster runs.
 - E2E accessibility checks: axe-core via `@axe-core/playwright`
+- GitHub Actions test time is dominated by Playwright E2E (about 4 minutes). When optimizing CI latency, investigate Playwright first: browser matrix, sharding, browser install/cache behavior, trace/video settings, and whether smoke vs full E2E jobs should be separated.
 
 ### Code Style
 
@@ -265,6 +266,7 @@ The codebase uses Java DOP patterns where they add value:
 - **Database:** Railway PostgreSQL with separate `SPRING_DATASOURCE_URL`, `_USERNAME`, `_PASSWORD` env vars (Railway's `DATABASE_URL` format is incompatible with JDBC)
 - **JWT secret:** Must be valid Base64 (no dots or special characters)
 - **Auto-deploy:** Pushes to `main` trigger automatic Railway deployments
+- **Operational diagnostics:** Railway provides skills/tools used in Claude Code. Make the same Railway skills available in Codex before diagnosing deployment, runtime log, service status, environment variable, or database connectivity issues.
 
 ## File Reference
 
