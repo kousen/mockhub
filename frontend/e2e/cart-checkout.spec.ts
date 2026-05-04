@@ -62,14 +62,14 @@ async function authenticateUser(page: Page) {
 }
 
 test.describe('Cart and checkout', () => {
-  test('cart page is protected', async ({ page }) => {
+  test('cart page is protected @smoke', async ({ page }) => {
     await page.goto('/cart');
 
     // Unauthenticated user should be redirected
     await expect(page).not.toHaveURL('/cart');
   });
 
-  test('checkout page is protected', async ({ page }) => {
+  test('checkout page is protected @smoke', async ({ page }) => {
     await page.goto('/checkout');
 
     // Unauthenticated user should be redirected
@@ -84,8 +84,14 @@ test.describe('Cart and checkout', () => {
     await expect(page.getByRole('banner').getByRole('link', { name: 'MockHub' })).toBeVisible();
   });
 
-  test('cart icon shows badge count when authenticated with items in cart', async ({ page, isMobile }) => {
-    test.skip(!!isMobile, 'Cart button in header is not visible on mobile — mobile nav tested separately');
+  test('cart icon shows badge count when authenticated with items in cart', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(
+      !!isMobile,
+      'Cart button in header is not visible on mobile — mobile nav tested separately',
+    );
     await authenticateUser(page);
 
     // Mock cart endpoint to return a cart with one item

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Authentication flows', () => {
-  test('login page renders correctly', async ({ page }) => {
+  test('login page renders correctly @smoke', async ({ page }) => {
     await page.goto('/login');
 
     await expect(page.getByText('Welcome back')).toBeVisible();
@@ -10,10 +10,12 @@ test.describe('Authentication flows', () => {
     await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
   });
 
-  test('register page renders correctly', async ({ page }) => {
+  test('register page renders correctly @smoke', async ({ page }) => {
     await page.goto('/register');
 
-    await expect(page.locator('[data-slot="card-title"]', { hasText: 'Create an account' })).toBeVisible();
+    await expect(
+      page.locator('[data-slot="card-title"]', { hasText: 'Create an account' }),
+    ).toBeVisible();
     await expect(page.getByLabel('Email')).toBeVisible();
     await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
     await expect(page.getByLabel('Confirm password')).toBeVisible();

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Event browsing', () => {
-  test('home page loads', async ({ page }) => {
+  test('home page loads @smoke', async ({ page }) => {
     await page.goto('/');
 
     await expect(page.getByRole('banner').getByRole('link', { name: 'MockHub' })).toBeVisible();
@@ -13,7 +13,7 @@ test.describe('Event browsing', () => {
     await expect(page.getByRole('heading', { name: /browse events/i })).toBeVisible();
   });
 
-  test('events page has search input', async ({ page }) => {
+  test('events page has search input @smoke', async ({ page }) => {
     await page.goto('/events');
 
     const searchInput = page.getByPlaceholder(/search/i);
@@ -43,7 +43,7 @@ test.describe('Event browsing', () => {
     await expect(page.getByRole('combobox', { name: 'Sort by' })).toBeVisible();
   });
 
-  test('event cards are clickable and navigate to detail page', async ({ page }) => {
+  test('event cards are clickable and navigate to detail page @smoke', async ({ page }) => {
     const mockEventsList = {
       content: [
         {
