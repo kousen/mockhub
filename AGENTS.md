@@ -242,6 +242,7 @@ The codebase uses Java DOP patterns where they add value:
 - One logical change per commit
 - Use TDD on feature branches: write tests first (RED), implement (GREEN), refactor
 - GitHub issue/PR writes: if the GitHub connector fails with `403 Resource not accessible by integration`, treat that as connector permission only. Fall back to local `gh` before assuming the user's GitHub account lacks permission. If `gh` cannot reach `api.github.com` from Codex, request sandbox network escalation; only ask the user to re-authenticate when `gh auth status` reports invalid auth.
+- PR-ready feature work should follow the `mockhub-pr-readiness` skill: confirm issue and plan first, work on a feature branch, keep new-code coverage above SonarCloud's 80% gate, commit passing code before `claude ultrareview origin/main`, fix valid findings, then push and verify GitHub Actions plus SonarCloud/SonarQube.
 
 ## CI / Quality
 
