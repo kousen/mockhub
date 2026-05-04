@@ -93,6 +93,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [backend-test, frontend-test]
+    # Runs the full Playwright project matrix from frontend/playwright.config.ts
+    # on both pushes to main and PRs. Shards split the same matrix by test file.
     strategy:
       fail-fast: false
       matrix:
@@ -154,9 +156,17 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-webkit-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            playwright-chromium-webkit-${{ runner.os }}-
+
       - name: Install Playwright browsers
         working-directory: frontend
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Run E2E tests
         working-directory: frontend
