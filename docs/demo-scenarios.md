@@ -13,7 +13,7 @@ The scenarios below are now written to work in **live/deployed adaptive mode** b
 
 **Prerequisites:**
 - MockHub running locally or on Railway with `dev` profile (seed data loaded)
-- Claude Desktop connected via MCP (`mcp-remote` or native OAuth2 connector)
+- Claude Desktop connected directly to `https://mockhub.kousenit.com/mcp` via OAuth2
 - Admin account: `admin@mockhub.com` / `admin123`
 - Demo buyer account: `buyer@mockhub.com` / `buyer123`
 

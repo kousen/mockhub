@@ -158,7 +158,7 @@ The codebase uses Java DOP patterns where they add value:
 - **Ticket release:** When listings expire, their tickets are released from LISTED back to AVAILABLE. Uses SELECT + iterate (not bulk UPDATE) because both listing and ticket state must update together.
 - **Listing → SOLD:** `OrderService.markTicketsAsSold()` also sets `listing.status = "SOLD"`.
 - **Cancel re-activates:** `OrderService.releaseOrderTickets()` resets listing status back to ACTIVE alongside ticket release.
-- **MCP session recovery:** `McpSessionRecoveryFilter` converts Spring AI's "Session not found" JSON-RPC errors (HTTP 200) to HTTP 404, enabling `mcp-remote` clients to detect stale sessions after Railway redeploys.
+- **MCP session recovery:** `McpSessionRecoveryFilter` converts Spring AI's "Session not found" JSON-RPC errors (HTTP 200) to HTTP 404, enabling MCP clients to detect stale sessions after Railway redeploys.
 
 ### Calendar Integration
 
@@ -173,7 +173,7 @@ The codebase uses Java DOP patterns where they add value:
 - **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
-- **MCP server** — 23 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. API key auth on `/mcp/**` via `McpApiKeyFilter`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`. Codex Desktop requires `mcp-remote` bridge for auth headers: `{"command": "npx", "args": ["-y", "mcp-remote", "https://mockhub.kousenit.com/mcp", "--header", "X-API-Key: <key>"]}`.
+- **MCP server** — 23 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp` with OAuth 2.1 + Dynamic Client Registration when the `mcp-oauth2` profile is active. Codex and other MCP clients should connect directly to `https://mockhub.kousenit.com/mcp` so the OAuth flow can run; do not use `mcp-remote` or `X-API-Key` headers for the production OAuth setup.
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
 - **`findTickets` compound tool** — single-call search with query, category, city, date range, price range, section filter, returning matching listings sorted by price. Uses JPA `Specification` with `findBy` fluent API (no `COUNT` query overhead). `ListingSearchCriteria` record encapsulates all filters; `ListingSearchSpecification` builds predicates dynamically for non-null criteria only. Date parameters are `String` (not `Instant`) because Spring AI MCP can't deserialize ISO-8601 to `Instant`. Reduces agent round-trips from 3 to 1. Server-side execution: ~54ms.
@@ -241,6 +241,7 @@ The codebase uses Java DOP patterns where they add value:
 - Commit messages: imperative mood, concise ("Add event search filtering", not "Added event search filtering functionality")
 - One logical change per commit
 - Use TDD on feature branches: write tests first (RED), implement (GREEN), refactor
+- GitHub issue/PR writes: if the GitHub connector fails with `403 Resource not accessible by integration`, treat that as connector permission only. Fall back to local `gh` before assuming the user's GitHub account lacks permission. If `gh` cannot reach `api.github.com` from Codex, request sandbox network escalation; only ask the user to re-authenticate when `gh auth status` reports invalid auth.
 
 ## CI / Quality
 

@@ -194,7 +194,7 @@ MockHub exposes ACP-compatible endpoints at `/acp/v1/`:
 
 ### Authentication
 
-**MCP endpoints** use OAuth 2.1 with Dynamic Client Registration (DCR) when the `mcp-oauth2` profile is active. The embedded Spring Authorization Server handles token issuance and client registration. MCP clients (Claude, Cursor, etc.) connect by pointing at `https://mockhub.kousenit.com/mcp` — the OAuth flow is automatic. Without the `mcp-oauth2` profile, MCP falls back to `X-API-Key` header auth via `McpApiKeyFilter`.
+**MCP endpoints** use OAuth 2.1 with Dynamic Client Registration (DCR) when the `mcp-oauth2` profile is active. The embedded Spring Authorization Server handles token issuance and client registration. MCP clients (Codex, Claude, Cursor, etc.) connect directly to `https://mockhub.kousenit.com/mcp` — the OAuth flow is automatic. Production uses this OAuth setup; do not configure `mcp-remote` or `X-API-Key` headers for MCP client access.
 
 **ACP endpoints** use API key authentication (`X-API-Key` header, configured via `mockhub.mcp.api-key`). The `AcpApiKeyFilter` handles this independently.
 
@@ -347,6 +347,7 @@ Any MCP client that supports OAuth 2.1 can connect by pointing at the MCP URL:
 
 | Client | Configuration |
 |---|---|
+| **Codex** | `codex mcp add mockhub --url https://mockhub.kousenit.com/mcp` |
 | **Claude** (desktop/web/mobile) | Settings → Connectors → Add Custom Connector → URL: `https://mockhub.kousenit.com/mcp` |
 | **Cursor** | Add to `mcp.json`: `"mockhub": { "url": "https://mockhub.kousenit.com/mcp" }` |
 | **MCP Inspector** | URL: `https://mockhub.kousenit.com/mcp` (redirect URIs pre-registered) |
