@@ -23,7 +23,7 @@ class AdminControllerSyncTest {
                 Optional.empty(),
                 mock(com.mockhub.admin.service.DemoResetService.class));
 
-        ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
+        ResponseEntity<Map<String, Object>> response = controller.triggerTicketmasterSync();
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
         assertThat(response.getBody()).containsKey("detail");
@@ -41,7 +41,7 @@ class AdminControllerSyncTest {
                 Optional.of(syncService),
                 mock(com.mockhub.admin.service.DemoResetService.class));
 
-        ResponseEntity<Map<String, String>> response = controller.triggerTicketmasterSync();
+        ResponseEntity<Map<String, Object>> response = controller.triggerTicketmasterSync();
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         assertThat(response.getBody()).containsEntry("status", "Sync triggered successfully");

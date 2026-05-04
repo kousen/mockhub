@@ -46,6 +46,13 @@ import jakarta.validation.Valid;
 @Tag(name = "Admin", description = "Administrative operations (ROLE_ADMIN required)")
 public class AdminController {
 
+    private static final String DETAIL = "detail";
+    private static final String TITLE = "title";
+    private static final String STATUS = "status";
+    private static final String TICKETMASTER_NOT_AVAILABLE_TITLE = "Ticketmaster Not Available";
+    private static final String TICKETMASTER_NOT_AVAILABLE_DETAIL =
+            "Ticketmaster integration is not active. Enable the 'ticketmaster' profile.";
+
     private final AdminDashboardService adminDashboardService;
     private final AdminEventService adminEventService;
     private final AdminUserService adminUserService;
@@ -169,17 +176,12 @@ public class AdminController {
             description = "Manually trigger a Ticketmaster event sync. Requires the ticketmaster profile to be active.")
     @ApiResponse(responseCode = "202", description = "Sync triggered")
     @ApiResponse(responseCode = "503", description = "Ticketmaster integration not active")
-    public ResponseEntity<Map<String, String>> triggerTicketmasterSync() {
+    public ResponseEntity<Map<String, Object>> triggerTicketmasterSync() {
         if (ticketmasterSyncService.isEmpty()) {
-            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Ticketmaster integration is not active. Enable the 'ticketmaster' profile.");
-            problem.setTitle("Ticketmaster Not Available");
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("detail", problem.getDetail(), "title", problem.getTitle()));
+            return ticketmasterUnavailableResponse();
         }
         ticketmasterSyncService.get().syncEvents();
-        return ResponseEntity.accepted().body(Map.of("status", "Sync triggered successfully"));
+        return ResponseEntity.accepted().body(Map.of(STATUS, "Sync triggered successfully"));
     }
 
     @GetMapping("/ticketmaster/spotify-status")
@@ -196,15 +198,10 @@ public class AdminController {
     @ApiResponse(responseCode = "503", description = "Ticketmaster integration not active")
     public ResponseEntity<Map<String, Object>> backfillSpotifyIds() {
         if (ticketmasterSyncService.isEmpty()) {
-            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Ticketmaster integration is not active. Enable the 'ticketmaster' profile.");
-            problem.setTitle("Ticketmaster Not Available");
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("detail", problem.getDetail(), "title", problem.getTitle()));
+            return ticketmasterUnavailableResponse();
         }
         int updated = ticketmasterSyncService.get().backfillSpotifyIds();
-        return ResponseEntity.ok(Map.of("status", "Backfill completed", "eventsUpdated", updated));
+        return ResponseEntity.ok(Map.of(STATUS, "Backfill completed", "eventsUpdated", updated));
     }
 
     @PostMapping("/ticketmaster/repair-listings")
@@ -214,15 +211,19 @@ public class AdminController {
     @ApiResponse(responseCode = "503", description = "Ticketmaster integration not active")
     public ResponseEntity<Map<String, Object>> repairTicketmasterListings() {
         if (ticketmasterSyncService.isEmpty()) {
-            ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Ticketmaster integration is not active. Enable the 'ticketmaster' profile.");
-            problem.setTitle("Ticketmaster Not Available");
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Map.of("detail", problem.getDetail(), "title", problem.getTitle()));
+            return ticketmasterUnavailableResponse();
         }
         int repaired = ticketmasterSyncService.get().repairMissingListings();
-        return ResponseEntity.ok(Map.of("status", "Repair completed", "eventsRepaired", repaired));
+        return ResponseEntity.ok(Map.of(STATUS, "Repair completed", "eventsRepaired", repaired));
+    }
+
+    private ResponseEntity<Map<String, Object>> ticketmasterUnavailableResponse() {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                TICKETMASTER_NOT_AVAILABLE_DETAIL);
+        problem.setTitle(TICKETMASTER_NOT_AVAILABLE_TITLE);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of(DETAIL, problem.getDetail(), TITLE, problem.getTitle()));
     }
 
     @PostMapping("/ticketmaster/activate")
