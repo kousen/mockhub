@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Nightly full E2E browser matrix.
+    - cron: '0 8 * * *'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -88,13 +91,107 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage/
 
-  e2e-test:
-    name: E2E Tests (Playwright) - Shard ${{ matrix.shard }}
+  e2e-smoke:
+    name: E2E Smoke (Playwright Chromium)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [backend-test, frontend-test]
+    if: github.event_name == 'pull_request'
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: mockhub
+          POSTGRES_USER: mockhub
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          ./gradlew bootRun > bootRun.log 2>&1 &
+          echo "Waiting for backend to start..."
+          for i in $(seq 1 60); do
+            if curl -s http://localhost:8080/actuator/health > /dev/null 2>&1; then
+              echo "Backend is ready!"
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "Backend failed to start. Last 50 lines of log:"
+              tail -50 bootRun.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            playwright-chromium-${{ runner.os }}-
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E smoke tests
+        working-directory: frontend
+        run: npx playwright test --project=chromium --grep @smoke
+
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-bootrun-log-smoke
+          path: backend/bootRun.log
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-report
+          path: frontend/playwright-report/
+
+  e2e-test:
+    name: E2E Tests (Playwright Full) - Shard ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [backend-test, frontend-test]
+    if: github.event_name != 'pull_request'
     # Runs the full Playwright project matrix from frontend/playwright.config.ts
-    # on both pushes to main and PRs. Shards split the same matrix by test file.
+    # on pushes to main and the nightly schedule. Shards split the same matrix by test file.
     strategy:
       fail-fast: false
       matrix:

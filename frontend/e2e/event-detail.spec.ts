@@ -180,7 +180,7 @@ async function mockEventDetailEndpoints(page: Page, event = MOCK_EVENT) {
 // -- Tests --
 
 test.describe('Event Detail Page', () => {
-  test('event detail page loads with event name heading', async ({ page }) => {
+  test('event detail page loads with event name heading @smoke', async ({ page }) => {
     await mockEventDetailEndpoints(page);
     await page.goto('/events');
 
