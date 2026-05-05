@@ -992,6 +992,63 @@ Replaced `X-API-Key` custom header auth on `/mcp/**` with OAuth 2.1 + DCR, elimi
 
 ---
 
-*Last updated: 2026-04-04*
-*Built with: Claude Opus 4.6 (1M context) via Claude Code*
+## Session 2026-05-05: PR Readiness Workflow Trial + Agent Commerce Policies
+
+### Workflow Trial
+
+Used issue **#213** as the first full test of the MockHub PR-readiness workflow in Codex:
+
+1. Created a feature branch: `feature/213-agent-readable-commerce-policies`
+2. Implemented the issue with tests before publication
+3. Ran local backend validation: `./gradlew test jacocoTestReport`
+4. Opened draft PR **#225**: "Add agent-readable commerce policies"
+5. Ran independent review with Gemini CLI
+6. Fixed valid review findings in a separate follow-up commit
+7. Re-ran local validation and re-checked GitHub Actions + SonarCloud
+
+Total elapsed time was roughly 35-40 minutes, including tool setup friction and CI wait time.
+
+### Issue #213: Agent-Readable Commerce Policies
+
+Added structured commerce policy metadata for agents before checkout:
+
+- REST endpoints under `/api/v1/commerce/policies/**`
+- MCP `getCommercePolicy(eventSlug)` tool
+- Policy context embedded in `getEventListings`
+- Policy URLs included in listing/search DTOs used by `findTickets` and listing detail responses
+- ACP catalog, listing, and checkout responses include `commercePolicy`
+- Documentation updated in `llms.txt`, `docs/agentic-commerce.md`, and `docs/acp-openapi.yaml`
+
+Gemini review found a useful contract issue: ACP checkout responses initially used the default policy even when all line items belonged to a single event. Fixed by resolving an event-scoped policy when the checkout response line items have exactly one event slug, with fallback to the default policy for mixed or unknown event sets.
+
+### Review Workflow Notes
+
+Gemini CLI is now the preferred lightweight independent review path for normal PRs:
+
+```bash
+gemini --skip-trust --approval-mode plan -p "Review the committed MockHub diff from origin/main to HEAD for issue #<issue>. Focus on correctness, regressions, missing tests, security/auth exposure, and REST/MCP/ACP contract mismatches. Return only actionable findings with file paths and line numbers; say No findings if none."
+```
+
+Observed tooling quirks:
+
+- Gemini may still ask the Codex shell to open an authentication page even after the project has been trusted from an interactive terminal.
+- Gemini extension warnings can appear before review output; they are usually noise unless they prevent completion.
+- Claude headless review timed out in this environment, likely due to project/plugin startup. Keep it as a bounded fallback rather than the default.
+- `claude ultrareview origin/main` should remain reserved for high-risk changes.
+
+The local `mockhub-pr-readiness` Codex skill was updated with these lessons.
+
+### Status at End of Session
+
+- PR #225 is open as a draft.
+- Commits:
+  - `b7d6220` — Add agent-readable commerce policies
+  - `ecf3494` — Address commerce policy review findings
+- PR checks were green after the review-fix commit: Backend, Frontend, E2E Smoke, Docker smoke, GitGuardian, SonarCloud Analysis, and SonarCloud Code Analysis.
+- Next session: try the workflow on another issue, preferably one issue per branch unless two issues are tightly coupled.
+
+---
+
+*Last updated: 2026-05-05*
+*Built with: Claude Opus 4.6 (1M context) via Claude Code; Codex GPT-5 for 2026-05-05 workflow trial*
 *Live at: https://mockhub.kousenit.com*
