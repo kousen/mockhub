@@ -15,7 +15,7 @@ Agentic commerce in MockHub is organized into three layers, each independently v
 │  EvalCondition — what can this agent do?    │
 ├─────────────────────────────────────────────┤
 │  Layer 1: MCP Tools (Capabilities)          │
-│  searchEvents, findTickets, addToCart, ...   │
+│  searchEvents, findTickets, getCommercePolicy │
 └─────────────────────────────────────────────┘
 ```
 
@@ -27,15 +27,15 @@ Agentic commerce in MockHub is organized into three layers, each independently v
 
 ### Tool Inventory
 
-MockHub exposes 20 MCP tools across 5 tool classes:
+MockHub exposes 24 MCP tools across 5 tool classes:
 
 | Tool Class | Tools | Purpose |
 |---|---|---|
-| **EventTools** | `searchEvents`, `getEventDetail`, `getEventListings`, `getFeaturedEvents`, `getListingDetail`, `findTickets` | Discovery and search |
+| **EventTools** | `searchEvents`, `getEventDetail`, `getEventListings`, `getFeaturedEvents`, `getListingDetail`, `findTickets`, `getCommercePolicy` | Discovery, search, and purchase policy context |
 | **PricingTools** | `getPriceHistory`, `getPricePrediction` | Price intelligence |
-| **CartTools** | `getCart`, `addToCart`, `removeFromCart`, `clearCart` | Shopping cart management |
-| **OrderTools** | `checkout`, `confirmOrder`, `getOrder`, `listOrders` | Order lifecycle |
-| **MandateTools** | `createMandate`, `revokeMandate`, `listMandates`, `validateMandate` | Agent authorization |
+| **CartTools** | `getCart`, `addToCart`, `removeFromCart`, `clearCart`, `refreshCart` | Shopping cart management |
+| **OrderTools** | `checkout`, `confirmOrder`, `getOrder`, `listOrders`, `getCalendarEntry` | Order lifecycle |
+| **MandateTools** | `createMandate`, `revokeMandate`, `listMandates`, `validateMandate`, `getBestMandate` | Agent authorization |
 
 ### The Complete Purchase Flow
 
@@ -44,7 +44,7 @@ An agent can now execute a full purchase on behalf of a user:
 ```
 1. findTickets(query="concert", city="New York", dateFrom="2026-04-01T00:00:00Z",
                dateTo="2026-04-30T23:59:59Z", maxPrice=200)
-   → Returns matching listings with event/date metadata, sorted by price
+   → Returns matching listings with event/date metadata and commercePolicyUrl, sorted by price
 
 2. addToCart(userEmail="buyer@example.com", listingId=42,
              agentId="shopping-agent-1", mandateId="abc-123")
@@ -84,6 +84,18 @@ findTickets(
 ```
 
 This is an example of **agent-ergonomic API design** — reducing round-trips and letting agents express intent in a single call. Traditional REST APIs are designed for human-driven UIs with navigation; agent APIs should support goal-directed actions.
+
+### Agent-Readable Commerce Policies
+
+Agents need purchase policy context before they commit a user to checkout. MockHub exposes structured commerce policies through both REST and agent-facing responses:
+
+| Surface | Policy Access |
+|---|---|
+| REST | `GET /api/v1/commerce/policies/default`, `GET /api/v1/commerce/policies/events/{eventSlug}` |
+| MCP | `getCommercePolicy(eventSlug)` returns the full policy; `getEventListings` embeds it; `findTickets` and `getListingDetail` include `commercePolicyUrl` |
+| ACP | Catalog items, listing items, and checkout responses include `commercePolicy` |
+
+The policy document is intentionally structured rather than prose-only. It includes a stable `policyId`, `version`, event scope, `policyUrl`, `updatedAt`, policy sections (`refunds`, `cancellations`, `ticket_transfer`, `fees`, `support_and_disputes`), and support contact fields. This lets agents answer questions like "can this be refunded?" or "what fees apply?" without scraping UI text.
 
 ### Eval Conditions as Guardrails
 
@@ -203,9 +215,9 @@ MockHub exposes ACP-compatible endpoints at `/acp/v1/`:
 ```
 1. Agent discovers products and offers
    GET /acp/v1/catalog?query=jazz&city=NYC
-   → Returns AcpCatalogItem[] with event-level discovery data
+   → Returns AcpCatalogItem[] with event-level discovery data and commercePolicy
    GET /acp/v1/listings?query=yo-yo%20ma&city=New%20York&dateFrom=2026-04-01T00:00:00Z&dateTo=2026-04-30T23:59:59Z
-   → Returns AcpListingItem[] with actionable listings sorted by price
+   → Returns AcpListingItem[] with actionable listings sorted by price and commercePolicy
 
 2. Agent creates checkout
    POST /acp/v1/checkout
@@ -216,7 +228,7 @@ MockHub exposes ACP-compatible endpoints at `/acp/v1/`:
      "lineItems": [{"listingId": 42, "quantity": 1}],
      "paymentMethod": "mock"
    }
-   → Returns AcpCheckoutResponse with status CREATED
+   → Returns AcpCheckoutResponse with status CREATED and commercePolicy
 
 3. Agent completes checkout
    POST /acp/v1/checkout/MH-20260323-0001/complete
@@ -225,7 +237,7 @@ MockHub exposes ACP-compatible endpoints at `/acp/v1/`:
      "agentId": "shopping-agent-1",
      "mandateId": "abc-123"
    }
-   → Returns AcpCheckoutResponse with status COMPLETED
+   → Returns AcpCheckoutResponse with status COMPLETED and commercePolicy
 ```
 
 ### How ACP Maps to Existing Business Logic
@@ -244,9 +256,10 @@ ACP cancelCheckout   →  OrderService.failOrder()
 
 ACP getCatalog      →  EventService.listEvents()
 ACP getListings     →  EventService.listEvents() + ListingRepository.findByEventIdAndStatus()
+Policy context      →  CommercePolicyService
 ```
 
-No existing service was modified. The ACP controller and service wrap the same business logic that the MCP tools and REST API use.
+The ACP controller and service wrap the same business logic that the MCP tools and REST API use. The commerce policy service is deliberately read-only and static for now, so policy context can be added to agent responses without changing checkout behavior.
 
 ### Connection to the Protocol Landscape
 
@@ -406,7 +419,7 @@ CREATE TABLE mandates (
 ## File Reference
 
 ### Phase 1: MCP Tools
-- `backend/src/main/java/com/mockhub/mcp/tools/EventTools.java` — `findTickets`, `getListingDetail`
+- `backend/src/main/java/com/mockhub/mcp/tools/EventTools.java` — `findTickets`, `getListingDetail`, `getCommercePolicy`
 - `backend/src/main/java/com/mockhub/mcp/tools/OrderTools.java` — `confirmOrder`
 - `backend/src/main/java/com/mockhub/eval/condition/SpendingLimitCondition.java`
 
@@ -419,6 +432,9 @@ CREATE TABLE mandates (
 ### Phase 3: ACP
 - `backend/src/main/java/com/mockhub/acp/` — controller, service, dto, API key filter
 - `docs/agentic-commerce.md` — this document
+
+### Commerce Policies
+- `backend/src/main/java/com/mockhub/commerce/` — agent-readable commerce policy controller, service, and DTOs
 
 ### MCP OAuth2 Authentication
 - `backend/src/main/java/com/mockhub/mcp/config/McpOAuth2SecurityConfig.java` — authorization server + resource server chains

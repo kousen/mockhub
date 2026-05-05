@@ -22,6 +22,7 @@ import com.mockhub.acp.dto.AcpLineItemResponse;
 import com.mockhub.acp.dto.AcpPricing;
 import com.mockhub.acp.service.AcpCatalogService;
 import com.mockhub.acp.service.AcpCheckoutService;
+import com.mockhub.commerce.dto.CommercePolicyDto;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
@@ -247,7 +248,7 @@ class AcpControllerTest {
                         "test-concert", "Test Concert", "Test Concert", "rock",
                         "Test Venue", "NYC", Instant.now(),
                         new BigDecimal("50.00"), new BigDecimal("50.00"), 10,
-                        "/events/test-concert")),
+                        "/events/test-concert", createPolicy("test-concert"))),
                 0, 20, 1, 1);
         when(acpCatalogService.getCatalog(null, null, null, 0, 20)).thenReturn(catalogResponse);
 
@@ -282,7 +283,8 @@ class AcpControllerTest {
                 List.of(new AcpListingItem(
                         10L, "test-concert", "Test Concert", "test-concert", "Test Concert",
                         "rock", "Test Venue", "NYC", Instant.now(),
-                        "Floor", "A", "1", new BigDecimal("50.00"), "/events/test-concert")),
+                        "Floor", "A", "1", new BigDecimal("50.00"),
+                        "/events/test-concert", createPolicy("test-concert"))),
                 0, 20, 1, 1);
         when(acpCatalogService.getListings(any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(20)))
                 .thenReturn(listingsResponse);
@@ -328,8 +330,18 @@ class AcpControllerTest {
                 "buyer@test.com",
                 lineItems,
                 pricing,
+                createPolicy(null),
                 Instant.now(),
                 "COMPLETED".equals(status) ? Instant.now() : null
         );
+    }
+
+    private CommercePolicyDto createPolicy(String eventSlug) {
+        return new CommercePolicyDto(
+                "policy", "v1", eventSlug == null ? "all_mockhub_ticket_purchases" : "event:" + eventSlug,
+                eventSlug, List.of(), "support@mockhub.dev", "/support",
+                eventSlug == null ? "/api/v1/commerce/policies/default"
+                        : "/api/v1/commerce/policies/events/" + eventSlug,
+                Instant.now());
     }
 }

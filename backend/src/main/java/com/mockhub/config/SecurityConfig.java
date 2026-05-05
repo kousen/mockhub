@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/tags").permitAll()
                         .requestMatchers("/api/v1/search/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/commerce/policies/**").permitAll()
                         // Public Spotify metadata
                         .requestMatchers(HttpMethod.GET, "/api/v1/spotify/**").permitAll()
                         // Public AI endpoints

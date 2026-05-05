@@ -23,6 +23,7 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.cart.dto.CartDto;
+import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.eval.dto.EvalContext;
@@ -53,19 +54,22 @@ public class AcpCheckoutService {
     private final ListingRepository listingRepository;
     private final EvalRunner evalRunner;
     private final PaymentService paymentService;
+    private final CommercePolicyService commercePolicyService;
 
     public AcpCheckoutService(UserRepository userRepository,
                               CartService cartService,
                               OrderService orderService,
                               ListingRepository listingRepository,
                               EvalRunner evalRunner,
-                              PaymentService paymentService) {
+                              PaymentService paymentService,
+                              CommercePolicyService commercePolicyService) {
         this.userRepository = userRepository;
         this.cartService = cartService;
         this.orderService = orderService;
         this.listingRepository = listingRepository;
         this.evalRunner = evalRunner;
         this.paymentService = paymentService;
+        this.commercePolicyService = commercePolicyService;
     }
 
     @Transactional
@@ -240,6 +244,7 @@ public class AcpCheckoutService {
                 buyerEmail,
                 lineItems,
                 pricing,
+                commercePolicyService.getDefaultPolicy(),
                 orderDto.createdAt(),
                 null
         );
@@ -353,6 +358,7 @@ public class AcpCheckoutService {
                 buyerEmail,
                 lineItems,
                 pricing,
+                commercePolicyService.getDefaultPolicy(),
                 orderDto.createdAt(),
                 orderDto.confirmedAt()
         );

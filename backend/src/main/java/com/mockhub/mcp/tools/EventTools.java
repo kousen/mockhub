@@ -12,6 +12,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.event.dto.EventSearchRequest;
@@ -29,13 +30,16 @@ public class EventTools {
 
     private final EventService eventService;
     private final ListingService listingService;
+    private final CommercePolicyService commercePolicyService;
     private final ObjectMapper objectMapper;
 
     public EventTools(EventService eventService,
                       ListingService listingService,
+                      CommercePolicyService commercePolicyService,
                       ObjectMapper objectMapper) {
         this.eventService = eventService;
         this.listingService = listingService;
+        this.commercePolicyService = commercePolicyService;
         this.objectMapper = objectMapper;
     }
 
@@ -109,12 +113,27 @@ public class EventTools {
                     "listings", listings,
                     "page", pageNum,
                     "size", pageSize,
-                    "totalListings", totalListings
+                    "totalListings", totalListings,
+                    "commercePolicy", commercePolicyService.getPolicyForEvent(trimmedSlug)
             );
             return objectMapper.writeValueAsString(response);
         } catch (Exception e) {
             log.error("Error getting listings for slug '{}': {}", slug, e.getMessage(), e);
             return errorJson("Failed to get event listings: " + e.getMessage());
+        }
+    }
+
+    @Tool(description = "Get MockHub's structured commerce policy metadata for agent purchases. "
+            + "Call this before checkout when explaining refunds, cancellations, ticket delivery, fees, support, "
+            + "or buyer recourse. Optionally pass an event slug to get the policy URL scoped to that event.")
+    public String getCommercePolicy(
+            @ToolParam(description = "Optional event URL slug for event-scoped policy metadata",
+                    required = false) String eventSlug) {
+        try {
+            return objectMapper.writeValueAsString(commercePolicyService.getPolicyForEvent(eventSlug));
+        } catch (Exception e) {
+            log.error("Error getting commerce policy for slug '{}': {}", eventSlug, e.getMessage(), e);
+            return errorJson("Failed to get commerce policy: " + e.getMessage());
         }
     }
 

@@ -21,6 +21,8 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
 import com.mockhub.cart.service.CartService;
+import com.mockhub.commerce.dto.CommercePolicyDto;
+import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.eval.dto.EvalResult;
@@ -69,6 +71,9 @@ class AcpCheckoutServiceTest {
     @Mock
     private PaymentService paymentService;
 
+    @Mock
+    private CommercePolicyService commercePolicyService;
+
     @InjectMocks
     private AcpCheckoutService acpCheckoutService;
 
@@ -109,6 +114,14 @@ class AcpCheckoutServiceTest {
                 .thenAnswer(invocation -> Optional.of(createListing(invocation.getArgument(0))));
         lenient().when(cartService.getCartDto(testUser))
                 .thenReturn(new CartDto(1L, 1L, List.of(), new BigDecimal("55.00"), 1, null));
+        lenient().when(commercePolicyService.getDefaultPolicy()).thenReturn(createCommercePolicy());
+    }
+
+    private CommercePolicyDto createCommercePolicy() {
+        return new CommercePolicyDto(
+                "policy", "v1", "all_mockhub_ticket_purchases", null,
+                List.of(), "support@mockhub.dev", "/support",
+                "/api/v1/commerce/policies/default", Instant.now());
     }
 
     private AcpCheckoutRequest createCheckoutRequest(String buyerEmail, List<AcpLineItem> lineItems,
@@ -180,6 +193,7 @@ class AcpCheckoutServiceTest {
         assertEquals(1, response.lineItems().size());
         assertEquals("USD", response.pricing().currency());
         assertEquals(new BigDecimal("55.00"), response.pricing().total());
+        assertNotNull(response.commercePolicy());
 
         verify(cartService).clearCart(testUser);
         verify(cartService).addToCart(testUser, 10L);
@@ -294,6 +308,7 @@ class AcpCheckoutServiceTest {
         assertNotNull(response);
         assertEquals("CANCELLED", response.status());
         assertNull(response.completedAt());
+        assertNotNull(response.commercePolicy());
 
         verify(orderService).failOrder("MH-20260323-0001");
     }

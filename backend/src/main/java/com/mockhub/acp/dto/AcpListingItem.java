@@ -3,6 +3,8 @@ package com.mockhub.acp.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import com.mockhub.commerce.dto.CommercePolicyDto;
+
 public record AcpListingItem(
         Long listingId,
         String productId,
@@ -17,6 +19,7 @@ public record AcpListingItem(
         String rowLabel,
         String seatNumber,
         BigDecimal price,
-        String url
+        String url,
+        CommercePolicyDto commercePolicy
 ) {
 }

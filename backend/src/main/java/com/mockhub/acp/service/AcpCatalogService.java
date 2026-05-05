@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.acp.dto.AcpCatalogItem;
 import com.mockhub.acp.dto.AcpListingItem;
+import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
@@ -26,10 +27,14 @@ public class AcpCatalogService {
 
     private final EventService eventService;
     private final ListingRepository listingRepository;
+    private final CommercePolicyService commercePolicyService;
 
-    public AcpCatalogService(EventService eventService, ListingRepository listingRepository) {
+    public AcpCatalogService(EventService eventService,
+                             ListingRepository listingRepository,
+                             CommercePolicyService commercePolicyService) {
         this.eventService = eventService;
         this.listingRepository = listingRepository;
+        this.commercePolicyService = commercePolicyService;
     }
 
     @Transactional(readOnly = true)
@@ -53,7 +58,8 @@ public class AcpCatalogService {
                         event.minPrice(),
                         event.minPrice(),
                         event.availableTickets(),
-                        "/events/" + event.slug()
+                        "/events/" + event.slug(),
+                        commercePolicyService.getPolicyForEvent(event.slug())
                 ))
                 .toList();
 
@@ -116,7 +122,8 @@ public class AcpCatalogService {
                         rowLabel,
                         seatNumber,
                         listing.getComputedPrice(),
-                        "/events/" + event.slug()
+                        "/events/" + event.slug(),
+                        commercePolicyService.getPolicyForEvent(event.slug())
                 ));
             }
         }
