@@ -125,7 +125,7 @@ public class EventTools {
 
     @Tool(description = "Get MockHub's structured commerce policy metadata for agent purchases. "
             + "Call this before checkout when explaining refunds, cancellations, ticket delivery, fees, support, "
-            + "or buyer recourse. Optionally pass an event slug to get the policy URL scoped to that event.")
+            + "or buyer recourse. Optionally pass an event slug to get a full policy object scoped to that event.")
     public String getCommercePolicy(
             @ToolParam(description = "Optional event URL slug for event-scoped policy metadata",
                     required = false) String eventSlug) {

@@ -115,6 +115,8 @@ class AcpCheckoutServiceTest {
         lenient().when(cartService.getCartDto(testUser))
                 .thenReturn(new CartDto(1L, 1L, List.of(), new BigDecimal("55.00"), 1, null));
         lenient().when(commercePolicyService.getDefaultPolicy()).thenReturn(createCommercePolicy());
+        lenient().when(commercePolicyService.getPolicyForEvent("test-concert"))
+                .thenReturn(createCommercePolicy("test-concert"));
     }
 
     private CommercePolicyDto createCommercePolicy() {
@@ -122,6 +124,13 @@ class AcpCheckoutServiceTest {
                 "policy", "v1", "all_mockhub_ticket_purchases", null,
                 List.of(), "support@mockhub.dev", "/support",
                 "/api/v1/commerce/policies/default", Instant.now());
+    }
+
+    private CommercePolicyDto createCommercePolicy(String eventSlug) {
+        return new CommercePolicyDto(
+                "policy", "v1", "event:" + eventSlug, eventSlug,
+                List.of(), "support@mockhub.dev", "/support",
+                "/api/v1/commerce/policies/events/" + eventSlug, Instant.now());
     }
 
     private AcpCheckoutRequest createCheckoutRequest(String buyerEmail, List<AcpLineItem> lineItems,
@@ -194,6 +203,7 @@ class AcpCheckoutServiceTest {
         assertEquals("USD", response.pricing().currency());
         assertEquals(new BigDecimal("55.00"), response.pricing().total());
         assertNotNull(response.commercePolicy());
+        assertEquals("test-concert", response.commercePolicy().eventSlug());
 
         verify(cartService).clearCart(testUser);
         verify(cartService).addToCart(testUser, 10L);
@@ -272,6 +282,7 @@ class AcpCheckoutServiceTest {
         assertNotNull(response);
         assertEquals("COMPLETED", response.status());
         assertNotNull(response.completedAt());
+        assertEquals("test-concert", response.commercePolicy().eventSlug());
 
         verify(paymentService).confirmPayment("pi_test");
     }
@@ -309,6 +320,7 @@ class AcpCheckoutServiceTest {
         assertEquals("CANCELLED", response.status());
         assertNull(response.completedAt());
         assertNotNull(response.commercePolicy());
+        assertEquals("test-concert", response.commercePolicy().eventSlug());
 
         verify(orderService).failOrder("MH-20260323-0001");
     }

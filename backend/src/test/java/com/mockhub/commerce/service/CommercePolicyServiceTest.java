@@ -37,6 +37,26 @@ class CommercePolicyServiceTest {
     }
 
     @Test
+    @DisplayName("getPolicyForEvent - given blank slug - returns default policy")
+    void getPolicyForEvent_givenBlankSlug_returnsDefaultPolicy() {
+        CommercePolicyDto policy = commercePolicyService.getPolicyForEvent("   ");
+
+        assertEquals("all_mockhub_ticket_purchases", policy.appliesTo());
+        assertNull(policy.eventSlug());
+        assertEquals("/api/v1/commerce/policies/default", policy.policyUrl());
+    }
+
+    @Test
+    @DisplayName("getPolicyForEvent - given null slug - returns default policy")
+    void getPolicyForEvent_givenNullSlug_returnsDefaultPolicy() {
+        CommercePolicyDto policy = commercePolicyService.getPolicyForEvent(null);
+
+        assertEquals("all_mockhub_ticket_purchases", policy.appliesTo());
+        assertNull(policy.eventSlug());
+        assertEquals("/api/v1/commerce/policies/default", policy.policyUrl());
+    }
+
+    @Test
     @DisplayName("getPolicyUrlForEvent - given blank slug - returns default policy URL")
     void getPolicyUrlForEvent_givenBlankSlug_returnsDefaultPolicyUrl() {
         assertEquals("/api/v1/commerce/policies/default",

@@ -23,6 +23,7 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.cart.dto.CartDto;
+import com.mockhub.commerce.dto.CommercePolicyDto;
 import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
@@ -244,7 +245,7 @@ public class AcpCheckoutService {
                 buyerEmail,
                 lineItems,
                 pricing,
-                commercePolicyService.getDefaultPolicy(),
+                commercePolicyForLineItems(lineItems),
                 orderDto.createdAt(),
                 null
         );
@@ -358,10 +359,23 @@ public class AcpCheckoutService {
                 buyerEmail,
                 lineItems,
                 pricing,
-                commercePolicyService.getDefaultPolicy(),
+                commercePolicyForLineItems(lineItems),
                 orderDto.createdAt(),
                 orderDto.confirmedAt()
         );
+    }
+
+    private CommercePolicyDto commercePolicyForLineItems(List<AcpLineItemResponse> lineItems) {
+        Set<String> eventSlugs = lineItems.stream()
+                .map(AcpLineItemResponse::eventSlug)
+                .filter(slug -> slug != null && !slug.isBlank())
+                .collect(Collectors.toSet());
+
+        if (eventSlugs.size() == 1) {
+            return commercePolicyService.getPolicyForEvent(eventSlugs.iterator().next());
+        }
+
+        return commercePolicyService.getDefaultPolicy();
     }
 
     private String mapOrderStatusToAcpStatus(String orderStatus) {
