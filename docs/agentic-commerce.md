@@ -27,7 +27,7 @@ Agentic commerce in MockHub is organized into three layers, each independently v
 
 ### Tool Inventory
 
-MockHub exposes 25 MCP tools across 5 tool classes:
+MockHub exposes 29 MCP tools across 6 tool classes:
 
 | Tool Class | Tools | Purpose |
 |---|---|---|
@@ -36,6 +36,7 @@ MockHub exposes 25 MCP tools across 5 tool classes:
 | **CartTools** | `getCart`, `addToCart`, `removeFromCart`, `clearCart`, `refreshCart` | Shopping cart management |
 | **OrderTools** | `checkout`, `confirmOrder`, `getOrder`, `listOrders`, `getCalendarEntry` | Order lifecycle |
 | **MandateTools** | `createMandate`, `revokeMandate`, `listMandates`, `validateMandate`, `getBestMandate` | Agent authorization |
+| **AgentApprovalTools** | `proposePurchase`, `approvePurchase`, `denyPurchase`, `listPurchaseApprovals` | Purchase approval audit trail |
 
 ### The Complete Purchase Flow
 
@@ -64,6 +65,14 @@ An agent can now execute a full purchase on behalf of a user:
    → Records mandate spend once, updates ticket status to SOLD, triggers SMS + email
    → Returns confirmed OrderDto
 ```
+
+### Purchase Approval Records
+
+Mandates answer whether an agent is authorized to act. Approval records answer who saw a proposed purchase, what commercial context they saw, and what happened next.
+
+Agents can create a proposal with `proposePurchase`, including a snapshot of the proposed listings or order, the agent rationale, price and fee totals, and the relevant commerce policy snapshot. The user can then approve or deny that proposal. An approved `approvalId` may be supplied to `confirmOrder` or ACP `completeCheckout` to link the final purchase to the recorded approval.
+
+Approval IDs are optional for backward compatibility. Existing mandate-authorized purchases still work, while future conditional mandate work can decide when a human approval record is required.
 
 ### Key Design: `findTickets` — The Compound Search Tool
 
@@ -453,6 +462,11 @@ CREATE TABLE mandates (
 - `backend/src/main/java/com/mockhub/eval/condition/MandateCondition.java`
 - `backend/src/main/java/com/mockhub/mcp/tools/MandateTools.java`
 - `backend/src/main/resources/db/migration/V22__create_mandates_table.sql`
+
+### Phase 2b: Purchase Approval Records
+- `backend/src/main/java/com/mockhub/agentapproval/` — approval audit entity, DTOs, service, controller
+- `backend/src/main/java/com/mockhub/mcp/tools/AgentApprovalTools.java`
+- `backend/src/main/resources/db/migration/V31__create_agent_purchase_approvals.sql`
 
 ### Phase 3: ACP
 - `backend/src/main/java/com/mockhub/acp/` — controller, service, dto, API key filter

@@ -124,10 +124,14 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 - clearCart(userEmail) — empty cart
 - refreshCart(userEmail) — reset cart 15-minute TTL without modifying contents
 - checkout(userEmail, paymentMethod, agentId, mandateId) — create order from cart
-- confirmOrder(userEmail, orderNumber, agentId, mandateId, paymentIntentId?) — complete payment; non-mock payments require paymentIntentId
+- confirmOrder(userEmail, orderNumber, agentId, mandateId, paymentIntentId?, approvalId?) — complete payment; non-mock payments require paymentIntentId. Optional approvalId links the purchase to an approved audit record.
 - getOrder(userEmail, orderNumber) — order details
 - listOrders(userEmail, page?, size?) — order history with pagination
 - getCalendarEntry(userEmail, orderNumber) — RFC 5545 .ics calendar content for a confirmed order
+- proposePurchase(userEmail, agentId, mandateId, proposedOrderSnapshot, agentRationale?, subtotal, serviceFee, total, commercePolicySnapshot?, expiresAt?) — create a durable purchase proposal audit record before user approval
+- approvePurchase(userEmail, approvalId) — approve a proposed agent purchase
+- denyPurchase(userEmail, approvalId, reason?) — deny a proposed agent purchase
+- listPurchaseApprovals(userEmail) — list purchase proposals, approvals, denials, and outcomes
 - createMandate(agentId, userEmail, scope, maxSpendPerTransaction?, maxSpendTotal?, allowedCategories?, allowedEvents?, expiresAt?) — authorize agent actions
 - revokeMandate(mandateId) — revoke agent authorization
 - listMandates(userEmail) — list active mandates
@@ -139,7 +143,7 @@ ACP-compatible checkout endpoints at /acp/v1/:
 POST /acp/v1/checkout — Create checkout. JSON body: {"buyerEmail", "lineItems": [{"listingId", "quantity"}], "agentId", "mandateId", "paymentMethod", "idempotencyKey"}
 GET /acp/v1/checkout/{checkoutId} — Get checkout status. Header: X-Buyer-Email
 PUT /acp/v1/checkout/{checkoutId} — Update checkout (PENDING only). JSON body: {"agentId", "mandateId", "addItems", "removeListingIds"}. Header: X-Buyer-Email
-POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. JSON body: {"agentId", "mandateId", "paymentIntentId"}. Header: X-Buyer-Email
+POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. JSON body: {"agentId", "mandateId", "paymentIntentId", "approvalId"}. Header: X-Buyer-Email
 POST /acp/v1/checkout/{checkoutId}/cancel — Cancel checkout. JSON body: {"agentId", "mandateId"}. Header: X-Buyer-Email
 GET /acp/v1/catalog — Browse product catalog. Query params: query, category, city, page, size
 GET /acp/v1/listings — Browse actionable ticket offers. Query params: query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, page, size

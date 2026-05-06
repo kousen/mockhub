@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.agentapproval.service.AgentPurchaseApprovalService;
 import com.mockhub.ai.service.ChatContext;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
@@ -65,6 +66,9 @@ class OrderToolsTest {
     @Mock
     private CalendarService calendarService;
 
+    @Mock
+    private AgentPurchaseApprovalService approvalService;
+
     private static final String AGENT_ID = "shopping-agent";
     private static final String MANDATE_ID = "mandate-123";
 
@@ -77,7 +81,7 @@ class OrderToolsTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         orderTools = new OrderTools(orderService, calendarService, userRepository, cartService,
-                evalRunner, paymentService, objectMapper);
+                evalRunner, paymentService, approvalService, objectMapper);
 
         testUser = new User();
         testUser.setId(1L);
@@ -220,7 +224,7 @@ class OrderToolsTest {
                     .thenReturn(new PaymentIntentDto("pi_test", "secret", java.math.BigDecimal.TEN, "USD"));
 
             String result = orderTools.confirmOrder(
-                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null);
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null, null);
 
             // getOrder called twice: once for ownership check, once to return the confirmed order
             verify(orderService, times(2)).getOrder(testUser, "MH-20260319-0001");
@@ -229,9 +233,31 @@ class OrderToolsTest {
         }
 
         @Test
+        @DisplayName("given approved purchase approval ID - validates and marks completed")
+        void givenApprovedPurchaseApprovalId_validatesAndMarksCompleted() {
+            stubUserLookup("buyer@example.com");
+            Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
+            when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
+            stubPassingEval();
+            when(paymentService.createPaymentIntent(orderEntity))
+                    .thenReturn(new PaymentIntentDto("pi_test", "secret", java.math.BigDecimal.TEN, "USD"));
+
+            String result = orderTools.confirmOrder(
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null, "approval-123");
+
+            verify(approvalService).validateApprovedForCompletion(
+                    "approval-123", "buyer@example.com", AGENT_ID, MANDATE_ID, orderEntity);
+            verify(approvalService).markCompleted("approval-123", "MH-20260319-0001");
+            assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
         @DisplayName("given null order number - returns error JSON")
         void givenNullOrderNumber_returnsErrorJson() {
-            String result = orderTools.confirmOrder("buyer@example.com", null, AGENT_ID, MANDATE_ID, null);
+            String result = orderTools.confirmOrder("buyer@example.com", null, AGENT_ID, MANDATE_ID, null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Order number is required"),
@@ -241,7 +267,7 @@ class OrderToolsTest {
         @Test
         @DisplayName("given blank order number - returns error JSON")
         void givenBlankOrderNumber_returnsErrorJson() {
-            String result = orderTools.confirmOrder("buyer@example.com", "   ", AGENT_ID, MANDATE_ID, null);
+            String result = orderTools.confirmOrder("buyer@example.com", "   ", AGENT_ID, MANDATE_ID, null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
         }
@@ -259,7 +285,7 @@ class OrderToolsTest {
             when(paymentService.createPaymentIntent(orderEntity))
                     .thenReturn(new PaymentIntentDto("pi_test", "secret", java.math.BigDecimal.TEN, "USD"));
 
-            orderTools.confirmOrder("buyer@example.com", "  MH-20260319-0001  ", AGENT_ID, MANDATE_ID, null);
+            orderTools.confirmOrder("buyer@example.com", "  MH-20260319-0001  ", AGENT_ID, MANDATE_ID, null, null);
 
             verify(orderService, times(2)).getOrder(testUser, "MH-20260319-0001");
             verify(paymentService).confirmPayment("pi_test");
@@ -268,7 +294,7 @@ class OrderToolsTest {
         @Test
         @DisplayName("given null email - returns error JSON")
         void givenNullEmail_returnsErrorJson() {
-            String result = orderTools.confirmOrder(null, "MH-20260319-0001", AGENT_ID, MANDATE_ID, null);
+            String result = orderTools.confirmOrder(null, "MH-20260319-0001", AGENT_ID, MANDATE_ID, null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
         }
@@ -278,7 +304,8 @@ class OrderToolsTest {
         void givenUnknownUserEmail_returnsErrorJson() {
             when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
 
-            String result = orderTools.confirmOrder("unknown@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null);
+            String result = orderTools.confirmOrder(
+                    "unknown@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to confirm order"), "Result should contain failure message");
@@ -298,7 +325,7 @@ class OrderToolsTest {
             org.mockito.Mockito.doThrow(new RuntimeException("Payment failed"))
                     .when(paymentService).confirmPayment("pi_invalid");
 
-            String result = orderTools.confirmOrder("buyer@example.com", "MH-INVALID", AGENT_ID, MANDATE_ID, null);
+            String result = orderTools.confirmOrder("buyer@example.com", "MH-INVALID", AGENT_ID, MANDATE_ID, null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to confirm order"), "Result should contain failure message");
@@ -316,7 +343,7 @@ class OrderToolsTest {
             stubPassingEval();
 
             String result = orderTools.confirmOrder(
-                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null);
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null, null);
 
             verify(paymentService, org.mockito.Mockito.never()).createPaymentIntent(any());
             verify(paymentService).confirmPayment("pi_existing");
@@ -337,7 +364,7 @@ class OrderToolsTest {
             stubPassingEval();
 
             String result = orderTools.confirmOrder(
-                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null);
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Payment intent ID is required"),
@@ -358,7 +385,7 @@ class OrderToolsTest {
                     EvalResult.fail("mandate", EvalSeverity.CRITICAL, "Mandate has been revoked"))));
 
             String result = orderTools.confirmOrder(
-                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null);
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Cannot confirm order"), "Result should contain eval failure message");
