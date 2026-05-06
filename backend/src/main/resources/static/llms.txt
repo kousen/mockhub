@@ -104,8 +104,11 @@ Eval results are logged for observability. Critical eval failures may block agen
 
 ## MCP Tools (OAuth 2.1 authentication)
 MockHub exposes MCP tools for AI agents at /mcp (Streamable HTTP transport).
-Authentication: OAuth 2.1 with Dynamic Client Registration (DCR). Clients discover the authorization
-server via /.well-known/oauth-protected-resource/mcp and register automatically.
+Authentication: OAuth 2.1 with Dynamic Client Registration (DCR). Discovery endpoints:
+- /.well-known/oauth-protected-resource/mcp — MCP resource metadata (points to the authorization server)
+- /.well-known/oauth-authorization-server — authorization server metadata (issuer, token, authorize, jwks, registration)
+- /.well-known/oauth-authorization-server/mcp — RFC 8414 path-suffixed alias of the above (301 redirect)
+DCR endpoint: POST /connect/register. Clients register automatically.
 Compatible clients: Claude (desktop/web/mobile), Cursor, MCP Inspector, any OAuth 2.1 MCP client.
 Sessions are in-memory — after server redeploys, clients must re-initialize.
 - searchEvents(query?, category?, city?, page?, size?) — search and filter events with pagination
