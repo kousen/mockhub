@@ -95,7 +95,7 @@ Any authenticated user can both buy and sell tickets.
 - **AI recommendations** — personalized event suggestions with relevance scores
 - **AI price predictions** — trend analysis on event detail pages
 - **MCP server** — 29 tools for AI agent integration (events, cart, orders, pricing, mandates, approvals) with OAuth 2.1 authentication and Dynamic Client Registration (DCR) — works natively with Claude (desktop, web, mobile), Cursor, and any MCP-compatible client
-- **Agent mandates** — authorization model for AI agents with spending limits and scope restrictions
+- **Agent mandates** — authorization model for AI agents with spending limits, scope/category/event/section restrictions, and optional approval-required completion
 - **ACP endpoints** — Agentic Commerce Protocol checkout API for agent interoperability
 - **Agent discovery** — `llms.txt` at `/llms.txt` describes all API endpoints, MCP tools, and ACP endpoints
 
