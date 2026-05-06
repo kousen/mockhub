@@ -67,8 +67,9 @@ function CreateMandateForm({ onClose }: Readonly<{ onClose: () => void }>) {
   const [allowedCategories, setAllowedCategories] = useState('');
   const [allowedEvents, setAllowedEvents] = useState('');
   const [allowedSections, setAllowedSections] = useState('');
-  const [approvalMode, setApprovalMode] =
-    useState<'AUTO_PURCHASE' | 'APPROVAL_REQUIRED'>('AUTO_PURCHASE');
+  const [approvalMode, setApprovalMode] = useState<'AUTO_PURCHASE' | 'APPROVAL_REQUIRED'>(
+    'AUTO_PURCHASE',
+  );
   const [expiresAt, setExpiresAt] = useState('');
   const createMandate = useCreateMandate();
 
@@ -247,9 +248,7 @@ function CreateMandateForm({ onClose }: Readonly<{ onClose: () => void }>) {
               </label>
               <Select
                 value={approvalMode}
-                onValueChange={(v) =>
-                  setApprovalMode(v as 'AUTO_PURCHASE' | 'APPROVAL_REQUIRED')
-                }
+                onValueChange={(v) => setApprovalMode(v as 'AUTO_PURCHASE' | 'APPROVAL_REQUIRED')}
               >
                 <SelectTrigger id="approvalMode">
                   <SelectValue />
@@ -336,11 +335,7 @@ function Restrictions({ mandate }: Readonly<{ mandate: Mandate }>) {
     mandate.allowedSections ? `Sections: ${mandate.allowedSections}` : null,
   ].filter(Boolean);
 
-  return (
-    <div className="text-sm text-muted-foreground">
-      {restrictions.join(' · ')}
-    </div>
-  );
+  return <div className="text-sm text-muted-foreground">{restrictions.join(' · ')}</div>;
 }
 
 function ApprovalMode({ mandate }: Readonly<{ mandate: Mandate }>) {
@@ -546,7 +541,9 @@ export function MandatesPage() {
                             <SpendingSummary mandate={mandate} />
                           </TableCell>
                           <TableCell>
-                            {mandate.allowedCategories || mandate.allowedEvents || mandate.allowedSections ? (
+                            {mandate.allowedCategories ||
+                            mandate.allowedEvents ||
+                            mandate.allowedSections ? (
                               <Restrictions mandate={mandate} />
                             ) : (
                               <span className="text-sm text-muted-foreground">None</span>
