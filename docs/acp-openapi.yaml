@@ -175,12 +175,6 @@ paths:
       parameters:
         - $ref: '#/components/parameters/checkoutId'
         - $ref: '#/components/parameters/buyerEmail'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CompleteRequest'
       responses:
         '200':
           description: Checkout details
@@ -240,7 +234,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ActionRequest'
+              $ref: '#/components/schemas/CompleteRequest'
       responses:
         '200':
           description: Checkout completed
@@ -394,6 +388,9 @@ components:
         paymentIntentId:
           type: string
           description: Required for non-mock payment methods
+        approvalId:
+          type: string
+          description: Optional purchase approval record ID linking this checkout completion to a prior human approval
 
     CheckoutResponse:
       type: object

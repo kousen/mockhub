@@ -23,6 +23,7 @@ mockhub/
 │       ├── ai/                 # Chat, recommendations, price predictions
 │       ├── eval/               # Evaluation conditions (Design by Contract for AI)
 │       ├── mandate/            # Agent mandates (authorization for agentic commerce)
+│       ├── agentapproval/      # Agent purchase approval records and audit trail
 │       ├── mcp/                # MCP server (tools, OAuth2 security, session recovery)
 │       ├── lifecycle/          # Scheduled cleanup (expired listings, past events, old notifications)
 │       ├── admin/              # Admin dashboard
@@ -63,7 +64,8 @@ The schema has six clusters. Flyway migrations are the source of truth (see `bac
 4. **Marketplace**: `tickets`, `listings`, `price_history`
 5. **Commerce**: `carts`, `cart_items`, `orders`, `order_items`, `transaction_logs`
 6. **Engagement**: `favorites`, `notifications`, `reviews`, `conversations`, `conversation_messages`, `user_preferences`
-7. **Agentic**: `mandates` (agent authorization with scope, spending limits, restrictions)
+7. **Agentic**: `mandates` (agent authorization with scope, spending limits, restrictions),
+   `agent_purchase_approvals` (human approval records for agent-initiated purchases)
 
 ### Identity
 
@@ -525,6 +527,18 @@ Two implementations controlled by Spring profiles:
 - **`AiController`** injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active
 - **Personalized recommendations:** `RecommendationService` accepts a nullable `userId` and optional `city` — when provided, enriches the AI prompt with user favorites, purchase history, and Spotify listening data (top artists, genres, recently played) for personalized ranking. Spotify-matched events are included in the candidate pool even if not featured. Falls back to generic recommendations for anonymous users.
 - **Circular dependency** (MCP tools → PricingTools → PricePredictionService → ChatClient) broken with `@Lazy`
+
+### Agentic Commerce Integration
+
+MockHub exposes a three-layer agentic commerce stack:
+
+- **MCP tools** at `/mcp` for agent capabilities: event discovery, listing comparison, cart/order actions, pricing, mandates, and purchase approvals.
+- **Mandates** in `com.mockhub.mandate` for agent authorization, including scope, spending limits, allowed categories/events, expiration, revocation, and cumulative spend tracking.
+- **Purchase approval records** in `com.mockhub.agentapproval` for durable human-approval audit trails. Agents propose a purchase, users approve or deny it, and an optional `approvalId` can be supplied to MCP `confirmOrder` or ACP `completeCheckout`.
+- **ACP endpoints** at `/acp/v1/**` as a protocol adapter over the same cart, order, payment, mandate, and approval services.
+- **Commerce policies** in `com.mockhub.commerce` provide structured refund, cancellation, fee, transfer, and support metadata to MCP, ACP, REST, and `llms.txt` consumers.
+
+See [docs/agentic-commerce.md](docs/agentic-commerce.md) for the full protocol and teaching narrative.
 
 ### SMS Delivery
 
