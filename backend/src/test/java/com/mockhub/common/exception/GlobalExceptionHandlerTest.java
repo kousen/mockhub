@@ -7,7 +7,9 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -110,6 +112,24 @@ class GlobalExceptionHandlerTest {
         assertEquals("Event not found with slug: 'rock-fest'", body.getDetail());
         assertEquals("Not Found", body.getTitle());
         assertEquals(404, body.getStatus());
+    }
+
+    @Test
+    @DisplayName("handleNoResourceFound - returns 404 ProblemDetail without ERROR-level logging")
+    void handleNoResourceFound_returns404ProblemDetail() {
+        NoResourceFoundException ex = new NoResourceFoundException(
+                HttpMethod.GET,
+                "/.well-known/openid-configuration/mcp",
+                ".well-known/openid-configuration/mcp");
+
+        ResponseEntity<ProblemDetail> response = handler.handleNoResourceFound(ex);
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        ProblemDetail body = response.getBody();
+        assertNotNull(body);
+        assertEquals(404, body.getStatus());
+        assertEquals("Not Found", body.getTitle());
+        assertEquals("Resource not found", body.getDetail());
     }
 
     @Test
