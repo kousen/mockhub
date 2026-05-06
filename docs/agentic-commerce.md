@@ -27,11 +27,11 @@ Agentic commerce in MockHub is organized into three layers, each independently v
 
 ### Tool Inventory
 
-MockHub exposes 24 MCP tools across 5 tool classes:
+MockHub exposes 25 MCP tools across 5 tool classes:
 
 | Tool Class | Tools | Purpose |
 |---|---|---|
-| **EventTools** | `searchEvents`, `getEventDetail`, `getEventListings`, `getFeaturedEvents`, `getListingDetail`, `findTickets`, `getCommercePolicy` | Discovery, search, and purchase policy context |
+| **EventTools** | `searchEvents`, `getEventDetail`, `getEventListings`, `getFeaturedEvents`, `getListingDetail`, `findTickets`, `compareTickets`, `getCommercePolicy` | Discovery, search, comparison, and purchase policy context |
 | **PricingTools** | `getPriceHistory`, `getPricePrediction` | Price intelligence |
 | **CartTools** | `getCart`, `addToCart`, `removeFromCart`, `clearCart`, `refreshCart` | Shopping cart management |
 | **OrderTools** | `checkout`, `confirmOrder`, `getOrder`, `listOrders`, `getCalendarEntry` | Order lifecycle |
@@ -84,6 +84,30 @@ findTickets(
 ```
 
 This is an example of **agent-ergonomic API design** — reducing round-trips and letting agents express intent in a single call. Traditional REST APIs are designed for human-driven UIs with navigation; agent APIs should support goal-directed actions.
+
+### Agent-Friendly Ticket Comparison
+
+Raw search results are not enough when an agent has to explain a purchase recommendation. MockHub exposes a deterministic `compareTickets` MCP tool for agent shopping decisions:
+
+```
+compareTickets(
+    query: "jazz",
+    city: "New York",
+    maxPrice: 150,
+    preferredSection: "Orchestra",
+    maxResults: 10
+)
+```
+
+The response includes:
+
+- ranked options with objective listing data nested separately from heuristic judgment fields
+- cheapest, best-value, best-section, and lowest-risk recommendations
+- reason codes such as `COMPETITIVE_PRICE`, `MATCHES_REQUESTED_SECTION`, and `LOWER_MARKETPLACE_RISK`
+- deterministic rationale text suitable for explaining the tradeoff to a user
+- price plausibility warnings based on the returned market set, including high-price anomalies, unusually low outliers, and limited comparison depth
+
+The comparison service intentionally starts with deterministic heuristics rather than an LLM. That keeps the teaching story transparent: students can inspect exactly how price, section quality, seller risk, and warning penalties affect the ranking. If AI-generated prose is added later, it should remain clearly labeled and fall back to these deterministic fields.
 
 ### Agent-Readable Commerce Policies
 
@@ -320,7 +344,7 @@ For further reading: [x402 documentation](https://docs.x402.org/)
 The implementation is considered working when all of the following are true:
 
 1. An autonomous purchase cannot proceed without both `agentId` and a valid `mandateId`.
-2. `findTickets` and `GET /acp/v1/listings` can answer a time-bounded query like "find me a concert in New York next month under $200" with actionable offers.
+2. `findTickets`, `compareTickets`, and `GET /acp/v1/listings` can answer a time-bounded query like "find me a concert in New York next month under $200" with actionable offers and explainable tradeoffs.
 3. ACP and MCP purchase completion routes through `PaymentService`, not direct order confirmation.
 4. Duplicate confirm/cancel/payment callbacks do not double-sell inventory, double-send notifications, or double-record mandate spend.
 5. Successful confirmation increments mandate `totalSpent` exactly once.
@@ -419,7 +443,8 @@ CREATE TABLE mandates (
 ## File Reference
 
 ### Phase 1: MCP Tools
-- `backend/src/main/java/com/mockhub/mcp/tools/EventTools.java` — `findTickets`, `getListingDetail`, `getCommercePolicy`
+- `backend/src/main/java/com/mockhub/mcp/tools/EventTools.java` — `findTickets`, `compareTickets`, `getListingDetail`, `getCommercePolicy`
+- `backend/src/main/java/com/mockhub/ticket/service/TicketComparisonService.java` — deterministic ticket ranking and price warning heuristics
 - `backend/src/main/java/com/mockhub/mcp/tools/OrderTools.java` — `confirmOrder`
 - `backend/src/main/java/com/mockhub/eval/condition/SpendingLimitCondition.java`
 

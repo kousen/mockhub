@@ -22,8 +22,11 @@ import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
 import com.mockhub.ticket.dto.ListingDto;
 import com.mockhub.ticket.dto.ListingSearchCriteria;
+import com.mockhub.ticket.dto.TicketComparisonOptionDto;
+import com.mockhub.ticket.dto.TicketComparisonResponseDto;
 import com.mockhub.ticket.dto.TicketSearchResultDto;
 import com.mockhub.ticket.service.ListingService;
+import com.mockhub.ticket.service.TicketComparisonService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -42,6 +45,9 @@ class EventToolsTest {
     private ListingService listingService;
 
     @Mock
+    private TicketComparisonService ticketComparisonService;
+
+    @Mock
     private CommercePolicyService commercePolicyService;
 
     private ObjectMapper objectMapper;
@@ -51,7 +57,8 @@ class EventToolsTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        eventTools = new EventTools(eventService, listingService, commercePolicyService, objectMapper);
+        eventTools = new EventTools(eventService, listingService, ticketComparisonService,
+                commercePolicyService, objectMapper);
         org.mockito.Mockito.lenient().when(commercePolicyService.getPolicyForEvent(any()))
                 .thenAnswer(invocation -> createPolicy(invocation.getArgument(0)));
     }
@@ -437,6 +444,69 @@ class EventToolsTest {
                 org.mockito.ArgumentCaptor.forClass(ListingSearchCriteria.class);
         verify(listingService).searchTickets(captor.capture());
         assertEquals(50, captor.getValue().limit());
+    }
+
+    // --- compareTickets ---
+
+    @Test
+    @DisplayName("compareTickets - given matching listings - returns ranked comparison response")
+    void compareTickets_givenMatchingListings_returnsRankedComparisonResponse() {
+        TicketSearchResultDto listing = createSearchResult(1L, "Rock Show", "rock-show", new BigDecimal("50.00"));
+        TicketComparisonOptionDto option = new TicketComparisonOptionDto(
+                1, listing, 92, List.of("COMPETITIVE_PRICE"), List.of(),
+                "Deterministic ranking based on competitive price.");
+        TicketComparisonResponseDto response = new TicketComparisonResponseDto(
+                1, "DETERMINISTIC_HEURISTIC", "basis", option, option, option, option, List.of(option), List.of());
+        when(ticketComparisonService.compareTickets(any(ListingSearchCriteria.class), any()))
+                .thenReturn(response);
+
+        String result = eventTools.compareTickets(
+                "rock", "concerts", "NYC", null, null, null, null, "Floor", "Floor", 10);
+
+        assertTrue(result.contains("\"judgmentSource\":\"DETERMINISTIC_HEURISTIC\""),
+                "Result should identify deterministic judgment source");
+        assertTrue(result.contains("\"rankedOptions\""), "Result should include ranked options");
+        assertTrue(result.contains("\"reasonCodes\":[\"COMPETITIVE_PRICE\"]"),
+                "Result should include reason codes");
+    }
+
+    @Test
+    @DisplayName("compareTickets - given filters - passes criteria and preferred section to service")
+    void compareTickets_givenFilters_passesCriteriaAndPreferredSectionToService() {
+        TicketComparisonResponseDto response = new TicketComparisonResponseDto(
+                0, "DETERMINISTIC_HEURISTIC", "basis", null, null, null, null, List.of(), List.of());
+        when(ticketComparisonService.compareTickets(any(ListingSearchCriteria.class), any()))
+                .thenReturn(response);
+
+        eventTools.compareTickets(
+                "jazz", "concerts", "LA", "2026-04-01T00:00:00Z", "2026-05-01T00:00:00Z",
+                new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", "Orchestra", 75);
+
+        org.mockito.ArgumentCaptor<ListingSearchCriteria> criteriaCaptor =
+                org.mockito.ArgumentCaptor.forClass(ListingSearchCriteria.class);
+        org.mockito.ArgumentCaptor<String> sectionCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(ticketComparisonService).compareTickets(criteriaCaptor.capture(), sectionCaptor.capture());
+        ListingSearchCriteria criteria = criteriaCaptor.getValue();
+        assertEquals("jazz", criteria.query());
+        assertEquals("concerts", criteria.categorySlug());
+        assertEquals("LA", criteria.city());
+        assertEquals(new BigDecimal("50.00"), criteria.minPrice());
+        assertEquals(new BigDecimal("200.00"), criteria.maxPrice());
+        assertEquals("Orchestra", criteria.section());
+        assertEquals(50, criteria.limit());
+        assertEquals("Orchestra", sectionCaptor.getValue());
+    }
+
+    @Test
+    @DisplayName("compareTickets - given service throws exception - returns error JSON")
+    void compareTickets_givenServiceThrowsException_returnsErrorJson() {
+        when(ticketComparisonService.compareTickets(any(ListingSearchCriteria.class), any()))
+                .thenThrow(new RuntimeException("Comparison failed"));
+
+        String result = eventTools.compareTickets("rock", null, null, null, null, null, null, null, null, null);
+
+        assertTrue(result.contains("\"error\""), "Result should contain error field");
+        assertTrue(result.contains("Failed to compare tickets"), "Result should contain failure message");
     }
 
     // --- Helper methods ---
