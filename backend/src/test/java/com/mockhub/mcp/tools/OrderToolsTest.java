@@ -32,6 +32,7 @@ import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.mandate.service.MandateService;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.event.entity.Event;
@@ -69,6 +70,9 @@ class OrderToolsTest {
     @Mock
     private AgentPurchaseApprovalService approvalService;
 
+    @Mock
+    private MandateService mandateService;
+
     private static final String AGENT_ID = "shopping-agent";
     private static final String MANDATE_ID = "mandate-123";
 
@@ -81,7 +85,7 @@ class OrderToolsTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         orderTools = new OrderTools(orderService, calendarService, userRepository, cartService,
-                evalRunner, paymentService, approvalService, objectMapper);
+                evalRunner, paymentService, approvalService, mandateService, objectMapper);
 
         testUser = new User();
         testUser.setId(1L);
@@ -252,6 +256,26 @@ class OrderToolsTest {
                     "approval-123", "buyer@example.com", AGENT_ID, MANDATE_ID, orderEntity);
             verify(approvalService).markCompleted("approval-123", "MH-20260319-0001");
             assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given approval required mandate without approval ID - returns error JSON")
+        void givenApprovalRequiredMandateWithoutApprovalId_returnsErrorJson() {
+            stubUserLookup("buyer@example.com");
+            Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
+            when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
+            when(mandateService.approvalRequired(AGENT_ID, "buyer@example.com", MANDATE_ID)).thenReturn(true);
+
+            String result = orderTools.confirmOrder(
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null, null);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("requires an approved purchase approval"),
+                    "Result should explain approval is required");
+            verify(paymentService, never()).confirmPayment(any());
         }
 
         @Test

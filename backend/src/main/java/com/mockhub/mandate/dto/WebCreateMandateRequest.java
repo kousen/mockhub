@@ -12,5 +12,7 @@ public record WebCreateMandateRequest(
         BigDecimal maxSpendTotal,
         String allowedCategories,
         String allowedEvents,
+        String allowedSections,
+        String approvalMode,
         Instant expiresAt
 ) {}

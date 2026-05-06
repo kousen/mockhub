@@ -40,6 +40,12 @@ public class Mandate extends BaseEntity {
     @Column(name = "allowed_events", length = 1000)
     private String allowedEvents;
 
+    @Column(name = "allowed_sections", length = 1000)
+    private String allowedSections;
+
+    @Column(name = "approval_mode", nullable = false, length = 30)
+    private String approvalMode = "AUTO_PURCHASE";
+
     @Column(name = "status", nullable = false, length = 20)
     private String status = "ACTIVE";
 
@@ -122,6 +128,22 @@ public class Mandate extends BaseEntity {
 
     public void setAllowedEvents(String allowedEvents) {
         this.allowedEvents = allowedEvents;
+    }
+
+    public String getAllowedSections() {
+        return allowedSections;
+    }
+
+    public void setAllowedSections(String allowedSections) {
+        this.allowedSections = allowedSections;
+    }
+
+    public String getApprovalMode() {
+        return approvalMode;
+    }
+
+    public void setApprovalMode(String approvalMode) {
+        this.approvalMode = approvalMode;
     }
 
     public String getStatus() {

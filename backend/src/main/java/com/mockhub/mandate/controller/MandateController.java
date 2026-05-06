@@ -51,6 +51,8 @@ public class MandateController {
                 request.maxSpendTotal(),
                 request.allowedCategories(),
                 request.allowedEvents(),
+                request.allowedSections(),
+                request.approvalMode(),
                 request.expiresAt()
         );
         MandateDto mandate = mandateService.createMandate(serviceRequest);

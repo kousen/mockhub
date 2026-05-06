@@ -37,6 +37,7 @@ import com.mockhub.order.dto.OrderItemDto;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.mandate.service.MandateService;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.repository.ListingRepository;
 
@@ -77,6 +78,9 @@ class AcpCheckoutServiceTest {
 
     @Mock
     private AgentPurchaseApprovalService approvalService;
+
+    @Mock
+    private MandateService mandateService;
 
     @InjectMocks
     private AcpCheckoutService acpCheckoutService;
@@ -327,6 +331,26 @@ class AcpCheckoutServiceTest {
         verify(approvalService).validateApprovedForCompletion(
                 "approval-123", "buyer@test.com", AGENT_ID, MANDATE_ID, order);
         verify(approvalService).markCompleted("approval-123", "MH-20260323-0001");
+    }
+
+    @Test
+    @DisplayName("completeCheckout - approval required mandate without approval ID - throws ConflictException")
+    void completeCheckout_approvalRequiredMandateWithoutApprovalId_throwsConflictException() {
+        Order order = createAgentOrder("MH-20260323-0001", "mock");
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
+        when(orderService.getOrderEntity("MH-20260323-0001")).thenReturn(order);
+        when(mandateService.approvalRequired(AGENT_ID, "buyer@test.com", MANDATE_ID)).thenReturn(true);
+
+        ConflictException exception = assertThrows(ConflictException.class,
+                () -> acpCheckoutService.completeCheckout(
+                        "MH-20260323-0001",
+                        "buyer@test.com",
+                        new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, null, null)));
+
+        assertEquals("Mandate requires an approved purchase approval before completion", exception.getMessage());
+        verify(paymentService, never()).confirmPayment(any());
     }
 
     @Test

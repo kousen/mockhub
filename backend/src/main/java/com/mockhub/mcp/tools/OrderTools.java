@@ -34,6 +34,7 @@ import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.mandate.service.MandateService;
 
 @Component
 public class OrderTools {
@@ -48,6 +49,7 @@ public class OrderTools {
     private final EvalRunner evalRunner;
     private final PaymentService paymentService;
     private final AgentPurchaseApprovalService approvalService;
+    private final MandateService mandateService;
     private final ObjectMapper objectMapper;
 
     public OrderTools(OrderService orderService,
@@ -57,6 +59,7 @@ public class OrderTools {
                       EvalRunner evalRunner,
                       PaymentService paymentService,
                       AgentPurchaseApprovalService approvalService,
+                      MandateService mandateService,
                       ObjectMapper objectMapper) {
         this.orderService = orderService;
         this.calendarService = calendarService;
@@ -65,6 +68,7 @@ public class OrderTools {
         this.evalRunner = evalRunner;
         this.paymentService = paymentService;
         this.approvalService = approvalService;
+        this.mandateService = mandateService;
         this.objectMapper = objectMapper;
     }
 
@@ -173,6 +177,7 @@ public class OrderTools {
             orderService.getOrder(user, trimmedOrderNumber);
             Order order = orderService.getOrderEntity(trimmedOrderNumber);
             validateStoredAgentContext(order, agentId, mandateId);
+            validateApprovalMode(user.getEmail(), agentId, mandateId, approvalId);
             approvalService.validateApprovedForCompletion(
                     approvalId, user.getEmail(), agentId, mandateId, order);
 
@@ -237,6 +242,13 @@ public class OrderTools {
         }
         if (!mandateId.strip().equals(order.getMandateId())) {
             throw new ConflictException("Mandate ID does not match the order's recorded mandate context");
+        }
+    }
+
+    private void validateApprovalMode(String userEmail, String agentId, String mandateId, String approvalId) {
+        if (mandateService.approvalRequired(agentId.strip(), userEmail, mandateId.strip())
+                && (approvalId == null || approvalId.isBlank())) {
+            throw new ConflictException("Mandate requires an approved purchase approval before confirmation");
         }
     }
 

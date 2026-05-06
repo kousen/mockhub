@@ -160,6 +160,8 @@ A **mandate** is a record of what an agent is authorized to do on behalf of a sp
 - **Spending limits**: Per-transaction max and cumulative total budget.
 - **Category restrictions**: Only buy tickets in specific categories (e.g., "jazz,rock").
 - **Event restrictions**: Only buy tickets to specific events.
+- **Section restrictions**: Only buy tickets in specific venue sections (e.g., "Floor,Lower Bowl").
+- **Approval mode**: `AUTO_PURCHASE` allows direct completion within the mandate; `APPROVAL_REQUIRED` requires an approved purchase approval before completion.
 - **Expiration**: Optional time-bound authorization.
 
 ### Mandate Lifecycle
@@ -168,7 +170,8 @@ A **mandate** is a record of what an agent is authorized to do on behalf of a sp
 1. User grants mandate to agent
    createMandate(agentId="shopping-agent-1", userEmail="buyer@example.com",
                  scope="PURCHASE", maxSpendPerTransaction=200, maxSpendTotal=1000,
-                 allowedCategories="jazz,rock")
+                 allowedCategories="jazz,rock", allowedSections="Floor,Lower Bowl",
+                 approvalMode="APPROVAL_REQUIRED")
 
 2. Agent acts within mandate
    findTickets(...) → addToCart(...) → checkout(...)
@@ -187,7 +190,8 @@ A **mandate** is a record of what an agent is authorized to do on behalf of a sp
 3. Check the scope matches the action (BROWSE for reads, PURCHASE for buys)
 4. Check per-transaction spending limit
 5. Check cumulative spending limit (tracks `totalSpent`)
-6. Check category and event restrictions
+6. Check category, event, and section restrictions
+7. For mandates with `approvalMode=APPROVAL_REQUIRED`, require an approved purchase approval before order completion
 
 If any check fails, the condition returns a CRITICAL failure — the action is blocked.
 
@@ -202,6 +206,8 @@ The conceptual mapping:
 | Digitally signed mandate | Database record checked by `MandateCondition` |
 | Scope (capabilities) | `scope` field (BROWSE/PURCHASE) |
 | Spending limits | `maxSpendPerTransaction`, `maxSpendTotal` |
+| Conditional restrictions | `allowedCategories`, `allowedEvents`, `allowedSections` |
+| Approval behavior | `approvalMode` field (AUTO_PURCHASE/APPROVAL_REQUIRED) |
 | Revocation | `revokeMandate()` sets status to REVOKED |
 | Expiration | `expiresAt` checked at query time |
 
@@ -439,6 +445,8 @@ CREATE TABLE mandates (
     total_spent NUMERIC(12,2) NOT NULL DEFAULT 0,
     allowed_categories VARCHAR(1000),
     allowed_events VARCHAR(1000),
+    allowed_sections VARCHAR(1000),
+    approval_mode VARCHAR(30) NOT NULL DEFAULT 'AUTO_PURCHASE',
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

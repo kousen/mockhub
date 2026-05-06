@@ -10,6 +10,8 @@ export interface Mandate {
   remainingBudget: number | null;
   allowedCategories: string | null;
   allowedEvents: string | null;
+  allowedSections: string | null;
+  approvalMode: 'AUTO_PURCHASE' | 'APPROVAL_REQUIRED';
   status: 'ACTIVE' | 'REVOKED' | 'EXPIRED';
   expiresAt: string | null;
   createdAt: string;
@@ -22,5 +24,7 @@ export interface CreateMandateRequest {
   maxSpendTotal?: number;
   allowedCategories?: string;
   allowedEvents?: string;
+  allowedSections?: string;
+  approvalMode?: 'AUTO_PURCHASE' | 'APPROVAL_REQUIRED';
   expiresAt?: string;
 }

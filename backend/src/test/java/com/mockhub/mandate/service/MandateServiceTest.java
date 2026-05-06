@@ -66,6 +66,7 @@ class MandateServiceTest {
         assertThat(result.status()).isEqualTo("ACTIVE");
         assertThat(result.mandateId()).isNotNull();
         assertThat(result.allowedCategories()).isEqualTo("concerts,sports");
+        assertThat(result.approvalMode()).isEqualTo("AUTO_PURCHASE");
 
         ArgumentCaptor<Mandate> captor = ArgumentCaptor.forClass(Mandate.class);
         verify(mandateRepository).save(captor.capture());
@@ -253,6 +254,38 @@ class MandateServiceTest {
         boolean result = mandateService.validateAction(
                 "agent-1", "user@example.com", "PURCHASE",
                 null, "concerts", null);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    @DisplayName("validateAction returns false when section not allowed")
+    void validateAction_givenSectionNotAllowed_returnsFalse() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setScope("PURCHASE");
+        mandate.setAllowedSections("Floor,Lower Bowl");
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        boolean result = mandateService.validateAction(
+                "agent-1", "user@example.com", "PURCHASE",
+                null, null, "rock-festival", "m1", "Upper Deck");
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    @DisplayName("validateAction returns true when section is allowed")
+    void validateAction_givenSectionAllowed_returnsTrue() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setScope("PURCHASE");
+        mandate.setAllowedSections("Floor,Lower Bowl");
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        boolean result = mandateService.validateAction(
+                "agent-1", "user@example.com", "PURCHASE",
+                null, null, "rock-festival", "m1", "floor");
 
         assertThat(result).isTrue();
     }
@@ -450,6 +483,52 @@ class MandateServiceTest {
 
         assertThat(result).isPresent();
         assertThat(result.get().mandateId()).isEqualTo("m-specific");
+    }
+
+    @Test
+    @DisplayName("findBestMandate requires section when mandate is section constrained")
+    void findBestMandate_givenSectionRestrictedMandateWithoutSection_returnsEmpty() {
+        Mandate mandate = createActiveMandate("m-section", "agent-1", "user@example.com");
+        mandate.setScope("PURCHASE");
+        mandate.setAllowedSections("Floor");
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        Optional<MandateDto> result = mandateService.findBestMandate(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("100.00"), "concerts", "rock-festival", null);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("findBestMandate returns section constrained mandate when section matches")
+    void findBestMandate_givenSectionRestrictedMandateWithMatchingSection_returnsMandate() {
+        Mandate mandate = createActiveMandate("m-section", "agent-1", "user@example.com");
+        mandate.setScope("PURCHASE");
+        mandate.setAllowedSections("Floor");
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        Optional<MandateDto> result = mandateService.findBestMandate(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("100.00"), "concerts", "rock-festival", "Floor");
+
+        assertThat(result).isPresent();
+        assertThat(result.get().mandateId()).isEqualTo("m-section");
+    }
+
+    @Test
+    @DisplayName("approvalRequired returns true for approval required mandate")
+    void approvalRequired_givenApprovalRequiredMandate_returnsTrue() {
+        Mandate mandate = createActiveMandate("m-approval", "agent-1", "user@example.com");
+        mandate.setApprovalMode("APPROVAL_REQUIRED");
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        boolean result = mandateService.approvalRequired("agent-1", "user@example.com", "m-approval");
+
+        assertThat(result).isTrue();
     }
 
     private Mandate createActiveMandate(String mandateId, String agentId, String userEmail) {

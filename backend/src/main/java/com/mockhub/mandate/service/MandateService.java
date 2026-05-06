@@ -29,6 +29,8 @@ public class MandateService {
     private static final String STATUS_ACTIVE = "ACTIVE";
     private static final String MANDATE_RESOURCE = "Mandate";
     private static final String MANDATE_ID_FIELD = "mandateId";
+    private static final String APPROVAL_MODE_AUTO_PURCHASE = "AUTO_PURCHASE";
+    private static final String APPROVAL_MODE_APPROVAL_REQUIRED = "APPROVAL_REQUIRED";
 
     private final MandateRepository mandateRepository;
 
@@ -48,6 +50,8 @@ public class MandateService {
         mandate.setTotalSpent(BigDecimal.ZERO);
         mandate.setAllowedCategories(request.allowedCategories());
         mandate.setAllowedEvents(request.allowedEvents());
+        mandate.setAllowedSections(request.allowedSections());
+        mandate.setApprovalMode(normalizeApprovalMode(request.approvalMode()));
         mandate.setStatus(STATUS_ACTIVE);
         mandate.setExpiresAt(request.expiresAt());
 
@@ -119,13 +123,22 @@ public class MandateService {
     public Optional<MandateDto> findBestMandate(String agentId, String userEmail,
                                                  String requiredScope, BigDecimal amount,
                                                  String categorySlug, String eventSlug) {
+        return findBestMandate(agentId, userEmail, requiredScope, amount, categorySlug, eventSlug, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<MandateDto> findBestMandate(String agentId, String userEmail,
+                                                 String requiredScope, BigDecimal amount,
+                                                 String categorySlug, String eventSlug,
+                                                 String sectionName) {
         List<Mandate> mandates = mandateRepository.findByAgentIdAndUserEmailAndStatus(
                 agentId, userEmail, STATUS_ACTIVE);
 
         Instant now = Instant.now();
         return mandates.stream()
                 .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
-                .filter(m -> validateMandateConstraints(m, requiredScope, amount, categorySlug, eventSlug))
+                .filter(m -> validateMandateConstraints(m, requiredScope, amount, categorySlug, eventSlug,
+                        sectionName, true))
                 .min(Comparator.comparing(this::mandateSpecificity).reversed()
                         .thenComparing(Mandate::getCreatedAt))
                 .map(this::toDto);
@@ -165,6 +178,13 @@ public class MandateService {
     public boolean validateAction(String agentId, String userEmail, String requiredScope,
                                   BigDecimal amount, String categorySlug,
                                   String eventSlug, String mandateId) {
+        return validateAction(agentId, userEmail, requiredScope, amount, categorySlug, eventSlug, mandateId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean validateAction(String agentId, String userEmail, String requiredScope,
+                                  BigDecimal amount, String categorySlug,
+                                  String eventSlug, String mandateId, String sectionName) {
         Mandate mandate = getActiveMandate(agentId, userEmail, mandateId);
 
         if (mandate == null) {
@@ -173,12 +193,19 @@ public class MandateService {
             return false;
         }
 
-        return validateMandateConstraints(mandate, requiredScope, amount, categorySlug, eventSlug);
+        return validateMandateConstraints(mandate, requiredScope, amount, categorySlug, eventSlug, sectionName, false);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean approvalRequired(String agentId, String userEmail, String mandateId) {
+        Mandate mandate = getActiveMandate(agentId, userEmail, mandateId);
+        return mandate != null && APPROVAL_MODE_APPROVAL_REQUIRED.equals(mandate.getApprovalMode());
     }
 
     private boolean validateMandateConstraints(Mandate mandate, String requiredScope,
                                                 BigDecimal amount, String categorySlug,
-                                                String eventSlug) {
+                                                String eventSlug, String sectionName,
+                                                boolean requireSectionWhenRestricted) {
         if (!scopeCovers(mandate.getScope(), requiredScope)) {
             log.warn("Mandate {} scope '{}' does not cover required scope '{}'",
                     mandate.getMandateId(), mandate.getScope(), requiredScope);
@@ -215,6 +242,17 @@ public class MandateService {
             return false;
         }
 
+        if (mandate.getAllowedSections() != null && !mandate.getAllowedSections().isBlank()) {
+            if (sectionName == null || sectionName.isBlank()) {
+                return !requireSectionWhenRestricted;
+            }
+            if (!parseCommaSeparated(mandate.getAllowedSections()).contains(sectionName.toLowerCase())) {
+                log.warn("Mandate {} does not allow section '{}'",
+                        mandate.getMandateId(), sectionName);
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -224,6 +262,9 @@ public class MandateService {
             score += 4;
         }
         if (mandate.getAllowedCategories() != null && !mandate.getAllowedCategories().isBlank()) {
+            score += 2;
+        }
+        if (mandate.getAllowedSections() != null && !mandate.getAllowedSections().isBlank()) {
             score += 2;
         }
         if (mandate.getMaxSpendPerTransaction() != null) {
@@ -246,6 +287,19 @@ public class MandateService {
                 .collect(Collectors.toSet());
     }
 
+    private String normalizeApprovalMode(String approvalMode) {
+        if (approvalMode == null || approvalMode.isBlank()) {
+            return APPROVAL_MODE_AUTO_PURCHASE;
+        }
+        String normalized = approvalMode.strip().toUpperCase();
+        if (!APPROVAL_MODE_AUTO_PURCHASE.equals(normalized)
+                && !APPROVAL_MODE_APPROVAL_REQUIRED.equals(normalized)) {
+            throw new IllegalArgumentException(
+                    "approvalMode must be AUTO_PURCHASE or APPROVAL_REQUIRED");
+        }
+        return normalized;
+    }
+
     private MandateDto toDto(Mandate mandate) {
         BigDecimal remainingBudget = null;
         if (mandate.getMaxSpendTotal() != null) {
@@ -263,6 +317,8 @@ public class MandateService {
                 remainingBudget,
                 mandate.getAllowedCategories(),
                 mandate.getAllowedEvents(),
+                mandate.getAllowedSections(),
+                mandate.getApprovalMode(),
                 mandate.getStatus(),
                 mandate.getExpiresAt(),
                 mandate.getCreatedAt()
