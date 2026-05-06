@@ -1040,7 +1040,7 @@ The local `mockhub-pr-readiness` Codex skill was updated with these lessons.
 
 ### Status at End of Session
 
-- PR #225 is open as a draft.
+- PR #225 merged after the review-fix commit.
 - Commits:
   - `b7d6220` — Add agent-readable commerce policies
   - `ecf3494` — Address commerce policy review findings
@@ -1049,6 +1049,48 @@ The local `mockhub-pr-readiness` Codex skill was updated with these lessons.
 
 ---
 
-*Last updated: 2026-05-05*
-*Built with: Claude Opus 4.6 (1M context) via Claude Code; Codex GPT-5 for 2026-05-05 workflow trial*
+## Session 2026-05-06: Agentic Commerce Follow-Through
+
+### Issues #216 and #215
+
+Continued the issue-first MockHub PR-readiness workflow on the remaining agentic commerce backlog:
+
+- **#216 / PR #226** — Added deterministic agent-friendly ticket comparison:
+  - New `compareTickets` MCP tool for ranking candidate listings
+  - Cheapest, best-value, best-section, and lowest-risk recommendations
+  - Reason codes, rationale, and price warnings for explainable agent shopping decisions
+  - Documentation updates in `llms.txt`, `docs/agentic-commerce.md`, `README.md`, and `AGENTS.md`
+- **#215 / PR #227** — Added durable agent purchase approval records:
+  - New `com.mockhub.agentapproval` feature package with entity, DTOs, repository, service, controller, and Flyway migration `V31__create_agent_purchase_approvals.sql`
+  - New MCP `AgentApprovalTools`: `proposePurchase`, `approvePurchase`, `denyPurchase`, `listPurchaseApprovals`
+  - Optional `approvalId` support in MCP `confirmOrder` and ACP `completeCheckout`
+  - Approval completion/failure recording around payment confirmation
+  - Documentation updates in `llms.txt`, `docs/agentic-commerce.md`, `README.md`, and `AGENTS.md`
+
+### Review Workflow Update
+
+Gemini CLI became unreliable for the review step during this session. It emitted extension warnings and plan-mode/tool-policy noise, then stalled without producing a useful review. The local fallback added to the `mockhub-pr-readiness` skill worked well:
+
+```bash
+ollama run --keepalive 10m --think=false --hidethinking --nowordwrap gemma4:latest "Say ready."
+git diff origin/main...HEAD | ollama run --keepalive 10m --think=false --hidethinking --nowordwrap gemma4:latest "Review this MockHub diff for issue #<issue>. Focus on correctness, regressions, missing tests, security/auth exposure, and REST/MCP/ACP contract mismatches. Return only actionable findings with file paths and line numbers; say No findings if none."
+```
+
+Observed local reviewer behavior:
+
+- Warmed `gemma4:latest` was fast enough for routine smoke review and returned useful/no-finding output without external auth friction.
+- Larger local models can still be used for deeper passes, but the latency tradeoff did not look worthwhile for normal MockHub diffs.
+- Gemini remains worth keeping as the first external reviewer when it completes, but local Ollama is now the practical fallback.
+
+### Status at End of Session
+
+- PR #226 merged.
+- PR #227 merged at `d247aab`.
+- All remote gates passed before merge: Backend, Frontend, E2E Smoke, Docker smoke, GitGuardian, SonarCloud Analysis, and SonarCloud Code Analysis.
+- Follow-up docs pass opened to refresh the journal, ACP OpenAPI contract, and architecture notes after the recent agentic commerce issues.
+
+---
+
+*Last updated: 2026-05-06*
+*Built with: Claude Opus 4.6 (1M context) via Claude Code; Codex GPT-5 for 2026-05-05 and 2026-05-06 workflow trials*
 *Live at: https://mockhub.kousenit.com*
