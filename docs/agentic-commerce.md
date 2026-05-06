@@ -72,7 +72,9 @@ Mandates answer whether an agent is authorized to act. Approval records answer w
 
 Agents can create a proposal with `proposePurchase`, including a snapshot of the proposed listings or order, the agent rationale, price and fee totals, and the relevant commerce policy snapshot. The user can then approve or deny that proposal. An approved `approvalId` may be supplied to `confirmOrder` or ACP `completeCheckout` to link the final purchase to the recorded approval.
 
-Approval IDs are optional for backward compatibility. Existing mandate-authorized purchases still work, while future conditional mandate work can decide when a human approval record is required.
+Approval IDs are optional for `AUTO_PURCHASE` mandates. Mandates with `approvalMode=APPROVAL_REQUIRED`
+require an approved purchase approval before MCP `confirmOrder` or ACP `completeCheckout` can finish
+the purchase.
 
 ### Key Design: `findTickets` — The Compound Search Tool
 
@@ -190,7 +192,8 @@ A **mandate** is a record of what an agent is authorized to do on behalf of a sp
 3. Check the scope matches the action (BROWSE for reads, PURCHASE for buys)
 4. Check per-transaction spending limit
 5. Check cumulative spending limit (tracks `totalSpent`)
-6. Check category, event, and section restrictions
+6. Check category, event, and section restrictions. A section-restricted mandate only authorizes a
+   purchase when the listing or cart item supplies a matching section name.
 7. For mandates with `approvalMode=APPROVAL_REQUIRED`, require an approved purchase approval before order completion
 
 If any check fails, the condition returns a CRITICAL failure — the action is blocked.
@@ -431,7 +434,7 @@ The OAuth2 discovery flow is automatic: client requests `/.well-known/oauth-prot
 
 ## Database Schema
 
-### Mandates Table (V22)
+### Mandates Table (V22 + V32 conditional fields)
 
 ```sql
 CREATE TABLE mandates (

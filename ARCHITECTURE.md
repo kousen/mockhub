@@ -533,7 +533,8 @@ Two implementations controlled by Spring profiles:
 MockHub exposes a three-layer agentic commerce stack:
 
 - **MCP tools** at `/mcp` for agent capabilities: event discovery, listing comparison, cart/order actions, pricing, mandates, and purchase approvals.
-- **Mandates** in `com.mockhub.mandate` for agent authorization, including scope, spending limits, allowed categories/events, expiration, revocation, and cumulative spend tracking.
+- **Mandates** in `com.mockhub.mandate` for agent authorization, including scope, spending limits,
+  allowed categories/events/sections, approval mode, expiration, revocation, and cumulative spend tracking.
 - **Purchase approval records** in `com.mockhub.agentapproval` for durable human-approval audit trails. Agents propose a purchase, users approve or deny it, and an optional `approvalId` can be supplied to MCP `confirmOrder` or ACP `completeCheckout`.
 - **ACP endpoints** at `/acp/v1/**` as a protocol adapter over the same cart, order, payment, mandate, and approval services.
 - **Commerce policies** in `com.mockhub.commerce` provide structured refund, cancellation, fee, transfer, and support metadata to MCP, ACP, REST, and `llms.txt` consumers.

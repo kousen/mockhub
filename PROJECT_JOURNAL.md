@@ -1089,6 +1089,39 @@ Observed local reviewer behavior:
 - All remote gates passed before merge: Backend, Frontend, E2E Smoke, Docker smoke, GitGuardian, SonarCloud Analysis, and SonarCloud Code Analysis.
 - Follow-up docs pass opened to refresh the journal, ACP OpenAPI contract, and architecture notes after the recent agentic commerce issues.
 
+### Issues #228 and #214
+
+Closed the recent agentic commerce burst with two follow-up PRs:
+
+- **Docs refresh / PR #228** — Refreshed the agentic commerce teaching docs after the commerce policy,
+  comparison, and approval-record work.
+- **#214 / PR #229** — Added conditional agent mandates:
+  - New `allowedSections` mandate restriction, persisted by Flyway migration
+    `V32__add_conditional_mandate_fields.sql`.
+  - New `approvalMode` field with `AUTO_PURCHASE` default and `APPROVAL_REQUIRED` support.
+  - MCP mandate tools now accept and return section restrictions and approval mode.
+  - MCP `confirmOrder` and ACP `completeCheckout` require an approved `approvalId` when the mandate
+    is approval-required.
+  - Section-restricted mandates require listing/cart-item section context; missing section context does
+    not authorize checkout.
+  - Frontend mandate management now supports allowed sections and approval mode.
+
+Gemini review eventually completed after CLI plan-mode/tool-policy friction and found a valid
+section-restriction bypass. Fixed it before merge by enforcing section context during MCP and ACP
+checkout validation.
+
+SonarCloud caught a coverage regression after the review fix (`78.7%` new coverage). Added focused ACP
+cart mandate validation tests, reran `./gradlew test jacocoTestReport`, and rechecked SonarCloud before
+merge. Final PR #229 quality gate passed with `86.6%` new-code coverage.
+
+Status after merge:
+
+- PR #228 merged at `ceac323`.
+- PR #229 merged at `d9081d1`.
+- No open MockHub PRs remained after the burst.
+- Remote gates for PR #229 passed before merge: Backend, Frontend, E2E Smoke, Docker smoke, GitGuardian,
+  SonarCloud Analysis, and SonarCloud Code Analysis.
+
 ---
 
 *Last updated: 2026-05-06*
