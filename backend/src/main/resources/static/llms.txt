@@ -110,10 +110,11 @@ Compatible clients: Claude (desktop/web/mobile), Cursor, MCP Inspector, any OAut
 Sessions are in-memory — after server redeploys, clients must re-initialize.
 - searchEvents(query?, category?, city?, page?, size?) — search and filter events with pagination
 - getEventDetail(slug) — full event details by URL slug
-- getEventListings(slug, page?, size?) — active listings for an event with pagination (default 20, max 50)
+- getEventListings(slug, page?, size?) — active listings for an event with pagination (default 20, max 50) plus the event commercePolicy
 - getFeaturedEvents() — curated featured events
-- getListingDetail(listingId) — single listing by ID
-- findTickets(query?, category?, city?, dateFrom?, dateTo?, minPrice?, maxPrice?, section?, maxResults?) — RECOMMENDED: compound search returning matching listings sorted by price. Date params are ISO-8601 strings (e.g. '2026-04-01T00:00:00Z'). Reduces round-trips from 3 to 1.
+- getListingDetail(listingId) — single listing by ID, including commercePolicyUrl
+- findTickets(query?, category?, city?, dateFrom?, dateTo?, minPrice?, maxPrice?, section?, maxResults?) — RECOMMENDED: compound search returning matching listings sorted by price, including commercePolicyUrl for each listing. Date params are ISO-8601 strings (e.g. '2026-04-01T00:00:00Z'). Reduces round-trips from 3 to 1.
+- getCommercePolicy(eventSlug) — structured commerce policy for agent purchase decisions (refunds, cancellations, transfer, fees, support)
 - getPriceHistory(eventSlug) — historical price snapshots
 - getPricePrediction(eventSlug) — AI price forecast (requires AI provider)
 - getCart(userEmail) — current cart contents
@@ -141,6 +142,13 @@ POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. JSON body: {"
 POST /acp/v1/checkout/{checkoutId}/cancel — Cancel checkout. JSON body: {"agentId", "mandateId"}. Header: X-Buyer-Email
 GET /acp/v1/catalog — Browse product catalog. Query params: query, category, city, page, size
 GET /acp/v1/listings — Browse actionable ticket offers. Query params: query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, page, size
+
+## Commerce Policies
+GET /api/v1/commerce/policies/default — Default agent-readable commerce policy
+GET /api/v1/commerce/policies/events/{eventSlug} — Event-scoped commerce policy
+Policy fields: policyId, version, eventSlug, policyUrl, updatedAt, sections[], supportContact, supportUrl.
+ACP catalog items, ACP listing items, ACP checkout responses, and MCP getEventListings include commercePolicy directly.
+MCP findTickets and getListingDetail include commercePolicyUrl for each actionable listing.
 
 ## Agent Mandates
 

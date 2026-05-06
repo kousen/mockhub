@@ -18,6 +18,7 @@ public record TicketSearchResultDto(
         String seatNumber,
         String ticketType,
         BigDecimal price,
-        String sellerDisplayName
+        String sellerDisplayName,
+        String commercePolicyUrl
 ) {
 }

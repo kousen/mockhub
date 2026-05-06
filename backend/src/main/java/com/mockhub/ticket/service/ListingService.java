@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
+import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.common.exception.UnauthorizedException;
@@ -54,17 +55,20 @@ public class ListingService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final OrderItemRepository orderItemRepository;
+    private final CommercePolicyService commercePolicyService;
 
     public ListingService(ListingRepository listingRepository,
                           TicketRepository ticketRepository,
                           EventRepository eventRepository,
                           UserRepository userRepository,
-                          OrderItemRepository orderItemRepository) {
+                          OrderItemRepository orderItemRepository,
+                          CommercePolicyService commercePolicyService) {
         this.listingRepository = listingRepository;
         this.ticketRepository = ticketRepository;
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
         this.orderItemRepository = orderItemRepository;
+        this.commercePolicyService = commercePolicyService;
     }
 
     @Transactional(readOnly = true)
@@ -388,7 +392,8 @@ public class ListingService {
                 seatNumber,
                 ticket.getTicketType(),
                 listing.getComputedPrice(),
-                sellerDisplayName
+                sellerDisplayName,
+                commercePolicyService.getPolicyUrlForEvent(event.getSlug())
         );
     }
 
@@ -514,7 +519,8 @@ public class ListingService {
                 listing.getPriceMultiplier(),
                 listing.getStatus(),
                 listing.getListedAt(),
-                sellerDisplayName
+                sellerDisplayName,
+                commercePolicyService.getPolicyUrlForEvent(listing.getEvent().getSlug())
         );
     }
 }

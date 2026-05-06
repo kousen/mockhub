@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.mockhub.auth.repository.UserRepository;
+import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.order.entity.OrderItem;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
@@ -43,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -63,6 +65,9 @@ class ListingServiceTest {
 
     @Mock
     private OrderItemRepository orderItemRepository;
+
+    @Mock
+    private CommercePolicyService commercePolicyService;
 
     @InjectMocks
     private ListingService listingService;
@@ -100,6 +105,9 @@ class ListingServiceTest {
         testListing.setPriceMultiplier(BigDecimal.ONE);
         testListing.setStatus("ACTIVE");
         testListing.setListedAt(Instant.now());
+
+        lenient().when(commercePolicyService.getPolicyUrlForEvent(any()))
+                .thenAnswer(invocation -> "/api/v1/commerce/policies/events/" + invocation.getArgument(0));
     }
 
     @Test
@@ -114,6 +122,7 @@ class ListingServiceTest {
         assertNotNull(result, "Result should not be null");
         assertEquals(1, result.size(), "Should return one listing");
         assertEquals("Floor", result.get(0).sectionName(), "Section name should match");
+        assertEquals("/api/v1/commerce/policies/events/test-event", result.get(0).commercePolicyUrl());
     }
 
     @Test
@@ -301,6 +310,7 @@ class ListingServiceTest {
         assertEquals("test-event", results.get(0).eventSlug());
         assertEquals("Floor", results.get(0).sectionName());
         assertEquals(new BigDecimal("75.00"), results.get(0).price());
+        assertEquals("/api/v1/commerce/policies/events/test-event", results.get(0).commercePolicyUrl());
     }
 
     @Test

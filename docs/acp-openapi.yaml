@@ -417,6 +417,8 @@ components:
             $ref: '#/components/schemas/LineItemResponse'
         pricing:
           $ref: '#/components/schemas/Pricing'
+        commercePolicy:
+          $ref: '#/components/schemas/CommercePolicy'
         createdAt:
           type: string
           format: date-time
@@ -496,6 +498,8 @@ components:
         url:
           type: string
           description: Relative URL to event page
+        commercePolicy:
+          $ref: '#/components/schemas/CommercePolicy'
 
     CatalogPage:
       type: object
@@ -550,6 +554,8 @@ components:
           format: decimal
         url:
           type: string
+        commercePolicy:
+          $ref: '#/components/schemas/CommercePolicy'
 
     ListingPage:
       type: object
@@ -567,3 +573,60 @@ components:
           format: int64
         totalPages:
           type: integer
+
+    CommercePolicy:
+      type: object
+      description: Structured commerce policy for agent purchase decisions
+      properties:
+        policyId:
+          type: string
+          example: mockhub-standard-commerce-policy
+        version:
+          type: string
+          example: "2026-05-01"
+        appliesTo:
+          type: string
+          description: Scope label for the policy
+          example: event:jazz-night
+        eventSlug:
+          type: string
+          nullable: true
+          description: Event slug when the policy is event-scoped
+          example: jazz-night
+        policyUrl:
+          type: string
+          description: REST URL where the full policy can be retrieved
+          example: /api/v1/commerce/policies/events/jazz-night
+        updatedAt:
+          type: string
+          format: date-time
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommercePolicySection'
+        supportContact:
+          type: string
+          format: email
+          example: support@mockhub.dev
+        supportUrl:
+          type: string
+          example: /support
+
+    CommercePolicySection:
+      type: object
+      properties:
+        code:
+          type: string
+          example: refunds
+        title:
+          type: string
+          example: Refunds
+        summary:
+          type: string
+          example: All MockHub ticket sales are final once an order is confirmed.
+        details:
+          type: string
+          example: Pending orders can be cancelled before confirmation.
+        agentGuidance:
+          type: string
+          example: Before checkout, tell the buyer that confirmed tickets are usually non-refundable.

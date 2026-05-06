@@ -14,6 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.mockhub.acp.dto.AcpCatalogItem;
 import com.mockhub.acp.dto.AcpListingItem;
+import com.mockhub.commerce.dto.CommercePolicyDto;
+import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
@@ -24,6 +26,7 @@ import com.mockhub.ticket.repository.ListingRepository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,10 +38,14 @@ class AcpCatalogServiceTest {
     @Mock
     private ListingRepository listingRepository;
 
+    @Mock
+    private CommercePolicyService commercePolicyService;
+
     @InjectMocks
     private AcpCatalogService acpCatalogService;
 
     private EventSummaryDto testEvent;
+    private CommercePolicyDto testPolicy;
 
     @BeforeEach
     void setUp() {
@@ -46,6 +53,12 @@ class AcpCatalogServiceTest {
                 1L, "Rock Festival", "rock-festival", "Band A",
                 "Madison Square Garden", "NYC", Instant.now(),
                 new BigDecimal("75.00"), 50, null, "rock", true);
+        testPolicy = new CommercePolicyDto(
+                "policy", "v1", "event:rock-festival", "rock-festival",
+                List.of(), "support@mockhub.dev", "/support",
+                "/api/v1/commerce/policies/events/rock-festival", Instant.now());
+        lenient().when(commercePolicyService.getPolicyForEvent(any()))
+                .thenReturn(testPolicy);
     }
 
     @Test
@@ -66,6 +79,7 @@ class AcpCatalogServiceTest {
         assertEquals(new BigDecimal("75.00"), item.minPrice());
         assertEquals(50, item.availableTickets());
         assertEquals("/events/rock-festival", item.url());
+        assertEquals(testPolicy, item.commercePolicy());
     }
 
     @Test
@@ -102,6 +116,7 @@ class AcpCatalogServiceTest {
         assertEquals(1, result.content().size());
         assertEquals(10L, result.content().getFirst().listingId());
         assertEquals(new BigDecimal("80.00"), result.content().getFirst().price());
+        assertEquals(testPolicy, result.content().getFirst().commercePolicy());
     }
 
     @Test

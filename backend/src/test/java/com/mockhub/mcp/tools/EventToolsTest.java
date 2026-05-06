@@ -12,6 +12,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.commerce.dto.CommercePolicyDto;
+import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.event.dto.EventDto;
@@ -39,6 +41,9 @@ class EventToolsTest {
     @Mock
     private ListingService listingService;
 
+    @Mock
+    private CommercePolicyService commercePolicyService;
+
     private ObjectMapper objectMapper;
     private EventTools eventTools;
 
@@ -46,7 +51,9 @@ class EventToolsTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        eventTools = new EventTools(eventService, listingService, objectMapper);
+        eventTools = new EventTools(eventService, listingService, commercePolicyService, objectMapper);
+        org.mockito.Mockito.lenient().when(commercePolicyService.getPolicyForEvent(any()))
+                .thenAnswer(invocation -> createPolicy(invocation.getArgument(0)));
     }
 
     // --- searchEvents ---
@@ -164,6 +171,8 @@ class EventToolsTest {
         assertTrue(result.contains("\"totalListings\":506"), "Result should contain total count");
         assertTrue(result.contains("\"page\":0"), "Result should contain page number");
         assertTrue(result.contains("\"size\":20"), "Result should contain page size");
+        assertTrue(result.contains("\"commercePolicy\""), "Result should include policy metadata");
+        assertTrue(result.contains("\"policyId\":\"policy\""), "Policy metadata should identify the policy");
     }
 
     @Test
@@ -231,6 +240,17 @@ class EventToolsTest {
 
         assertTrue(result.startsWith("["), "Result should be a JSON array");
         verify(eventService).listFeatured();
+    }
+
+    @Test
+    @DisplayName("getCommercePolicy - given event slug - returns structured policy JSON")
+    void getCommercePolicy_givenEventSlug_returnsStructuredPolicyJson() {
+        String result = eventTools.getCommercePolicy("rock-festival");
+
+        assertTrue(result.contains("\"policyId\":\"policy\""), "Result should include policy ID");
+        assertTrue(result.contains("\"eventSlug\":\"rock-festival\""), "Result should include event slug");
+        assertTrue(result.contains("\"policyUrl\":\"/api/v1/commerce/policies/events/rock-festival\""),
+                "Result should include event policy URL");
     }
 
     @Test
@@ -429,7 +449,8 @@ class EventToolsTest {
         return new ListingDto(
                 id, id, eventSlug, section, "Row 1", "Seat " + id,
                 "STANDARD", price, price, BigDecimal.ONE,
-                "ACTIVE", Instant.now(), null);
+                "ACTIVE", Instant.now(), null,
+                "/api/v1/commerce/policies/events/" + eventSlug);
     }
 
     private TicketSearchResultDto createSearchResult(Long listingId, String eventName,
@@ -438,6 +459,17 @@ class EventToolsTest {
                 listingId, listingId, eventName, eventSlug, "Artist",
                 "rock", "Venue", "NYC", Instant.now(),
                 "Section A", "Row 1", "Seat " + listingId,
-                "STANDARD", price, null);
+                "STANDARD", price, null,
+                "/api/v1/commerce/policies/events/" + eventSlug);
+    }
+
+    private CommercePolicyDto createPolicy(String eventSlug) {
+        String safeSlug = eventSlug == null || eventSlug.isBlank() ? null : eventSlug;
+        return new CommercePolicyDto(
+                "policy", "v1", safeSlug == null ? "all_mockhub_ticket_purchases" : "event:" + safeSlug,
+                safeSlug, List.of(), "support@mockhub.dev", "/support",
+                safeSlug == null ? "/api/v1/commerce/policies/default"
+                        : "/api/v1/commerce/policies/events/" + safeSlug,
+                Instant.now());
     }
 }
