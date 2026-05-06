@@ -15,6 +15,8 @@ public record MandateDto(
         BigDecimal remainingBudget,
         String allowedCategories,
         String allowedEvents,
+        String allowedSections,
+        String approvalMode,
         String status,
         Instant expiresAt,
         Instant createdAt

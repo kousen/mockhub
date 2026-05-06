@@ -160,6 +160,8 @@ class AgentPurchaseFlowIntegrationTest extends AbstractIntegrationTest {
                 new BigDecimal("2000.00"),
                 null,  // no category restrictions
                 null,  // no event restrictions
+                null,  // no section restrictions
+                null,  // default approval mode
                 null   // no expiration
         );
         MandateDto mandateDto = mandateService.createMandate(mandateRequest);
@@ -279,7 +281,7 @@ class AgentPurchaseFlowIntegrationTest extends AbstractIntegrationTest {
         MandateDto mandateDto = mandateService.createMandate(new CreateMandateRequest(
                 "test-agent", email, "PURCHASE",
                 new BigDecimal("500.00"), new BigDecimal("2000.00"),
-                null, null, null
+                null, null, null, null, null
         ));
 
         String addToCartResult = cartTools.addToCart(email, listing.getId(), "test-agent", mandateDto.mandateId());

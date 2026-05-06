@@ -48,14 +48,15 @@ class MandateToolsTest {
         MandateDto mandateDto = new MandateDto(
                 1L, "mandate-123", "agent-1", "user@test.com", "PURCHASE",
                 new BigDecimal("100.00"), new BigDecimal("500.00"), BigDecimal.ZERO,
-                new BigDecimal("500.00"), null, null, "ACTIVE", null, Instant.now());
+                new BigDecimal("500.00"), null, null, null, "AUTO_PURCHASE",
+                "ACTIVE", null, Instant.now());
 
         when(mandateService.createMandate(any(CreateMandateRequest.class))).thenReturn(mandateDto);
 
         String result = mandateTools.createMandate(
                 "agent-1", "user@test.com", "PURCHASE",
                 new BigDecimal("100.00"), new BigDecimal("500.00"),
-                null, null, null);
+                null, null, null, null, null);
 
         assertTrue(result.contains("\"mandateId\":\"mandate-123\""), "Result should contain mandateId");
         assertTrue(result.contains("\"agentId\":\"agent-1\""), "Result should contain agentId");
@@ -68,14 +69,14 @@ class MandateToolsTest {
     void createMandate_givenExpiresAt_parsesIso8601Timestamp() {
         MandateDto mandateDto = new MandateDto(
                 1L, "mandate-456", "agent-1", "user@test.com", "BROWSE",
-                null, null, BigDecimal.ZERO, null, null, null, "ACTIVE",
+                null, null, BigDecimal.ZERO, null, null, null, null, "AUTO_PURCHASE", "ACTIVE",
                 Instant.parse("2026-12-31T23:59:59Z"), Instant.now());
 
         when(mandateService.createMandate(any(CreateMandateRequest.class))).thenReturn(mandateDto);
 
         String result = mandateTools.createMandate(
                 "agent-1", "user@test.com", "BROWSE",
-                null, null, null, null, "2026-12-31T23:59:59Z");
+                null, null, null, null, null, null, "2026-12-31T23:59:59Z");
 
         assertTrue(result.contains("\"mandateId\":\"mandate-456\""), "Result should contain mandateId");
         verify(mandateService).createMandate(any(CreateMandateRequest.class));
@@ -89,7 +90,7 @@ class MandateToolsTest {
 
         String result = mandateTools.createMandate(
                 "agent-1", "nobody@test.com", "PURCHASE",
-                null, null, null, null, null);
+                null, null, null, null, null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to create mandate"), "Result should contain failure message");
@@ -101,7 +102,7 @@ class MandateToolsTest {
     void createMandate_givenInvalidExpiresAtFormat_returnsErrorJson() {
         String result = mandateTools.createMandate(
                 "agent-1", "user@test.com", "BROWSE",
-                null, null, null, null, "not-a-date");
+                null, null, null, null, null, null, "not-a-date");
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to create mandate"), "Result should contain failure message");
@@ -113,13 +114,13 @@ class MandateToolsTest {
         MandateDto mandateDto = new MandateDto(
                 1L, "mandate-789", "agent-1", "user@test.com", "PURCHASE",
                 null, null, BigDecimal.ZERO, null, "rock,jazz", "event-1,event-2",
-                "ACTIVE", null, Instant.now());
+                null, "AUTO_PURCHASE", "ACTIVE", null, Instant.now());
 
         when(mandateService.createMandate(any(CreateMandateRequest.class))).thenReturn(mandateDto);
 
         String result = mandateTools.createMandate(
                 "agent-1", "user@test.com", "PURCHASE",
-                null, null, "rock,jazz", "event-1,event-2", null);
+                null, null, "rock,jazz", "event-1,event-2", null, null, null);
 
         assertTrue(result.contains("\"allowedCategories\":\"rock,jazz\""), "Result should contain categories");
         assertTrue(result.contains("\"allowedEvents\":\"event-1,event-2\""), "Result should contain events");
@@ -157,11 +158,12 @@ class MandateToolsTest {
     void listMandates_givenUserWithMandates_returnsJsonArray() {
         MandateDto mandate1 = new MandateDto(
                 1L, "mandate-1", "agent-1", "user@test.com", "BROWSE",
-                null, null, BigDecimal.ZERO, null, null, null, "ACTIVE", null, Instant.now());
+                null, null, BigDecimal.ZERO, null, null, null, null, "AUTO_PURCHASE",
+                "ACTIVE", null, Instant.now());
         MandateDto mandate2 = new MandateDto(
                 2L, "mandate-2", "agent-2", "user@test.com", "PURCHASE",
                 new BigDecimal("200.00"), null, BigDecimal.ZERO, null, null, null,
-                "ACTIVE", null, Instant.now());
+                null, "AUTO_PURCHASE", "ACTIVE", null, Instant.now());
 
         when(mandateService.listMandates("user@test.com")).thenReturn(List.of(mandate1, mandate2));
 
@@ -201,10 +203,11 @@ class MandateToolsTest {
     @Test
     @DisplayName("validateMandate - given authorized action - returns authorized true")
     void validateMandate_givenAuthorizedAction_returnsAuthorizedTrue() {
-        when(mandateService.validateAction("agent-1", "user@test.com", "BROWSE", null, null, null))
+        when(mandateService.validateAction("agent-1", "user@test.com", "BROWSE",
+                null, null, null, null, null))
                 .thenReturn(true);
 
-        String result = mandateTools.validateMandate("agent-1", "user@test.com", "BROWSE", null, null, null);
+        String result = mandateTools.validateMandate("agent-1", "user@test.com", "BROWSE", null, null, null, null);
 
         assertTrue(result.contains("\"authorized\": true"), "Result should contain authorized true");
         assertTrue(result.contains("Action is authorized"), "Result should contain authorized message");
@@ -214,10 +217,10 @@ class MandateToolsTest {
     @DisplayName("validateMandate - given unauthorized action - returns authorized false")
     void validateMandate_givenUnauthorizedAction_returnsAuthorizedFalse() {
         when(mandateService.validateAction("agent-1", "user@test.com", "PURCHASE",
-                new BigDecimal("1000.00"), null, null)).thenReturn(false);
+                new BigDecimal("1000.00"), null, null, null, null)).thenReturn(false);
 
         String result = mandateTools.validateMandate(
-                "agent-1", "user@test.com", "PURCHASE", new BigDecimal("1000.00"), null, null);
+                "agent-1", "user@test.com", "PURCHASE", new BigDecimal("1000.00"), null, null, null);
 
         assertTrue(result.contains("\"authorized\": false"), "Result should contain authorized false");
         assertTrue(result.contains("not authorized"), "Result should contain not authorized message");
@@ -227,9 +230,9 @@ class MandateToolsTest {
     @DisplayName("validateMandate - given service throws exception - returns error JSON")
     void validateMandate_givenServiceThrowsException_returnsErrorJson() {
         when(mandateService.validateAction(eq("agent-1"), eq("bad@test.com"), eq("BROWSE"),
-                any(), any(), any())).thenThrow(new RuntimeException("Validation failed"));
+                any(), any(), any(), any(), any())).thenThrow(new RuntimeException("Validation failed"));
 
-        String result = mandateTools.validateMandate("agent-1", "bad@test.com", "BROWSE", null, null, null);
+        String result = mandateTools.validateMandate("agent-1", "bad@test.com", "BROWSE", null, null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to validate mandate"), "Result should contain failure message");
@@ -240,13 +243,31 @@ class MandateToolsTest {
     @DisplayName("validateMandate - given amount parameter - passes amount to service")
     void validateMandate_givenAmountParameter_passesAmountToService() {
         BigDecimal amount = new BigDecimal("75.00");
-        when(mandateService.validateAction("agent-1", "user@test.com", "PURCHASE", amount, null, null))
+        when(mandateService.validateAction("agent-1", "user@test.com", "PURCHASE",
+                amount, null, null, null, null))
                 .thenReturn(true);
 
-        String result = mandateTools.validateMandate("agent-1", "user@test.com", "PURCHASE", amount, null, null);
+        String result = mandateTools.validateMandate("agent-1", "user@test.com", "PURCHASE", amount, null, null, null);
 
         assertTrue(result.contains("\"authorized\": true"), "Result should contain authorized true");
-        verify(mandateService).validateAction("agent-1", "user@test.com", "PURCHASE", amount, null, null);
+        verify(mandateService).validateAction("agent-1", "user@test.com", "PURCHASE",
+                amount, null, null, null, null);
+    }
+
+    @Test
+    @DisplayName("validateMandate - given section parameter - passes section to service")
+    void validateMandate_givenSectionParameter_passesSectionToService() {
+        when(mandateService.validateAction("agent-1", "user@test.com", "PURCHASE",
+                new BigDecimal("75.00"), "concerts", "event-1", null, "Floor"))
+                .thenReturn(true);
+
+        String result = mandateTools.validateMandate(
+                "agent-1", "user@test.com", "PURCHASE", new BigDecimal("75.00"),
+                "concerts", "event-1", "Floor");
+
+        assertTrue(result.contains("\"authorized\": true"), "Result should contain authorized true");
+        verify(mandateService).validateAction("agent-1", "user@test.com", "PURCHASE",
+                new BigDecimal("75.00"), "concerts", "event-1", null, "Floor");
     }
 
     // --- getBestMandate ---
@@ -257,14 +278,15 @@ class MandateToolsTest {
         MandateDto mandateDto = new MandateDto(
                 1L, "mandate-best", "agent-1", "user@test.com", "PURCHASE",
                 new BigDecimal("100.00"), new BigDecimal("500.00"), BigDecimal.ZERO,
-                new BigDecimal("500.00"), "concerts", "taylor-swift", "ACTIVE", null, Instant.now());
+                new BigDecimal("500.00"), "concerts", "taylor-swift", null, "AUTO_PURCHASE",
+                "ACTIVE", null, Instant.now());
 
         when(mandateService.findBestMandate("agent-1", "user@test.com", "PURCHASE",
-                new BigDecimal("75.00"), "concerts", "taylor-swift"))
+                new BigDecimal("75.00"), "concerts", "taylor-swift", null))
                 .thenReturn(Optional.of(mandateDto));
 
         String result = mandateTools.getBestMandate(
-                "agent-1", "user@test.com", "taylor-swift", "concerts", new BigDecimal("75.00"));
+                "agent-1", "user@test.com", "taylor-swift", "concerts", new BigDecimal("75.00"), null);
 
         assertTrue(result.contains("\"mandateId\":\"mandate-best\""), "Result should contain mandateId");
         assertTrue(result.contains("\"scope\":\"PURCHASE\""), "Result should contain scope");
@@ -275,11 +297,11 @@ class MandateToolsTest {
     @DisplayName("getBestMandate - given no matching mandate - returns error JSON")
     void getBestMandate_givenNoMatchingMandate_returnsErrorJson() {
         when(mandateService.findBestMandate("agent-1", "user@test.com", "PURCHASE",
-                new BigDecimal("75.00"), "sports", "coldplay"))
+                new BigDecimal("75.00"), "sports", "coldplay", null))
                 .thenReturn(Optional.empty());
 
         String result = mandateTools.getBestMandate(
-                "agent-1", "user@test.com", "coldplay", "sports", new BigDecimal("75.00"));
+                "agent-1", "user@test.com", "coldplay", "sports", new BigDecimal("75.00"), null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("No active mandate found"), "Result should indicate no mandate found");
@@ -289,10 +311,10 @@ class MandateToolsTest {
     @DisplayName("getBestMandate - given service throws exception - returns error JSON")
     void getBestMandate_givenServiceThrowsException_returnsErrorJson() {
         when(mandateService.findBestMandate(eq("agent-1"), eq("bad@test.com"), eq("PURCHASE"),
-                any(), any(), any())).thenThrow(new RuntimeException("Database error"));
+                any(), any(), any(), any())).thenThrow(new RuntimeException("Database error"));
 
         String result = mandateTools.getBestMandate(
-                "agent-1", "bad@test.com", "some-event", null, null);
+                "agent-1", "bad@test.com", "some-event", null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to find best mandate"), "Result should contain failure message");

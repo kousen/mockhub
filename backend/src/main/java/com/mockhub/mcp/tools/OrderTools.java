@@ -7,6 +7,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,6 +19,7 @@ import com.mockhub.eval.dto.EvalResult;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
+import com.mockhub.cart.dto.CartItemDto;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.common.exception.ConflictException;
@@ -34,6 +36,7 @@ import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.mandate.service.MandateService;
 
 @Component
 public class OrderTools {
@@ -48,6 +51,7 @@ public class OrderTools {
     private final EvalRunner evalRunner;
     private final PaymentService paymentService;
     private final AgentPurchaseApprovalService approvalService;
+    private final MandateService mandateService;
     private final ObjectMapper objectMapper;
 
     public OrderTools(OrderService orderService,
@@ -57,6 +61,7 @@ public class OrderTools {
                       EvalRunner evalRunner,
                       PaymentService paymentService,
                       AgentPurchaseApprovalService approvalService,
+                      MandateService mandateService,
                       ObjectMapper objectMapper) {
         this.orderService = orderService;
         this.calendarService = calendarService;
@@ -65,6 +70,7 @@ public class OrderTools {
         this.evalRunner = evalRunner;
         this.paymentService = paymentService;
         this.approvalService = approvalService;
+        this.mandateService = mandateService;
         this.objectMapper = objectMapper;
     }
 
@@ -90,13 +96,17 @@ public class OrderTools {
             }
             User user = resolveUser(userEmail);
             CartDto cartDto = cartService.getCartDto(user);
-            EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forAgentAction(
-                    agentId.strip(), user.getEmail(), null, null, cartDto.subtotal(), null, mandateId.strip()));
-            if (evalSummary.hasCriticalFailure()) {
-                String failureMessage = evalSummary.failures().stream()
+            EvalSummary cartSummary = evalRunner.evaluate(EvalContext.forCart(cartDto));
+            if (cartSummary.hasCriticalFailure()) {
+                String failureMessage = cartSummary.failures().stream()
                         .map(result -> result.conditionName() + ": " + result.message())
                         .collect(Collectors.joining("; "));
                 return errorJson("Cannot checkout: " + failureMessage);
+            }
+            String authorizationFailure = validateCartItemsForAgent(
+                    cartDto, user.getEmail(), agentId.strip(), mandateId.strip());
+            if (authorizationFailure != null) {
+                return errorJson("Cannot checkout: " + authorizationFailure);
             }
             CheckoutRequest request = new CheckoutRequest(paymentMethod.strip());
             OrderDto order = orderService.checkout(user, request, null, agentId.strip(), mandateId.strip());
@@ -173,6 +183,7 @@ public class OrderTools {
             orderService.getOrder(user, trimmedOrderNumber);
             Order order = orderService.getOrderEntity(trimmedOrderNumber);
             validateStoredAgentContext(order, agentId, mandateId);
+            validateApprovalMode(user.getEmail(), agentId, mandateId, approvalId);
             approvalService.validateApprovedForCompletion(
                     approvalId, user.getEmail(), agentId, mandateId, order);
 
@@ -238,6 +249,32 @@ public class OrderTools {
         if (!mandateId.strip().equals(order.getMandateId())) {
             throw new ConflictException("Mandate ID does not match the order's recorded mandate context");
         }
+    }
+
+    private void validateApprovalMode(String userEmail, String agentId, String mandateId, String approvalId) {
+        if (mandateService.approvalRequired(agentId.strip(), userEmail, mandateId.strip())
+                && (approvalId == null || approvalId.isBlank())) {
+            throw new ConflictException("Mandate requires an approved purchase approval before confirmation");
+        }
+    }
+
+    private String validateCartItemsForAgent(CartDto cartDto, String userEmail, String agentId, String mandateId) {
+        if (cartDto.items() == null || cartDto.items().isEmpty()) {
+            return null;
+        }
+
+        for (CartItemDto item : cartDto.items()) {
+            BigDecimal amount = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
+            if (amount == null) {
+                amount = item.priceAtAdd();
+            }
+            boolean authorized = mandateService.validateAction(
+                    agentId, userEmail, "PURCHASE", amount, null, item.eventSlug(), mandateId, item.sectionName());
+            if (!authorized) {
+                return "Mandate does not authorize cart item listing " + item.listingId();
+            }
+        }
+        return null;
     }
 
     private String normalize(String value) {

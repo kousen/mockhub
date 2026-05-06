@@ -132,11 +132,11 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 - approvePurchase(userEmail, approvalId) — approve a proposed agent purchase
 - denyPurchase(userEmail, approvalId, reason?) — deny a proposed agent purchase
 - listPurchaseApprovals(userEmail) — list purchase proposals, approvals, denials, and outcomes
-- createMandate(agentId, userEmail, scope, maxSpendPerTransaction?, maxSpendTotal?, allowedCategories?, allowedEvents?, expiresAt?) — authorize agent actions
+- createMandate(agentId, userEmail, scope, maxSpendPerTransaction?, maxSpendTotal?, allowedCategories?, allowedEvents?, allowedSections?, approvalMode?, expiresAt?) — authorize agent actions
 - revokeMandate(mandateId) — revoke agent authorization
 - listMandates(userEmail) — list active mandates
-- validateMandate(agentId, userEmail, scope, amount?, categorySlug?, eventSlug?) — check if action is authorized by scope, spending limits, and category/event restrictions
-- getBestMandate(agentId, userEmail, eventSlug, categorySlug?, amount?) — RECOMMENDED before addToCart: finds the best matching mandate for a purchase action in one call
+- validateMandate(agentId, userEmail, scope, amount?, categorySlug?, eventSlug?, sectionName?) — check if action is authorized by scope, spending limits, and category/event/section restrictions
+- getBestMandate(agentId, userEmail, eventSlug, categorySlug?, amount?, sectionName?) — RECOMMENDED before addToCart: finds the best matching mandate for a purchase action in one call
 
 ## ACP Endpoints (Agentic Commerce Protocol, requires API key: X-API-Key header)
 ACP-compatible checkout endpoints at /acp/v1/:
@@ -159,27 +159,28 @@ MCP findTickets, compareTickets, and getListingDetail include commercePolicyUrl 
 
 Mandates define what an agent is authorized to do on behalf of a user.
 Scope: BROWSE (read-only) or PURCHASE (can buy, subsumes BROWSE).
-Limits: per-transaction max, cumulative total budget, category/event restrictions, expiration.
+Limits: per-transaction max, cumulative total budget, category/event/section restrictions, expiration.
+Approval mode: AUTO_PURCHASE allows direct completion; APPROVAL_REQUIRED requires an approved purchase approval before completion.
 Autonomous purchase actions require both agent identity and mandate proof.
 Managed via MCP MandateTools or directly via mandate service.
 
 ### Mandate Lifecycle
 
-1. Create — User grants agent a mandate via createMandate tool. Defines scope, spending limits, allowed categories/events, and optional expiration.
-2. Validate — Every agent purchase action (addToCart, checkout, confirmOrder) triggers MandateCondition (CRITICAL severity). Checks: mandate active, not expired, scope covers action, within spending limits, allowed category/event.
+1. Create — User grants agent a mandate via createMandate tool. Defines scope, spending limits, allowed categories/events/sections, approval mode, and optional expiration.
+2. Validate — Every agent purchase action (addToCart, checkout, confirmOrder) triggers MandateCondition (CRITICAL severity). Checks: mandate active, not expired, scope covers action, within spending limits, allowed category/event/section.
 3. Spend Tracking — On order confirmation, the order total is recorded against the mandate's cumulative spend (totalSpent). Remaining budget = maxSpendTotal - totalSpent.
 4. Spend Reversal — If a confirmed order is cancelled via cancelOrder, the order total is reversed (subtracted from totalSpent), restoring available budget.
 5. Revoke — User revokes mandate via revokeMandate tool. Status set to REVOKED. Subsequent agent actions using this mandate are blocked.
 
 ### Purchase Flow with Mandates
 
-findTickets(query, filters) → getBestMandate(agentId, userEmail, eventSlug) → addToCart(userEmail, listingId, agentId, mandateId) → checkout(userEmail, paymentMethod, agentId, mandateId) → confirmOrder(userEmail, orderNumber, agentId, mandateId)
+findTickets(query, filters) → getBestMandate(agentId, userEmail, eventSlug, categorySlug?, amount?, sectionName?) → addToCart(userEmail, listingId, agentId, mandateId) → checkout(userEmail, paymentMethod, agentId, mandateId) → confirmOrder(userEmail, orderNumber, agentId, mandateId)
 
 Each step validates the mandate via eval conditions. Spend is recorded on confirmation. If the order is later cancelled, spend is reversed.
 
 ### Eval Conditions
 
-- MandateCondition (CRITICAL): Blocks actions without a valid mandate. Checks scope, per-transaction and cumulative spending limits, category/event restrictions.
+- MandateCondition (CRITICAL): Blocks actions without a valid mandate. Checks scope, per-transaction and cumulative spending limits, category/event/section restrictions.
 - SpendingLimitCondition (WARNING): Advisory alert when cart total exceeds $2000 (configurable). Does not block — mandate per-transaction limits are the hard stop.
 
 ## Content Types

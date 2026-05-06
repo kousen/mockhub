@@ -66,6 +66,10 @@ function CreateMandateForm({ onClose }: Readonly<{ onClose: () => void }>) {
   const [maxSpendTotal, setMaxSpendTotal] = useState('');
   const [allowedCategories, setAllowedCategories] = useState('');
   const [allowedEvents, setAllowedEvents] = useState('');
+  const [allowedSections, setAllowedSections] = useState('');
+  const [approvalMode, setApprovalMode] = useState<'AUTO_PURCHASE' | 'APPROVAL_REQUIRED'>(
+    'AUTO_PURCHASE',
+  );
   const [expiresAt, setExpiresAt] = useState('');
   const createMandate = useCreateMandate();
 
@@ -101,6 +105,10 @@ function CreateMandateForm({ onClose }: Readonly<{ onClose: () => void }>) {
       if (allowedEvents.trim()) {
         request.allowedEvents = allowedEvents.trim();
       }
+      if (allowedSections.trim()) {
+        request.allowedSections = allowedSections.trim();
+      }
+      request.approvalMode = approvalMode;
       if (expiresAt) {
         request.expiresAt = new Date(expiresAt).toISOString();
       }
@@ -122,6 +130,8 @@ function CreateMandateForm({ onClose }: Readonly<{ onClose: () => void }>) {
       maxSpendTotal,
       allowedCategories,
       allowedEvents,
+      allowedSections,
+      approvalMode,
       expiresAt,
       createMandate,
       onClose,
@@ -222,6 +232,37 @@ function CreateMandateForm({ onClose }: Readonly<{ onClose: () => void }>) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
+              <label htmlFor="allowedSections" className="text-sm font-medium">
+                Allowed Sections
+              </label>
+              <Input
+                id="allowedSections"
+                value={allowedSections}
+                onChange={(e) => setAllowedSections(e.target.value)}
+                placeholder="e.g., Floor, Lower Bowl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="approvalMode" className="text-sm font-medium">
+                Approval Mode
+              </label>
+              <Select
+                value={approvalMode}
+                onValueChange={(v) => setApprovalMode(v as 'AUTO_PURCHASE' | 'APPROVAL_REQUIRED')}
+              >
+                <SelectTrigger id="approvalMode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AUTO_PURCHASE">Auto Purchase</SelectItem>
+                  <SelectItem value="APPROVAL_REQUIRED">Approval Required</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
               <label htmlFor="expiresAt" className="text-sm font-medium">
                 Expires
               </label>
@@ -285,15 +326,23 @@ function SpendingSummary({ mandate }: Readonly<{ mandate: Mandate }>) {
  * Restrictions line for a mandate.
  */
 function Restrictions({ mandate }: Readonly<{ mandate: Mandate }>) {
-  if (!mandate.allowedCategories && !mandate.allowedEvents) {
+  if (!mandate.allowedCategories && !mandate.allowedEvents && !mandate.allowedSections) {
     return null;
   }
+  const restrictions = [
+    mandate.allowedCategories ? `Categories: ${mandate.allowedCategories}` : null,
+    mandate.allowedEvents ? `Events: ${mandate.allowedEvents}` : null,
+    mandate.allowedSections ? `Sections: ${mandate.allowedSections}` : null,
+  ].filter(Boolean);
+
+  return <div className="text-sm text-muted-foreground">{restrictions.join(' · ')}</div>;
+}
+
+function ApprovalMode({ mandate }: Readonly<{ mandate: Mandate }>) {
   return (
-    <div className="text-sm text-muted-foreground">
-      {mandate.allowedCategories && <span>Categories: {mandate.allowedCategories}</span>}
-      {mandate.allowedCategories && mandate.allowedEvents && <span> &middot; </span>}
-      {mandate.allowedEvents && <span>Events: {mandate.allowedEvents}</span>}
-    </div>
+    <span className="text-sm text-muted-foreground">
+      {mandate.approvalMode === 'APPROVAL_REQUIRED' ? 'Approval required' : 'Auto purchase'}
+    </span>
   );
 }
 
@@ -349,6 +398,7 @@ function MandateCard({
       <div className="mt-3 space-y-1">
         <SpendingSummary mandate={mandate} />
         <Restrictions mandate={mandate} />
+        <ApprovalMode mandate={mandate} />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -462,6 +512,7 @@ export function MandatesPage() {
                     <TableRow>
                       <TableHead>Agent</TableHead>
                       <TableHead>Scope</TableHead>
+                      <TableHead>Approval</TableHead>
                       <TableHead>Spending</TableHead>
                       <TableHead>Restrictions</TableHead>
                       <TableHead>Expires</TableHead>
@@ -484,16 +535,16 @@ export function MandatesPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
+                            <ApprovalMode mandate={mandate} />
+                          </TableCell>
+                          <TableCell>
                             <SpendingSummary mandate={mandate} />
                           </TableCell>
                           <TableCell>
-                            {mandate.allowedCategories || mandate.allowedEvents ? (
-                              <div className="text-sm text-muted-foreground">
-                                {mandate.allowedCategories && (
-                                  <div>{mandate.allowedCategories}</div>
-                                )}
-                                {mandate.allowedEvents && <div>{mandate.allowedEvents}</div>}
-                              </div>
+                            {mandate.allowedCategories ||
+                            mandate.allowedEvents ||
+                            mandate.allowedSections ? (
+                              <Restrictions mandate={mandate} />
                             ) : (
                               <span className="text-sm text-muted-foreground">None</span>
                             )}

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { renderWithProviders, screen, userEvent } from '@/test/test-utils';
 import { MandatesPage } from './MandatesPage';
 import type { Mandate } from '@/types/mandate';
@@ -18,7 +18,7 @@ vi.mock('@/hooks/use-mandates', () => ({
   })),
 }));
 
-import { useMyMandates } from '@/hooks/use-mandates';
+import { useCreateMandate, useMyMandates } from '@/hooks/use-mandates';
 
 const mockMandates: Mandate[] = [
   {
@@ -33,6 +33,8 @@ const mockMandates: Mandate[] = [
     remainingBudget: 850,
     allowedCategories: 'jazz, classical',
     allowedEvents: null,
+    allowedSections: 'Floor, Lower Bowl',
+    approvalMode: 'APPROVAL_REQUIRED',
     status: 'ACTIVE',
     expiresAt: '2027-12-31T23:59:59Z',
     createdAt: '2026-03-01T10:00:00Z',
@@ -49,6 +51,8 @@ const mockMandates: Mandate[] = [
     remainingBudget: null,
     allowedCategories: null,
     allowedEvents: null,
+    allowedSections: null,
+    approvalMode: 'AUTO_PURCHASE',
     status: 'REVOKED',
     expiresAt: null,
     createdAt: '2026-02-15T14:00:00Z',
@@ -63,6 +67,13 @@ function setMandates(data: Mandate[] | undefined, isLoading = false) {
 }
 
 describe('MandatesPage', () => {
+  beforeEach(() => {
+    vi.mocked(useCreateMandate).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof useCreateMandate>);
+  });
+
   it('renders mandate data when mandates exist', () => {
     setMandates(mockMandates);
 
@@ -138,6 +149,34 @@ describe('MandatesPage', () => {
     expect(screen.getByLabelText(/Scope/)).toBeDefined();
     expect(screen.getByLabelText(/Per-Transaction Limit/)).toBeDefined();
     expect(screen.getByLabelText(/Total Budget/)).toBeDefined();
+    expect(screen.getByLabelText(/Allowed Sections/)).toBeDefined();
+    expect(screen.getByLabelText(/Approval Mode/)).toBeDefined();
+  });
+
+  it('submits conditional mandate fields', async () => {
+    setMandates(mockMandates);
+    const mutate = vi.fn();
+    vi.mocked(useCreateMandate).mockReturnValue({
+      mutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useCreateMandate>);
+
+    const user = userEvent.setup();
+    renderWithProviders(<MandatesPage />);
+
+    await user.click(screen.getByText('New Mandate'));
+    await user.type(screen.getByLabelText(/Agent ID/), 'agent-214');
+    await user.type(screen.getByLabelText(/Allowed Sections/), 'Floor, Lower Bowl');
+    await user.click(screen.getByRole('button', { name: /Create Mandate/ }));
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 'agent-214',
+        allowedSections: 'Floor, Lower Bowl',
+        approvalMode: 'AUTO_PURCHASE',
+      }),
+      expect.any(Object),
+    );
   });
 
   it('shows scope badge for active mandate', () => {
@@ -157,6 +196,15 @@ describe('MandatesPage', () => {
     // Spending summary shows in both mobile card and desktop table layouts
     expect(screen.getAllByText(/\$150\.00 spent/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/\$1000\.00 total/).length).toBeGreaterThan(0);
+  });
+
+  it('shows section restrictions and approval mode', () => {
+    setMandates(mockMandates);
+
+    renderWithProviders(<MandatesPage />);
+
+    expect(screen.getAllByText(/Sections: Floor, Lower Bowl/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Approval required').length).toBeGreaterThan(0);
   });
 
   it('shows "No mandates" with filtered message for expired tab', async () => {

@@ -32,7 +32,7 @@ public class MandateTools {
 
     @Tool(description = "Create a new MockHub mandate granting an agent permission to act on behalf of a user. "
             + "Scope can be BROWSE (read-only) or PURCHASE (can buy tickets). "
-            + "Spending limits and category/event restrictions are optional.")
+            + "Spending limits, category/event/section restrictions, and approval mode are optional.")
     @SuppressWarnings("java:S107") // MCP tool methods require separate params for each tool argument
     public String createMandate(
             @ToolParam(description = "ID of the agent being granted the mandate", required = true) String agentId,
@@ -42,6 +42,9 @@ public class MandateTools {
             @ToolParam(description = "Maximum cumulative spend limit (optional)") BigDecimal maxSpendTotal,
             @ToolParam(description = "Comma-separated category slugs (optional, null = all)") String allowedCategories,
             @ToolParam(description = "Comma-separated event slugs (optional, null = all)") String allowedEvents,
+            @ToolParam(description = "Comma-separated section names (optional, null = all sections)") String allowedSections,
+            @ToolParam(description = "AUTO_PURCHASE or APPROVAL_REQUIRED (optional, defaults to AUTO_PURCHASE)")
+                    String approvalMode,
             @ToolParam(description = "ISO-8601 expiration timestamp (optional, null = no expiration)") String expiresAt) {
         try {
             String effectiveEmail = ChatContext.resolveEmail(userEmail);
@@ -49,7 +52,7 @@ public class MandateTools {
             CreateMandateRequest request = new CreateMandateRequest(
                     agentId, effectiveEmail, scope,
                     maxSpendPerTransaction, maxSpendTotal,
-                    allowedCategories, allowedEvents,
+                    allowedCategories, allowedEvents, allowedSections, approvalMode,
                     parsedExpiresAt);
             MandateDto mandate = mandateService.createMandate(request);
             return objectMapper.writeValueAsString(mandate);
@@ -96,11 +99,12 @@ public class MandateTools {
             @ToolParam(description = "Required scope: BROWSE or PURCHASE", required = true) String scope,
             @ToolParam(description = "Transaction amount to validate against spending limits (optional)") BigDecimal amount,
             @ToolParam(description = "Category slug to check against allowed categories (optional)") String categorySlug,
-            @ToolParam(description = "Event slug to check against allowed events (optional)") String eventSlug) {
+            @ToolParam(description = "Event slug to check against allowed events (optional)") String eventSlug,
+            @ToolParam(description = "Section name to check against allowed sections (optional)") String sectionName) {
         try {
             String effectiveEmail = ChatContext.resolveEmail(userEmail);
             boolean authorized = mandateService.validateAction(
-                    agentId, effectiveEmail, scope, amount, categorySlug, eventSlug);
+                    agentId, effectiveEmail, scope, amount, categorySlug, eventSlug, null, sectionName);
             if (authorized) {
                 return "{\"authorized\": true, \"message\": \"Action is authorized\"}";
             } else {
@@ -114,23 +118,24 @@ public class MandateTools {
     }
 
     @Tool(description = "RECOMMENDED before addToCart — finds the best matching MockHub mandate for a specific "
-            + "purchase action. Checks scope, spending limits, category, and event restrictions in one call. "
+            + "purchase action. Checks scope, spending limits, category, event, and section restrictions in one call. "
             + "Returns the matching mandate or an error explaining why none match.")
     public String getBestMandate(
             @ToolParam(description = "ID of the agent requesting authorization", required = true) String agentId,
             @ToolParam(description = "Email of the user the agent is acting for", required = true) String userEmail,
             @ToolParam(description = "Event slug to check against allowed events", required = true) String eventSlug,
             @ToolParam(description = "Category slug to check against allowed categories (optional)") String categorySlug,
-            @ToolParam(description = "Transaction amount to validate against spending limits (optional)") BigDecimal amount) {
+            @ToolParam(description = "Transaction amount to validate against spending limits (optional)") BigDecimal amount,
+            @ToolParam(description = "Section name to check against allowed sections (optional)") String sectionName) {
         try {
             String effectiveEmail = ChatContext.resolveEmail(userEmail);
             Optional<MandateDto> mandate = mandateService.findBestMandate(
-                    agentId, effectiveEmail, "PURCHASE", amount, categorySlug, eventSlug);
+                    agentId, effectiveEmail, "PURCHASE", amount, categorySlug, eventSlug, sectionName);
             if (mandate.isPresent()) {
                 return objectMapper.writeValueAsString(mandate.get());
             }
             return "{\"error\": \"No active mandate found that authorizes this purchase. "
-                    + "Check scope, spending limits, and event/category restrictions.\"}";
+                    + "Check scope, spending limits, and event/category/section restrictions.\"}";
         } catch (Exception e) {
             log.error("Error finding best mandate for agent '{}' and user '{}': {}",
                     agentId, userEmail, e.getMessage(), e);

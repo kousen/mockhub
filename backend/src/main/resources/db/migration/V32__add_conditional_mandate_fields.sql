@@ -1,0 +1,3 @@
+ALTER TABLE mandates
+    ADD COLUMN allowed_sections VARCHAR(1000),
+    ADD COLUMN approval_mode VARCHAR(30) NOT NULL DEFAULT 'AUTO_PURCHASE';

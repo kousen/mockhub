@@ -17,6 +17,7 @@ import com.mockhub.ai.service.ChatContext;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
+import com.mockhub.cart.dto.CartItemDto;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.eval.dto.EvalResult;
@@ -32,6 +33,7 @@ import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.mandate.service.MandateService;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.event.entity.Event;
@@ -69,6 +71,9 @@ class OrderToolsTest {
     @Mock
     private AgentPurchaseApprovalService approvalService;
 
+    @Mock
+    private MandateService mandateService;
+
     private static final String AGENT_ID = "shopping-agent";
     private static final String MANDATE_ID = "mandate-123";
 
@@ -81,7 +86,7 @@ class OrderToolsTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         orderTools = new OrderTools(orderService, calendarService, userRepository, cartService,
-                evalRunner, paymentService, approvalService, objectMapper);
+                evalRunner, paymentService, approvalService, mandateService, objectMapper);
 
         testUser = new User();
         testUser.setId(1L);
@@ -94,6 +99,22 @@ class OrderToolsTest {
 
     private void stubPassingEval() {
         when(evalRunner.evaluate(any())).thenReturn(new EvalSummary(List.of(EvalResult.pass("mandate"))));
+    }
+
+    private CartDto createCartWithFloorTicket() {
+        CartItemDto item = new CartItemDto(
+                1L,
+                42L,
+                "Test Event",
+                "test-event",
+                "Floor",
+                "A",
+                "1",
+                "GENERAL",
+                java.math.BigDecimal.TEN,
+                java.math.BigDecimal.TEN,
+                null);
+        return new CartDto(null, 1L, List.of(item), java.math.BigDecimal.TEN, 1, null);
     }
 
     private Order createAgentOrderEntity(String orderNumber) {
@@ -140,8 +161,11 @@ class OrderToolsTest {
         @DisplayName("given valid email and payment method - returns order JSON")
         void givenValidEmailAndPaymentMethod_returnsOrderJson() {
             stubUserLookup("buyer@example.com");
-            when(cartService.getCartDto(testUser)).thenReturn(new CartDto(null, 1L, List.of(), java.math.BigDecimal.TEN, 1, null));
+            when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
             stubPassingEval();
+            when(mandateService.validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
+                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor"))
+                    .thenReturn(true);
             OrderDto orderDto = new OrderDto(
                     null, null, null, null, null, null, null, null, null, null, null, null);
             when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID)))
@@ -150,7 +174,27 @@ class OrderToolsTest {
             String result = orderTools.checkout("buyer@example.com", "mock", AGENT_ID, MANDATE_ID);
 
             verify(orderService).checkout(eq(testUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID));
+            verify(mandateService).validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
+                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor");
             assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given cart item not authorized by mandate - returns error JSON")
+        void givenCartItemNotAuthorizedByMandate_returnsErrorJson() {
+            stubUserLookup("buyer@example.com");
+            when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
+            stubPassingEval();
+            when(mandateService.validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
+                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor"))
+                    .thenReturn(false);
+
+            String result = orderTools.checkout("buyer@example.com", "mock", AGENT_ID, MANDATE_ID);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("does not authorize cart item listing 42"),
+                    "Result should identify the unauthorized cart item");
+            verify(orderService, never()).checkout(any(), any(), any(), any(), any());
         }
 
         @Test
@@ -252,6 +296,26 @@ class OrderToolsTest {
                     "approval-123", "buyer@example.com", AGENT_ID, MANDATE_ID, orderEntity);
             verify(approvalService).markCompleted("approval-123", "MH-20260319-0001");
             assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given approval required mandate without approval ID - returns error JSON")
+        void givenApprovalRequiredMandateWithoutApprovalId_returnsErrorJson() {
+            stubUserLookup("buyer@example.com");
+            Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
+            when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
+            when(mandateService.approvalRequired(AGENT_ID, "buyer@example.com", MANDATE_ID)).thenReturn(true);
+
+            String result = orderTools.confirmOrder(
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID, null, null);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("requires an approved purchase approval"),
+                    "Result should explain approval is required");
+            verify(paymentService, never()).confirmPayment(any());
         }
 
         @Test

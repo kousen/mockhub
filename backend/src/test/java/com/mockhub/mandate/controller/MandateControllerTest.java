@@ -91,6 +91,8 @@ class MandateControllerTest {
                 new BigDecimal("1000.00"),
                 "jazz,classical",
                 null,
+                null,
+                "AUTO_PURCHASE",
                 "ACTIVE",
                 Instant.now().plus(7, ChronoUnit.DAYS),
                 Instant.now()

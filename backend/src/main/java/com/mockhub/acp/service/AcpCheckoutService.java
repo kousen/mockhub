@@ -1,5 +1,6 @@
 package com.mockhub.acp.service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -24,6 +25,7 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.cart.dto.CartDto;
+import com.mockhub.cart.dto.CartItemDto;
 import com.mockhub.commerce.dto.CommercePolicyDto;
 import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.exception.ConflictException;
@@ -39,6 +41,7 @@ import com.mockhub.order.dto.OrderItemDto;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.mandate.service.MandateService;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.repository.ListingRepository;
 
@@ -58,6 +61,7 @@ public class AcpCheckoutService {
     private final PaymentService paymentService;
     private final CommercePolicyService commercePolicyService;
     private final AgentPurchaseApprovalService approvalService;
+    private final MandateService mandateService;
 
     public AcpCheckoutService(UserRepository userRepository,
                               CartService cartService,
@@ -66,7 +70,8 @@ public class AcpCheckoutService {
                               EvalRunner evalRunner,
                               PaymentService paymentService,
                               CommercePolicyService commercePolicyService,
-                              AgentPurchaseApprovalService approvalService) {
+                              AgentPurchaseApprovalService approvalService,
+                              MandateService mandateService) {
         this.userRepository = userRepository;
         this.cartService = cartService;
         this.orderService = orderService;
@@ -75,6 +80,7 @@ public class AcpCheckoutService {
         this.paymentService = paymentService;
         this.commercePolicyService = commercePolicyService;
         this.approvalService = approvalService;
+        this.mandateService = mandateService;
     }
 
     @Transactional
@@ -172,6 +178,7 @@ public class AcpCheckoutService {
         orderService.getOrder(user, checkoutId);
         Order order = orderService.getOrderEntity(checkoutId);
         validateStoredAgentContext(order, request.agentId(), request.mandateId());
+        validateApprovalMode(user.getEmail(), request.agentId(), request.mandateId(), request.approvalId());
         approvalService.validateApprovedForCompletion(
                 request.approvalId(), user.getEmail(), request.agentId(), request.mandateId(), order);
 
@@ -292,14 +299,32 @@ public class AcpCheckoutService {
 
     private void validateCartForAgent(User user, String agentId, String mandateId) {
         CartDto cartDto = cartService.getCartDto(user);
-        EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forAgentAction(
-                agentId, user.getEmail(), null, null, cartDto.subtotal(), null, mandateId));
+        EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forCart(cartDto));
 
         if (evalSummary.hasCriticalFailure()) {
             String failureMessage = evalSummary.failures().stream()
                     .map(result -> result.conditionName() + ": " + result.message())
                     .collect(Collectors.joining("; "));
             throw new ConflictException("ACP cart validation failed: " + failureMessage);
+        }
+
+        if (cartDto.items() == null || cartDto.items().isEmpty()) {
+            return;
+        }
+
+        for (CartItemDto item : cartDto.items()) {
+            BigDecimal amount = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
+            if (amount == null) {
+                amount = item.priceAtAdd();
+            }
+            boolean authorized = mandateService.validateAction(
+                    agentId, user.getEmail(), "PURCHASE", amount, null,
+                    item.eventSlug(), mandateId, item.sectionName());
+            if (!authorized) {
+                throw new ConflictException(
+                        "ACP cart validation failed: Mandate does not authorize cart item listing "
+                                + item.listingId());
+            }
         }
     }
 
@@ -315,6 +340,13 @@ public class AcpCheckoutService {
         }
         if (!mandateId.strip().equals(order.getMandateId())) {
             throw new ConflictException("Mandate ID does not match the checkout's recorded mandate context");
+        }
+    }
+
+    private void validateApprovalMode(String userEmail, String agentId, String mandateId, String approvalId) {
+        if (mandateService.approvalRequired(agentId.strip(), userEmail, mandateId.strip())
+                && (approvalId == null || approvalId.isBlank())) {
+            throw new ConflictException("Mandate requires an approved purchase approval before completion");
         }
     }
 

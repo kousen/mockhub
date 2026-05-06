@@ -60,7 +60,8 @@ public class MandateCondition implements EvalCondition {
         }
 
         if (!mandateService.validateAction(agentId, userEmail, requiredScope,
-                context.orderTotal(), context.categorySlug(), resolveEventSlug(context), mandateId)) {
+                context.orderTotal(), context.categorySlug(), resolveEventSlug(context), mandateId,
+                resolveSectionName(context))) {
             return EvalResult.fail(name(), EvalSeverity.CRITICAL,
                     "Mandate does not authorize this action (scope=" + requiredScope
                             + ", amount=" + context.orderTotal()
@@ -83,6 +84,15 @@ public class MandateCondition implements EvalCondition {
         }
         if (context.listing() != null && context.listing().getEvent() != null) {
             return context.listing().getEvent().getSlug();
+        }
+        return null;
+    }
+
+    private String resolveSectionName(EvalContext context) {
+        if (context.listing() != null
+                && context.listing().getTicket() != null
+                && context.listing().getTicket().getSection() != null) {
+            return context.listing().getTicket().getSection().getName();
         }
         return null;
     }
