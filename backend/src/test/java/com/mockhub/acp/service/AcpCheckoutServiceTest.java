@@ -21,6 +21,7 @@ import com.mockhub.agentapproval.service.AgentPurchaseApprovalService;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
+import com.mockhub.cart.dto.CartItemDto;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.commerce.dto.CommercePolicyDto;
 import com.mockhub.commerce.service.CommercePolicyService;
@@ -150,6 +151,22 @@ class AcpCheckoutServiceTest {
         return new AcpUpdateRequest(AGENT_ID, MANDATE_ID, addItems, removeListingIds);
     }
 
+    private CartDto createCartWithFloorTicket() {
+        CartItemDto item = new CartItemDto(
+                1L,
+                10L,
+                "Test Concert",
+                "test-concert",
+                "Floor",
+                "A",
+                "1",
+                "GENERAL",
+                new BigDecimal("50.00"),
+                new BigDecimal("50.00"),
+                null);
+        return new CartDto(1L, 1L, List.of(item), new BigDecimal("55.00"), 1, null);
+    }
+
     private Order createAgentOrder(String orderNumber, String paymentMethod) {
         Order order = new Order();
         order.setOrderNumber(orderNumber);
@@ -216,6 +233,57 @@ class AcpCheckoutServiceTest {
         verify(cartService).clearCart(testUser);
         verify(cartService).addToCart(testUser, 10L);
         verify(orderService).checkout(eq(testUser), any(CheckoutRequest.class), eq("idem-123"), eq(AGENT_ID), eq(MANDATE_ID));
+    }
+
+    @Test
+    @DisplayName("createCheckout - cart item authorized by mandate - returns CREATED response")
+    void createCheckout_cartItemAuthorizedByMandate_returnsCreatedResponse() {
+        AcpCheckoutRequest request = createCheckoutRequest(
+                "buyer@test.com",
+                List.of(new AcpLineItem(10L, 1)),
+                "mock",
+                "idem-123"
+        );
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(cartService.addToCart(testUser, 10L)).thenReturn(createCartWithFloorTicket());
+        when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
+        when(mandateService.validateAction(AGENT_ID, "buyer@test.com", "PURCHASE",
+                new BigDecimal("55.00"), null, "test-concert", MANDATE_ID, "Floor"))
+                .thenReturn(true);
+        when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), eq("idem-123"), eq(AGENT_ID), eq(MANDATE_ID)))
+                .thenReturn(testOrderDto);
+
+        AcpCheckoutResponse response = acpCheckoutService.createCheckout(request);
+
+        assertEquals("CREATED", response.status());
+        verify(mandateService).validateAction(AGENT_ID, "buyer@test.com", "PURCHASE",
+                new BigDecimal("55.00"), null, "test-concert", MANDATE_ID, "Floor");
+    }
+
+    @Test
+    @DisplayName("createCheckout - cart item not authorized by mandate - throws ConflictException")
+    void createCheckout_cartItemNotAuthorizedByMandate_throwsConflictException() {
+        AcpCheckoutRequest request = createCheckoutRequest(
+                "buyer@test.com",
+                List.of(new AcpLineItem(10L, 1)),
+                "mock",
+                "idem-123"
+        );
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(cartService.addToCart(testUser, 10L)).thenReturn(createCartWithFloorTicket());
+        when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
+        when(mandateService.validateAction(AGENT_ID, "buyer@test.com", "PURCHASE",
+                new BigDecimal("55.00"), null, "test-concert", MANDATE_ID, "Floor"))
+                .thenReturn(false);
+
+        ConflictException exception = assertThrows(ConflictException.class, () ->
+                acpCheckoutService.createCheckout(request));
+
+        assertEquals("ACP cart validation failed: Mandate does not authorize cart item listing 10",
+                exception.getMessage());
+        verify(orderService, never()).checkout(any(), any(), any(), any(), any());
     }
 
     @Test
