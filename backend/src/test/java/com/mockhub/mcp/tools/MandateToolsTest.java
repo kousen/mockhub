@@ -48,7 +48,8 @@ class MandateToolsTest {
         MandateDto mandateDto = new MandateDto(
                 1L, "mandate-123", "agent-1", "user@test.com", "PURCHASE",
                 new BigDecimal("100.00"), new BigDecimal("500.00"), BigDecimal.ZERO,
-                new BigDecimal("500.00"), null, null, "ACTIVE", null, Instant.now());
+                new BigDecimal("500.00"), null, null, null, "AUTO_PURCHASE",
+                "ACTIVE", null, Instant.now());
 
         when(mandateService.createMandate(any(CreateMandateRequest.class))).thenReturn(mandateDto);
 
@@ -68,7 +69,7 @@ class MandateToolsTest {
     void createMandate_givenExpiresAt_parsesIso8601Timestamp() {
         MandateDto mandateDto = new MandateDto(
                 1L, "mandate-456", "agent-1", "user@test.com", "BROWSE",
-                null, null, BigDecimal.ZERO, null, null, null, "ACTIVE",
+                null, null, BigDecimal.ZERO, null, null, null, null, "AUTO_PURCHASE", "ACTIVE",
                 Instant.parse("2026-12-31T23:59:59Z"), Instant.now());
 
         when(mandateService.createMandate(any(CreateMandateRequest.class))).thenReturn(mandateDto);
@@ -113,7 +114,7 @@ class MandateToolsTest {
         MandateDto mandateDto = new MandateDto(
                 1L, "mandate-789", "agent-1", "user@test.com", "PURCHASE",
                 null, null, BigDecimal.ZERO, null, "rock,jazz", "event-1,event-2",
-                "ACTIVE", null, Instant.now());
+                null, "AUTO_PURCHASE", "ACTIVE", null, Instant.now());
 
         when(mandateService.createMandate(any(CreateMandateRequest.class))).thenReturn(mandateDto);
 
@@ -157,11 +158,12 @@ class MandateToolsTest {
     void listMandates_givenUserWithMandates_returnsJsonArray() {
         MandateDto mandate1 = new MandateDto(
                 1L, "mandate-1", "agent-1", "user@test.com", "BROWSE",
-                null, null, BigDecimal.ZERO, null, null, null, "ACTIVE", null, Instant.now());
+                null, null, BigDecimal.ZERO, null, null, null, null, "AUTO_PURCHASE",
+                "ACTIVE", null, Instant.now());
         MandateDto mandate2 = new MandateDto(
                 2L, "mandate-2", "agent-2", "user@test.com", "PURCHASE",
                 new BigDecimal("200.00"), null, BigDecimal.ZERO, null, null, null,
-                "ACTIVE", null, Instant.now());
+                null, "AUTO_PURCHASE", "ACTIVE", null, Instant.now());
 
         when(mandateService.listMandates("user@test.com")).thenReturn(List.of(mandate1, mandate2));
 
@@ -276,7 +278,8 @@ class MandateToolsTest {
         MandateDto mandateDto = new MandateDto(
                 1L, "mandate-best", "agent-1", "user@test.com", "PURCHASE",
                 new BigDecimal("100.00"), new BigDecimal("500.00"), BigDecimal.ZERO,
-                new BigDecimal("500.00"), "concerts", "taylor-swift", "ACTIVE", null, Instant.now());
+                new BigDecimal("500.00"), "concerts", "taylor-swift", null, "AUTO_PURCHASE",
+                "ACTIVE", null, Instant.now());
 
         when(mandateService.findBestMandate("agent-1", "user@test.com", "PURCHASE",
                 new BigDecimal("75.00"), "concerts", "taylor-swift", null))

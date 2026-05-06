@@ -46,7 +46,7 @@ class MandateServiceTest {
         CreateMandateRequest request = new CreateMandateRequest(
                 "agent-1", "user@example.com", "PURCHASE",
                 new BigDecimal("100.00"), new BigDecimal("500.00"),
-                "concerts,sports", null, null);
+                "concerts,sports", null, null, null, null);
 
         when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> {
             Mandate mandate = invocation.getArgument(0);
