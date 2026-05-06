@@ -20,8 +20,10 @@ import com.mockhub.event.dto.EventSummaryDto;
 import com.mockhub.event.service.EventService;
 import com.mockhub.ticket.dto.ListingDto;
 import com.mockhub.ticket.dto.ListingSearchCriteria;
+import com.mockhub.ticket.dto.TicketComparisonResponseDto;
 import com.mockhub.ticket.dto.TicketSearchResultDto;
 import com.mockhub.ticket.service.ListingService;
+import com.mockhub.ticket.service.TicketComparisonService;
 
 @Component
 public class EventTools {
@@ -30,15 +32,18 @@ public class EventTools {
 
     private final EventService eventService;
     private final ListingService listingService;
+    private final TicketComparisonService ticketComparisonService;
     private final CommercePolicyService commercePolicyService;
     private final ObjectMapper objectMapper;
 
     public EventTools(EventService eventService,
                       ListingService listingService,
+                      TicketComparisonService ticketComparisonService,
                       CommercePolicyService commercePolicyService,
                       ObjectMapper objectMapper) {
         this.eventService = eventService;
         this.listingService = listingService;
+        this.ticketComparisonService = ticketComparisonService;
         this.commercePolicyService = commercePolicyService;
         this.objectMapper = objectMapper;
     }
@@ -48,7 +53,8 @@ public class EventTools {
     public String searchEvents(
             @ToolParam(description = "Search query text to match event name or artist",
                     required = false) String query,
-            @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', 'theater', 'comedy', 'festivals'",
+            @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', "
+                    + "'theater', 'comedy', 'festivals'",
                     required = false) String category,
             @ToolParam(description = "City name to filter events by location",
                     required = false) String city,
@@ -174,13 +180,16 @@ public class EventTools {
     public String findTickets(
             @ToolParam(description = "Search query text to match event name or artist",
                     required = false) String query,
-            @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', 'theater', 'comedy', 'festivals'",
+            @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', "
+                    + "'theater', 'comedy', 'festivals'",
                     required = false) String category,
             @ToolParam(description = "City name to filter events by location",
                     required = false) String city,
-            @ToolParam(description = "Only include events on or after this date (ISO-8601, e.g. '2026-04-01T00:00:00Z')",
+            @ToolParam(description = "Only include events on or after this date "
+                    + "(ISO-8601, e.g. '2026-04-01T00:00:00Z')",
                     required = false) String dateFrom,
-            @ToolParam(description = "Only include events on or before this date (ISO-8601, e.g. '2026-05-01T00:00:00Z')",
+            @ToolParam(description = "Only include events on or before this date "
+                    + "(ISO-8601, e.g. '2026-05-01T00:00:00Z')",
                     required = false) String dateTo,
             @ToolParam(description = "Minimum ticket price filter",
                     required = false) BigDecimal minPrice,
@@ -203,6 +212,50 @@ public class EventTools {
         } catch (Exception e) {
             log.error("Error finding tickets: {}", e.getMessage(), e);
             return errorJson("Failed to find tickets: " + e.getMessage());
+        }
+    }
+
+    @Tool(description = "Compare MockHub ticket listings for an agent shopping decision. "
+            + "Use this when the user asks for the best ticket, best value, cheapest option, safest option, "
+            + "or a tradeoff explanation. Returns ranked options, reason codes, deterministic rationale, "
+            + "and price plausibility warnings. Objective listing fields are returned separately from "
+            + "heuristic judgment fields.")
+    public String compareTickets(
+            @ToolParam(description = "Search query text to match event name or artist",
+                    required = false) String query,
+            @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', "
+                    + "'theater', 'comedy', 'festivals'",
+                    required = false) String category,
+            @ToolParam(description = "City name to filter events by location",
+                    required = false) String city,
+            @ToolParam(description = "Only include events on or after this date "
+                    + "(ISO-8601, e.g. '2026-04-01T00:00:00Z')",
+                    required = false) String dateFrom,
+            @ToolParam(description = "Only include events on or before this date "
+                    + "(ISO-8601, e.g. '2026-05-01T00:00:00Z')",
+                    required = false) String dateTo,
+            @ToolParam(description = "Minimum ticket price filter",
+                    required = false) BigDecimal minPrice,
+            @ToolParam(description = "Maximum ticket price filter",
+                    required = false) BigDecimal maxPrice,
+            @ToolParam(description = "Section name filter (e.g. 'Orchestra', 'Balcony')",
+                    required = false) String section,
+            @ToolParam(description = "Preferred section for the best-section recommendation",
+                    required = false) String preferredSection,
+            @ToolParam(description = "Maximum number of results to compare (default 10, max 50)",
+                    required = false) Integer maxResults) {
+        try {
+            int limit = (maxResults == null || maxResults <= 0) ? 10 : Math.min(maxResults, 50);
+
+            ListingSearchCriteria criteria = new ListingSearchCriteria(
+                    query, category, city, minPrice, maxPrice, section,
+                    parseInstant(dateFrom), parseInstant(dateTo), limit);
+
+            TicketComparisonResponseDto response = ticketComparisonService.compareTickets(criteria, preferredSection);
+            return objectMapper.writeValueAsString(response);
+        } catch (Exception e) {
+            log.error("Error comparing tickets: {}", e.getMessage(), e);
+            return errorJson("Failed to compare tickets: " + e.getMessage());
         }
     }
 
