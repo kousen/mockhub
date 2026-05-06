@@ -138,7 +138,7 @@ public class MandateService {
         return mandates.stream()
                 .filter(m -> m.getExpiresAt() == null || m.getExpiresAt().isAfter(now))
                 .filter(m -> validateMandateConstraints(m, requiredScope, amount, categorySlug, eventSlug,
-                        sectionName, true))
+                        sectionName))
                 .min(Comparator.comparing(this::mandateSpecificity).reversed()
                         .thenComparing(Mandate::getCreatedAt))
                 .map(this::toDto);
@@ -193,7 +193,7 @@ public class MandateService {
             return false;
         }
 
-        return validateMandateConstraints(mandate, requiredScope, amount, categorySlug, eventSlug, sectionName, false);
+        return validateMandateConstraints(mandate, requiredScope, amount, categorySlug, eventSlug, sectionName);
     }
 
     @Transactional(readOnly = true)
@@ -204,8 +204,7 @@ public class MandateService {
 
     private boolean validateMandateConstraints(Mandate mandate, String requiredScope,
                                                 BigDecimal amount, String categorySlug,
-                                                String eventSlug, String sectionName,
-                                                boolean requireSectionWhenRestricted) {
+                                                String eventSlug, String sectionName) {
         if (!scopeCovers(mandate.getScope(), requiredScope)) {
             log.warn("Mandate {} scope '{}' does not cover required scope '{}'",
                     mandate.getMandateId(), mandate.getScope(), requiredScope);
@@ -244,7 +243,9 @@ public class MandateService {
 
         if (mandate.getAllowedSections() != null && !mandate.getAllowedSections().isBlank()) {
             if (sectionName == null || sectionName.isBlank()) {
-                return !requireSectionWhenRestricted;
+                log.warn("Mandate {} requires section context for allowedSections '{}'",
+                        mandate.getMandateId(), mandate.getAllowedSections());
+                return false;
             }
             if (!parseCommaSeparated(mandate.getAllowedSections()).contains(sectionName.toLowerCase())) {
                 log.warn("Mandate {} does not allow section '{}'",

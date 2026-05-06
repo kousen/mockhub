@@ -7,6 +7,7 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,6 +19,7 @@ import com.mockhub.eval.dto.EvalResult;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.dto.CartDto;
+import com.mockhub.cart.dto.CartItemDto;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.common.exception.ConflictException;
@@ -94,13 +96,17 @@ public class OrderTools {
             }
             User user = resolveUser(userEmail);
             CartDto cartDto = cartService.getCartDto(user);
-            EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forAgentAction(
-                    agentId.strip(), user.getEmail(), null, null, cartDto.subtotal(), null, mandateId.strip()));
-            if (evalSummary.hasCriticalFailure()) {
-                String failureMessage = evalSummary.failures().stream()
+            EvalSummary cartSummary = evalRunner.evaluate(EvalContext.forCart(cartDto));
+            if (cartSummary.hasCriticalFailure()) {
+                String failureMessage = cartSummary.failures().stream()
                         .map(result -> result.conditionName() + ": " + result.message())
                         .collect(Collectors.joining("; "));
                 return errorJson("Cannot checkout: " + failureMessage);
+            }
+            String authorizationFailure = validateCartItemsForAgent(
+                    cartDto, user.getEmail(), agentId.strip(), mandateId.strip());
+            if (authorizationFailure != null) {
+                return errorJson("Cannot checkout: " + authorizationFailure);
             }
             CheckoutRequest request = new CheckoutRequest(paymentMethod.strip());
             OrderDto order = orderService.checkout(user, request, null, agentId.strip(), mandateId.strip());
@@ -250,6 +256,25 @@ public class OrderTools {
                 && (approvalId == null || approvalId.isBlank())) {
             throw new ConflictException("Mandate requires an approved purchase approval before confirmation");
         }
+    }
+
+    private String validateCartItemsForAgent(CartDto cartDto, String userEmail, String agentId, String mandateId) {
+        if (cartDto.items() == null || cartDto.items().isEmpty()) {
+            return null;
+        }
+
+        for (CartItemDto item : cartDto.items()) {
+            BigDecimal amount = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
+            if (amount == null) {
+                amount = item.priceAtAdd();
+            }
+            boolean authorized = mandateService.validateAction(
+                    agentId, userEmail, "PURCHASE", amount, null, item.eventSlug(), mandateId, item.sectionName());
+            if (!authorized) {
+                return "Mandate does not authorize cart item listing " + item.listingId();
+            }
+        }
+        return null;
     }
 
     private String normalize(String value) {

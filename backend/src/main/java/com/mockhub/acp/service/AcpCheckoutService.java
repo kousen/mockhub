@@ -1,5 +1,6 @@
 package com.mockhub.acp.service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -24,6 +25,7 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.cart.dto.CartDto;
+import com.mockhub.cart.dto.CartItemDto;
 import com.mockhub.commerce.dto.CommercePolicyDto;
 import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.exception.ConflictException;
@@ -297,14 +299,32 @@ public class AcpCheckoutService {
 
     private void validateCartForAgent(User user, String agentId, String mandateId) {
         CartDto cartDto = cartService.getCartDto(user);
-        EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forAgentAction(
-                agentId, user.getEmail(), null, null, cartDto.subtotal(), null, mandateId));
+        EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forCart(cartDto));
 
         if (evalSummary.hasCriticalFailure()) {
             String failureMessage = evalSummary.failures().stream()
                     .map(result -> result.conditionName() + ": " + result.message())
                     .collect(Collectors.joining("; "));
             throw new ConflictException("ACP cart validation failed: " + failureMessage);
+        }
+
+        if (cartDto.items() == null || cartDto.items().isEmpty()) {
+            return;
+        }
+
+        for (CartItemDto item : cartDto.items()) {
+            BigDecimal amount = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
+            if (amount == null) {
+                amount = item.priceAtAdd();
+            }
+            boolean authorized = mandateService.validateAction(
+                    agentId, user.getEmail(), "PURCHASE", amount, null,
+                    item.eventSlug(), mandateId, item.sectionName());
+            if (!authorized) {
+                throw new ConflictException(
+                        "ACP cart validation failed: Mandate does not authorize cart item listing "
+                                + item.listingId());
+            }
         }
     }
 

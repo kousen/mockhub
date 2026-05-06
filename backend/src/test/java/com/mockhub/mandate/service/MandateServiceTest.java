@@ -319,6 +319,38 @@ class MandateServiceTest {
     }
 
     @Test
+    @DisplayName("validateAction returns false when restricted section is missing")
+    void validateAction_givenRestrictedSectionWithoutSection_returnsFalse() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setScope("PURCHASE");
+        mandate.setAllowedSections("Floor");
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        boolean result = mandateService.validateAction(
+                "agent-1", "user@example.com", "PURCHASE",
+                null, null, "rock-festival", "m1", null);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    @DisplayName("validateAction treats empty allowedSections as unrestricted")
+    void validateAction_givenEmptyAllowedSections_treatsAsUnrestricted() {
+        Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
+        mandate.setScope("PURCHASE");
+        mandate.setAllowedSections("");
+        when(mandateRepository.findByAgentIdAndUserEmailAndStatus("agent-1", "user@example.com", "ACTIVE"))
+                .thenReturn(List.of(mandate));
+
+        boolean result = mandateService.validateAction(
+                "agent-1", "user@example.com", "PURCHASE",
+                null, null, "rock-festival", "m1", null);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
     @DisplayName("validateAction returns false when event not allowed")
     void validateAction_givenEventNotAllowed_returnsFalse() {
         Mandate mandate = createActiveMandate("m1", "agent-1", "user@example.com");
