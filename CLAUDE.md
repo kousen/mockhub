@@ -192,7 +192,7 @@ The codebase uses Java DOP patterns where they add value:
 - **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
-- **MCP server** — 23 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`.
+- **MCP server** — 29 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools, AgentApprovalTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`.
 - **MCP auth (two modes, profile-based):**
   - `mcp-oauth2` profile: OAuth 2.1 with Dynamic Client Registration (DCR). Enables native Claude connector support on all platforms (desktop, web, mobile) without `mcp-remote`. Uses `org.springaicommunity:mcp-authorization-server:0.1.5` and `org.springaicommunity:mcp-server-security:0.1.5`.
   - Without `mcp-oauth2` profile: Falls back to `X-API-Key` header auth via `McpApiKeyFilter`. Requires `mcp-remote` bridge for Claude Desktop.
