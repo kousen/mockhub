@@ -19,6 +19,7 @@ import com.mockhub.acp.dto.AcpLineItem;
 import com.mockhub.acp.dto.AcpLineItemResponse;
 import com.mockhub.acp.dto.AcpPricing;
 import com.mockhub.acp.dto.AcpUpdateRequest;
+import com.mockhub.agentapproval.service.AgentPurchaseApprovalService;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.service.CartService;
@@ -56,6 +57,7 @@ public class AcpCheckoutService {
     private final EvalRunner evalRunner;
     private final PaymentService paymentService;
     private final CommercePolicyService commercePolicyService;
+    private final AgentPurchaseApprovalService approvalService;
 
     public AcpCheckoutService(UserRepository userRepository,
                               CartService cartService,
@@ -63,7 +65,8 @@ public class AcpCheckoutService {
                               ListingRepository listingRepository,
                               EvalRunner evalRunner,
                               PaymentService paymentService,
-                              CommercePolicyService commercePolicyService) {
+                              CommercePolicyService commercePolicyService,
+                              AgentPurchaseApprovalService approvalService) {
         this.userRepository = userRepository;
         this.cartService = cartService;
         this.orderService = orderService;
@@ -71,6 +74,7 @@ public class AcpCheckoutService {
         this.evalRunner = evalRunner;
         this.paymentService = paymentService;
         this.commercePolicyService = commercePolicyService;
+        this.approvalService = approvalService;
     }
 
     @Transactional
@@ -168,6 +172,8 @@ public class AcpCheckoutService {
         orderService.getOrder(user, checkoutId);
         Order order = orderService.getOrderEntity(checkoutId);
         validateStoredAgentContext(order, request.agentId(), request.mandateId());
+        approvalService.validateApprovedForCompletion(
+                request.approvalId(), user.getEmail(), request.agentId(), request.mandateId(), order);
 
         String paymentIntentId = request.paymentIntentId();
 
@@ -197,7 +203,13 @@ public class AcpCheckoutService {
             throw new ConflictException("A payment intent is required to complete checkout for " + order.getPaymentMethod());
         }
 
-        paymentService.confirmPayment(paymentIntentId);
+        try {
+            paymentService.confirmPayment(paymentIntentId);
+        } catch (RuntimeException e) {
+            approvalService.markFailed(request.approvalId(), e.getMessage());
+            throw e;
+        }
+        approvalService.markCompleted(request.approvalId(), checkoutId);
 
         OrderDto confirmedOrder = orderService.getOrder(user, checkoutId);
 

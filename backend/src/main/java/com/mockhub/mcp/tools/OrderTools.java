@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ai.service.ChatContext;
+import com.mockhub.agentapproval.service.AgentPurchaseApprovalService;
 import com.mockhub.eval.dto.EvalResult;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
@@ -46,6 +47,7 @@ public class OrderTools {
     private final CartService cartService;
     private final EvalRunner evalRunner;
     private final PaymentService paymentService;
+    private final AgentPurchaseApprovalService approvalService;
     private final ObjectMapper objectMapper;
 
     public OrderTools(OrderService orderService,
@@ -54,6 +56,7 @@ public class OrderTools {
                       CartService cartService,
                       EvalRunner evalRunner,
                       PaymentService paymentService,
+                      AgentPurchaseApprovalService approvalService,
                       ObjectMapper objectMapper) {
         this.orderService = orderService;
         this.calendarService = calendarService;
@@ -61,6 +64,7 @@ public class OrderTools {
         this.cartService = cartService;
         this.evalRunner = evalRunner;
         this.paymentService = paymentService;
+        this.approvalService = approvalService;
         this.objectMapper = objectMapper;
     }
 
@@ -150,7 +154,9 @@ public class OrderTools {
             @ToolParam(description = "Active mandate ID authorizing the purchase action",
                     required = true) String mandateId,
             @ToolParam(description = "Existing payment intent ID for non-mock payment methods",
-                    required = false) String paymentIntentId) {
+                    required = false) String paymentIntentId,
+            @ToolParam(description = "Optional approved purchase approval ID for audit linkage",
+                    required = false) String approvalId) {
         try {
             if (orderNumber == null || orderNumber.isBlank()) {
                 return errorJson(ORDER_NUMBER_REQUIRED);
@@ -167,6 +173,8 @@ public class OrderTools {
             orderService.getOrder(user, trimmedOrderNumber);
             Order order = orderService.getOrderEntity(trimmedOrderNumber);
             validateStoredAgentContext(order, agentId, mandateId);
+            approvalService.validateApprovedForCompletion(
+                    approvalId, user.getEmail(), agentId, mandateId, order);
 
             // Re-evaluate mandate authorization at confirmation time
             EvalSummary evalSummary = revalidateOrderForConfirmation(order, user.getEmail(), agentId, mandateId);
@@ -178,7 +186,13 @@ public class OrderTools {
             }
 
             String resolvedPaymentIntentId = resolvePaymentIntentId(order, paymentIntentId);
-            paymentService.confirmPayment(resolvedPaymentIntentId);
+            try {
+                paymentService.confirmPayment(resolvedPaymentIntentId);
+            } catch (RuntimeException e) {
+                approvalService.markFailed(approvalId, e.getMessage());
+                throw e;
+            }
+            approvalService.markCompleted(approvalId, trimmedOrderNumber);
             OrderDto confirmedOrder = orderService.getOrder(user, trimmedOrderNumber);
             return objectMapper.writeValueAsString(confirmedOrder);
         } catch (Exception e) {

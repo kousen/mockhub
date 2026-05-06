@@ -7,6 +7,7 @@ public record AcpCompleteRequest(
         String agentId,
         @NotBlank(message = "Mandate ID is required")
         String mandateId,
-        String paymentIntentId
+        String paymentIntentId,
+        String approvalId
 ) {
 }
