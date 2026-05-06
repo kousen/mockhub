@@ -74,6 +74,34 @@ class MandateServiceTest {
     }
 
     @Test
+    @DisplayName("createMandate normalizes lowercase approval mode")
+    void createMandate_givenLowercaseApprovalMode_normalizesApprovalMode() {
+        CreateMandateRequest request = new CreateMandateRequest(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("100.00"), new BigDecimal("500.00"),
+                null, null, null, "approval_required", null);
+
+        when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MandateDto result = mandateService.createMandate(request);
+
+        assertThat(result.approvalMode()).isEqualTo("APPROVAL_REQUIRED");
+    }
+
+    @Test
+    @DisplayName("createMandate rejects invalid approval mode")
+    void createMandate_givenInvalidApprovalMode_throwsIllegalArgumentException() {
+        CreateMandateRequest request = new CreateMandateRequest(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("100.00"), new BigDecimal("500.00"),
+                null, null, null, "MANUAL_REVIEW", null);
+
+        assertThatThrownBy(() -> mandateService.createMandate(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("approvalMode must be AUTO_PURCHASE or APPROVAL_REQUIRED");
+    }
+
+    @Test
     @DisplayName("revokeMandate sets status to REVOKED")
     void revokeMandate_givenExistingMandate_setsStatusRevoked() {
         Mandate mandate = createActiveMandate("mandate-123", "agent-1", "user@example.com");
