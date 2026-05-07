@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.mockhub.mcp.tools.AgentApprovalTools;
 import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
 import com.mockhub.mcp.tools.MandateTools;
@@ -21,9 +22,11 @@ public class McpConfig {
                                                        PricingTools pricingTools,
                                                        CartTools cartTools,
                                                        OrderTools orderTools,
-                                                       MandateTools mandateTools) {
+                                                       MandateTools mandateTools,
+                                                       AgentApprovalTools agentApprovalTools) {
         return MethodToolCallbackProvider.builder()
-                .toolObjects(eventTools, pricingTools, cartTools, orderTools, mandateTools)
+                .toolObjects(eventTools, pricingTools, cartTools, orderTools, mandateTools,
+                        agentApprovalTools)
                 .build();
     }
 }

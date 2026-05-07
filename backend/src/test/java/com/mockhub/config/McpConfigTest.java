@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.tool.ToolCallbackProvider;
 
+import com.mockhub.mcp.tools.AgentApprovalTools;
 import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
 import com.mockhub.mcp.tools.MandateTools;
@@ -33,13 +34,16 @@ class McpConfigTest {
     @Mock
     private MandateTools mandateTools;
 
+    @Mock
+    private AgentApprovalTools agentApprovalTools;
+
     @Test
     @DisplayName("mcpToolCallbackProvider - creates provider with all tool objects")
     void mcpToolCallbackProvider_createsProviderWithAllToolObjects() {
         McpConfig config = new McpConfig();
 
         ToolCallbackProvider provider = config.mcpToolCallbackProvider(
-                eventTools, pricingTools, cartTools, orderTools, mandateTools);
+                eventTools, pricingTools, cartTools, orderTools, mandateTools, agentApprovalTools);
 
         assertNotNull(provider, "ToolCallbackProvider should not be null");
     }
