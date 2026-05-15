@@ -70,7 +70,7 @@ Eight issues now tracked in the backlog or decision log, grouped by what they ac
 ### Keeping it honest
 
 - **#237** — UCP discovery profile spike (decision captured: not yet). Investigated whether a `/.well-known/ucp` manifest is worth publishing and concluded that a profile should wait until MockHub has UCP-shaped service bindings, scoped payment credentials, risk signals, pinned protocol revisions, and profile-content tests. A misleading manifest is worse than none, especially for a teaching repo.
-- **#240** — Spec version pins (captured in `docs/agentic-commerce.md`). Records which ACP / UCP / AP2 revisions MockHub targets, with last-verified dates. Protocols are churning weekly; without this pin, course materials silently age out of date.
+- **#240** — Spec version pins (captured in `docs/agentic-commerce.md`). Records which ACP / UCP / AP2 / x402 revisions MockHub targets, with last-verified dates. Protocols are churning weekly; without this pin, course materials silently age out of date.
 
 ## 5. The August Course Arc
 

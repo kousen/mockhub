@@ -234,7 +234,7 @@ The Agentic Commerce Protocol (ACP) is an open standard codeveloped by Stripe, O
 
 ### MockHub's ACP Implementation
 
-MockHub exposes ACP-compatible endpoints at `/acp/v1/`:
+MockHub exposes ACP-shaped adapter endpoints at `/acp/v1/`:
 
 | Endpoint | Method | ACP Operation | MockHub Mapping |
 |---|---|---|---|
@@ -245,6 +245,8 @@ MockHub exposes ACP-compatible endpoints at `/acp/v1/`:
 | `/acp/v1/checkout/{id}/cancel` | POST | Cancel Checkout | Fail order (releases tickets) |
 | `/acp/v1/catalog` | GET | Product Catalog | Search events |
 | `/acp/v1/listings` | GET | Offer Search | Search actionable ticket offers |
+
+The listing search endpoint is a MockHub offer-discovery extension around the pinned ACP snapshot, not a full ACP conformance claim.
 
 ### Authentication
 
@@ -320,14 +322,16 @@ ACP is one of several emerging standards for agentic commerce:
 
 ### Spec Versions
 
-These pins are documentation targets, not conformance claims. They were last verified on **2026-05-15** against the linked public specs and guides.
+These pins are documentation targets, not conformance claims. They were last verified on **2026-05-15** against the linked public specs and guides. ACP's public docs link to the GitHub repository used for versioned spec snapshots; x402's public docs link to the foundation repository, while Coinbase's migration guide documents the current v2 migration target.
 
 | Protocol | Target revision | Canonical reference | Last verified | MockHub stance |
 |---|---|---|---|---|
 | **ACP** | `2026-04-17` spec snapshot | [ACP spec `2026-04-17`](https://github.com/agentic-commerce-protocol/agentic-commerce-protocol/tree/main/spec/2026-04-17) | 2026-05-15 | MockHub implements ACP-shaped checkout and catalog adapters at `/acp/v1/**`, but has not claimed full ACP conformance. |
-| **AP2** | Agentic Payment Protocol `v0.2` | [AP2 specification](https://ap2-protocol.org/ap2/specification/) | 2026-05-15 | MockHub maps the authorization and evidence concepts through mandates, approval records, and eval conditions; it does not issue cryptographically signed AP2 mandate credentials. |
+| **AP2** | AP2 `v0.2` | [AP2 specification](https://ap2-protocol.org/ap2/specification/) | 2026-05-15 | MockHub maps the authorization and evidence concepts through mandates, approval records, and eval conditions; it does not issue cryptographically signed AP2 mandate credentials. |
 | **UCP** | `2026-04-08` protocol version | [UCP specification overview](https://ucp.dev/2026-04-08/specification/overview/) and [Google UCP guide](https://developers.google.com/merchant/ucp/) | 2026-05-15 | MockHub tracks readiness only: no UCP profile, UCP service envelope, or UCP version negotiation is published yet. |
 | **x402** | Protocol `v2` | [x402 v2 specification](https://github.com/x402-foundation/x402/tree/main/specs) and [migration guide](https://docs.cdp.coinbase.com/x402/migration-guide) | 2026-05-15 | MockHub intentionally does not implement x402 because tickets are the paid product; API access itself is not monetized. |
+
+Verification means the links resolved successfully and the visible version markers matched the pinned target (`spec/2026-04-17`, AP2 `v0.2`, UCP `2026-04-08`, and x402 `v2`). Re-check this table before release prep, before opening a future UCP profile implementation issue, and whenever MockHub changes its ACP, MCP, or agent discovery surfaces.
 
 MockHub does **not** claim UCP compliance today. The honest position is UCP readiness: MockHub already has concrete surfaces that map to UCP concepts, and it has a clear backlog for the missing pieces.
 
@@ -366,7 +370,7 @@ MockHub should wait until it can do at least the following:
 5. Decide whether identity-linking and buyer-preference state (#219) belong in the first profile or remain outside the UCP surface.
 6. Add tests that assert the profile content matches the code's live endpoints and supported capabilities.
 
-Until then, `llms.txt`, MCP OAuth metadata, ACP endpoints, and the A2A agent card remain the honest discovery surfaces. No follow-up UCP profile implementation issue exists yet; open one only after #217, #218, #219, and #240 have clarified risk, payment authority, buyer context, and pinned protocol revisions, and include profile-content tests in that future issue.
+Until then, `llms.txt`, MCP OAuth metadata, ACP endpoints, and the A2A agent card remain the honest discovery surfaces. No follow-up UCP profile implementation issue exists yet; open one only after #217, #218, and #219 have clarified risk, payment authority, and buyer context. Use [Spec Versions](#spec-versions) as the pinned protocol reference, and include profile-content tests in that future issue.
 
 ### Why UCP Matters for the Training Course
 
@@ -434,6 +438,7 @@ The implementation is considered working when all of the following are true:
 5. Successful confirmation increments mandate `totalSpent` exactly once.
 6. `cd backend && ./gradlew test` passes.
 7. UCP readiness documentation is manually checked against the current MockHub tool/endpoint names and the pinned external protocol references. There is no automated UCP conformance check yet.
+8. The [Spec Versions](#spec-versions) table is re-checked before release prep and before any future UCP profile work.
 
 ---
 
