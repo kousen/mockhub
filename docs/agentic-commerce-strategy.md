@@ -69,7 +69,7 @@ Eight issues now in the backlog, grouped by what they accomplish.
 
 ### Keeping it honest
 
-- **#237** — UCP discovery profile spike. Investigates whether a `/.well-known/ucp` manifest is worth publishing. The honest disposition is that the spike may end with "do not implement yet" if a truthful profile would overstate what MockHub supports. A misleading manifest is worse than none, especially for a teaching repo.
+- **#237** — UCP discovery profile spike. Investigated whether a `/.well-known/ucp` manifest is worth publishing and concluded "not yet": a profile should wait until MockHub has UCP-shaped service bindings, scoped payment credentials, risk signals, and profile-content tests. A misleading manifest is worse than none, especially for a teaching repo.
 - **#240** — Spec version pins. Records which ACP / UCP / AP2 revisions MockHub targets, with last-verified dates. Protocols are churning weekly; without this pin, course materials silently age out of date.
 
 ## 5. The August Course Arc
