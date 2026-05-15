@@ -50,7 +50,7 @@ What MockHub does *not* yet implement:
 
 ## 4. What We Decided To Build
 
-Eight issues now in the backlog, grouped by what they accomplish.
+Eight issues now tracked in the backlog or decision log, grouped by what they accomplish.
 
 ### Building the parts
 
@@ -69,7 +69,7 @@ Eight issues now in the backlog, grouped by what they accomplish.
 
 ### Keeping it honest
 
-- **#237** — UCP discovery profile spike. Investigates whether a `/.well-known/ucp` manifest is worth publishing. The honest disposition is that the spike may end with "do not implement yet" if a truthful profile would overstate what MockHub supports. A misleading manifest is worse than none, especially for a teaching repo.
+- **#237** — UCP discovery profile spike (decision captured: not yet). Investigated whether a `/.well-known/ucp` manifest is worth publishing and concluded that a profile should wait until MockHub has UCP-shaped service bindings, scoped payment credentials, risk signals, pinned protocol revisions, and profile-content tests. A misleading manifest is worse than none, especially for a teaching repo.
 - **#240** — Spec version pins. Records which ACP / UCP / AP2 revisions MockHub targets, with last-verified dates. Protocols are churning weekly; without this pin, course materials silently age out of date.
 
 ## 5. The August Course Arc

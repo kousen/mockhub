@@ -326,7 +326,7 @@ Coverage labels in this table describe MockHub surfaces that exist today. They d
 
 | UCP Concept | MockHub Surface | MockHub Coverage | Notes |
 |---|---|---|---|
-| Business profile and capability discovery | `llms.txt`, MCP OAuth metadata, A2A agent card, future `/.well-known/ucp` | Partial | MockHub exposes agent-readable metadata, but not a UCP business profile or capability negotiation document. Issue #237 evaluates whether a minimal truthful profile should exist. |
+| Business profile and capability discovery | `llms.txt`, MCP OAuth metadata, A2A agent card | Not implemented | MockHub exposes agent-readable metadata, but not a UCP business profile or capability negotiation document. Issue #237 concluded that publishing `/.well-known/ucp` now would overstate UCP support. |
 | Catalog and offer discovery | MCP `searchEvents`, `findTickets`, `compareTickets`; ACP `GET /catalog` and `GET /listings`; REST event/listing APIs | Implemented | Agents can discover products and actionable ticket offers through both MCP and ACP-shaped endpoints. |
 | Cart lifecycle | MCP cart tools, REST cart API, ACP checkout creation/update flow | Implemented | ACP treats checkout creation as the agent-facing cart/checkout boundary; MCP exposes explicit cart operations. |
 | Checkout lifecycle | ACP `/acp/v1/checkout/**`, MCP `checkout` and `confirmOrder`, `OrderService`, `PaymentService` | Partial | MockHub supports create, update, cancel, and complete flows, but does not implement UCP version negotiation or UCP response envelopes. |
@@ -339,6 +339,23 @@ Coverage labels in this table describe MockHub surfaces that exist today. They d
 | Preference and personalization memory | Favorites, purchase history, Spotify listening data, future user preference package | Planned | Recommendations already use several signals; #219 should turn explicit buyer preferences into a first-class agent-shopping model. |
 | Extensions and version negotiation | None | Not implemented | UCP's capability model relies on dated protocol versions and negotiated capability versions. MockHub should not advertise support until it can produce a truthful profile and validate versioned requests. |
 | Machine-to-machine API payments | None | Intentionally out of scope | x402 and similar rails monetize API access. MockHub's agents buy tickets; API access itself is free. |
+
+### UCP Discovery Profile Decision
+
+[Issue #237](https://github.com/kousen/mockhub/issues/237) asked whether MockHub should publish a minimal `/.well-known/ucp` business profile now. The recommendation is: **do not publish a UCP profile yet**.
+
+The reason is not that MockHub lacks agentic-commerce capabilities. It has plenty of them. The problem is that a UCP profile is not just a static metadata file; it is the protocol discovery document for versioned UCP services, capabilities, payment handlers, and negotiation behavior. Publishing a placeholder profile would invite platforms to treat MockHub as UCP-capable when the advertised endpoints still speak MockHub's existing ACP, MCP, and REST contracts.
+
+MockHub should wait until it can do at least the following:
+
+1. Choose a pinned UCP protocol version and keep the relevant service/capability schema references current.
+2. Expose UCP-shaped service bindings or clearly documented adapters, rather than pointing UCP clients at ACP endpoints with different request and response envelopes.
+3. Model payment credentials separately from mandates (#218), because UCP payment handlers and AP2-style autonomous payment flows depend on that boundary.
+4. Add basic agent risk signals (#217), because UCP's signal model expects transaction-environment data for authorization, rate limiting, and abuse prevention.
+5. Decide whether identity-linking and buyer-preference state (#219) belong in the first profile or remain outside the UCP surface.
+6. Add tests that assert the profile content matches the code's live endpoints and supported capabilities.
+
+Until then, `llms.txt`, MCP OAuth metadata, ACP endpoints, and the A2A agent card remain the honest discovery surfaces. No follow-up UCP profile implementation issue exists yet; open one only after #217, #218, #219, and #240 have clarified risk, payment authority, buyer context, and pinned protocol revisions, and include profile-content tests in that future issue.
 
 ### Why UCP Matters for the Training Course
 
