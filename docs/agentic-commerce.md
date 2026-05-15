@@ -309,10 +309,46 @@ ACP is one of several emerging standards for agentic commerce:
 
 | Protocol | Layer | Owner | MockHub Status |
 |---|---|---|---|
-| **ACP** | Checkout & merchant integration | Stripe + OpenAI | Implemented (Layer 3) |
-| **AP2** | Trust & authorization | Google | Conceptually implemented via mandates (Layer 2) |
-| **UCP** | Cross-vertical coordination | Google | Not implemented (orchestration layer) |
-| **x402** | Machine-to-machine micropayments | Coinbase | Not implemented — interesting pattern, different problem ([details](#x402-http-402-for-machine-to-machine-payments)) |
+| **ACP** | Checkout, cart, payment delegation, merchant integration | Stripe + OpenAI + Meta | Partially implemented through `/acp/v1/**` (Layer 3) |
+| **AP2** | Trust, authorization, signed mandates, evidence | Google | Conceptually implemented through mandates and approval records (Layer 2) |
+| **UCP** | Cross-surface commerce discovery and capability negotiation | Google + industry partners | Not UCP-compliant; many concepts map to existing MockHub surfaces |
+| **x402** | Machine-to-machine API payments over HTTP 402 | x402 Foundation | Not implemented — interesting pattern, different problem ([details](#x402-http-402-for-machine-to-machine-payments)) |
+
+[ACP](https://www.agenticcommerce.dev/) is the closest match to MockHub's current protocol implementation: it gives agents a checkout API that wraps existing cart, order, and payment logic. [AP2](https://ap2-protocol.org/ap2/specification/) is the closest match to MockHub's authorization model: its checkout and payment mandates line up with the same trust problem MockHub handles through database-backed mandates, approval records, and eval conditions.
+
+[UCP](https://ucp.dev/2026-04-08/specification/overview/) sits one layer wider. Its official docs describe a common language for platforms, agents, and businesses across discovery, checkout, identity linking, payment handling, and post-purchase experiences. UCP profiles are discovered at `/.well-known/ucp`, advertise services and capabilities, and negotiate protocol and capability versions. [Google's UCP guide](https://developers.google.com/merchant/ucp/) emphasizes that merchants remain the merchant of record, keep their customer relationship, and participate in a full end-to-end shopping journey rather than checkout alone.
+
+MockHub does **not** claim UCP compliance today. The honest position is UCP readiness: MockHub already has concrete surfaces that map to UCP concepts, and it has a clear backlog for the missing pieces.
+
+### UCP Readiness Mapping
+
+| UCP Concept | MockHub Surface | Status | Notes |
+|---|---|---|---|
+| Business profile and capability discovery | `llms.txt`, MCP OAuth metadata, A2A agent card, future `/.well-known/ucp` | Partial | MockHub exposes agent-readable metadata, but not a UCP business profile or capability negotiation document. Issue #237 evaluates whether a minimal truthful profile should exist. |
+| Catalog and offer discovery | MCP `searchEvents`, `findTickets`, `compareTickets`; ACP `GET /catalog` and `GET /listings`; REST event/listing APIs | Implemented | Agents can discover products and actionable ticket offers through both MCP and ACP-shaped endpoints. |
+| Cart lifecycle | MCP cart tools, REST cart API, ACP checkout creation/update flow | Implemented | ACP treats checkout creation as the agent-facing cart/checkout boundary; MCP exposes explicit cart operations. |
+| Checkout lifecycle | ACP `/acp/v1/checkout/**`, MCP `checkout` and `confirmOrder`, `OrderService`, `PaymentService` | Partial | MockHub supports create, update, cancel, and complete flows, but does not implement UCP version negotiation or UCP response envelopes. |
+| Order and post-purchase support | MCP `getOrder`, `listOrders`, `getCalendarEntry`; public ticket view; PDF/QR tickets; SMS/email fulfillment | Implemented | MockHub covers order lookup and fulfillment well for tickets, though it does not yet model returns, disputes, or shipment tracking. |
+| Identity linking | Website OAuth account linking, authenticated website user context, MCP OAuth2 for agent access | Partial | MockHub has account linking and authenticated agent transport, but not UCP identity-linking capability declarations. Future buyer preference memory (#219) would add another user-context signal. |
+| Commerce policy | REST commerce policy endpoints, MCP `getCommercePolicy`, policy snapshots in ACP/listing responses | Implemented | Agents can fetch structured policy context before proposing or completing purchases. |
+| Authorization and proof | Mandates, `MandateCondition`, approval records, approval-required mandates | Partial | These map closely to AP2 concepts, but they are not cryptographically signed AP2 mandate credentials. Scoped payment credentials (#218) are the next boundary to separate "allowed to act" from "allowed to pay." |
+| Payment credentials | Mock and Stripe payment services, stored payment intent IDs | Planned | MockHub accepts payment intent IDs but has no separate scoped credential abstraction yet. Issue #218 covers one-time/reusable credential lifecycle, expiration, revocation, and limits. |
+| Risk and abuse signals | Eval conditions, spending warnings, price plausibility warnings, mandate failures | Planned | Existing eval conditions can warn or block, but MockHub does not yet persist agent risk signals. Issue #217 should add deterministic local risk tracking and at least one blocking condition. |
+| Preference and personalization memory | Favorites, purchase history, Spotify listening data, future user preference package | Planned | Recommendations already use several signals; #219 should turn explicit buyer preferences into a first-class agent-shopping model. |
+| Extensions and version negotiation | None | Not implemented | UCP's capability model relies on dated protocol versions and negotiated capability versions. MockHub should not advertise support until it can produce a truthful profile and validate versioned requests. |
+| Machine-to-machine API payments | None | Intentionally out of scope | x402 and similar rails monetize API access. MockHub's agents buy tickets; API access itself is free. |
+
+### Why UCP Matters for the Training Course
+
+UCP is useful in the August course because it forces the broader question: can an agent complete a whole commerce journey, not just call a checkout endpoint? MockHub is a good teaching system precisely because the pieces are visible:
+
+1. Discovery happens through MCP tools, ACP catalog/listing routes, and `llms.txt`.
+2. Authorization happens through mandates and approval records.
+3. Payment still routes through ordinary payment services, with scoped payment credentials left as an explicit follow-up.
+4. Fulfillment happens through tickets, QR codes, calendar files, and notifications.
+5. Risk and preference memory are named gaps rather than invisible magic.
+
+That lets students compare a working partial system against the protocol map. The lesson is not "MockHub implements every new standard." The lesson is that responsible agentic commerce needs a legible division of responsibility: capability discovery, user authority, payment authority, risk evaluation, checkout, fulfillment, and evidence.
 
 ## x402: HTTP 402 for Machine-to-Machine Payments
 
