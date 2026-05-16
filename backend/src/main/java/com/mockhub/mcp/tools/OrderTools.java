@@ -36,6 +36,7 @@ import com.mockhub.order.service.CalendarService;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.paymentcredential.service.PaymentCredentialService;
 import com.mockhub.mandate.service.MandateService;
 
 @Component
@@ -52,6 +53,7 @@ public class OrderTools {
     private final PaymentService paymentService;
     private final AgentPurchaseApprovalService approvalService;
     private final MandateService mandateService;
+    private final PaymentCredentialService paymentCredentialService;
     private final ObjectMapper objectMapper;
 
     public OrderTools(OrderService orderService,
@@ -62,6 +64,7 @@ public class OrderTools {
                       PaymentService paymentService,
                       AgentPurchaseApprovalService approvalService,
                       MandateService mandateService,
+                      PaymentCredentialService paymentCredentialService,
                       ObjectMapper objectMapper) {
         this.orderService = orderService;
         this.calendarService = calendarService;
@@ -71,6 +74,7 @@ public class OrderTools {
         this.paymentService = paymentService;
         this.approvalService = approvalService;
         this.mandateService = mandateService;
+        this.paymentCredentialService = paymentCredentialService;
         this.objectMapper = objectMapper;
     }
 
@@ -165,6 +169,8 @@ public class OrderTools {
                     required = true) String mandateId,
             @ToolParam(description = "Existing payment intent ID for non-mock payment methods",
                     required = false) String paymentIntentId,
+            @ToolParam(description = "Optional scoped payment credential ID authorizing this payment",
+                    required = false) String paymentCredentialId,
             @ToolParam(description = "Optional approved purchase approval ID for audit linkage",
                     required = false) String approvalId) {
         try {
@@ -196,7 +202,11 @@ public class OrderTools {
                 return errorJson("Cannot confirm order: " + failureMessage);
             }
 
+            String resolvedPaymentCredentialId = validatePaymentCredentialIfPresent(
+                    paymentCredentialId, user.getEmail(), agentId, order);
+
             String resolvedPaymentIntentId = resolvePaymentIntentId(order, paymentIntentId);
+            consumePaymentCredentialIfPresent(resolvedPaymentCredentialId, order.getOrderNumber());
             try {
                 paymentService.confirmPayment(resolvedPaymentIntentId);
             } catch (RuntimeException e) {
@@ -255,6 +265,33 @@ public class OrderTools {
         if (mandateService.approvalRequired(agentId.strip(), userEmail, mandateId.strip())
                 && (approvalId == null || approvalId.isBlank())) {
             throw new ConflictException("Mandate requires an approved purchase approval before confirmation");
+        }
+    }
+
+    private String validatePaymentCredentialIfPresent(String paymentCredentialId, String userEmail,
+                                                      String agentId, Order order) {
+        String normalizedPaymentCredentialId = normalize(paymentCredentialId);
+        if (normalizedPaymentCredentialId == null) {
+            return null;
+        }
+        String paymentMethod = normalize(order.getPaymentMethod());
+        if (paymentMethod == null) {
+            paymentMethod = "mock";
+        }
+        paymentCredentialService.authorizeForPayment(
+                normalizedPaymentCredentialId,
+                userEmail,
+                agentId.strip(),
+                order.getTotal(),
+                "USD",
+                paymentMethod,
+                order.getOrderNumber());
+        return normalizedPaymentCredentialId;
+    }
+
+    private void consumePaymentCredentialIfPresent(String paymentCredentialId, String orderNumber) {
+        if (paymentCredentialId != null) {
+            paymentCredentialService.consumeForPayment(paymentCredentialId, orderNumber);
         }
     }
 

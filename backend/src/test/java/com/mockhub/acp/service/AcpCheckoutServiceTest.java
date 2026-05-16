@@ -38,6 +38,7 @@ import com.mockhub.order.dto.OrderItemDto;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.paymentcredential.service.PaymentCredentialService;
 import com.mockhub.mandate.service.MandateService;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.repository.ListingRepository;
@@ -50,6 +51,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -82,6 +84,9 @@ class AcpCheckoutServiceTest {
 
     @Mock
     private MandateService mandateService;
+
+    @Mock
+    private PaymentCredentialService paymentCredentialService;
 
     @InjectMocks
     private AcpCheckoutService acpCheckoutService;
@@ -175,6 +180,7 @@ class AcpCheckoutServiceTest {
         order.setMandateId(MANDATE_ID);
         order.setPaymentMethod(paymentMethod);
         order.setStatus(OrderStatus.PENDING);
+        order.setTotal(new BigDecimal("55.00"));
         return order;
     }
 
@@ -353,7 +359,7 @@ class AcpCheckoutServiceTest {
 
         AcpCheckoutResponse response = acpCheckoutService.completeCheckout(
                 "MH-20260323-0001", "buyer@test.com",
-                new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, null, null));
+                new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, null, null, null));
 
         assertNotNull(response);
         assertEquals("COMPLETED", response.status());
@@ -361,6 +367,70 @@ class AcpCheckoutServiceTest {
         assertEquals("test-concert", response.commercePolicy().eventSlug());
 
         verify(paymentService).confirmPayment("pi_test");
+    }
+
+    @Test
+    @DisplayName("completeCheckout - payment credential ID - validates and consumes before payment")
+    void completeCheckout_paymentCredentialId_validatesAndConsumesBeforePayment() {
+        Order order = createAgentOrder("MH-20260323-0001", "mock");
+        OrderDto confirmedOrder = new OrderDto(
+                1L,
+                "MH-20260323-0001",
+                "CONFIRMED",
+                new BigDecimal("50.00"),
+                new BigDecimal("5.00"),
+                new BigDecimal("55.00"),
+                "mock",
+                Instant.now(),
+                Instant.now(),
+                testOrderDto.items(),
+                null,
+                null
+        );
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001"))
+                .thenReturn(testOrderDto)
+                .thenReturn(confirmedOrder);
+        when(orderService.getOrderEntity("MH-20260323-0001")).thenReturn(order);
+        when(paymentService.createPaymentIntent(any(Order.class)))
+                .thenReturn(new PaymentIntentDto("pi_test", "secret", new BigDecimal("55.00"), "USD"));
+
+        AcpCheckoutResponse response = acpCheckoutService.completeCheckout(
+                "MH-20260323-0001", "buyer@test.com",
+                new com.mockhub.acp.dto.AcpCompleteRequest(
+                        AGENT_ID, MANDATE_ID, null, "cred-123", null));
+
+        assertEquals("COMPLETED", response.status());
+        verify(paymentCredentialService).authorizeForPayment(
+                "cred-123", "buyer@test.com", AGENT_ID,
+                new BigDecimal("55.00"), "USD", "mock", "MH-20260323-0001");
+        verify(paymentCredentialService).consumeForPayment("cred-123", "MH-20260323-0001");
+        verify(paymentService).confirmPayment("pi_test");
+    }
+
+    @Test
+    @DisplayName("completeCheckout - invalid payment credential - does not confirm payment")
+    void completeCheckout_invalidPaymentCredential_doesNotConfirmPayment() {
+        Order order = createAgentOrder("MH-20260323-0001", "mock");
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
+        when(orderService.getOrderEntity("MH-20260323-0001")).thenReturn(order);
+        doThrow(new ConflictException("Order total exceeds payment credential limit"))
+                .when(paymentCredentialService).authorizeForPayment(
+                        "cred-123", "buyer@test.com", AGENT_ID,
+                        new BigDecimal("55.00"), "USD", "mock", "MH-20260323-0001");
+
+        ConflictException exception = assertThrows(ConflictException.class,
+                () -> acpCheckoutService.completeCheckout(
+                        "MH-20260323-0001", "buyer@test.com",
+                        new com.mockhub.acp.dto.AcpCompleteRequest(
+                                AGENT_ID, MANDATE_ID, null, "cred-123", null)));
+
+        assertEquals("Order total exceeds payment credential limit", exception.getMessage());
+        verify(paymentCredentialService, never()).consumeForPayment(any(), any());
+        verify(paymentService, never()).confirmPayment(any());
     }
 
     @Test
@@ -394,7 +464,7 @@ class AcpCheckoutServiceTest {
                 "MH-20260323-0001",
                 "buyer@test.com",
                 new com.mockhub.acp.dto.AcpCompleteRequest(
-                        AGENT_ID, MANDATE_ID, null, "approval-123"));
+                        AGENT_ID, MANDATE_ID, null, null, "approval-123"));
 
         verify(approvalService).validateApprovedForCompletion(
                 "approval-123", "buyer@test.com", AGENT_ID, MANDATE_ID, order);
@@ -415,7 +485,7 @@ class AcpCheckoutServiceTest {
                 () -> acpCheckoutService.completeCheckout(
                         "MH-20260323-0001",
                         "buyer@test.com",
-                        new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, null, null)));
+                        new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, null, null, null)));
 
         assertEquals("Mandate requires an approved purchase approval before completion", exception.getMessage());
         verify(paymentService, never()).confirmPayment(any());
@@ -434,7 +504,8 @@ class AcpCheckoutServiceTest {
         assertThrows(ConflictException.class, () ->
                 acpCheckoutService.completeCheckout(
                         "MH-20260323-0001", "buyer@test.com",
-                        new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, "pi_different", null)));
+                        new com.mockhub.acp.dto.AcpCompleteRequest(
+                                AGENT_ID, MANDATE_ID, "pi_different", null, null)));
 
         verify(paymentService, never()).confirmPayment(any());
     }
@@ -669,7 +740,7 @@ class AcpCheckoutServiceTest {
 
         AcpCheckoutResponse response = acpCheckoutService.completeCheckout(
                 "MH-20260323-0001", "buyer@test.com",
-                new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, null, null));
+                new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, null, null, null));
 
         assertEquals("COMPLETED", response.status());
     }

@@ -31,18 +31,19 @@ These don't have one answer. They divide across layers, which is exactly why pro
 
 ## 3. Where MockHub Stands
 
-As of May 13, 2026, MockHub already implements substantial parts of the agentic-commerce stack:
+As of May 16, 2026, MockHub already implements substantial parts of the agentic-commerce stack:
 
-- **MCP server** with 23 tools covering events, cart, orders, pricing, and mandates
+- **MCP server** with 32 tools covering events, cart, orders, pricing, mandates, approvals, and payment credentials
 - **ACP checkout endpoints** at `/acp/v1/checkout/**`
 - **Agent mandates** with scope and spending limits
+- **Scoped payment credentials** with mock-backed instruments, agent/user/amount/currency constraints, one-time consumption, and ACP/MCP checkout validation
 - **OAuth 2.1 / MCP security** via `spring-ai-community/mcp-security`
 - **Agent discovery** through `llms.txt`
 - **Evaluation conditions** as Design-by-Contract sanity checks for AI agents
 
 What MockHub does *not* yet implement:
 
-- A separate scoped payment credential abstraction (mandates currently do double duty)
+- Stripe-backed wallet or Link-style credentials
 - Agent risk and abuse signals
 - A unified evidence trail across mandate, credential, checkout, and fulfillment
 - UCP capability declarations
@@ -60,7 +61,7 @@ Eight issues now tracked in the backlog or decision log, grouped by what they ac
 
 ### Building the evidence layer
 
-- **#238** — Agent purchase evidence trail view. A single read-only artifact that assembles mandate, approval record, scoped credential (post-#218), checkout, risk signals (post-#217), fulfillment, and eval condition outcomes for a given order. This is the keystone: it is the *new shape of the evidence* that Nate identifies as the missing piece, made concrete in code.
+- **#238** — Agent purchase evidence trail view. A single read-only artifact that assembles mandate, approval record, scoped credential, checkout, risk signals (post-#217), fulfillment, and eval condition outcomes for a given order. This is the keystone: it is the *new shape of the evidence* that Nate identifies as the missing piece, made concrete in code.
 
 ### Making it visible to students
 
@@ -69,7 +70,7 @@ Eight issues now tracked in the backlog or decision log, grouped by what they ac
 
 ### Keeping it honest
 
-- **#237** — UCP discovery profile spike (decision captured: not yet). Investigated whether a `/.well-known/ucp` manifest is worth publishing and concluded that a profile should wait until MockHub has UCP-shaped service bindings, scoped payment credentials, risk signals, pinned protocol revisions, and profile-content tests. A misleading manifest is worse than none, especially for a teaching repo.
+- **#237** — UCP discovery profile spike (decision captured: not yet). Investigated whether a `/.well-known/ucp` manifest is worth publishing and concluded that a profile should wait until MockHub has UCP-shaped service bindings, risk signals, and profile-content tests. Scoped payment credentials (#218) and pinned protocol revisions (#240) now provide two of the prerequisites; a misleading manifest is still worse than none, especially for a teaching repo.
 - **#240** — Spec version pins (captured in `docs/agentic-commerce.md`). Records which ACP / UCP / AP2 / x402 revisions MockHub targets, with last-verified dates. Protocols are churning weekly; without this pin, course materials silently age out of date.
 
 ## 5. The August Course Arc

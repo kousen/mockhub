@@ -27,7 +27,7 @@ Agentic commerce in MockHub is organized into three layers, each independently v
 
 ### Tool Inventory
 
-MockHub exposes 29 MCP tools across 6 tool classes:
+MockHub exposes 32 MCP tools across 7 tool classes:
 
 | Tool Class | Tools | Purpose |
 |---|---|---|
@@ -37,6 +37,7 @@ MockHub exposes 29 MCP tools across 6 tool classes:
 | **OrderTools** | `checkout`, `confirmOrder`, `getOrder`, `listOrders`, `getCalendarEntry` | Order lifecycle |
 | **MandateTools** | `createMandate`, `revokeMandate`, `listMandates`, `validateMandate`, `getBestMandate` | Agent authorization |
 | **AgentApprovalTools** | `proposePurchase`, `approvePurchase`, `denyPurchase`, `listPurchaseApprovals` | Purchase approval audit trail |
+| **PaymentCredentialTools** | `issuePaymentCredential`, `listPaymentCredentials`, `revokePaymentCredential` | Scoped payment authority |
 
 ### The Complete Purchase Flow
 
@@ -59,8 +60,10 @@ An agent can now execute a full purchase on behalf of a user:
    → Returns OrderDto with order number
 
 4. confirmOrder(userEmail="buyer@example.com", orderNumber="MH-20260323-0001",
-                agentId="shopping-agent-1", mandateId="abc-123")
+                agentId="shopping-agent-1", mandateId="abc-123",
+                paymentCredentialId="cred-789")
    → Routes through PaymentService
+   → Validates and consumes the scoped payment credential when supplied
    → Marks order CONFIRMED only after successful payment confirmation
    → Records mandate spend once, updates ticket status to SOLD, triggers SMS + email
    → Returns confirmed OrderDto
@@ -75,6 +78,26 @@ Agents can create a proposal with `proposePurchase`, including a snapshot of the
 Approval IDs are optional for `AUTO_PURCHASE` mandates. Mandates with `approvalMode=APPROVAL_REQUIRED`
 require an approved purchase approval before MCP `confirmOrder` or ACP `completeCheckout` can finish
 the purchase.
+
+### Scoped Payment Credentials
+
+Mandates answer **may this agent act?** Scoped payment credentials answer **may this agent pay with this instrument under these limits?** MockHub models that second question separately in `com.mockhub.paymentcredential`.
+
+The initial implementation is deliberately mock-backed:
+
+- `issuePaymentCredential` creates a credential for a user, agent, maximum amount, currency, usage type, backing payment method, and optional expiration.
+- `confirmOrder` and ACP `completeCheckout` accept an optional `paymentCredentialId`.
+- If supplied, the credential is validated before payment confirmation against user, agent, merchant (`MOCKHUB`), currency, payment method, expiration, status, and amount limit.
+- One-time credentials are consumed exactly once for the order number. Repeated completion for the same confirmed order is idempotent; reuse for another order is rejected.
+- Revoked, expired, over-limit, wrong-user, or wrong-agent credentials fail before money moves.
+
+This keeps three commercial facts separate for students:
+
+| Question | MockHub model |
+|---|---|
+| Can the agent take this action? | Mandate + `MandateCondition` |
+| Did a human approve this specific proposal? | Purchase approval record |
+| Can the agent pay with this payment authority? | Scoped payment credential |
 
 ### Key Design: `findTickets` — The Compound Search Tool
 
@@ -279,7 +302,8 @@ The listing search endpoint is a MockHub offer-discovery extension around the pi
    X-Buyer-Email: buyer@example.com
    {
      "agentId": "shopping-agent-1",
-     "mandateId": "abc-123"
+     "mandateId": "abc-123",
+     "paymentCredentialId": "cred-789"
    }
    → Returns AcpCheckoutResponse with status COMPLETED and commercePolicy
 ```
@@ -293,7 +317,9 @@ ACP createCheckout  →  CartService.clearCart()
                     →  CartService.addToCart() × N
                     →  OrderService.checkout()
 
-ACP completeCheckout →  PaymentService.createPaymentIntent() [mock or pre-existing intent]
+ACP completeCheckout →  PaymentCredentialService.authorizeForPayment() [optional]
+                    →  PaymentService.createPaymentIntent() [mock or pre-existing intent]
+                    →  PaymentCredentialService.consumeForPayment() [optional]
                     →  PaymentService.confirmPayment()
 
 ACP cancelCheckout   →  OrderService.failOrder()
@@ -348,8 +374,8 @@ Coverage labels in this table describe MockHub surfaces that exist today. They d
 | Order and post-purchase support | MCP `getOrder`, `listOrders`, `getCalendarEntry`; public ticket view; PDF/QR tickets; SMS/email fulfillment | Partial | MockHub covers order lookup and fulfillment well for tickets, though it does not yet model returns, disputes, or shipment tracking. |
 | Identity linking | Website OAuth account linking, authenticated website user context, MCP OAuth2 for agent access | Partial | MockHub has account linking and authenticated agent transport, but not UCP identity-linking capability declarations. Future buyer preference memory (#219) would add another user-context signal. |
 | Commerce policy | REST commerce policy endpoints, MCP `getCommercePolicy`, policy snapshots in ACP/listing responses | Implemented | Agents can fetch structured policy context before proposing or completing purchases. |
-| Authorization and proof | Mandates, `MandateCondition`, approval records, approval-required mandates | Partial | These map closely to AP2 concepts, but they are not cryptographically signed AP2 mandate credentials. Scoped payment credentials (#218) are the next boundary to separate "allowed to act" from "allowed to pay." |
-| Payment credentials | Mock and Stripe payment services, stored payment intent IDs | Planned | MockHub accepts payment intent IDs but has no separate scoped credential abstraction yet. Issue #218 covers one-time/reusable credential lifecycle, expiration, revocation, and limits. |
+| Authorization and proof | Mandates, `MandateCondition`, approval records, approval-required mandates | Partial | These map closely to AP2 concepts, but they are not cryptographically signed AP2 mandate credentials. Scoped payment credentials now keep "allowed to act" separate from "allowed to pay." |
+| Payment credentials | `PaymentCredentialService`, `PaymentCredentialTools`, ACP/MCP `paymentCredentialId`, mock payment service | Partial | MockHub supports mock-backed scoped credentials with one-time/reusable usage, expiration, revocation, limits, and checkout validation. Stripe-backed wallet credentials remain future work. |
 | Risk and abuse signals | Eval conditions, spending warnings, price plausibility warnings, mandate failures | Planned | Existing eval conditions can warn or block, but MockHub does not yet persist agent risk signals. Issue #217 should add deterministic local risk tracking and at least one blocking condition. |
 | Preference and personalization memory | Favorites, purchase history, Spotify listening data, future user preference package | Planned | Recommendations already use several signals; #219 should turn explicit buyer preferences into a first-class agent-shopping model. |
 | Extensions and version negotiation | None | Not implemented | UCP's capability model relies on dated protocol versions and negotiated capability versions. MockHub should not advertise support until it can produce a truthful profile and validate versioned requests. |
@@ -365,12 +391,12 @@ MockHub should wait until it can do at least the following:
 
 1. Keep the pinned UCP protocol version in [Spec Versions](#spec-versions) current, including the relevant service/capability schema references.
 2. Expose UCP-shaped service bindings or clearly documented adapters, rather than pointing UCP clients at ACP endpoints with different request and response envelopes.
-3. Model payment credentials separately from mandates (#218), because UCP payment handlers and AP2-style autonomous payment flows depend on that boundary.
+3. Keep payment credentials separate from mandates (#218), because UCP payment handlers and AP2-style autonomous payment flows depend on that boundary.
 4. Add basic agent risk signals (#217), because UCP's signal model expects transaction-environment data for authorization, rate limiting, and abuse prevention.
 5. Decide whether identity-linking and buyer-preference state (#219) belong in the first profile or remain outside the UCP surface.
 6. Add tests that assert the profile content matches the code's live endpoints and supported capabilities.
 
-Until then, `llms.txt`, MCP OAuth metadata, ACP endpoints, and the A2A agent card remain the honest discovery surfaces. No follow-up UCP profile implementation issue exists yet; open one only after #217, #218, and #219 have clarified risk, payment authority, and buyer context. Use [Spec Versions](#spec-versions) as the pinned protocol reference, and include profile-content tests in that future issue.
+Until then, `llms.txt`, MCP OAuth metadata, ACP endpoints, and the A2A agent card remain the honest discovery surfaces. No follow-up UCP profile implementation issue exists yet; open one only after #217 and #219 have clarified risk and buyer context. Use [Spec Versions](#spec-versions) as the pinned protocol reference, and include profile-content tests in that future issue.
 
 ### Why UCP Matters for the Training Course
 
@@ -378,7 +404,7 @@ UCP is useful in the August 2026 course because it forces the broader question: 
 
 1. Discovery happens through MCP tools, ACP catalog/listing routes, and `llms.txt`.
 2. Authorization happens through mandates and approval records.
-3. Payment still routes through ordinary payment services, with scoped payment credentials left as an explicit follow-up.
+3. Payment still routes through ordinary payment services, with scoped payment credentials making agent payment authority explicit before confirmation.
 4. Fulfillment happens through tickets, QR codes, calendar files, and notifications.
 5. Risk and preference memory are named gaps rather than invisible magic.
 

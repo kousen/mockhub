@@ -189,7 +189,7 @@ class AgentPurchaseFlowIntegrationTest extends AbstractIntegrationTest {
         BigDecimal orderTotal = orderDto.total();
 
         // 7. Confirm the order via the MCP tool
-        String confirmJson = orderTools.confirmOrder(email, orderNumber, "test-agent", mandateId, null, null);
+        String confirmJson = orderTools.confirmOrder(email, orderNumber, "test-agent", mandateId, null, null, null);
         OrderDto confirmedOrder = objectMapper.readValue(confirmJson, OrderDto.class);
         assertThat(confirmedOrder.status()).isEqualTo("CONFIRMED");
 
@@ -295,7 +295,7 @@ class AgentPurchaseFlowIntegrationTest extends AbstractIntegrationTest {
         mandateService.revokeMandate(mandateDto.mandateId());
 
         String confirmResult = orderTools.confirmOrder(
-                email, pendingOrder.orderNumber(), "test-agent", mandateDto.mandateId(), null, null);
+                email, pendingOrder.orderNumber(), "test-agent", mandateDto.mandateId(), null, null, null);
         JsonNode confirmJson = objectMapper.readTree(confirmResult);
         assertThat(confirmJson.has("error")).isTrue();
         assertThat(confirmJson.get("error").asText()).contains("Cannot confirm order");

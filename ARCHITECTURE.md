@@ -18,6 +18,7 @@ mockhub/
 │       ├── cart/               # Shopping cart
 │       ├── order/              # Orders and checkout
 │       ├── payment/            # Stripe + mock payment (profile-based)
+│       ├── paymentcredential/  # Scoped payment authority for agentic commerce
 │       ├── favorite/           # User favorites
 │       ├── notification/       # In-app notifications
 │       ├── ai/                 # Chat, recommendations, price predictions
@@ -65,7 +66,8 @@ The schema has six clusters. Flyway migrations are the source of truth (see `bac
 5. **Commerce**: `carts`, `cart_items`, `orders`, `order_items`, `transaction_logs`
 6. **Engagement**: `favorites`, `notifications`, `reviews`, `conversations`, `conversation_messages`, `user_preferences`
 7. **Agentic**: `mandates` (agent authorization with scope, spending limits, restrictions),
-   `agent_purchase_approvals` (human approval records for agent-initiated purchases)
+   `agent_purchase_approvals` (human approval records for agent-initiated purchases),
+   `payment_credentials` (scoped mock-backed payment authority for agents)
 
 ### Identity
 
@@ -536,7 +538,8 @@ MockHub exposes a three-layer agentic commerce stack:
 - **Mandates** in `com.mockhub.mandate` for agent authorization, including scope, spending limits,
   allowed categories/events/sections, approval mode, expiration, revocation, and cumulative spend tracking.
 - **Purchase approval records** in `com.mockhub.agentapproval` for durable human-approval audit trails. Agents propose a purchase, users approve or deny it, and an optional `approvalId` can be supplied to MCP `confirmOrder` or ACP `completeCheckout`.
-- **ACP endpoints** at `/acp/v1/**` as a protocol adapter over the same cart, order, payment, mandate, and approval services.
+- **Scoped payment credentials** in `com.mockhub.paymentcredential` for mock-backed agent payment authority, distinct from mandates. Agents may supply an optional `paymentCredentialId` to MCP `confirmOrder` or ACP `completeCheckout`; if present, it is validated and one-time credentials are consumed before payment confirmation.
+- **ACP endpoints** at `/acp/v1/**` as a protocol adapter over the same cart, order, payment, mandate, approval, and payment credential services.
 - **Commerce policies** in `com.mockhub.commerce` provide structured refund, cancellation, fee, transfer, and support metadata to MCP, ACP, REST, and `llms.txt` consumers.
 
 See [docs/agentic-commerce.md](docs/agentic-commerce.md) for the full protocol and teaching narrative.

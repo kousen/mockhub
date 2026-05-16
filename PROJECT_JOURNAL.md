@@ -1124,6 +1124,28 @@ Status after merge:
 
 ---
 
-*Last updated: 2026-05-06*
+## Session 2026-05-16: Scoped Payment Credentials
+
+### Issue #218
+
+Started the next agentic commerce backlog item by separating payment authority from agent authorization:
+
+- New `com.mockhub.paymentcredential` feature package with entity, enums, DTOs, repository, and service.
+- Flyway migration `V33__create_payment_credentials.sql` creates scoped mock-backed payment credentials.
+- New MCP `PaymentCredentialTools`: `issuePaymentCredential`, `listPaymentCredentials`, `revokePaymentCredential`.
+- MCP `confirmOrder` and ACP `completeCheckout` now accept optional `paymentCredentialId`.
+- When supplied, credentials validate user, agent, amount, currency, backing payment method, status, and expiration before payment confirmation.
+- One-time credentials are consumed for the order number; duplicate completion for the same order remains idempotent.
+- Contract docs updated in `llms.txt`, `docs/agentic-commerce.md`, `docs/acp-openapi.yaml`, `ARCHITECTURE.md`, and `README.md`.
+
+This keeps the teaching distinction crisp:
+
+- Mandates answer whether the agent may act.
+- Approval records answer whether a human approved a specific proposal.
+- Payment credentials answer whether the agent may pay with a scoped instrument.
+
+---
+
+*Last updated: 2026-05-16*
 *Built with: Claude Opus 4.6 (1M context) via Claude Code; Codex GPT-5 for 2026-05-05 and 2026-05-06 workflow trials*
 *Live at: https://mockhub.kousenit.com*
