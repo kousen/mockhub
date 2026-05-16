@@ -22,6 +22,11 @@ import com.mockhub.mandate.dto.MandateDto;
 import com.mockhub.mandate.entity.Mandate;
 import com.mockhub.mandate.repository.MandateRepository;
 import com.mockhub.mandate.service.MandateService;
+import com.mockhub.paymentcredential.dto.CreatePaymentCredentialRequest;
+import com.mockhub.paymentcredential.dto.PaymentCredentialDto;
+import com.mockhub.paymentcredential.entity.PaymentCredentialStatus;
+import com.mockhub.paymentcredential.repository.PaymentCredentialRepository;
+import com.mockhub.paymentcredential.service.PaymentCredentialService;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.OrderTools;
@@ -60,6 +65,12 @@ class AgentPurchaseFlowIntegrationTest extends AbstractIntegrationTest {
     private MandateRepository mandateRepository;
 
     @Autowired
+    private PaymentCredentialService paymentCredentialService;
+
+    @Autowired
+    private PaymentCredentialRepository paymentCredentialRepository;
+
+    @Autowired
     private VenueRepository venueRepository;
 
     @Autowired
@@ -75,8 +86,8 @@ class AgentPurchaseFlowIntegrationTest extends AbstractIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
-    @DisplayName("Full agent purchase flow via MCP tools records and reverses spend")
-    void fullAgentPurchaseFlow_viaMcpTools_recordsAndReversesSpend() throws Exception {
+    @DisplayName("Full agent purchase flow via MCP tools records spend, consumes credential, and reverses spend")
+    void fullAgentPurchaseFlow_viaMcpTools_recordsSpendConsumesCredentialAndReversesSpend() throws Exception {
         // 1. Register a user via REST API helper
         String email = "agent-flow-" + UUID.randomUUID() + "@example.com";
         AuthResponse auth = registerUser(email, "password123", "Agent", "Buyer");
@@ -188,15 +199,29 @@ class AgentPurchaseFlowIntegrationTest extends AbstractIntegrationTest {
         String orderNumber = orderDto.orderNumber();
         BigDecimal orderTotal = orderDto.total();
 
-        // 7. Confirm the order via the MCP tool
-        String confirmJson = orderTools.confirmOrder(email, orderNumber, "test-agent", mandateId, null, null);
+        // 7. Issue a scoped payment credential and confirm the order via the MCP tool
+        PaymentCredentialDto credential = paymentCredentialService.issueCredential(new CreatePaymentCredentialRequest(
+                email,
+                "test-agent",
+                orderTotal,
+                "USD",
+                "ONE_TIME",
+                "mock",
+                null));
+
+        String confirmJson = orderTools.confirmOrder(
+                email, orderNumber, "test-agent", mandateId, null, credential.credentialId(), null);
         OrderDto confirmedOrder = objectMapper.readValue(confirmJson, OrderDto.class);
         assertThat(confirmedOrder.status()).isEqualTo("CONFIRMED");
 
-        // 8. Verify mandate spend was recorded
+        // 8. Verify mandate spend was recorded and credential was consumed
         Mandate mandateAfterConfirm = mandateRepository.findByMandateId(mandateId)
                 .orElseThrow(() -> new AssertionError("Mandate not found after confirm"));
         assertThat(mandateAfterConfirm.getTotalSpent()).isEqualByComparingTo(orderTotal);
+        var credentialAfterConfirm = paymentCredentialRepository.findByCredentialId(credential.credentialId())
+                .orElseThrow(() -> new AssertionError("Payment credential not found after confirm"));
+        assertThat(credentialAfterConfirm.getStatus()).isEqualTo(PaymentCredentialStatus.CONSUMED);
+        assertThat(credentialAfterConfirm.getConsumedByOrderNumber()).isEqualTo(orderNumber);
 
         // 9. Cancel the order
         orderService.cancelOrder(orderNumber);
@@ -295,7 +320,7 @@ class AgentPurchaseFlowIntegrationTest extends AbstractIntegrationTest {
         mandateService.revokeMandate(mandateDto.mandateId());
 
         String confirmResult = orderTools.confirmOrder(
-                email, pendingOrder.orderNumber(), "test-agent", mandateDto.mandateId(), null, null);
+                email, pendingOrder.orderNumber(), "test-agent", mandateDto.mandateId(), null, null, null);
         JsonNode confirmJson = objectMapper.readTree(confirmResult);
         assertThat(confirmJson.has("error")).isTrue();
         assertThat(confirmJson.get("error").asText()).contains("Cannot confirm order");

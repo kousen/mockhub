@@ -127,7 +127,7 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 - clearCart(userEmail) — empty cart
 - refreshCart(userEmail) — reset cart 15-minute TTL without modifying contents
 - checkout(userEmail, paymentMethod, agentId, mandateId) — create order from cart
-- confirmOrder(userEmail, orderNumber, agentId, mandateId, paymentIntentId?, approvalId?) — complete payment; non-mock payments require paymentIntentId. Optional approvalId links the purchase to an approved audit record.
+- confirmOrder(userEmail, orderNumber, agentId, mandateId, paymentIntentId?, paymentCredentialId?, approvalId?) — complete payment; non-mock payments require paymentIntentId. Optional paymentCredentialId validates scoped payment authority before payment. Optional approvalId links the purchase to an approved audit record.
 - getOrder(userEmail, orderNumber) — order details
 - listOrders(userEmail, page?, size?) — order history with pagination
 - getCalendarEntry(userEmail, orderNumber) — RFC 5545 .ics calendar content for a confirmed order
@@ -140,13 +140,16 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 - listMandates(userEmail) — list active mandates
 - validateMandate(agentId, userEmail, scope, amount?, categorySlug?, eventSlug?, sectionName?) — check if action is authorized by scope, spending limits, and category/event/section restrictions
 - getBestMandate(agentId, userEmail, eventSlug, categorySlug?, amount?, sectionName?) — RECOMMENDED before addToCart: finds the best matching mandate for a purchase action in one call
+- issuePaymentCredential(userEmail, agentId, maxAmount, currency?, usage?, backingPaymentMethod?, expiresAt?) — issue a scoped mock-backed payment credential for an agent. Defaults: currency=USD, usage=ONE_TIME, backingPaymentMethod=mock.
+- listPaymentCredentials(userEmail) — list active, consumed, revoked, and expired scoped payment credentials for a user
+- revokePaymentCredential(userEmail, credentialId) — revoke an active payment credential so it can no longer authorize payment
 
 ## ACP Endpoints (Agentic Commerce Protocol, requires API key: X-API-Key header)
 ACP-compatible checkout endpoints at /acp/v1/:
 POST /acp/v1/checkout — Create checkout. JSON body: {"buyerEmail", "lineItems": [{"listingId", "quantity"}], "agentId", "mandateId", "paymentMethod", "idempotencyKey"}
 GET /acp/v1/checkout/{checkoutId} — Get checkout status. Header: X-Buyer-Email
 PUT /acp/v1/checkout/{checkoutId} — Update checkout (PENDING only). JSON body: {"agentId", "mandateId", "addItems", "removeListingIds"}. Header: X-Buyer-Email
-POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. JSON body: {"agentId", "mandateId", "paymentIntentId", "approvalId"}. Header: X-Buyer-Email
+POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. JSON body: {"agentId", "mandateId", "paymentIntentId", "approvalId", "paymentCredentialId"}. Header: X-Buyer-Email
 POST /acp/v1/checkout/{checkoutId}/cancel — Cancel checkout. JSON body: {"agentId", "mandateId"}. Header: X-Buyer-Email
 GET /acp/v1/catalog — Browse product catalog. Query params: query, category, city, page, size
 GET /acp/v1/listings — Browse actionable ticket offers. Query params: query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, page, size
@@ -166,6 +169,12 @@ Limits: per-transaction max, cumulative total budget, category/event/section res
 Approval mode: AUTO_PURCHASE allows direct completion; APPROVAL_REQUIRED requires an approved purchase approval before completion.
 Autonomous purchase actions require both agent identity and mandate proof.
 Managed via MCP MandateTools or directly via mandate service.
+
+## Scoped Payment Credentials
+
+Payment credentials are separate from mandates. A mandate proves the agent may act; a payment credential proves the agent may pay with a scoped mock-backed instrument.
+Fields: credentialId, userEmail, agentId, allowedMerchant=MOCKHUB, maxAmount, currency=USD, usage=ONE_TIME|REUSABLE, status=ACTIVE|CONSUMED|REVOKED|EXPIRED, backingPaymentMethod=mock, expiresAt.
+MCP `confirmOrder` and ACP `completeCheckout` accept optional `paymentCredentialId`. When supplied, MockHub validates user, agent, amount, currency, payment method, status, and expiration before payment confirmation, then consumes one-time credentials for the order number.
 
 ### Mandate Lifecycle
 

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.agentapproval.dto.AgentPurchaseApprovalDto;
@@ -126,7 +127,7 @@ public class AgentPurchaseApprovalService {
         approvalRepository.save(approval);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markFailed(String approvalId, String reason) {
         if (approvalId == null || approvalId.isBlank()) {
             return;

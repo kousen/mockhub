@@ -391,6 +391,9 @@ components:
         approvalId:
           type: string
           description: Optional purchase approval record ID linking this checkout completion to a prior human approval
+        paymentCredentialId:
+          type: string
+          description: Optional scoped payment credential ID. When supplied, MockHub validates user, agent, amount, currency, payment method, status, and expiration before payment confirmation.
 
     CheckoutResponse:
       type: object

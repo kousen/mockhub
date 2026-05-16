@@ -11,6 +11,7 @@ import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
 import com.mockhub.mcp.tools.MandateTools;
 import com.mockhub.mcp.tools.OrderTools;
+import com.mockhub.mcp.tools.PaymentCredentialTools;
 import com.mockhub.mcp.tools.PricingTools;
 
 @Configuration
@@ -23,10 +24,11 @@ public class McpConfig {
                                                        CartTools cartTools,
                                                        OrderTools orderTools,
                                                        MandateTools mandateTools,
-                                                       AgentApprovalTools agentApprovalTools) {
+                                                       AgentApprovalTools agentApprovalTools,
+                                                       PaymentCredentialTools paymentCredentialTools) {
         return MethodToolCallbackProvider.builder()
                 .toolObjects(eventTools, pricingTools, cartTools, orderTools, mandateTools,
-                        agentApprovalTools)
+                        agentApprovalTools, paymentCredentialTools)
                 .build();
     }
 }

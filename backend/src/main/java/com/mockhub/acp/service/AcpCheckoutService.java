@@ -41,6 +41,7 @@ import com.mockhub.order.dto.OrderItemDto;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
+import com.mockhub.paymentcredential.service.PaymentCredentialService;
 import com.mockhub.mandate.service.MandateService;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.repository.ListingRepository;
@@ -62,6 +63,7 @@ public class AcpCheckoutService {
     private final CommercePolicyService commercePolicyService;
     private final AgentPurchaseApprovalService approvalService;
     private final MandateService mandateService;
+    private final PaymentCredentialService paymentCredentialService;
 
     public AcpCheckoutService(UserRepository userRepository,
                               CartService cartService,
@@ -71,7 +73,8 @@ public class AcpCheckoutService {
                               PaymentService paymentService,
                               CommercePolicyService commercePolicyService,
                               AgentPurchaseApprovalService approvalService,
-                              MandateService mandateService) {
+                              MandateService mandateService,
+                              PaymentCredentialService paymentCredentialService) {
         this.userRepository = userRepository;
         this.cartService = cartService;
         this.orderService = orderService;
@@ -81,6 +84,7 @@ public class AcpCheckoutService {
         this.commercePolicyService = commercePolicyService;
         this.approvalService = approvalService;
         this.mandateService = mandateService;
+        this.paymentCredentialService = paymentCredentialService;
     }
 
     @Transactional
@@ -197,6 +201,9 @@ public class AcpCheckoutService {
         }
 
         String paymentMethod = order.getPaymentMethod() != null ? order.getPaymentMethod().strip().toLowerCase() : "mock";
+        String paymentCredentialId = validatePaymentCredentialIfPresent(
+                request.paymentCredentialId(), user.getEmail(), request.agentId(), order, paymentMethod);
+
         if ("mock".equals(paymentMethod)
                 && (paymentIntentId == null || paymentIntentId.isBlank())
                 && order.getPaymentIntentId() == null) {
@@ -209,6 +216,8 @@ public class AcpCheckoutService {
         if (!"mock".equals(paymentMethod) && (paymentIntentId == null || paymentIntentId.isBlank())) {
             throw new ConflictException("A payment intent is required to complete checkout for " + order.getPaymentMethod());
         }
+
+        consumePaymentCredentialIfPresent(paymentCredentialId, order.getOrderNumber());
 
         try {
             paymentService.confirmPayment(paymentIntentId);
@@ -347,6 +356,29 @@ public class AcpCheckoutService {
         if (mandateService.approvalRequired(agentId.strip(), userEmail, mandateId.strip())
                 && (approvalId == null || approvalId.isBlank())) {
             throw new ConflictException("Mandate requires an approved purchase approval before completion");
+        }
+    }
+
+    private String validatePaymentCredentialIfPresent(String paymentCredentialId, String userEmail,
+                                                      String agentId, Order order, String paymentMethod) {
+        if (paymentCredentialId == null || paymentCredentialId.isBlank()) {
+            return null;
+        }
+        String normalizedPaymentCredentialId = paymentCredentialId.strip();
+        paymentCredentialService.authorizeForPayment(
+                normalizedPaymentCredentialId,
+                userEmail,
+                agentId.strip(),
+                order.getTotal(),
+                CURRENCY_USD,
+                paymentMethod,
+                order.getOrderNumber());
+        return normalizedPaymentCredentialId;
+    }
+
+    private void consumePaymentCredentialIfPresent(String paymentCredentialId, String orderNumber) {
+        if (paymentCredentialId != null) {
+            paymentCredentialService.consumeForPayment(paymentCredentialId, orderNumber);
         }
     }
 

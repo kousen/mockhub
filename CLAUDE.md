@@ -173,7 +173,7 @@ The codebase uses Java DOP patterns where they add value:
 ### Lifecycle Cleanup
 
 - **`LifecycleCleanupService`** — `@Scheduled` every 15 min (configurable via `mockhub.lifecycle.cleanup-interval`).
-- **Four operations:** (1) Expire ACTIVE listings past `expires_at` → EXPIRED, (2) Expire ACTIVE listings for past events → EXPIRED, (3) Mark past ACTIVE events as COMPLETED, (4) Delete read notifications older than 30 days.
+- **Five operations:** (1) Expire ACTIVE listings past `expires_at` → EXPIRED, (2) Expire ACTIVE listings for past events → EXPIRED, (3) Mark past ACTIVE events as COMPLETED, (4) Delete read notifications older than 30 days, (5) Mark expired ACTIVE payment credentials as EXPIRED.
 - **Ticket release:** When listings expire, their tickets are released from LISTED back to AVAILABLE. Uses SELECT + iterate (not bulk UPDATE) because both listing and ticket state must update together.
 - **Listing → SOLD:** `OrderService.markTicketsAsSold()` also sets `listing.status = "SOLD"`.
 - **Cancel re-activates:** `OrderService.releaseOrderTickets()` resets listing status back to ACTIVE alongside ticket release.
@@ -192,7 +192,8 @@ The codebase uses Java DOP patterns where they add value:
 - **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
-- **MCP server** — 29 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools, AgentApprovalTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`.
+- **MCP server** — 32 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools, AgentApprovalTools, PaymentCredentialTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`.
+- **MCP registration is explicit** — new `@Tool` classes must be added to `McpConfig.mcpToolCallbackProvider(...)`; `McpConfigTest` asserts the registered callback count so docs and runtime do not drift.
 - **MCP auth (two modes, profile-based):**
   - `mcp-oauth2` profile: OAuth 2.1 with Dynamic Client Registration (DCR). Enables native Claude connector support on all platforms (desktop, web, mobile) without `mcp-remote`. Uses `org.springaicommunity:mcp-authorization-server:0.1.5` and `org.springaicommunity:mcp-server-security:0.1.5`.
   - Without `mcp-oauth2` profile: Falls back to `X-API-Key` header auth via `McpApiKeyFilter`. Requires `mcp-remote` bridge for Claude Desktop.
@@ -203,6 +204,7 @@ The codebase uses Java DOP patterns where they add value:
 - **SPA exclusions:** `oauth2/`, `.well-known/` added to `SpaForwardingConfig`.
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
+- **Scoped payment credentials** — mock-backed payment authority in `com.mockhub.paymentcredential`, distinct from mandates. MCP `confirmOrder` and ACP `completeCheckout` accept optional `paymentCredentialId`; one-time credentials are consumed for the completed order, while revoked, expired, over-limit, wrong-agent, or wrong-user credentials are rejected before payment confirmation.
 - **`findTickets` compound tool** — single-call search with query, category, city, date range, price range, section filter, returning matching listings sorted by price. Uses JPA `Specification` with `findBy` fluent API (no `COUNT` query overhead). `ListingSearchCriteria` record encapsulates all filters; `ListingSearchSpecification` builds predicates dynamically for non-null criteria only. Date parameters are `String` (not `Instant`) because Spring AI MCP can't deserialize ISO-8601 to `Instant`. Reduces agent round-trips from 3 to 1. Server-side execution: ~54ms.
 - **`getEventListings` paginated** — accepts `page`/`size` params (default 20, max 50), returns `{ listings, page, size, totalListings }`. Without pagination, popular events (500+ listings) exceeded MCP context limits.
 - **`getCalendarEntry` tool** — returns RFC 5545 .ics content for a confirmed order.
