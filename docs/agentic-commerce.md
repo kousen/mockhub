@@ -90,6 +90,7 @@ The initial implementation is deliberately mock-backed:
 - If supplied, the credential is validated before payment confirmation against user, agent, merchant (`MOCKHUB`), currency, payment method, expiration, status, and amount limit.
 - One-time credentials are consumed exactly once for the order number. Repeated completion for the same confirmed order is idempotent; reuse for another order is rejected.
 - Revoked, expired, over-limit, wrong-user, or wrong-agent credentials fail before money moves.
+- MCP issuance is a teaching convenience that mirrors `MandateTools`: website chat calls are constrained by `ChatContext`, while external MCP callers are still responsible for supplying the correct user email until a dedicated authenticated credential-issuance UI/API exists.
 
 This keeps three commercial facts separate for students:
 

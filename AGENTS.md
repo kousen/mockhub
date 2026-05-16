@@ -154,7 +154,7 @@ The codebase uses Java DOP patterns where they add value:
 ### Lifecycle Cleanup
 
 - **`LifecycleCleanupService`** — `@Scheduled` every 15 min (configurable via `mockhub.lifecycle.cleanup-interval`).
-- **Four operations:** (1) Expire ACTIVE listings past `expires_at` → EXPIRED, (2) Expire ACTIVE listings for past events → EXPIRED, (3) Mark past ACTIVE events as COMPLETED, (4) Delete read notifications older than 30 days.
+- **Five operations:** (1) Expire ACTIVE listings past `expires_at` → EXPIRED, (2) Expire ACTIVE listings for past events → EXPIRED, (3) Mark past ACTIVE events as COMPLETED, (4) Delete read notifications older than 30 days, (5) Mark expired ACTIVE payment credentials as EXPIRED.
 - **Ticket release:** When listings expire, their tickets are released from LISTED back to AVAILABLE. Uses SELECT + iterate (not bulk UPDATE) because both listing and ticket state must update together.
 - **Listing → SOLD:** `OrderService.markTicketsAsSold()` also sets `listing.status = "SOLD"`.
 - **Cancel re-activates:** `OrderService.releaseOrderTickets()` resets listing status back to ACTIVE alongside ticket release.
@@ -174,6 +174,7 @@ The codebase uses Java DOP patterns where they add value:
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
 - **MCP server** — 32 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools, AgentApprovalTools, PaymentCredentialTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp` with OAuth 2.1 + Dynamic Client Registration when the `mcp-oauth2` profile is active. Codex and other MCP clients should connect directly to `https://mockhub.kousenit.com/mcp` so the OAuth flow can run; do not use `mcp-remote` or `X-API-Key` headers for the production OAuth setup.
+- **MCP registration is explicit** — new `@Tool` classes must be added to `McpConfig.mcpToolCallbackProvider(...)`; `McpConfigTest` asserts the registered callback count so docs and runtime do not drift.
 - **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
 - **Scoped payment credentials** — mock-backed payment authority in `com.mockhub.paymentcredential`, distinct from mandates. MCP `confirmOrder` and ACP `completeCheckout` accept optional `paymentCredentialId`; one-time credentials are consumed for the completed order, while revoked, expired, over-limit, wrong-agent, or wrong-user credentials are rejected before payment confirmation.

@@ -69,6 +69,50 @@ class PaymentCredentialServiceTest {
     }
 
     @Test
+    @DisplayName("issueCredential rejects zero amount")
+    void issueCredential_givenZeroAmount_throwsIllegalArgumentException() {
+        CreatePaymentCredentialRequest request = new CreatePaymentCredentialRequest(
+                "buyer@example.com", "agent-1", BigDecimal.ZERO, null, null, null, null);
+
+        assertThatThrownBy(() -> paymentCredentialService.issueCredential(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Amount must be at least 0.01");
+    }
+
+    @Test
+    @DisplayName("issueCredential rejects sub-cent amount")
+    void issueCredential_givenSubCentAmount_throwsIllegalArgumentException() {
+        CreatePaymentCredentialRequest request = new CreatePaymentCredentialRequest(
+                "buyer@example.com", "agent-1", new BigDecimal("0.001"), null, null, null, null);
+
+        assertThatThrownBy(() -> paymentCredentialService.issueCredential(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Amount must be at least 0.01");
+    }
+
+    @Test
+    @DisplayName("issueCredential rejects non-USD currency")
+    void issueCredential_givenNonUsdCurrency_throwsIllegalArgumentException() {
+        CreatePaymentCredentialRequest request = new CreatePaymentCredentialRequest(
+                "buyer@example.com", "agent-1", new BigDecimal("75.00"), "EUR", null, null, null);
+
+        assertThatThrownBy(() -> paymentCredentialService.issueCredential(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only USD payment credentials are supported");
+    }
+
+    @Test
+    @DisplayName("issueCredential rejects non-mock backing payment method")
+    void issueCredential_givenNonMockBackingPaymentMethod_throwsIllegalArgumentException() {
+        CreatePaymentCredentialRequest request = new CreatePaymentCredentialRequest(
+                "buyer@example.com", "agent-1", new BigDecimal("75.00"), "USD", null, "stripe", null);
+
+        assertThatThrownBy(() -> paymentCredentialService.issueCredential(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Only mock-backed payment credentials are supported");
+    }
+
+    @Test
     @DisplayName("listCredentials returns user credentials newest first from repository order")
     void listCredentials_givenUserEmail_returnsDtos() {
         PaymentCredential first = activeCredential("cred-1");
@@ -80,6 +124,14 @@ class PaymentCredentialServiceTest {
 
         assertThat(results).extracting(PaymentCredentialDto::credentialId)
                 .containsExactly("cred-1", "cred-2");
+    }
+
+    @Test
+    @DisplayName("listCredentials rejects blank user email")
+    void listCredentials_givenBlankUserEmail_throwsIllegalArgumentException() {
+        assertThatThrownBy(() -> paymentCredentialService.listCredentials(" "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("User email is required");
     }
 
     @Test
@@ -158,6 +210,35 @@ class PaymentCredentialServiceTest {
     }
 
     @Test
+    @DisplayName("authorizeForPayment rejects currency mismatch")
+    void authorizeForPayment_givenCurrencyMismatch_throwsConflictException() {
+        PaymentCredential credential = activeCredential("cred-123");
+        credential.setCurrency("EUR");
+        when(paymentCredentialRepository.findByCredentialIdForUpdate("cred-123"))
+                .thenReturn(Optional.of(credential));
+
+        assertThatThrownBy(() -> paymentCredentialService.authorizeForPayment(
+                "cred-123", "buyer@example.com", "agent-1",
+                new BigDecimal("55.00"), "USD", "mock", "MH-1"))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("currency EUR does not match USD");
+    }
+
+    @Test
+    @DisplayName("authorizeForPayment rejects payment method mismatch")
+    void authorizeForPayment_givenPaymentMethodMismatch_throwsConflictException() {
+        PaymentCredential credential = activeCredential("cred-123");
+        when(paymentCredentialRepository.findByCredentialIdForUpdate("cred-123"))
+                .thenReturn(Optional.of(credential));
+
+        assertThatThrownBy(() -> paymentCredentialService.authorizeForPayment(
+                "cred-123", "buyer@example.com", "agent-1",
+                new BigDecimal("55.00"), "USD", "stripe", "MH-1"))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("bound to payment method mock");
+    }
+
+    @Test
     @DisplayName("authorizeForPayment rejects consumed credential for same order when user does not match")
     void authorizeForPayment_givenConsumedCredentialForSameOrderAndWrongUser_throwsConflictException() {
         PaymentCredential credential = activeCredential("cred-123");
@@ -219,6 +300,20 @@ class PaymentCredentialServiceTest {
     }
 
     @Test
+    @DisplayName("consumeForPayment expires active credential past expiration")
+    void consumeForPayment_givenExpiredActiveCredential_marksExpiredAndThrowsConflictException() {
+        PaymentCredential credential = activeCredential("cred-123");
+        credential.setExpiresAt(Instant.now().minus(1, ChronoUnit.MINUTES));
+        when(paymentCredentialRepository.findByCredentialIdForUpdate("cred-123"))
+                .thenReturn(Optional.of(credential));
+
+        assertThatThrownBy(() -> paymentCredentialService.consumeForPayment("cred-123", "MH-1"))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("EXPIRED");
+        assertThat(credential.getStatus()).isEqualTo(PaymentCredentialStatus.EXPIRED);
+    }
+
+    @Test
     @DisplayName("revokeCredential revokes active user-owned credential")
     void revokeCredential_givenActiveCredential_setsRevokedStatus() {
         PaymentCredential credential = activeCredential("cred-123");
@@ -229,6 +324,31 @@ class PaymentCredentialServiceTest {
 
         assertThat(result.status()).isEqualTo("REVOKED");
         assertThat(credential.getRevokedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("revokeCredential rejects credential owned by another user")
+    void revokeCredential_givenOtherUserCredential_throwsConflictException() {
+        PaymentCredential credential = activeCredential("cred-123");
+        when(paymentCredentialRepository.findByCredentialIdForUpdate("cred-123"))
+                .thenReturn(Optional.of(credential));
+
+        assertThatThrownBy(() -> paymentCredentialService.revokeCredential("cred-123", "other@example.com"))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("does not belong to user");
+    }
+
+    @Test
+    @DisplayName("revokeCredential rejects consumed credential")
+    void revokeCredential_givenConsumedCredential_throwsConflictException() {
+        PaymentCredential credential = activeCredential("cred-123");
+        credential.setStatus(PaymentCredentialStatus.CONSUMED);
+        when(paymentCredentialRepository.findByCredentialIdForUpdate("cred-123"))
+                .thenReturn(Optional.of(credential));
+
+        assertThatThrownBy(() -> paymentCredentialService.revokeCredential("cred-123", "buyer@example.com"))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("Consumed payment credential cannot be revoked");
     }
 
     @Test

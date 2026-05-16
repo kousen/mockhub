@@ -43,6 +43,7 @@ import com.mockhub.event.entity.Category;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -303,8 +304,8 @@ class OrderToolsTest {
         }
 
         @Test
-        @DisplayName("given payment credential ID - validates and consumes before confirming")
-        void givenPaymentCredentialId_validatesAndConsumesBeforeConfirming() {
+        @DisplayName("given payment credential ID - validates, consumes, then confirms")
+        void givenPaymentCredentialId_validatesConsumesThenConfirms() {
             stubUserLookup("buyer@example.com");
             Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
             OrderDto orderDto = new OrderDto(
@@ -321,9 +322,38 @@ class OrderToolsTest {
             verify(paymentCredentialService).authorizeForPayment(
                     "cred-123", "buyer@example.com", AGENT_ID,
                     java.math.BigDecimal.TEN, "USD", "mock", "MH-20260319-0001");
-            verify(paymentCredentialService).consumeForPayment("cred-123", "MH-20260319-0001");
-            verify(paymentService).confirmPayment("pi_test");
+            var inOrder = inOrder(paymentCredentialService, paymentService);
+            inOrder.verify(paymentCredentialService).consumeForPayment("cred-123", "MH-20260319-0001");
+            inOrder.verify(paymentService).confirmPayment("pi_test");
             assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given payment confirmation fails - marks approval failed and returns error")
+        void givenPaymentConfirmationFails_marksApprovalFailedAndReturnsError() {
+            stubUserLookup("buyer@example.com");
+            Order orderEntity = createAgentOrderEntity("MH-20260319-0001");
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null, null, null);
+            when(orderService.getOrder(testUser, "MH-20260319-0001")).thenReturn(orderDto);
+            when(orderService.getOrderEntity("MH-20260319-0001")).thenReturn(orderEntity);
+            stubPassingEval();
+            when(paymentService.createPaymentIntent(orderEntity))
+                    .thenReturn(new PaymentIntentDto("pi_test", "secret", java.math.BigDecimal.TEN, "USD"));
+            when(paymentService.confirmPayment("pi_test"))
+                    .thenThrow(new RuntimeException("processor down"));
+
+            String result = orderTools.confirmOrder(
+                    "buyer@example.com", "MH-20260319-0001", AGENT_ID, MANDATE_ID,
+                    null, "cred-123", "approval-123");
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("processor down"), "Result should contain payment failure");
+            verify(paymentCredentialService).authorizeForPayment(
+                    "cred-123", "buyer@example.com", AGENT_ID,
+                    java.math.BigDecimal.TEN, "USD", "mock", "MH-20260319-0001");
+            verify(paymentCredentialService).consumeForPayment("cred-123", "MH-20260319-0001");
+            verify(approvalService).markFailed("approval-123", "processor down");
         }
 
         @Test

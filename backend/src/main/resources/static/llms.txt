@@ -149,7 +149,7 @@ ACP-compatible checkout endpoints at /acp/v1/:
 POST /acp/v1/checkout — Create checkout. JSON body: {"buyerEmail", "lineItems": [{"listingId", "quantity"}], "agentId", "mandateId", "paymentMethod", "idempotencyKey"}
 GET /acp/v1/checkout/{checkoutId} — Get checkout status. Header: X-Buyer-Email
 PUT /acp/v1/checkout/{checkoutId} — Update checkout (PENDING only). JSON body: {"agentId", "mandateId", "addItems", "removeListingIds"}. Header: X-Buyer-Email
-POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. JSON body: {"agentId", "mandateId", "paymentIntentId", "paymentCredentialId", "approvalId"}. Header: X-Buyer-Email
+POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. JSON body: {"agentId", "mandateId", "paymentIntentId", "approvalId", "paymentCredentialId"}. Header: X-Buyer-Email
 POST /acp/v1/checkout/{checkoutId}/cancel — Cancel checkout. JSON body: {"agentId", "mandateId"}. Header: X-Buyer-Email
 GET /acp/v1/catalog — Browse product catalog. Query params: query, category, city, page, size
 GET /acp/v1/listings — Browse actionable ticket offers. Query params: query, category, city, dateFrom, dateTo, minPrice, maxPrice, section, page, size

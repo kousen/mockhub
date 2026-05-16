@@ -4,14 +4,17 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.ai.service.ChatContext;
 import com.mockhub.paymentcredential.dto.CreatePaymentCredentialRequest;
 import com.mockhub.paymentcredential.dto.PaymentCredentialDto;
 import com.mockhub.paymentcredential.service.PaymentCredentialService;
@@ -34,6 +37,11 @@ class PaymentCredentialToolsTest {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         paymentCredentialTools = new PaymentCredentialTools(paymentCredentialService, objectMapper);
+    }
+
+    @AfterEach
+    void tearDown() {
+        ChatContext.clear();
     }
 
     @Test
@@ -83,6 +91,24 @@ class PaymentCredentialToolsTest {
     }
 
     @Test
+    @DisplayName("issuePaymentCredential - ChatContext overrides userEmail parameter")
+    void issuePaymentCredential_givenChatContext_usesAuthenticatedEmail() {
+        ChatContext.setAuthenticatedEmail("real@example.com");
+        when(paymentCredentialService.issueCredential(any(CreatePaymentCredentialRequest.class)))
+                .thenReturn(credentialDto("cred-123", "ACTIVE"));
+
+        paymentCredentialTools.issuePaymentCredential(
+                "attacker@example.com", "agent-1", new BigDecimal("100.00"),
+                null, null, null, null);
+
+        ArgumentCaptor<CreatePaymentCredentialRequest> captor =
+                ArgumentCaptor.forClass(CreatePaymentCredentialRequest.class);
+        verify(paymentCredentialService).issueCredential(captor.capture());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().userEmail())
+                .isEqualTo("real@example.com");
+    }
+
+    @Test
     @DisplayName("listPaymentCredentials - user with credentials - returns JSON array")
     void listPaymentCredentials_givenUserWithCredentials_returnsJsonArray() {
         when(paymentCredentialService.listCredentials("buyer@example.com"))
@@ -94,6 +120,18 @@ class PaymentCredentialToolsTest {
         assertTrue(result.contains("\"cred-1\""), "Result should contain first credential");
         assertTrue(result.contains("\"cred-2\""), "Result should contain second credential");
         verify(paymentCredentialService).listCredentials("buyer@example.com");
+    }
+
+    @Test
+    @DisplayName("listPaymentCredentials - ChatContext overrides userEmail parameter")
+    void listPaymentCredentials_givenChatContext_usesAuthenticatedEmail() {
+        ChatContext.setAuthenticatedEmail("real@example.com");
+        when(paymentCredentialService.listCredentials("real@example.com"))
+                .thenReturn(List.of());
+
+        paymentCredentialTools.listPaymentCredentials("attacker@example.com");
+
+        verify(paymentCredentialService).listCredentials("real@example.com");
     }
 
     @Test
@@ -109,6 +147,18 @@ class PaymentCredentialToolsTest {
         assertTrue(result.contains("\"status\":\"REVOKED\""),
                 "Result should contain revoked status");
         verify(paymentCredentialService).revokeCredential("cred-123", "buyer@example.com");
+    }
+
+    @Test
+    @DisplayName("revokePaymentCredential - ChatContext overrides userEmail parameter")
+    void revokePaymentCredential_givenChatContext_usesAuthenticatedEmail() {
+        ChatContext.setAuthenticatedEmail("real@example.com");
+        when(paymentCredentialService.revokeCredential("cred-123", "real@example.com"))
+                .thenReturn(credentialDto("cred-123", "REVOKED"));
+
+        paymentCredentialTools.revokePaymentCredential("attacker@example.com", "cred-123");
+
+        verify(paymentCredentialService).revokeCredential("cred-123", "real@example.com");
     }
 
     @Test

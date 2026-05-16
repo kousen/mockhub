@@ -399,7 +399,7 @@ class AcpCheckoutServiceTest {
         AcpCheckoutResponse response = acpCheckoutService.completeCheckout(
                 "MH-20260323-0001", "buyer@test.com",
                 new com.mockhub.acp.dto.AcpCompleteRequest(
-                        AGENT_ID, MANDATE_ID, null, "cred-123", null));
+                        AGENT_ID, MANDATE_ID, null, null, "cred-123"));
 
         assertEquals("COMPLETED", response.status());
         verify(paymentCredentialService).authorizeForPayment(
@@ -426,7 +426,7 @@ class AcpCheckoutServiceTest {
                 () -> acpCheckoutService.completeCheckout(
                         "MH-20260323-0001", "buyer@test.com",
                         new com.mockhub.acp.dto.AcpCompleteRequest(
-                                AGENT_ID, MANDATE_ID, null, "cred-123", null)));
+                                AGENT_ID, MANDATE_ID, null, null, "cred-123")));
 
         assertEquals("Order total exceeds payment credential limit", exception.getMessage());
         verify(paymentCredentialService, never()).consumeForPayment(any(), any());
@@ -464,7 +464,7 @@ class AcpCheckoutServiceTest {
                 "MH-20260323-0001",
                 "buyer@test.com",
                 new com.mockhub.acp.dto.AcpCompleteRequest(
-                        AGENT_ID, MANDATE_ID, null, null, "approval-123"));
+                        AGENT_ID, MANDATE_ID, null, "approval-123", null));
 
         verify(approvalService).validateApprovedForCompletion(
                 "approval-123", "buyer@test.com", AGENT_ID, MANDATE_ID, order);

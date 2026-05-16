@@ -6,6 +6,8 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -217,6 +219,7 @@ public class OrderTools {
             OrderDto confirmedOrder = orderService.getOrder(user, trimmedOrderNumber);
             return objectMapper.writeValueAsString(confirmedOrder);
         } catch (Exception e) {
+            markCurrentTransactionRollbackOnly();
             log.error("Error confirming order '{}' for '{}': {}", orderNumber, userEmail, e.getMessage(), e);
             return errorJson("Failed to confirm order: " + e.getMessage());
         }
@@ -292,6 +295,12 @@ public class OrderTools {
     private void consumePaymentCredentialIfPresent(String paymentCredentialId, String orderNumber) {
         if (paymentCredentialId != null) {
             paymentCredentialService.consumeForPayment(paymentCredentialId, orderNumber);
+        }
+    }
+
+    private void markCurrentTransactionRollbackOnly() {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         }
     }
 

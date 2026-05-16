@@ -106,6 +106,8 @@ public class PaymentCredentialTools {
     }
 
     private String errorJson(String message) {
-        return "{\"error\": \"" + message.replace("\"", "'") + "\"}";
+        return objectMapper.createObjectNode()
+                .put("error", message)
+                .toString();
     }
 }

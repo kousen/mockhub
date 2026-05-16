@@ -1136,6 +1136,8 @@ Started the next agentic commerce backlog item by separating payment authority f
 - MCP `confirmOrder` and ACP `completeCheckout` now accept optional `paymentCredentialId`.
 - When supplied, credentials validate user, agent, amount, currency, backing payment method, status, and expiration before payment confirmation.
 - One-time credentials are consumed for the order number; duplicate completion for the same order remains idempotent.
+- Lifecycle cleanup now marks idle expired payment credentials as `EXPIRED`.
+- Review hardening caught that new MCP tool beans must also be added to `McpConfig`; `McpConfigTest` now asserts the registered callback count so `llms.txt` and runtime exposure stay aligned.
 - Contract docs updated in `llms.txt`, `docs/agentic-commerce.md`, `docs/acp-openapi.yaml`, `ARCHITECTURE.md`, and `README.md`.
 
 This keeps the teaching distinction crisp:

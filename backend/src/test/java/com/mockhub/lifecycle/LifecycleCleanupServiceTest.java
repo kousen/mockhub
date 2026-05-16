@@ -14,6 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.repository.NotificationRepository;
+import com.mockhub.paymentcredential.entity.PaymentCredentialStatus;
+import com.mockhub.paymentcredential.repository.PaymentCredentialRepository;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.ticket.repository.ListingRepository;
@@ -35,12 +37,15 @@ class LifecycleCleanupServiceTest {
     @Mock
     private NotificationRepository notificationRepository;
 
+    @Mock
+    private PaymentCredentialRepository paymentCredentialRepository;
+
     private LifecycleCleanupService cleanupService;
 
     @BeforeEach
     void setUp() {
         cleanupService = new LifecycleCleanupService(
-                listingRepository, eventRepository, notificationRepository);
+                listingRepository, eventRepository, notificationRepository, paymentCredentialRepository);
     }
 
     @Test
@@ -52,6 +57,9 @@ class LifecycleCleanupServiceTest {
                 .thenReturn(Collections.emptyList());
         when(eventRepository.markPastEventsAsCompleted(any(Instant.class))).thenReturn(0);
         when(notificationRepository.deleteReadNotificationsOlderThan(any(Instant.class))).thenReturn(0);
+        when(paymentCredentialRepository.expireActiveCredentials(
+                any(Instant.class), any(PaymentCredentialStatus.class), any(PaymentCredentialStatus.class)))
+                .thenReturn(0);
 
         cleanupService.runCleanup();
 
@@ -59,6 +67,8 @@ class LifecycleCleanupServiceTest {
         verify(listingRepository).findActiveListingsForPastEvents(any(Instant.class));
         verify(eventRepository).markPastEventsAsCompleted(any(Instant.class));
         verify(notificationRepository).deleteReadNotificationsOlderThan(any(Instant.class));
+        verify(paymentCredentialRepository).expireActiveCredentials(
+                any(Instant.class), any(PaymentCredentialStatus.class), any(PaymentCredentialStatus.class));
     }
 
     @Test
@@ -111,6 +121,19 @@ class LifecycleCleanupServiceTest {
 
         assertEquals(15, result);
         verify(notificationRepository).deleteReadNotificationsOlderThan(expectedCutoff);
+    }
+
+    @Test
+    @DisplayName("expirePaymentCredentials - expires active credentials past expiration")
+    void expirePaymentCredentials_expiresActiveCredentialsPastExpiration() {
+        Instant now = Instant.now();
+        when(paymentCredentialRepository.expireActiveCredentials(
+                now, PaymentCredentialStatus.ACTIVE, PaymentCredentialStatus.EXPIRED))
+                .thenReturn(3);
+
+        int result = cleanupService.expirePaymentCredentials(now);
+
+        assertEquals(3, result);
     }
 
     @Test

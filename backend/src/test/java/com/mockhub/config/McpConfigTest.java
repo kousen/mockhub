@@ -12,9 +12,10 @@ import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
 import com.mockhub.mcp.tools.MandateTools;
 import com.mockhub.mcp.tools.OrderTools;
+import com.mockhub.mcp.tools.PaymentCredentialTools;
 import com.mockhub.mcp.tools.PricingTools;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(MockitoExtension.class)
 class McpConfigTest {
@@ -37,14 +38,19 @@ class McpConfigTest {
     @Mock
     private AgentApprovalTools agentApprovalTools;
 
+    @Mock
+    private PaymentCredentialTools paymentCredentialTools;
+
     @Test
     @DisplayName("mcpToolCallbackProvider - creates provider with all tool objects")
     void mcpToolCallbackProvider_createsProviderWithAllToolObjects() {
         McpConfig config = new McpConfig();
 
         ToolCallbackProvider provider = config.mcpToolCallbackProvider(
-                eventTools, pricingTools, cartTools, orderTools, mandateTools, agentApprovalTools);
+                eventTools, pricingTools, cartTools, orderTools, mandateTools, agentApprovalTools,
+                paymentCredentialTools);
 
-        assertNotNull(provider, "ToolCallbackProvider should not be null");
+        assertEquals(32, provider.getToolCallbacks().length,
+                "All MCP tool methods should be registered");
     }
 }

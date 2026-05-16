@@ -173,7 +173,7 @@ The codebase uses Java DOP patterns where they add value:
 ### Lifecycle Cleanup
 
 - **`LifecycleCleanupService`** — `@Scheduled` every 15 min (configurable via `mockhub.lifecycle.cleanup-interval`).
-- **Four operations:** (1) Expire ACTIVE listings past `expires_at` → EXPIRED, (2) Expire ACTIVE listings for past events → EXPIRED, (3) Mark past ACTIVE events as COMPLETED, (4) Delete read notifications older than 30 days.
+- **Five operations:** (1) Expire ACTIVE listings past `expires_at` → EXPIRED, (2) Expire ACTIVE listings for past events → EXPIRED, (3) Mark past ACTIVE events as COMPLETED, (4) Delete read notifications older than 30 days, (5) Mark expired ACTIVE payment credentials as EXPIRED.
 - **Ticket release:** When listings expire, their tickets are released from LISTED back to AVAILABLE. Uses SELECT + iterate (not bulk UPDATE) because both listing and ticket state must update together.
 - **Listing → SOLD:** `OrderService.markTicketsAsSold()` also sets `listing.status = "SOLD"`.
 - **Cancel re-activates:** `OrderService.releaseOrderTickets()` resets listing status back to ACTIVE alongside ticket release.
@@ -193,6 +193,7 @@ The codebase uses Java DOP patterns where they add value:
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
 - **MCP server** — 32 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools, AgentApprovalTools, PaymentCredentialTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`.
+- **MCP registration is explicit** — new `@Tool` classes must be added to `McpConfig.mcpToolCallbackProvider(...)`; `McpConfigTest` asserts the registered callback count so docs and runtime do not drift.
 - **MCP auth (two modes, profile-based):**
   - `mcp-oauth2` profile: OAuth 2.1 with Dynamic Client Registration (DCR). Enables native Claude connector support on all platforms (desktop, web, mobile) without `mcp-remote`. Uses `org.springaicommunity:mcp-authorization-server:0.1.5` and `org.springaicommunity:mcp-server-security:0.1.5`.
   - Without `mcp-oauth2` profile: Falls back to `X-API-Key` header auth via `McpApiKeyFilter`. Requires `mcp-remote` bridge for Claude Desktop.

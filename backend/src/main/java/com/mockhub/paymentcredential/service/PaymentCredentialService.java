@@ -26,6 +26,7 @@ public class PaymentCredentialService {
     public static final String MOCKHUB_MERCHANT = "MOCKHUB";
 
     private static final Logger log = LoggerFactory.getLogger(PaymentCredentialService.class);
+    private static final BigDecimal MIN_AMOUNT = new BigDecimal("0.01");
     private static final String CURRENCY_USD = "USD";
     private static final String PAYMENT_METHOD_MOCK = "mock";
     private static final String PAYMENT_CREDENTIAL_RESOURCE = "PaymentCredential";
@@ -45,15 +46,15 @@ public class PaymentCredentialService {
         credential.setAgentId(normalizeRequired(request.agentId(), "Agent ID"));
         credential.setAllowedMerchant(MOCKHUB_MERCHANT);
         credential.setMaxAmount(normalizeAmount(request.maxAmount()));
-        credential.setCurrency(normalizeCurrency(request.currency()));
+        credential.setCurrency(normalizeCredentialCurrency(request.currency()));
         credential.setUsage(normalizeUsage(request.usage()));
         credential.setStatus(PaymentCredentialStatus.ACTIVE);
-        credential.setBackingPaymentMethod(normalizePaymentMethod(request.backingPaymentMethod()));
+        credential.setBackingPaymentMethod(normalizeBackingPaymentMethod(request.backingPaymentMethod()));
         credential.setExpiresAt(request.expiresAt());
 
         PaymentCredential saved = paymentCredentialRepository.save(credential);
-        log.info("Issued payment credential {} for agent '{}' and user '{}'",
-                saved.getCredentialId(), saved.getAgentId(), saved.getUserEmail());
+        log.info("Issued payment credential {} for agent '{}'",
+                saved.getCredentialId(), saved.getAgentId());
         return toDto(saved);
     }
 
@@ -82,7 +83,7 @@ public class PaymentCredentialService {
         return toDto(credential);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ConflictException.class)
     public PaymentCredentialDto authorizeForPayment(String credentialId, String userEmail, String agentId,
                                                     BigDecimal amount, String currency, String paymentMethod,
                                                     String orderNumber) {
@@ -91,7 +92,7 @@ public class PaymentCredentialService {
         return toDto(credential);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ConflictException.class)
     public PaymentCredentialDto consumeForPayment(String credentialId, String orderNumber) {
         PaymentCredential credential = getCredentialForUpdate(credentialId);
         String normalizedOrderNumber = normalizeRequired(orderNumber, "Order number");
@@ -126,7 +127,7 @@ public class PaymentCredentialService {
         String normalizedUserEmail = normalizeRequired(userEmail, "User email");
         String normalizedAgentId = normalizeRequired(agentId, "Agent ID");
         BigDecimal normalizedAmount = normalizeAmount(amount);
-        String normalizedCurrency = normalizeCurrency(currency);
+        String normalizedCurrency = normalizePaymentCurrency(currency);
         String normalizedPaymentMethod = normalizePaymentMethod(paymentMethod);
         String normalizedOrderNumber = normalizeRequired(orderNumber, "Order number");
 
@@ -185,19 +186,30 @@ public class PaymentCredentialService {
     }
 
     private BigDecimal normalizeAmount(BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero");
+        if (amount == null || amount.compareTo(MIN_AMOUNT) < 0) {
+            throw new IllegalArgumentException("Amount must be at least 0.01");
         }
         return amount.setScale(2, RoundingMode.HALF_UP);
     }
 
-    private String normalizeCurrency(String currency) {
+    private String normalizeCredentialCurrency(String currency) {
         if (currency == null || currency.isBlank()) {
             return CURRENCY_USD;
         }
         String normalized = currency.strip().toUpperCase();
         if (!CURRENCY_USD.equals(normalized)) {
             throw new IllegalArgumentException("Only USD payment credentials are supported");
+        }
+        return normalized;
+    }
+
+    private String normalizePaymentCurrency(String currency) {
+        if (currency == null || currency.isBlank()) {
+            return CURRENCY_USD;
+        }
+        String normalized = currency.strip().toUpperCase();
+        if (!CURRENCY_USD.equals(normalized)) {
+            throw new ConflictException("Only USD payment credentials are supported");
         }
         return normalized;
     }
@@ -213,7 +225,11 @@ public class PaymentCredentialService {
         if (paymentMethod == null || paymentMethod.isBlank()) {
             return PAYMENT_METHOD_MOCK;
         }
-        String normalized = paymentMethod.strip().toLowerCase();
+        return paymentMethod.strip().toLowerCase();
+    }
+
+    private String normalizeBackingPaymentMethod(String paymentMethod) {
+        String normalized = normalizePaymentMethod(paymentMethod);
         if (!PAYMENT_METHOD_MOCK.equals(normalized)) {
             throw new IllegalArgumentException("Only mock-backed payment credentials are supported");
         }
