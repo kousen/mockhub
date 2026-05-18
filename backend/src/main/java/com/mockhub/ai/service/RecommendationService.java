@@ -22,6 +22,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ai.dto.RecommendationDto;
 import com.mockhub.ai.dto.RecommendationsResponse;
+import com.mockhub.buyerpreference.dto.BuyerPreferenceContextDto;
+import com.mockhub.buyerpreference.dto.BuyerPreferencesDto;
+import com.mockhub.buyerpreference.service.BuyerPreferenceService;
 import com.mockhub.eval.dto.EvalContext;
 import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
@@ -46,34 +49,41 @@ public class RecommendationService {
     private final FavoriteRepository favoriteRepository;
     private final OrderItemRepository orderItemRepository;
     private final Optional<SpotifyListeningService> spotifyListeningService;
+    private final BuyerPreferenceService buyerPreferenceService;
 
     public RecommendationService(ChatClient chatClient, EventRepository eventRepository,
                                   EvalRunner evalRunner, FavoriteRepository favoriteRepository,
                                   OrderItemRepository orderItemRepository,
-                                  Optional<SpotifyListeningService> spotifyListeningService) {
+                                  Optional<SpotifyListeningService> spotifyListeningService,
+                                  BuyerPreferenceService buyerPreferenceService) {
         this.chatClient = chatClient;
         this.eventRepository = eventRepository;
         this.evalRunner = evalRunner;
         this.favoriteRepository = favoriteRepository;
         this.orderItemRepository = orderItemRepository;
         this.spotifyListeningService = spotifyListeningService;
+        this.buyerPreferenceService = buyerPreferenceService;
     }
 
     @Transactional(readOnly = true)
     public RecommendationsResponse getRecommendations(Long userId, String city) {
         SpotifyListeningDto listeningData = fetchListeningData(userId);
+        Optional<BuyerPreferencesDto> buyerPreferences =
+                buyerPreferenceService.findStoredPreferencesByUserId(userId);
+        BuyerPreferenceContextDto preferenceContext =
+                buyerPreferenceService.recommendationContext(buyerPreferences);
 
         List<Event> events = getCandidateEvents(city, listeningData);
         if (events.isEmpty()) {
             return new RecommendationsResponse(Collections.emptyList(),
-                    listeningData.spotifyConnected(), listeningData.scopeUpgradeNeeded());
+                    listeningData.spotifyConnected(), listeningData.scopeUpgradeNeeded(), preferenceContext);
         }
 
         // Track which events came from Spotify matching
         Set<Long> spotifyMatchedIds = getSpotifyMatchedEventIds(listeningData);
 
         String eventList = formatEventList(events);
-        String userContext = buildUserContext(userId, listeningData);
+        String userContext = buildUserContext(userId, listeningData, buyerPreferences);
         String prompt = buildPrompt(eventList, userContext);
 
         List<RecommendationDto> recommendations;
@@ -96,7 +106,7 @@ public class RecommendationService {
         }
 
         return new RecommendationsResponse(recommendations,
-                listeningData.spotifyConnected(), listeningData.scopeUpgradeNeeded());
+                listeningData.spotifyConnected(), listeningData.scopeUpgradeNeeded(), preferenceContext);
     }
 
     @Transactional(readOnly = true)
@@ -183,7 +193,8 @@ public class RecommendationService {
                 .collect(Collectors.joining("\n"));
     }
 
-    private String buildUserContext(Long userId, SpotifyListeningDto listeningData) {
+    private String buildUserContext(Long userId, SpotifyListeningDto listeningData,
+                                    Optional<BuyerPreferencesDto> buyerPreferences) {
         Set<String> categories = new LinkedHashSet<>();
         Set<String> artists = new LinkedHashSet<>();
         Set<String> cities = new LinkedHashSet<>();
@@ -202,7 +213,8 @@ public class RecommendationService {
 
         artists.addAll(listeningData.topArtistNames());
 
-        return formatContextString(categories, artists, cities, listeningData.topGenres());
+        return buyerPreferenceService.formatForPrompt(buyerPreferences)
+                + formatContextString(categories, artists, cities, listeningData.topGenres());
     }
 
     private void extractEventSignals(Event event, Set<String> categories,

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,10 @@ import org.springframework.ai.chat.client.ChatClient.CallResponseSpec;
 import org.springframework.ai.chat.client.ChatClient.ChatClientRequestSpec;
 
 import com.mockhub.ai.dto.RecommendationDto;
+import com.mockhub.buyerpreference.dto.BuyerPreferenceContextDto;
+import com.mockhub.buyerpreference.dto.BuyerPreferencesDto;
+import com.mockhub.buyerpreference.entity.RiskTolerance;
+import com.mockhub.buyerpreference.service.BuyerPreferenceService;
 import com.mockhub.eval.dto.EvalContext;
 import com.mockhub.eval.dto.EvalResult;
 import com.mockhub.eval.dto.EvalSummary;
@@ -43,6 +48,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class RecommendationServiceTest {
@@ -63,6 +69,9 @@ class RecommendationServiceTest {
     private OrderItemRepository orderItemRepository;
 
     @Mock
+    private BuyerPreferenceService buyerPreferenceService;
+
+    @Mock
     private ChatClientRequestSpec requestSpec;
 
     @Mock
@@ -75,9 +84,15 @@ class RecommendationServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(buyerPreferenceService.findStoredPreferencesByUserId(any()))
+                .thenReturn(Optional.empty());
+        lenient().when(buyerPreferenceService.recommendationContext(any()))
+                .thenReturn(BuyerPreferenceContextDto.none());
+        lenient().when(buyerPreferenceService.formatForPrompt(any()))
+                .thenReturn("");
         recommendationService = new RecommendationService(
                 chatClient, eventRepository, evalRunner, favoriteRepository,
-                orderItemRepository, java.util.Optional.empty());
+                orderItemRepository, Optional.empty(), buyerPreferenceService);
     }
 
     private Event createTestEvent(Long id, String name, String slug, String venueName,
@@ -182,6 +197,63 @@ class RecommendationServiceTest {
         assertTrue(prompt.contains("Concerts"), "Prompt should include favorite category");
         assertTrue(prompt.contains("B.B. King"), "Prompt should include favorite artist");
         assertTrue(prompt.contains("Chicago"), "Prompt should include favorite city");
+    }
+
+    @Test
+    @DisplayName("getRecommendations - given stored buyer preferences - includes preference context")
+    void getRecommendations_givenStoredBuyerPreferences_includesPreferenceContext() {
+        List<Event> featuredEvents = List.of(
+                createTestEvent(1L, "Jazz Night", "jazz-night", "Blue Note", "New York")
+        );
+        when(eventRepository.findFeaturedEvents()).thenReturn(featuredEvents);
+        when(favoriteRepository.findByUserIdWithEventDetails(42L)).thenReturn(List.of());
+        when(orderItemRepository.findDistinctPurchasedEventsByUserId(42L)).thenReturn(List.of());
+
+        BuyerPreferencesDto preferences = new BuyerPreferencesDto(
+                1L,
+                42L,
+                List.of("Esperanza Spalding"),
+                List.of("jazz"),
+                List.of("Boston"),
+                List.of("Blue Note"),
+                List.of("Orchestra"),
+                List.of(),
+                List.of(),
+                new BigDecimal("150.00"),
+                null,
+                true,
+                "aisle seating",
+                RiskTolerance.LOW_RISK_ONLY,
+                false,
+                Instant.now(),
+                Instant.now());
+        BuyerPreferenceContextDto context = new BuyerPreferenceContextDto(
+                true, true, List.of(), List.of("preferred cities: Boston"));
+        Optional<BuyerPreferencesDto> optionalPreferences = Optional.of(preferences);
+        when(buyerPreferenceService.findStoredPreferencesByUserId(42L)).thenReturn(optionalPreferences);
+        when(buyerPreferenceService.recommendationContext(optionalPreferences)).thenReturn(context);
+        when(buyerPreferenceService.formatForPrompt(optionalPreferences))
+                .thenReturn("""
+                        Explicit ticket-shopping preferences:
+                        Preferred artists: Esperanza Spalding.
+                        Preferred cities: Boston.
+                        Risk tolerance: LOW_RISK_ONLY.
+                        """);
+
+        stubChatClient("""
+                [{"eventId": 1, "relevanceScore": 0.90, "reason": "Matches explicit preferences"}]
+                """);
+        stubEvalRunnerPassing();
+
+        com.mockhub.ai.dto.RecommendationsResponse response =
+                recommendationService.getRecommendations(42L, null);
+
+        assertTrue(response.preferenceContext().preferencesAvailable());
+        verify(requestSpec).user(promptCaptor.capture());
+        String prompt = promptCaptor.getValue();
+        assertTrue(prompt.contains("Explicit ticket-shopping preferences"),
+                "Prompt should include explicit buyer preferences");
+        assertTrue(prompt.contains("LOW_RISK_ONLY"), "Prompt should include risk tolerance");
     }
 
     @Test
@@ -297,7 +369,7 @@ class RecommendationServiceTest {
                 org.mockito.Mockito.mock(SpotifyListeningService.class);
         RecommendationService serviceWithSpotify = new RecommendationService(
                 chatClient, eventRepository, evalRunner, favoriteRepository,
-                orderItemRepository, java.util.Optional.of(mockListeningService));
+                orderItemRepository, Optional.of(mockListeningService), buyerPreferenceService);
 
         SpotifyListeningDto listeningData = new SpotifyListeningDto(
                 List.of("6vWDO969PvNqNYHIOW5v0m"), List.of("Beyoncé"),
@@ -367,7 +439,7 @@ class RecommendationServiceTest {
                 org.mockito.Mockito.mock(SpotifyListeningService.class);
         RecommendationService serviceWithSpotify = new RecommendationService(
                 chatClient, eventRepository, evalRunner, favoriteRepository,
-                orderItemRepository, java.util.Optional.of(mockListeningService));
+                orderItemRepository, Optional.of(mockListeningService), buyerPreferenceService);
 
         SpotifyListeningDto listeningData = new SpotifyListeningDto(
                 List.of("artist-id-1"), List.of("Beyonce"),

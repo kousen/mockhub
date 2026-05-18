@@ -12,6 +12,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.buyerpreference.dto.BuyerPreferenceApplication;
+import com.mockhub.buyerpreference.dto.BuyerPreferenceContextDto;
+import com.mockhub.buyerpreference.service.BuyerPreferenceService;
 import com.mockhub.commerce.dto.CommercePolicyDto;
 import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.dto.PagedResponse;
@@ -32,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +54,9 @@ class EventToolsTest {
     @Mock
     private CommercePolicyService commercePolicyService;
 
+    @Mock
+    private BuyerPreferenceService buyerPreferenceService;
+
     private ObjectMapper objectMapper;
     private EventTools eventTools;
 
@@ -58,9 +65,14 @@ class EventToolsTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         eventTools = new EventTools(eventService, listingService, ticketComparisonService,
-                commercePolicyService, objectMapper);
+                commercePolicyService, buyerPreferenceService, objectMapper);
         org.mockito.Mockito.lenient().when(commercePolicyService.getPolicyForEvent(any()))
                 .thenAnswer(invocation -> createPolicy(invocation.getArgument(0)));
+        org.mockito.Mockito.lenient().when(buyerPreferenceService.applyToSearchCriteria(any(), any(), any()))
+                .thenAnswer(invocation -> new BuyerPreferenceApplication(
+                        invocation.getArgument(1),
+                        invocation.getArgument(2),
+                        BuyerPreferenceContextDto.none()));
     }
 
     // --- searchEvents ---
@@ -328,7 +340,7 @@ class EventToolsTest {
         when(listingService.searchTickets(any(ListingSearchCriteria.class)))
                 .thenReturn(List.of(result1, result2));
 
-        String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null);
+        String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null, null);
 
         assertTrue(result.startsWith("["), "Result should be a JSON array");
         assertTrue(result.contains("\"listingId\":1"), "Result should contain first listing");
@@ -343,7 +355,8 @@ class EventToolsTest {
                 .thenReturn(List.of());
 
         String result = eventTools.findTickets(
-                "jazz", "jazz", "LA", null, null, new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", null);
+                "jazz", "jazz", "LA", null, null, new BigDecimal("50.00"), new BigDecimal("200.00"),
+                "Orchestra", null, null);
 
         assertEquals("[]", result, "Result should be empty array when no matches");
         org.mockito.ArgumentCaptor<ListingSearchCriteria> captor =
@@ -368,7 +381,7 @@ class EventToolsTest {
 
         String result = eventTools.findTickets(
                 null, null, null, "2026-04-01T00:00:00Z", "2026-05-01T00:00:00Z",
-                null, null, null, null);
+                null, null, null, null, null);
 
         assertEquals("[]", result);
         org.mockito.ArgumentCaptor<ListingSearchCriteria> captor =
@@ -386,7 +399,7 @@ class EventToolsTest {
 
         String result = eventTools.findTickets(
                 null, null, null, "not-a-date", "also-not-a-date",
-                null, null, null, null);
+                null, null, null, null, null);
 
         assertEquals("[]", result);
         org.mockito.ArgumentCaptor<ListingSearchCriteria> captor =
@@ -401,7 +414,7 @@ class EventToolsTest {
         when(listingService.searchTickets(any(ListingSearchCriteria.class)))
                 .thenReturn(List.of());
 
-        eventTools.findTickets(null, null, null, null, null, null, null, null, 5);
+        eventTools.findTickets(null, null, null, null, null, null, null, null, 5, null);
 
         org.mockito.ArgumentCaptor<ListingSearchCriteria> captor =
                 org.mockito.ArgumentCaptor.forClass(ListingSearchCriteria.class);
@@ -415,7 +428,7 @@ class EventToolsTest {
         when(listingService.searchTickets(any(ListingSearchCriteria.class)))
                 .thenReturn(List.of());
 
-        String result = eventTools.findTickets("nonexistent", null, null, null, null, null, null, null, null);
+        String result = eventTools.findTickets("nonexistent", null, null, null, null, null, null, null, null, null);
 
         assertEquals("[]", result, "Result should be an empty JSON array");
     }
@@ -426,7 +439,7 @@ class EventToolsTest {
         when(listingService.searchTickets(any(ListingSearchCriteria.class)))
                 .thenThrow(new RuntimeException("Search failed"));
 
-        String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null);
+        String result = eventTools.findTickets("rock", null, null, null, null, null, null, null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to find tickets"), "Result should contain failure message");
@@ -438,12 +451,37 @@ class EventToolsTest {
         when(listingService.searchTickets(any(ListingSearchCriteria.class)))
                 .thenReturn(List.of());
 
-        eventTools.findTickets(null, null, null, null, null, null, null, null, 100);
+        eventTools.findTickets(null, null, null, null, null, null, null, null, 100, null);
 
         org.mockito.ArgumentCaptor<ListingSearchCriteria> captor =
                 org.mockito.ArgumentCaptor.forClass(ListingSearchCriteria.class);
         verify(listingService).searchTickets(captor.capture());
         assertEquals(50, captor.getValue().limit());
+    }
+
+    @Test
+    @DisplayName("findTickets - given user preferences - applies preferences and returns metadata")
+    void findTickets_givenUserPreferences_appliesPreferencesAndReturnsMetadata() {
+        ListingSearchCriteria appliedCriteria = new ListingSearchCriteria(
+                "jazz", "jazz", "Boston", null, new BigDecimal("150.00"),
+                "Orchestra", null, null, 10);
+        BuyerPreferenceContextDto context = new BuyerPreferenceContextDto(
+                true, true, List.of("city=Boston"), List.of("Applied preferred city 'Boston'"));
+        when(buyerPreferenceService.applyToSearchCriteria(eq("buyer@example.com"), any(), eq(null)))
+                .thenReturn(new BuyerPreferenceApplication(appliedCriteria, null, context));
+        when(listingService.searchTickets(any(ListingSearchCriteria.class)))
+                .thenReturn(List.of(createSearchResult(1L, "Jazz Night", "jazz-night", new BigDecimal("99.00"))));
+
+        String result = eventTools.findTickets("jazz", null, null, null, null,
+                null, null, null, null, "buyer@example.com");
+
+        assertTrue(result.contains("\"preferenceContext\""), "Result should include preference metadata");
+        assertTrue(result.contains("\"results\""), "Result should wrap matching listings");
+        org.mockito.ArgumentCaptor<ListingSearchCriteria> captor =
+                org.mockito.ArgumentCaptor.forClass(ListingSearchCriteria.class);
+        verify(listingService).searchTickets(captor.capture());
+        assertEquals("Boston", captor.getValue().city());
+        assertEquals("Orchestra", captor.getValue().section());
     }
 
     // --- compareTickets ---
@@ -461,7 +499,7 @@ class EventToolsTest {
                 .thenReturn(response);
 
         String result = eventTools.compareTickets(
-                "rock", "concerts", "NYC", null, null, null, null, "Floor", "Floor", 10);
+                "rock", "concerts", "NYC", null, null, null, null, "Floor", "Floor", 10, null);
 
         assertTrue(result.contains("\"judgmentSource\":\"DETERMINISTIC_HEURISTIC\""),
                 "Result should identify deterministic judgment source");
@@ -480,7 +518,7 @@ class EventToolsTest {
 
         eventTools.compareTickets(
                 "jazz", "concerts", "LA", "2026-04-01T00:00:00Z", "2026-05-01T00:00:00Z",
-                new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", "Orchestra", 75);
+                new BigDecimal("50.00"), new BigDecimal("200.00"), "Orchestra", "Orchestra", 75, null);
 
         org.mockito.ArgumentCaptor<ListingSearchCriteria> criteriaCaptor =
                 org.mockito.ArgumentCaptor.forClass(ListingSearchCriteria.class);
@@ -498,12 +536,36 @@ class EventToolsTest {
     }
 
     @Test
+    @DisplayName("compareTickets - given user preferences - applies preferred section and returns metadata")
+    void compareTickets_givenUserPreferences_appliesPreferredSectionAndReturnsMetadata() {
+        TicketComparisonResponseDto response = new TicketComparisonResponseDto(
+                0, "DETERMINISTIC_HEURISTIC", "basis", null, null, null, null, List.of(), List.of());
+        ListingSearchCriteria appliedCriteria = new ListingSearchCriteria(
+                "jazz", null, "Boston", null, null, null, null, null, 10);
+        BuyerPreferenceContextDto context = new BuyerPreferenceContextDto(
+                true, true, List.of("preferredSection=Balcony"),
+                List.of("Ranked toward preferred section 'Balcony'"));
+        when(buyerPreferenceService.applyToSearchCriteria(eq("buyer@example.com"), any(), eq(null)))
+                .thenReturn(new BuyerPreferenceApplication(appliedCriteria, "Balcony", context));
+        when(ticketComparisonService.compareTickets(any(ListingSearchCriteria.class), any()))
+                .thenReturn(response);
+
+        String result = eventTools.compareTickets(
+                "jazz", null, null, null, null, null, null, null, null, null, "buyer@example.com");
+
+        assertTrue(result.contains("\"preferenceContext\""), "Result should include preference metadata");
+        org.mockito.ArgumentCaptor<String> sectionCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(ticketComparisonService).compareTickets(any(ListingSearchCriteria.class), sectionCaptor.capture());
+        assertEquals("Balcony", sectionCaptor.getValue());
+    }
+
+    @Test
     @DisplayName("compareTickets - given service throws exception - returns error JSON")
     void compareTickets_givenServiceThrowsException_returnsErrorJson() {
         when(ticketComparisonService.compareTickets(any(ListingSearchCriteria.class), any()))
                 .thenThrow(new RuntimeException("Comparison failed"));
 
-        String result = eventTools.compareTickets("rock", null, null, null, null, null, null, null, null, null);
+        String result = eventTools.compareTickets("rock", null, null, null, null, null, null, null, null, null, null);
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to compare tickets"), "Result should contain failure message");

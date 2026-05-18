@@ -135,11 +135,14 @@ findTickets(
     minPrice: 50,            // price floor
     maxPrice: 150,           // price ceiling
     section: "Orchestra",    // section name filter
-    maxResults: 5            // limit results
+    maxResults: 5,           // limit results
+    userEmail: "buyer@example.com" // optional: apply stored buyer preferences
 )
 ```
 
 This is an example of **agent-ergonomic API design** — reducing round-trips and letting agents express intent in a single call. Traditional REST APIs are designed for human-driven UIs with navigation; agent APIs should support goal-directed actions.
+
+When `userEmail` is supplied, `findTickets` may fill missing city, category, section, or maximum-price filters from the user's explicit buyer preferences. The response then includes `preferenceContext` metadata so the agent can tell the user which stored preferences affected the search.
 
 ### Agent-Friendly Ticket Comparison
 
@@ -151,7 +154,8 @@ compareTickets(
     city: "New York",
     maxPrice: 150,
     preferredSection: "Orchestra",
-    maxResults: 10
+    maxResults: 10,
+    userEmail: "buyer@example.com"
 )
 ```
 
@@ -162,8 +166,23 @@ The response includes:
 - reason codes such as `COMPETITIVE_PRICE`, `MATCHES_REQUESTED_SECTION`, and `LOWER_MARKETPLACE_RISK`
 - deterministic rationale text suitable for explaining the tradeoff to a user
 - price plausibility warnings based on the returned market set, including high-price anomalies, unusually low outliers, and limited comparison depth
+- optional `preferenceContext` metadata when stored buyer preferences fill missing search filters or ranking hints
 
 The comparison service intentionally starts with deterministic heuristics rather than an LLM. That keeps the teaching story transparent: students can inspect exactly how price, section quality, seller risk, and warning penalties affect the ranking. If AI-generated prose is added later, it should remain clearly labeled and fall back to these deterministic fields.
+
+### Buyer Preference Memory
+
+Buyer preference memory gives agents a structured way to translate fuzzy intent into a purchasing brief without treating inferred data as the whole truth. Authenticated users can store explicit ticket-shopping preferences through `GET/PUT /api/v1/preferences/me`.
+
+The preference model tracks preferred artists, categories, cities, venues, and sections; disliked venues and categories; maximum all-in price; service-fee tolerance; all-in price preference; accessibility needs; risk tolerance; and willingness to wait for price drops. Spotify listening data, favorites, and purchase history remain separate signals.
+
+MockHub uses preferences in three visible places:
+
+- `findTickets` applies missing search filters when `userEmail` is supplied.
+- `compareTickets` applies missing filters and a preferred section ranking hint when `userEmail` is supplied.
+- AI recommendations include explicit preferences in the prompt and return `preferenceContext` metadata.
+
+The preference metadata is deliberately explicit. It tells agents which preferences were applied, while avoiding raw Spotify listening details in agent-facing preference context.
 
 ### Agent-Readable Commerce Policies
 
@@ -394,12 +413,12 @@ Coverage labels in this table describe MockHub surfaces that exist today. They d
 | Cart lifecycle | MCP cart tools, REST cart API, ACP checkout creation/update flow | Implemented | ACP treats checkout creation as the agent-facing cart/checkout boundary; MCP exposes explicit cart operations. |
 | Checkout lifecycle | ACP `/acp/v1/checkout/**`, MCP `checkout` and `confirmOrder`, `OrderService`, `PaymentService` | Partial | MockHub supports create, update, cancel, and complete flows, but does not implement UCP version negotiation or UCP response envelopes. |
 | Order and post-purchase support | MCP `getOrder`, `listOrders`, `getCalendarEntry`; public ticket view; PDF/QR tickets; SMS/email fulfillment | Partial | MockHub covers order lookup and fulfillment well for tickets, though it does not yet model returns, disputes, or shipment tracking. |
-| Identity linking | Website OAuth account linking, authenticated website user context, MCP OAuth2 for agent access | Partial | MockHub has account linking and authenticated agent transport, but not UCP identity-linking capability declarations. Future buyer preference memory (#219) would add another user-context signal. |
+| Identity linking | Website OAuth account linking, authenticated website user context, MCP OAuth2 for agent access | Partial | MockHub has account linking and authenticated agent transport, but not UCP identity-linking capability declarations. Buyer preference memory adds explicit user context without becoming a UCP identity-linking surface. |
 | Commerce policy | REST commerce policy endpoints, MCP `getCommercePolicy`, policy snapshots in ACP/listing responses | Implemented | Agents can fetch structured policy context before proposing or completing purchases. |
 | Authorization and proof | Mandates, `MandateCondition`, approval records, approval-required mandates | Partial | These map closely to AP2 concepts, but they are not cryptographically signed AP2 mandate credentials. Scoped payment credentials now keep "allowed to act" separate from "allowed to pay." |
 | Payment credentials | `PaymentCredentialService`, `PaymentCredentialTools`, ACP/MCP `paymentCredentialId`, mock payment service | Partial | MockHub supports mock-backed scoped credentials with one-time/reusable usage, expiration, revocation, limits, and checkout validation. Stripe-backed wallet credentials remain future work. |
 | Risk and abuse signals | `AgentRiskSignal`, `AgentRiskService`, `AgentRiskCondition`, MCP `getAgentRiskSummary` | Partial | MockHub persists deterministic local risk signals, returns warnings to MCP agents, and blocks repeated mandate mismatches. It does not integrate an external fraud/risk provider. |
-| Preference and personalization memory | Favorites, purchase history, Spotify listening data, future user preference package | Planned | Recommendations already use several signals; #219 should turn explicit buyer preferences into a first-class agent-shopping model. |
+| Preference and personalization memory | `BuyerPreferenceService`, `buyer_preferences`, `GET/PUT /api/v1/preferences/me`, MCP `findTickets`/`compareTickets`, AI recommendations | Partial | MockHub stores explicit buyer preferences and returns preference-use metadata. It does not publish UCP capability declarations or cross-platform preference synchronization. |
 | Extensions and version negotiation | None | Not implemented | UCP's capability model relies on dated protocol versions and negotiated capability versions. MockHub should not advertise support until it can produce a truthful profile and validate versioned requests. |
 | Machine-to-machine API payments | None | Intentionally out of scope | x402 and similar rails monetize API access. MockHub's agents buy tickets; API access itself is free. |
 
@@ -415,10 +434,10 @@ MockHub should wait until it can do at least the following:
 2. Expose UCP-shaped service bindings or clearly documented adapters, rather than pointing UCP clients at ACP endpoints with different request and response envelopes.
 3. Keep payment credentials separate from mandates (#218), because UCP payment handlers and AP2-style autonomous payment flows depend on that boundary.
 4. Preserve basic agent risk signals (#217), because UCP's signal model expects transaction-environment data for authorization, rate limiting, and abuse prevention.
-5. Decide whether identity-linking and buyer-preference state (#219) belong in the first profile or remain outside the UCP surface.
+5. Decide whether buyer-preference state belongs in the first profile or remains outside the UCP surface.
 6. Add tests that assert the profile content matches the code's live endpoints and supported capabilities.
 
-Until then, `llms.txt`, MCP OAuth metadata, ACP endpoints, and the A2A agent card remain the honest discovery surfaces. No follow-up UCP profile implementation issue exists yet; open one only after #219 clarifies buyer context and the UCP service/profile tests are scoped. Use [Spec Versions](#spec-versions) as the pinned protocol reference, and include profile-content tests in that future issue.
+Until then, `llms.txt`, MCP OAuth metadata, ACP endpoints, and the A2A agent card remain the honest discovery surfaces. No follow-up UCP profile implementation issue exists yet; open one only after the UCP service/profile tests are scoped. Use [Spec Versions](#spec-versions) as the pinned protocol reference, and include profile-content tests in that future issue.
 
 ### Why UCP Matters for the Training Course
 
@@ -428,7 +447,7 @@ UCP is useful in the August 2026 course because it forces the broader question: 
 2. Authorization happens through mandates and approval records.
 3. Payment still routes through ordinary payment services, with scoped payment credentials making agent payment authority explicit before confirmation.
 4. Fulfillment happens through tickets, QR codes, calendar files, and notifications.
-5. Risk is explicit through local signals, while preference memory remains a named gap rather than invisible magic.
+5. Risk is explicit through local signals, and preference memory is explicit user data rather than invisible inference.
 
 That lets students compare a working partial system against the protocol map. The lesson is not "MockHub implements every new standard." The lesson is that responsible agentic commerce needs a legible division of responsibility: capability discovery, user authority, payment authority, risk evaluation, checkout, fulfillment, and evidence.
 
@@ -486,9 +505,10 @@ The implementation is considered working when all of the following are true:
 5. Successful confirmation increments mandate `totalSpent` exactly once.
 6. Repeated mandate mismatches for the same user and agent create persisted risk signals and cause `AgentRiskCondition` to block later purchase actions.
 7. `getAgentRiskSummary` returns recent signals, warning reasons, highest severity, and blocked status for a user/agent pair.
-8. `cd backend && ./gradlew test` passes.
-9. UCP readiness documentation is manually checked against the current MockHub tool/endpoint names and the pinned external protocol references. There is no automated UCP conformance check yet.
-10. The [Spec Versions](#spec-versions) table is re-checked before release prep and before any future UCP profile work. There is no automated spec-freshness check yet.
+8. Users can store and update buyer preferences, and preference-aware searches return explicit `preferenceContext` metadata.
+9. `cd backend && ./gradlew test` passes.
+10. UCP readiness documentation is manually checked against the current MockHub tool/endpoint names and the pinned external protocol references. There is no automated UCP conformance check yet.
+11. The [Spec Versions](#spec-versions) table is re-checked before release prep and before any future UCP profile work. There is no automated spec-freshness check yet.
 
 ---
 
@@ -607,6 +627,10 @@ CREATE TABLE mandates (
 
 ### Commerce Policies
 - `backend/src/main/java/com/mockhub/commerce/` — agent-readable commerce policy controller, service, and DTOs
+
+### Buyer Preferences
+- `backend/src/main/java/com/mockhub/buyerpreference/` — explicit buyer preference memory, authenticated API, and preference application service
+- `backend/src/main/resources/db/migration/V35__create_buyer_preferences.sql`
 
 ### MCP OAuth2 Authentication
 - `backend/src/main/java/com/mockhub/mcp/config/McpOAuth2SecurityConfig.java` — authorization server + resource server chains
