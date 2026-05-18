@@ -20,6 +20,7 @@ import com.mockhub.acp.dto.AcpLineItem;
 import com.mockhub.acp.dto.AcpLineItemResponse;
 import com.mockhub.acp.dto.AcpPricing;
 import com.mockhub.acp.dto.AcpUpdateRequest;
+import com.mockhub.agentrisk.service.AgentRiskService;
 import com.mockhub.agentapproval.service.AgentPurchaseApprovalService;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
@@ -64,6 +65,7 @@ public class AcpCheckoutService {
     private final AgentPurchaseApprovalService approvalService;
     private final MandateService mandateService;
     private final PaymentCredentialService paymentCredentialService;
+    private final AgentRiskService agentRiskService;
 
     public AcpCheckoutService(UserRepository userRepository,
                               CartService cartService,
@@ -74,7 +76,8 @@ public class AcpCheckoutService {
                               CommercePolicyService commercePolicyService,
                               AgentPurchaseApprovalService approvalService,
                               MandateService mandateService,
-                              PaymentCredentialService paymentCredentialService) {
+                              PaymentCredentialService paymentCredentialService,
+                              AgentRiskService agentRiskService) {
         this.userRepository = userRepository;
         this.cartService = cartService;
         this.orderService = orderService;
@@ -85,6 +88,7 @@ public class AcpCheckoutService {
         this.approvalService = approvalService;
         this.mandateService = mandateService;
         this.paymentCredentialService = paymentCredentialService;
+        this.agentRiskService = agentRiskService;
     }
 
     @Transactional
@@ -103,6 +107,9 @@ public class AcpCheckoutService {
             cartService.addToCart(user, lineItem.listingId());
         }
         validateCartForAgent(user, agentId, mandateId);
+        CartDto cartDto = cartService.getCartDto(user);
+        agentRiskService.recordCheckoutAttempt(
+                user.getEmail(), agentId, null, cartDto.subtotal(), "ACP_CREATE_CHECKOUT");
 
         // Create order via existing checkout flow (returns existing order on idempotent retry)
         CheckoutRequest checkoutRequest = new CheckoutRequest(paymentMethod);
@@ -133,6 +140,8 @@ public class AcpCheckoutService {
         }
 
         Order order = orderService.getOrderEntity(checkoutId);
+        agentRiskService.recordCheckoutAttempt(
+                user.getEmail(), request.agentId(), checkoutId, order.getTotal(), "ACP_COMPLETE_CHECKOUT");
         validateStoredAgentContext(order, request.agentId(), request.mandateId());
         ensureOrderStillAuthorizedForConfirmation(order, user.getEmail(), request.agentId(), request.mandateId());
 
@@ -201,8 +210,15 @@ public class AcpCheckoutService {
         }
 
         String paymentMethod = order.getPaymentMethod() != null ? order.getPaymentMethod().strip().toLowerCase() : "mock";
-        String paymentCredentialId = validatePaymentCredentialIfPresent(
-                request.paymentCredentialId(), user.getEmail(), request.agentId(), order, paymentMethod);
+        String paymentCredentialId;
+        try {
+            paymentCredentialId = validatePaymentCredentialIfPresent(
+                    request.paymentCredentialId(), user.getEmail(), request.agentId(), order, paymentMethod);
+        } catch (RuntimeException e) {
+            agentRiskService.recordPaymentCredentialFailure(
+                    user.getEmail(), request.agentId(), checkoutId, order.getTotal(), e.getMessage());
+            throw e;
+        }
 
         if ("mock".equals(paymentMethod)
                 && (paymentIntentId == null || paymentIntentId.isBlank())
@@ -299,6 +315,9 @@ public class AcpCheckoutService {
                 listing.getComputedPrice(), categorySlug, mandateId));
 
         if (evalSummary.hasCriticalFailure()) {
+            agentRiskService.recordEvalFailures(userEmail, agentId, mandateId,
+                    "ACP_LISTING_VALIDATION", "LISTING", listingId.toString(),
+                    listing.getComputedPrice(), evalSummary);
             String failureMessage = evalSummary.failures().stream()
                     .map(result -> result.conditionName() + ": " + result.message())
                     .collect(Collectors.joining("; "));
@@ -330,6 +349,10 @@ public class AcpCheckoutService {
                     agentId, user.getEmail(), "PURCHASE", amount, null,
                     item.eventSlug(), mandateId, item.sectionName());
             if (!authorized) {
+                agentRiskService.recordMandateMismatch(
+                        user.getEmail(), agentId, mandateId, "ACP_CART_VALIDATION", "LISTING",
+                        item.listingId() != null ? item.listingId().toString() : null, amount,
+                        "Mandate does not authorize cart item listing " + item.listingId());
                 throw new ConflictException(
                         "ACP cart validation failed: Mandate does not authorize cart item listing "
                                 + item.listingId());
@@ -394,6 +417,8 @@ public class AcpCheckoutService {
                     agentId.strip(), userEmail, item.getListing().getEvent(), item.getListing(),
                     order.getTotal(), categorySlug, mandateId.strip()));
             if (summary.hasCriticalFailure()) {
+                agentRiskService.recordEvalFailures(userEmail, agentId.strip(), mandateId.strip(),
+                        "ACP_CONFIRMATION_VALIDATION", "ORDER", order.getOrderNumber(), order.getTotal(), summary);
                 failures.addAll(summary.failures());
             }
         }

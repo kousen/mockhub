@@ -1,5 +1,6 @@
 package com.mockhub.mcp.tools;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,6 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.agentrisk.dto.AgentRiskSummaryDto;
+import com.mockhub.agentrisk.service.AgentRiskService;
 import com.mockhub.agentapproval.service.AgentPurchaseApprovalService;
 import com.mockhub.ai.service.ChatContext;
 import com.mockhub.auth.entity.User;
@@ -79,6 +82,9 @@ class OrderToolsTest {
     @Mock
     private PaymentCredentialService paymentCredentialService;
 
+    @Mock
+    private AgentRiskService agentRiskService;
+
     private static final String AGENT_ID = "shopping-agent";
     private static final String MANDATE_ID = "mandate-123";
 
@@ -91,7 +97,8 @@ class OrderToolsTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         orderTools = new OrderTools(orderService, calendarService, userRepository, cartService,
-                evalRunner, paymentService, approvalService, mandateService, paymentCredentialService, objectMapper);
+                evalRunner, paymentService, approvalService, mandateService, paymentCredentialService,
+                agentRiskService, objectMapper);
 
         testUser = new User();
         testUser.setId(1L);
@@ -185,6 +192,56 @@ class OrderToolsTest {
         }
 
         @Test
+        @DisplayName("given risk warning - returns order with warnings")
+        void givenRiskWarning_returnsOrderWithWarnings() {
+            stubUserLookup("buyer@example.com");
+            when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
+            stubPassingEval();
+            when(agentRiskService.recordCheckoutAttempt(
+                    "buyer@example.com", AGENT_ID, null, java.math.BigDecimal.TEN, "CHECKOUT"))
+                    .thenReturn(List.of("agent-risk: high spend attempt"));
+            when(mandateService.validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
+                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor"))
+                    .thenReturn(true);
+            OrderDto orderDto = new OrderDto(
+                    null, "MH-1", "PENDING", null, null, null, null, null, null, null, null, null);
+            when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID)))
+                    .thenReturn(orderDto);
+
+            String result = orderTools.checkout("buyer@example.com", "mock", AGENT_ID, MANDATE_ID);
+
+            assertTrue(result.contains("\"warnings\""), "Result should contain warnings field");
+            assertTrue(result.contains("agent-risk"), "Warnings should include agent risk signal");
+        }
+
+        @Test
+        @DisplayName("given blocked risk summary - returns error before checkout")
+        void givenBlockedRiskSummary_returnsErrorBeforeCheckout() {
+            stubUserLookup("buyer@example.com");
+            when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
+            stubPassingEval();
+            when(agentRiskService.summarizeRisk("buyer@example.com", AGENT_ID))
+                    .thenReturn(new AgentRiskSummaryDto(
+                            "buyer@example.com",
+                            AGENT_ID,
+                            Instant.now().minusSeconds(3600),
+                            3,
+                            0,
+                            3,
+                            "CRITICAL",
+                            true,
+                            List.of("Repeated mandate mismatches: 3"),
+                            List.of()));
+
+            String result = orderTools.checkout("buyer@example.com", "mock", AGENT_ID, MANDATE_ID);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Agent risk threshold exceeded"),
+                    "Result should explain the risk block");
+            verify(orderService, never()).checkout(any(), any(), any(), any(), any());
+        }
+
+        @Test
         @DisplayName("given cart item not authorized by mandate - returns error JSON")
         void givenCartItemNotAuthorizedByMandate_returnsErrorJson() {
             stubUserLookup("buyer@example.com");
@@ -200,6 +257,9 @@ class OrderToolsTest {
             assertTrue(result.contains("does not authorize cart item listing 42"),
                     "Result should identify the unauthorized cart item");
             verify(orderService, never()).checkout(any(), any(), any(), any(), any());
+            verify(agentRiskService).recordMandateMismatch(
+                    "buyer@example.com", AGENT_ID, MANDATE_ID, "CHECKOUT", "CART", null,
+                    java.math.BigDecimal.TEN, "Mandate does not authorize cart item listing 42");
         }
 
         @Test

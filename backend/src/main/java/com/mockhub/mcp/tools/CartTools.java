@@ -1,5 +1,8 @@
 package com.mockhub.mcp.tools;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
@@ -10,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
+import com.mockhub.agentrisk.service.AgentRiskService;
 import com.mockhub.cart.dto.CartDto;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.ai.service.ChatContext;
@@ -29,17 +33,20 @@ public class CartTools {
     private final UserRepository userRepository;
     private final ListingRepository listingRepository;
     private final EvalRunner evalRunner;
+    private final AgentRiskService agentRiskService;
     private final ObjectMapper objectMapper;
 
     public CartTools(CartService cartService,
                      UserRepository userRepository,
                      ListingRepository listingRepository,
                      EvalRunner evalRunner,
+                     AgentRiskService agentRiskService,
                      ObjectMapper objectMapper) {
         this.cartService = cartService;
         this.userRepository = userRepository;
         this.listingRepository = listingRepository;
         this.evalRunner = evalRunner;
+        this.agentRiskService = agentRiskService;
         this.objectMapper = objectMapper;
     }
 
@@ -80,6 +87,7 @@ public class CartTools {
             }
 
             String effectiveEmail = ChatContext.resolveEmail(userEmail);
+            List<String> warnings = new ArrayList<>();
 
             java.util.Optional<Listing> listingOpt = listingRepository.findById(listingId);
             if (listingOpt.isPresent()) {
@@ -90,12 +98,17 @@ public class CartTools {
                         listing.getEvent(), listing, listing.getComputedPrice(), categorySlug, mandateId.strip());
                 EvalSummary evalSummary = evalRunner.evaluate(evalContext);
                 if (evalSummary.hasCriticalFailure()) {
+                    agentRiskService.recordEvalFailures(effectiveEmail, agentId.strip(), mandateId.strip(),
+                            "ADD_TO_CART", "LISTING", listingId.toString(), listing.getComputedPrice(), evalSummary);
                     String failureMessage = evalSummary.failures().stream()
                             .map(r -> r.conditionName() + ": " + r.message())
                             .collect(java.util.stream.Collectors.joining("; "));
                     log.warn("Eval blocked addToCart for listing {}: {}", listingId, failureMessage);
                     return errorJson("Cannot add to cart: " + failureMessage);
                 }
+                warnings.addAll(evalWarnings(evalSummary));
+                warnings.addAll(safeWarnings(agentRiskService.recordCartHoldAttempt(
+                        effectiveEmail, agentId.strip(), listingId, listing.getComputedPrice())));
             }
 
             User user = resolveUser(effectiveEmail);
@@ -104,11 +117,11 @@ public class CartTools {
             EvalContext cartContext = EvalContext.forCart(cartDto);
             EvalSummary cartEval = evalRunner.evaluate(cartContext);
             if (!cartEval.allPassed()) {
-                String warnings = cartEval.failures().stream()
-                        .map(r -> r.conditionName() + ": " + r.message())
-                        .collect(java.util.stream.Collectors.joining("; "));
-                String cartJson = objectMapper.writeValueAsString(cartDto);
-                return "{\"cart\": " + cartJson + ", \"warnings\": \"" + warnings.replace("\"", "'") + "\"}";
+                warnings.addAll(evalWarnings(cartEval));
+            }
+
+            if (!warnings.isEmpty()) {
+                return responseWithWarnings("cart", cartDto, warnings);
             }
 
             return objectMapper.writeValueAsString(cartDto);
@@ -168,6 +181,29 @@ public class CartTools {
         String effectiveEmail = ChatContext.resolveEmail(email);
         return userRepository.findByEmail(effectiveEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", effectiveEmail));
+    }
+
+    private List<String> evalWarnings(EvalSummary summary) {
+        if (summary == null) {
+            return List.of();
+        }
+        return summary.failures().stream()
+                .filter(result -> result.severity() != com.mockhub.eval.dto.EvalSeverity.CRITICAL)
+                .map(result -> result.conditionName() + ": " + result.message())
+                .toList();
+    }
+
+    private List<String> safeWarnings(List<String> warnings) {
+        return warnings == null ? List.of() : warnings;
+    }
+
+    private String responseWithWarnings(String fieldName, Object payload, List<String> warnings)
+            throws com.fasterxml.jackson.core.JsonProcessingException {
+        com.fasterxml.jackson.databind.node.ObjectNode response = objectMapper.createObjectNode();
+        response.set(fieldName, objectMapper.valueToTree(payload));
+        com.fasterxml.jackson.databind.node.ArrayNode warningNodes = response.putArray("warnings");
+        warnings.forEach(warningNodes::add);
+        return objectMapper.writeValueAsString(response);
     }
 
     private String errorJson(String message) {

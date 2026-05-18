@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.agentrisk.dto.AgentRiskSummaryDto;
+import com.mockhub.agentrisk.service.AgentRiskService;
 import com.mockhub.ai.service.ChatContext;
 import com.mockhub.agentapproval.service.AgentPurchaseApprovalService;
 import com.mockhub.eval.dto.EvalResult;
@@ -56,6 +58,7 @@ public class OrderTools {
     private final AgentPurchaseApprovalService approvalService;
     private final MandateService mandateService;
     private final PaymentCredentialService paymentCredentialService;
+    private final AgentRiskService agentRiskService;
     private final ObjectMapper objectMapper;
 
     public OrderTools(OrderService orderService,
@@ -67,6 +70,7 @@ public class OrderTools {
                       AgentPurchaseApprovalService approvalService,
                       MandateService mandateService,
                       PaymentCredentialService paymentCredentialService,
+                      AgentRiskService agentRiskService,
                       ObjectMapper objectMapper) {
         this.orderService = orderService;
         this.calendarService = calendarService;
@@ -77,6 +81,7 @@ public class OrderTools {
         this.approvalService = approvalService;
         this.mandateService = mandateService;
         this.paymentCredentialService = paymentCredentialService;
+        this.agentRiskService = agentRiskService;
         this.objectMapper = objectMapper;
     }
 
@@ -102,6 +107,7 @@ public class OrderTools {
             }
             User user = resolveUser(userEmail);
             CartDto cartDto = cartService.getCartDto(user);
+            List<String> warnings = new ArrayList<>();
             EvalSummary cartSummary = evalRunner.evaluate(EvalContext.forCart(cartDto));
             if (cartSummary.hasCriticalFailure()) {
                 String failureMessage = cartSummary.failures().stream()
@@ -109,15 +115,30 @@ public class OrderTools {
                         .collect(Collectors.joining("; "));
                 return errorJson("Cannot checkout: " + failureMessage);
             }
+            warnings.addAll(evalWarnings(cartSummary));
+            AgentRiskSummaryDto riskSummary = agentRiskService.summarizeRisk(user.getEmail(), agentId.strip());
+            if (riskSummary != null && riskSummary.blocked()) {
+                return errorJson("Cannot checkout: agent-risk: Agent risk threshold exceeded: "
+                        + formatRiskReasons(riskSummary));
+            }
+            warnings.addAll(riskWarnings(riskSummary));
+            warnings.addAll(safeWarnings(agentRiskService.recordCheckoutAttempt(
+                    user.getEmail(), agentId.strip(), null, cartDto.subtotal(), "CHECKOUT")));
             String authorizationFailure = validateCartItemsForAgent(
                     cartDto, user.getEmail(), agentId.strip(), mandateId.strip());
             if (authorizationFailure != null) {
+                agentRiskService.recordMandateMismatch(user.getEmail(), agentId.strip(), mandateId.strip(),
+                        "CHECKOUT", "CART", null, cartDto.subtotal(), authorizationFailure);
                 return errorJson("Cannot checkout: " + authorizationFailure);
             }
             CheckoutRequest request = new CheckoutRequest(paymentMethod.strip());
             OrderDto order = orderService.checkout(user, request, null, agentId.strip(), mandateId.strip());
+            if (!warnings.isEmpty()) {
+                return responseWithWarnings("order", order, warnings);
+            }
             return objectMapper.writeValueAsString(order);
         } catch (Exception e) {
+            agentRiskService.recordCheckoutFailure(userEmail, agentId, null, null, e.getMessage());
             log.error("Error during checkout for '{}': {}", userEmail, e.getMessage(), e);
             return errorJson("Failed to checkout: " + e.getMessage());
         }
@@ -190,6 +211,9 @@ public class OrderTools {
             // Verify ownership before confirming — getOrder throws UnauthorizedException if mismatch
             orderService.getOrder(user, trimmedOrderNumber);
             Order order = orderService.getOrderEntity(trimmedOrderNumber);
+            List<String> warnings = new ArrayList<>();
+            warnings.addAll(safeWarnings(agentRiskService.recordCheckoutAttempt(
+                    user.getEmail(), agentId.strip(), trimmedOrderNumber, order.getTotal(), "CONFIRM_ORDER")));
             validateStoredAgentContext(order, agentId, mandateId);
             validateApprovalMode(user.getEmail(), agentId, mandateId, approvalId);
             approvalService.validateApprovedForCompletion(
@@ -198,14 +222,24 @@ public class OrderTools {
             // Re-evaluate mandate authorization at confirmation time
             EvalSummary evalSummary = revalidateOrderForConfirmation(order, user.getEmail(), agentId, mandateId);
             if (evalSummary.hasCriticalFailure()) {
+                agentRiskService.recordEvalFailures(user.getEmail(), agentId.strip(), mandateId.strip(),
+                        "CONFIRM_ORDER", "ORDER", trimmedOrderNumber, order.getTotal(), evalSummary);
                 String failureMessage = evalSummary.failures().stream()
                         .map(result -> result.conditionName() + ": " + result.message())
                         .collect(Collectors.joining("; "));
                 return errorJson("Cannot confirm order: " + failureMessage);
             }
+            warnings.addAll(evalWarnings(evalSummary));
 
-            String resolvedPaymentCredentialId = validatePaymentCredentialIfPresent(
-                    paymentCredentialId, user.getEmail(), agentId, order);
+            String resolvedPaymentCredentialId;
+            try {
+                resolvedPaymentCredentialId = validatePaymentCredentialIfPresent(
+                        paymentCredentialId, user.getEmail(), agentId, order);
+            } catch (RuntimeException e) {
+                agentRiskService.recordPaymentCredentialFailure(
+                        user.getEmail(), agentId.strip(), trimmedOrderNumber, order.getTotal(), e.getMessage());
+                throw e;
+            }
 
             String resolvedPaymentIntentId = resolvePaymentIntentId(order, paymentIntentId);
             consumePaymentCredentialIfPresent(resolvedPaymentCredentialId, order.getOrderNumber());
@@ -217,9 +251,13 @@ public class OrderTools {
             }
             approvalService.markCompleted(approvalId, trimmedOrderNumber);
             OrderDto confirmedOrder = orderService.getOrder(user, trimmedOrderNumber);
+            if (!warnings.isEmpty()) {
+                return responseWithWarnings("order", confirmedOrder, warnings);
+            }
             return objectMapper.writeValueAsString(confirmedOrder);
         } catch (Exception e) {
             markCurrentTransactionRollbackOnly();
+            agentRiskService.recordCheckoutFailure(userEmail, agentId, orderNumber, null, e.getMessage());
             log.error("Error confirming order '{}' for '{}': {}", orderNumber, userEmail, e.getMessage(), e);
             return errorJson("Failed to confirm order: " + e.getMessage());
         }
@@ -253,6 +291,42 @@ public class OrderTools {
 
     private String errorJson(String message) {
         return "{\"error\": \"" + message.replace("\"", "'") + "\"}";
+    }
+
+    private List<String> evalWarnings(EvalSummary summary) {
+        if (summary == null) {
+            return List.of();
+        }
+        return summary.failures().stream()
+                .filter(result -> result.severity() != com.mockhub.eval.dto.EvalSeverity.CRITICAL)
+                .map(result -> result.conditionName() + ": " + result.message())
+                .toList();
+    }
+
+    private List<String> safeWarnings(List<String> warnings) {
+        return warnings == null ? List.of() : warnings;
+    }
+
+    private List<String> riskWarnings(AgentRiskSummaryDto summary) {
+        if (summary == null || summary.reasons().isEmpty()) {
+            return List.of();
+        }
+        return summary.reasons().stream()
+                .map(reason -> "agent-risk: " + reason)
+                .toList();
+    }
+
+    private String formatRiskReasons(AgentRiskSummaryDto summary) {
+        return summary.reasons().stream().collect(Collectors.joining("; "));
+    }
+
+    private String responseWithWarnings(String fieldName, Object payload, List<String> warnings)
+            throws com.fasterxml.jackson.core.JsonProcessingException {
+        com.fasterxml.jackson.databind.node.ObjectNode response = objectMapper.createObjectNode();
+        response.set(fieldName, objectMapper.valueToTree(payload));
+        com.fasterxml.jackson.databind.node.ArrayNode warningNodes = response.putArray("warnings");
+        warnings.forEach(warningNodes::add);
+        return objectMapper.writeValueAsString(response);
     }
 
     private void validateStoredAgentContext(Order order, String agentId, String mandateId) {
@@ -366,9 +440,7 @@ public class OrderTools {
             EvalSummary itemSummary = evalRunner.evaluate(EvalContext.forAgentAction(
                     agentId.strip(), userEmail, item.getListing().getEvent(), item.getListing(),
                     order.getTotal(), categorySlug, mandateId.strip()));
-            if (itemSummary.hasCriticalFailure()) {
-                failures.addAll(itemSummary.failures());
-            }
+            failures.addAll(itemSummary.failures());
         }
 
         return new EvalSummary(failures);

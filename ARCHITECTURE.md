@@ -539,6 +539,7 @@ MockHub exposes a three-layer agentic commerce stack:
   allowed categories/events/sections, approval mode, expiration, revocation, and cumulative spend tracking.
 - **Purchase approval records** in `com.mockhub.agentapproval` for durable human-approval audit trails. Agents propose a purchase, users approve or deny it, and an optional `approvalId` can be supplied to MCP `confirmOrder` or ACP `completeCheckout`.
 - **Scoped payment credentials** in `com.mockhub.paymentcredential` for mock-backed agent payment authority, distinct from mandates. Agents may supply an optional `paymentCredentialId` to MCP `confirmOrder` or ACP `completeCheckout`; if present, it is validated and one-time credentials are consumed before payment confirmation.
+- **Agent risk signals** in `com.mockhub.agentrisk` for deterministic local risk records, including rapid cart holds, mandate mismatches, failed checkouts, high-spend attempts, and payment-credential failures. `AgentRiskCondition` warns or blocks during agent purchase flows, and MCP exposes `getAgentRiskSummary`.
 - **ACP endpoints** at `/acp/v1/**` as a protocol adapter over the same cart, order, payment, mandate, approval, and payment credential services.
 - **Commerce policies** in `com.mockhub.commerce` provide structured refund, cancellation, fee, transfer, and support metadata to MCP, ACP, REST, and `llms.txt` consumers.
 
