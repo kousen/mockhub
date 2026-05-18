@@ -19,6 +19,7 @@ import com.mockhub.buyerpreference.dto.BuyerPreferenceContextDto;
 import com.mockhub.buyerpreference.service.BuyerPreferenceService;
 import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.dto.PagedResponse;
+import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
@@ -290,11 +291,19 @@ public class EventTools {
     private BuyerPreferenceApplication applyPreferences(String userEmail,
                                                         ListingSearchCriteria criteria,
                                                         String preferredSection) {
-        if (userEmail == null || userEmail.isBlank()) {
+        String effectiveEmail = ChatContext.getAuthenticatedEmail();
+        if (effectiveEmail == null || effectiveEmail.isBlank()) {
+            effectiveEmail = userEmail;
+        }
+        if (effectiveEmail == null || effectiveEmail.isBlank()) {
             return new BuyerPreferenceApplication(criteria, preferredSection, BuyerPreferenceContextDto.none());
         }
-        String effectiveEmail = ChatContext.resolveEmail(userEmail);
-        return buyerPreferenceService.applyToSearchCriteria(effectiveEmail, criteria, preferredSection);
+        try {
+            return buyerPreferenceService.applyToSearchCriteria(effectiveEmail.strip(), criteria, preferredSection);
+        } catch (ResourceNotFoundException e) {
+            log.debug("No buyer preferences found for {}. Continuing without preference memory.", effectiveEmail);
+            return new BuyerPreferenceApplication(criteria, preferredSection, BuyerPreferenceContextDto.none());
+        }
     }
 
     private Instant parseInstant(String value) {

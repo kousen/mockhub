@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
@@ -22,9 +23,11 @@ import com.mockhub.buyerpreference.dto.UpdateBuyerPreferencesRequest;
 import com.mockhub.buyerpreference.entity.BuyerPreferences;
 import com.mockhub.buyerpreference.entity.RiskTolerance;
 import com.mockhub.buyerpreference.repository.BuyerPreferencesRepository;
+import com.mockhub.common.exception.ConflictException;
 import com.mockhub.ticket.dto.ListingSearchCriteria;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -90,7 +93,7 @@ class BuyerPreferenceServiceTest {
     void updatePreferences_givenNewRequest_createsNormalizedPreferences() {
         when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(user));
         when(buyerPreferencesRepository.findByUserId(42L)).thenReturn(Optional.empty());
-        when(buyerPreferencesRepository.save(any(BuyerPreferences.class)))
+        when(buyerPreferencesRepository.saveAndFlush(any(BuyerPreferences.class)))
                 .thenAnswer(invocation -> {
                     BuyerPreferences saved = invocation.getArgument(0);
                     saved.setId(7L);
@@ -125,7 +128,7 @@ class BuyerPreferenceServiceTest {
         assertThat(result.riskTolerance()).isEqualTo(RiskTolerance.LOW_RISK_ONLY);
 
         ArgumentCaptor<BuyerPreferences> captor = ArgumentCaptor.forClass(BuyerPreferences.class);
-        verify(buyerPreferencesRepository).save(captor.capture());
+        verify(buyerPreferencesRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getUser()).isSameAs(user);
     }
 
@@ -134,7 +137,7 @@ class BuyerPreferenceServiceTest {
     void updatePreferences_givenNullOptionalValues_storesEmptyDefaults() {
         when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(user));
         when(buyerPreferencesRepository.findByUserId(42L)).thenReturn(Optional.empty());
-        when(buyerPreferencesRepository.save(any(BuyerPreferences.class)))
+        when(buyerPreferencesRepository.saveAndFlush(any(BuyerPreferences.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         UpdateBuyerPreferencesRequest request = new UpdateBuyerPreferencesRequest(
@@ -162,6 +165,34 @@ class BuyerPreferenceServiceTest {
     }
 
     @Test
+    @DisplayName("updatePreferences - concurrent create conflict - returns domain conflict")
+    void updatePreferences_givenConcurrentCreateConflict_throwsConflictException() {
+        when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(user));
+        when(buyerPreferencesRepository.findByUserId(42L)).thenReturn(Optional.empty());
+        when(buyerPreferencesRepository.saveAndFlush(any(BuyerPreferences.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate user_id"));
+
+        UpdateBuyerPreferencesRequest request = new UpdateBuyerPreferencesRequest(
+                List.of("Radiohead"),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                null,
+                null,
+                false);
+
+        assertThatThrownBy(() -> service.updatePreferences("buyer@example.com", request))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("Preferences already exist");
+    }
+
+    @Test
     @DisplayName("applyToSearchCriteria - stored preferences - fills missing filters")
     void applyToSearchCriteria_givenStoredPreferences_fillsMissingFilters() {
         BuyerPreferences preferences = preferences();
@@ -181,6 +212,29 @@ class BuyerPreferenceServiceTest {
         assertThat(application.preferredSection()).isEqualTo("Orchestra");
         assertThat(application.context().preferencesAvailable()).isTrue();
         assertThat(application.context().appliedFilters()).contains("city=Boston", "section=Orchestra");
+        assertThat(application.context().appliedFilters()).doesNotContain("preferredSection=Orchestra");
+    }
+
+    @Test
+    @DisplayName("applyToSearchCriteria - existing filters - preserves criteria without marking filters applied")
+    void applyToSearchCriteria_givenExistingFilters_preservesCriteriaWithoutAppliedFilters() {
+        BuyerPreferences preferences = preferences();
+        when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(user));
+        when(buyerPreferencesRepository.findByUserId(42L)).thenReturn(Optional.of(preferences));
+        ListingSearchCriteria criteria = new ListingSearchCriteria(
+                "jazz", "concerts", "New York", new BigDecimal("75.00"),
+                new BigDecimal("300.00"), "Balcony", null, null, 10);
+
+        BuyerPreferenceApplication application =
+                service.applyToSearchCriteria("buyer@example.com", criteria, "Mezzanine");
+
+        assertThat(application.criteria().categorySlug()).isEqualTo("concerts");
+        assertThat(application.criteria().city()).isEqualTo("New York");
+        assertThat(application.criteria().section()).isEqualTo("Balcony");
+        assertThat(application.preferredSection()).isEqualTo("Mezzanine");
+        assertThat(application.context().preferencesAvailable()).isTrue();
+        assertThat(application.context().applied()).isFalse();
+        assertThat(application.context().appliedFilters()).isEmpty();
     }
 
     @Test

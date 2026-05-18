@@ -117,6 +117,25 @@ class BuyerPreferenceControllerTest {
         verify(buyerPreferenceService).updatePreferences(eq("buyer@example.com"), any());
     }
 
+    @Test
+    @DisplayName("PUT /api/v1/preferences/me - invalid payload - returns 400")
+    void updatePreferences_invalidPayload_returns400() throws Exception {
+        authenticateAs(securityUser);
+        String oversizedAccessibilityNeeds = "x".repeat(1001);
+
+        mockMvc.perform(put("/api/v1/preferences/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "maxServiceFeePercent": 125.00,
+                                    "allInPriceOnly": false,
+                                    "willingToWaitForPriceDrops": false,
+                                    "accessibilityNeeds": "%s"
+                                }
+                                """.formatted(oversizedAccessibilityNeeds)))
+                .andExpect(status().isBadRequest());
+    }
+
     private void authenticateAs(SecurityUser principal) {
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());

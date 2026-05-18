@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.ai.service.ChatContext;
 import com.mockhub.buyerpreference.dto.BuyerPreferenceApplication;
 import com.mockhub.buyerpreference.dto.BuyerPreferenceContextDto;
 import com.mockhub.buyerpreference.service.BuyerPreferenceService;
@@ -32,6 +34,7 @@ import com.mockhub.ticket.service.ListingService;
 import com.mockhub.ticket.service.TicketComparisonService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -73,6 +76,11 @@ class EventToolsTest {
                         invocation.getArgument(1),
                         invocation.getArgument(2),
                         BuyerPreferenceContextDto.none()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        ChatContext.clear();
     }
 
     // --- searchEvents ---
@@ -482,6 +490,45 @@ class EventToolsTest {
         verify(listingService).searchTickets(captor.capture());
         assertEquals("Boston", captor.getValue().city());
         assertEquals("Orchestra", captor.getValue().section());
+    }
+
+    @Test
+    @DisplayName("findTickets - given unknown preference user - falls back to normal search")
+    void findTickets_givenUnknownPreferenceUser_fallsBackToNormalSearch() {
+        when(buyerPreferenceService.applyToSearchCriteria(eq("missing@example.com"), any(), eq(null)))
+                .thenThrow(new ResourceNotFoundException("User", "email", "missing@example.com"));
+        when(listingService.searchTickets(any(ListingSearchCriteria.class)))
+                .thenReturn(List.of(createSearchResult(1L, "Jazz Night", "jazz-night", new BigDecimal("99.00"))));
+
+        String result = eventTools.findTickets("jazz", null, null, null, null,
+                null, null, null, null, "missing@example.com");
+
+        assertTrue(result.startsWith("["), "Result should remain the normal JSON array shape");
+        assertTrue(result.contains("\"listingId\":1"), "Result should include matching listings");
+        assertFalse(result.contains("\"preferenceContext\""), "Result should not include missing preference metadata");
+    }
+
+    @Test
+    @DisplayName("findTickets - given ChatContext and no userEmail - applies authenticated preferences")
+    void findTickets_givenChatContextAndNoUserEmail_appliesAuthenticatedPreferences() {
+        ChatContext.setAuthenticatedEmail("real@example.com");
+        ListingSearchCriteria appliedCriteria = new ListingSearchCriteria(
+                "jazz", null, "Boston", null, null, null, null, null, 10);
+        BuyerPreferenceContextDto context = new BuyerPreferenceContextDto(
+                true, true, List.of("city=Boston"), List.of("Applied preferred city 'Boston'"));
+        when(buyerPreferenceService.applyToSearchCriteria(eq("real@example.com"), any(), eq(null)))
+                .thenReturn(new BuyerPreferenceApplication(appliedCriteria, null, context));
+        when(listingService.searchTickets(any(ListingSearchCriteria.class)))
+                .thenReturn(List.of(createSearchResult(1L, "Jazz Night", "jazz-night", new BigDecimal("99.00"))));
+
+        String result = eventTools.findTickets("jazz", null, null, null, null,
+                null, null, null, null, null);
+
+        assertTrue(result.contains("\"preferenceContext\""), "Result should include authenticated preference metadata");
+        org.mockito.ArgumentCaptor<ListingSearchCriteria> captor =
+                org.mockito.ArgumentCaptor.forClass(ListingSearchCriteria.class);
+        verify(listingService).searchTickets(captor.capture());
+        assertEquals("Boston", captor.getValue().city());
     }
 
     // --- compareTickets ---

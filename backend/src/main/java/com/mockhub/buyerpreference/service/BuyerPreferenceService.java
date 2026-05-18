@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,7 @@ import com.mockhub.buyerpreference.dto.UpdateBuyerPreferencesRequest;
 import com.mockhub.buyerpreference.entity.BuyerPreferences;
 import com.mockhub.buyerpreference.entity.RiskTolerance;
 import com.mockhub.buyerpreference.repository.BuyerPreferencesRepository;
+import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.ticket.dto.ListingSearchCriteria;
 
@@ -58,7 +60,11 @@ public class BuyerPreferenceService {
                 });
 
         applyRequest(preferences, request);
-        return toDto(buyerPreferencesRepository.save(preferences));
+        try {
+            return toDto(buyerPreferencesRepository.saveAndFlush(preferences));
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("Preferences already exist for this user; retry the update.");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -101,7 +107,8 @@ public class BuyerPreferenceService {
         }
 
         String section = firstNonBlank(criteria.section(), first(preferences.preferredSections()));
-        if (isBlank(criteria.section()) && !isBlank(section)) {
+        boolean appliedSectionFilter = isBlank(criteria.section()) && !isBlank(section);
+        if (appliedSectionFilter) {
             appliedFilters.add("section=" + section);
             rationale.add("Applied preferred section '" + section + "'");
         }
@@ -114,7 +121,7 @@ public class BuyerPreferenceService {
         }
 
         String effectivePreferredSection = firstNonBlank(preferredSection, first(preferences.preferredSections()));
-        if (isBlank(preferredSection) && !isBlank(effectivePreferredSection)) {
+        if (isBlank(preferredSection) && !isBlank(effectivePreferredSection) && !appliedSectionFilter) {
             appliedFilters.add("preferredSection=" + effectivePreferredSection);
             rationale.add("Ranked toward preferred section '" + effectivePreferredSection + "'");
         }
