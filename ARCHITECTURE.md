@@ -64,7 +64,7 @@ The schema has six clusters. Flyway migrations are the source of truth (see `bac
 3. **Events/Catalog**: `events`, `categories`, `tags`, `event_tags`, `event_images`
 4. **Marketplace**: `tickets`, `listings`, `price_history`
 5. **Commerce**: `carts`, `cart_items`, `orders`, `order_items`, `transaction_logs`
-6. **Engagement**: `favorites`, `notifications`, `reviews`, `conversations`, `conversation_messages`, `user_preferences`
+6. **Engagement**: `favorites`, `notifications`, `reviews`, `conversations`, `conversation_messages`, `buyer_preferences`
 7. **Agentic**: `mandates` (agent authorization with scope, spending limits, restrictions),
    `agent_purchase_approvals` (human approval records for agent-initiated purchases),
    `payment_credentials` (scoped mock-backed payment authority for agents)
@@ -538,6 +538,7 @@ MockHub exposes a three-layer agentic commerce stack:
 - **Mandates** in `com.mockhub.mandate` for agent authorization, including scope, spending limits,
   allowed categories/events/sections, approval mode, expiration, revocation, and cumulative spend tracking.
 - **Purchase approval records** in `com.mockhub.agentapproval` for durable human-approval audit trails. Agents propose a purchase, users approve or deny it, and an optional `approvalId` can be supplied to MCP `confirmOrder` or ACP `completeCheckout`.
+- **Buyer preferences** in `com.mockhub.buyerpreference` for explicit ticket-shopping preferences, separate from inferred favorites, purchases, and Spotify listening signals. MCP discovery/comparison tools can apply preferences when `userEmail` is supplied.
 - **Scoped payment credentials** in `com.mockhub.paymentcredential` for mock-backed agent payment authority, distinct from mandates. Agents may supply an optional `paymentCredentialId` to MCP `confirmOrder` or ACP `completeCheckout`; if present, it is validated and one-time credentials are consumed before payment confirmation.
 - **Agent risk signals** in `com.mockhub.agentrisk` for deterministic local risk records, including rapid cart holds, mandate mismatches, failed checkouts, high-spend attempts, and payment-credential failures. `AgentRiskCondition` warns or blocks during agent purchase flows, and MCP exposes `getAgentRiskSummary`.
 - **ACP endpoints** at `/acp/v1/**` as a protocol adapter over the same cart, order, payment, mandate, approval, and payment credential services.
@@ -714,7 +715,7 @@ Naming convention: `methodName_givenCondition_expectedResult`
 
 7. **Price history as first-class table** — the dataset students use for ML exercises. Every pricing update creates a historical record with contextual features.
 
-8. **Future tables created empty** — reviews, conversations, preferences exist from day one so AI exercise code can write to them without migrations.
+8. **Explicit preference memory** — buyer preferences are first-class user data rather than inferred only from favorites, purchases, or Spotify listening history.
 
 9. **No Lombok** — Java records handle DTOs. Entities use explicit getters/setters, which is more transparent for students learning JPA.
 

@@ -102,7 +102,8 @@ class AiControllerTest {
             mockMvc.perform(get("/api/v1/recommendations"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.recommendations[0].eventName").value("Rock Festival"))
-                    .andExpect(jsonPath("$.recommendations[0].relevanceScore").value(0.95));
+                    .andExpect(jsonPath("$.recommendations[0].relevanceScore").value(0.95))
+                    .andExpect(jsonPath("$.preferenceContext.preferencesAvailable").value(false));
         }
     }
 

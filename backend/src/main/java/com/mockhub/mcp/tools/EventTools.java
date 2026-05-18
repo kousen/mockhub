@@ -12,8 +12,14 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mockhub.ai.service.ChatContext;
+import com.mockhub.buyerpreference.dto.BuyerPreferenceApplication;
+import com.mockhub.buyerpreference.dto.BuyerPreferenceContextDto;
+import com.mockhub.buyerpreference.service.BuyerPreferenceService;
 import com.mockhub.commerce.service.CommercePolicyService;
 import com.mockhub.common.dto.PagedResponse;
+import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.event.dto.EventDto;
 import com.mockhub.event.dto.EventSearchRequest;
 import com.mockhub.event.dto.EventSummaryDto;
@@ -34,17 +40,20 @@ public class EventTools {
     private final ListingService listingService;
     private final TicketComparisonService ticketComparisonService;
     private final CommercePolicyService commercePolicyService;
+    private final BuyerPreferenceService buyerPreferenceService;
     private final ObjectMapper objectMapper;
 
     public EventTools(EventService eventService,
                       ListingService listingService,
                       TicketComparisonService ticketComparisonService,
                       CommercePolicyService commercePolicyService,
+                      BuyerPreferenceService buyerPreferenceService,
                       ObjectMapper objectMapper) {
         this.eventService = eventService;
         this.listingService = listingService;
         this.ticketComparisonService = ticketComparisonService;
         this.commercePolicyService = commercePolicyService;
+        this.buyerPreferenceService = buyerPreferenceService;
         this.objectMapper = objectMapper;
     }
 
@@ -198,16 +207,26 @@ public class EventTools {
             @ToolParam(description = "Section name filter (e.g. 'Orchestra', 'Balcony')",
                     required = false) String section,
             @ToolParam(description = "Maximum number of results to return (default 10, max 50)",
-                    required = false) Integer maxResults) {
+                    required = false) Integer maxResults,
+            @ToolParam(description = "Optional user email. When supplied, stored buyer preferences may fill "
+                    + "missing city, category, section, or max price filters and are returned as metadata.",
+                    required = false) String userEmail) {
         try {
             int limit = (maxResults == null || maxResults <= 0) ? 10 : Math.min(maxResults, 50);
 
             ListingSearchCriteria criteria = new ListingSearchCriteria(
                     query, category, city, minPrice, maxPrice, section,
                     parseInstant(dateFrom), parseInstant(dateTo), limit);
+            BuyerPreferenceApplication application = applyPreferences(userEmail, criteria, null);
 
-            List<TicketSearchResultDto> results = listingService.searchTickets(criteria);
+            List<TicketSearchResultDto> results = listingService.searchTickets(application.criteria());
 
+            if (application.context().preferencesAvailable()) {
+                ObjectNode response = objectMapper.createObjectNode();
+                response.set("results", objectMapper.valueToTree(results));
+                response.set("preferenceContext", objectMapper.valueToTree(application.context()));
+                return objectMapper.writeValueAsString(response);
+            }
             return objectMapper.writeValueAsString(results);
         } catch (Exception e) {
             log.error("Error finding tickets: {}", e.getMessage(), e);
@@ -243,19 +262,47 @@ public class EventTools {
             @ToolParam(description = "Preferred section for the best-section recommendation",
                     required = false) String preferredSection,
             @ToolParam(description = "Maximum number of results to compare (default 10, max 50)",
-                    required = false) Integer maxResults) {
+                    required = false) Integer maxResults,
+            @ToolParam(description = "Optional user email. When supplied, stored buyer preferences may fill "
+                    + "missing search filters and the preferred section, then return preference metadata.",
+                    required = false) String userEmail) {
         try {
             int limit = (maxResults == null || maxResults <= 0) ? 10 : Math.min(maxResults, 50);
 
             ListingSearchCriteria criteria = new ListingSearchCriteria(
                     query, category, city, minPrice, maxPrice, section,
                     parseInstant(dateFrom), parseInstant(dateTo), limit);
+            BuyerPreferenceApplication application = applyPreferences(userEmail, criteria, preferredSection);
 
-            TicketComparisonResponseDto response = ticketComparisonService.compareTickets(criteria, preferredSection);
+            TicketComparisonResponseDto response = ticketComparisonService.compareTickets(
+                    application.criteria(), application.preferredSection());
+            if (application.context().preferencesAvailable()) {
+                ObjectNode responseNode = objectMapper.valueToTree(response);
+                responseNode.set("preferenceContext", objectMapper.valueToTree(application.context()));
+                return objectMapper.writeValueAsString(responseNode);
+            }
             return objectMapper.writeValueAsString(response);
         } catch (Exception e) {
             log.error("Error comparing tickets: {}", e.getMessage(), e);
             return errorJson("Failed to compare tickets: " + e.getMessage());
+        }
+    }
+
+    private BuyerPreferenceApplication applyPreferences(String userEmail,
+                                                        ListingSearchCriteria criteria,
+                                                        String preferredSection) {
+        String effectiveEmail = ChatContext.getAuthenticatedEmail();
+        if (effectiveEmail == null || effectiveEmail.isBlank()) {
+            effectiveEmail = userEmail;
+        }
+        if (effectiveEmail == null || effectiveEmail.isBlank()) {
+            return new BuyerPreferenceApplication(criteria, preferredSection, BuyerPreferenceContextDto.none());
+        }
+        try {
+            return buyerPreferenceService.applyToSearchCriteria(effectiveEmail.strip(), criteria, preferredSection);
+        } catch (ResourceNotFoundException e) {
+            log.debug("No buyer preferences found for {}. Continuing without preference memory.", effectiveEmail);
+            return new BuyerPreferenceApplication(criteria, preferredSection, BuyerPreferenceContextDto.none());
         }
     }
 

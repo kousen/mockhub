@@ -38,6 +38,7 @@ As of May 18, 2026, MockHub already implements substantial parts of the agentic-
 - **Agent mandates** with scope and spending limits
 - **Scoped payment credentials** with mock-backed instruments, agent/user/amount/currency constraints, one-time consumption, and ACP/MCP checkout validation
 - **Agent risk signals** for rapid cart holds, mandate mismatches, failed checkouts, high-spend attempts, and payment-credential failures
+- **Buyer preference memory** for explicit ticket-shopping preferences used by MCP discovery/comparison and AI recommendations
 - **OAuth 2.1 / MCP security** via `spring-ai-community/mcp-security`
 - **Agent discovery** through `llms.txt`
 - **Evaluation conditions** as Design-by-Contract sanity checks for AI agents
@@ -57,7 +58,7 @@ Eight issues now tracked in the backlog or decision log, grouped by what they ac
 
 - **#217** — Agent risk and abuse signals. Tracks repeated mandate mismatches, failed checkouts, rapid cart holds, high-spend attempts, and payment-credential failures. Integrates with eval conditions as WARNING or CRITICAL and exposes `getAgentRiskSummary`.
 - **#218** — Scoped payment credential abstraction *distinct from* mandates. Mandates answer "is this agent allowed to act?"; credentials answer "is this agent allowed to pay with this instrument, under these constraints?" Closer to the Stripe Link wallet pattern.
-- **#219** — Buyer preference memory. Lets agents translate fuzzy intent into a structured purchasing brief.
+- **#219** — Buyer preference memory. Lets agents translate fuzzy intent into a structured purchasing brief. Adds explicit preference storage, authenticated update/read APIs, preference-aware MCP search/comparison, and recommendation metadata.
 
 ### Building the evidence layer
 

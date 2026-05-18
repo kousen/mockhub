@@ -18,6 +18,10 @@ GET /api/v1/auth/me/providers — List linked OAuth providers for current user
 OAuth2 login: /oauth2/authorization/{google|github|spotify}
 Authenticated requests: Authorization: Bearer <accessToken>
 
+## Buyer Preferences (requires auth)
+GET /api/v1/preferences/me — Get current user's ticket-shopping preferences
+PUT /api/v1/preferences/me — Replace current user's ticket-shopping preferences. JSON body: {"preferredArtists": [], "preferredCategories": [], "preferredCities": [], "preferredVenues": [], "preferredSections": [], "dislikedVenues": [], "dislikedCategories": [], "maxTotalPrice": number, "maxServiceFeePercent": number, "allInPriceOnly": boolean, "accessibilityNeeds": string, "riskTolerance": "CHEAPEST|BEST_VALUE|BEST_SEATS|LOW_RISK_ONLY", "willingToWaitForPriceDrops": boolean}
+
 ## Events (public, no auth required)
 GET /api/v1/events — List events with search/filter/pagination
   Query params: q, category, tags, city, dateFrom, dateTo, minPrice, maxPrice, status, sort, page, size
@@ -45,7 +49,7 @@ GET /api/v1/spotify/artists/{spotifyArtistId} — Artist metadata, genres, follo
 
 ## AI Features (requires AI provider profile)
 POST /api/v1/chat — Chat with AI assistant. JSON body: {"message": "string", "conversationId": number}
-GET /api/v1/recommendations — AI-ranked event recommendations
+GET /api/v1/recommendations — AI-ranked event recommendations. Response includes preferenceContext when stored buyer preferences are available.
 GET /api/v1/events/{slug}/predicted-price — AI price prediction
 
 ## Cart (requires auth)
@@ -117,8 +121,8 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 - getEventListings(slug, page?, size?) — active listings for an event with pagination (default 20, max 50) plus the event commercePolicy
 - getFeaturedEvents() — curated featured events
 - getListingDetail(listingId) — single listing by ID, including commercePolicyUrl
-- findTickets(query?, category?, city?, dateFrom?, dateTo?, minPrice?, maxPrice?, section?, maxResults?) — RECOMMENDED: compound search returning matching listings sorted by price, including commercePolicyUrl for each listing. Date params are ISO-8601 strings (e.g. '2026-04-01T00:00:00Z'). Reduces round-trips from 3 to 1.
-- compareTickets(query?, category?, city?, dateFrom?, dateTo?, minPrice?, maxPrice?, section?, preferredSection?, maxResults?) — compare matching listings for agent shopping decisions. Returns ranked options, cheapest/best-value/best-section/lowest-risk picks, deterministic reason codes, rationale, and price plausibility warnings. Objective listing data is separate from heuristic judgment fields.
+- findTickets(query?, category?, city?, dateFrom?, dateTo?, minPrice?, maxPrice?, section?, maxResults?, userEmail?) — RECOMMENDED: compound search returning matching listings sorted by price, including commercePolicyUrl for each listing. Date params are ISO-8601 strings (e.g. '2026-04-01T00:00:00Z'). If userEmail is supplied, stored buyer preferences may fill missing city/category/section/maxPrice filters and return preferenceContext metadata. Reduces round-trips from 3 to 1.
+- compareTickets(query?, category?, city?, dateFrom?, dateTo?, minPrice?, maxPrice?, section?, preferredSection?, maxResults?, userEmail?) — compare matching listings for agent shopping decisions. Returns ranked options, cheapest/best-value/best-section/lowest-risk picks, deterministic reason codes, rationale, and price plausibility warnings. If userEmail is supplied, stored buyer preferences may fill missing search filters/preferredSection and return preferenceContext metadata. Objective listing data is separate from heuristic judgment fields.
 - getCommercePolicy(eventSlug) — structured commerce policy for agent purchase decisions (refunds, cancellations, transfer, fees, support)
 - getPriceHistory(eventSlug) — historical price snapshots
 - getPricePrediction(eventSlug) — AI price forecast (requires AI provider)
@@ -177,6 +181,14 @@ Managed via MCP MandateTools or directly via mandate service.
 Payment credentials are separate from mandates. A mandate proves the agent may act; a payment credential proves the agent may pay with a scoped mock-backed instrument.
 Fields: credentialId, userEmail, agentId, allowedMerchant=MOCKHUB, maxAmount, currency=USD, usage=ONE_TIME|REUSABLE, status=ACTIVE|CONSUMED|REVOKED|EXPIRED, backingPaymentMethod=mock, expiresAt.
 MCP `confirmOrder` and ACP `completeCheckout` accept optional `paymentCredentialId`. When supplied, MockHub validates user, agent, amount, currency, payment method, status, and expiration before payment confirmation, then consumes one-time credentials for the order number.
+
+## Buyer Preference Memory
+
+Buyer preferences store explicit ticket-shopping preferences separately from inferred Spotify/favorites signals.
+Fields include preferred artists/categories/cities/venues/sections, disliked venues/categories, max all-in price, max service fee tolerance, all-in price preference, accessibility needs, risk tolerance, and willingness to wait for price drops.
+Authenticated users manage preferences with `GET/PUT /api/v1/preferences/me`.
+MCP `findTickets` and `compareTickets` can accept `userEmail` to apply stored preferences and return `preferenceContext` metadata showing which filters or ranking hints were applied.
+AI recommendations include explicit preferences in the prompt when present and expose preferenceContext without exposing raw Spotify listening data.
 
 ## Agent Risk Signals
 
