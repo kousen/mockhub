@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.tool.ToolCallbackProvider;
 
 import com.mockhub.mcp.tools.AgentApprovalTools;
+import com.mockhub.mcp.tools.AgentRiskTools;
 import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
 import com.mockhub.mcp.tools.MandateTools;
@@ -41,6 +42,9 @@ class McpConfigTest {
     @Mock
     private PaymentCredentialTools paymentCredentialTools;
 
+    @Mock
+    private AgentRiskTools agentRiskTools;
+
     @Test
     @DisplayName("mcpToolCallbackProvider - creates provider with all tool objects")
     void mcpToolCallbackProvider_createsProviderWithAllToolObjects() {
@@ -48,9 +52,9 @@ class McpConfigTest {
 
         ToolCallbackProvider provider = config.mcpToolCallbackProvider(
                 eventTools, pricingTools, cartTools, orderTools, mandateTools, agentApprovalTools,
-                paymentCredentialTools);
+                paymentCredentialTools, agentRiskTools);
 
-        assertEquals(32, provider.getToolCallbacks().length,
+        assertEquals(33, provider.getToolCallbacks().length,
                 "All MCP tool methods should be registered");
     }
 }

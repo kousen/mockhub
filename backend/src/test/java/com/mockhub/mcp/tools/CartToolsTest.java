@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.agentrisk.service.AgentRiskService;
 import com.mockhub.ai.service.ChatContext;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
@@ -50,6 +51,9 @@ class CartToolsTest {
     @Mock
     private EvalRunner evalRunner;
 
+    @Mock
+    private AgentRiskService agentRiskService;
+
     private static final String AGENT_ID = "shopping-agent";
     private static final String MANDATE_ID = "mandate-123";
 
@@ -61,7 +65,8 @@ class CartToolsTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-        cartTools = new CartTools(cartService, userRepository, listingRepository, evalRunner, objectMapper);
+        cartTools = new CartTools(cartService, userRepository, listingRepository, evalRunner,
+                agentRiskService, objectMapper);
 
         testUser = new User();
         testUser.setId(1L);
@@ -181,6 +186,25 @@ class CartToolsTest {
         }
 
         @Test
+        @DisplayName("given risk warning - returns cart with agent risk warning")
+        void givenRiskWarning_returnsCartWithAgentRiskWarning() {
+            stubUserLookup("buyer@example.com");
+            when(listingRepository.findById(42L)).thenReturn(Optional.of(createActiveListing()));
+            when(evalRunner.evaluate(any(EvalContext.class)))
+                    .thenReturn(new EvalSummary(List.of(EvalResult.pass("test"))));
+            when(agentRiskService.recordCartHoldAttempt(
+                    "buyer@example.com", AGENT_ID, 42L, new BigDecimal("75.00")))
+                    .thenReturn(List.of("agent-risk: rapid cart holds"));
+            CartDto cartDto = new CartDto(null, null, null, null, 0, null);
+            when(cartService.addToCart(testUser, 42L)).thenReturn(cartDto);
+
+            String result = cartTools.addToCart("buyer@example.com", 42L, AGENT_ID, MANDATE_ID);
+
+            assertTrue(result.contains("\"warnings\""), "Result should contain warnings field");
+            assertTrue(result.contains("agent-risk"), "Warnings should include agent risk signal");
+        }
+
+        @Test
         @DisplayName("given null listing ID - returns error JSON")
         void givenNullListingId_returnsErrorJson() {
             String result = cartTools.addToCart("buyer@example.com", null, AGENT_ID, MANDATE_ID);
@@ -227,6 +251,11 @@ class CartToolsTest {
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Cannot add to cart"), "Result should indicate eval blocked the action");
             verify(cartService, never()).addToCart(any(), any());
+            verify(agentRiskService).recordEvalFailures(
+                    "buyer@example.com", AGENT_ID, MANDATE_ID, "ADD_TO_CART",
+                    "LISTING", "42", new BigDecimal("75.00"), new EvalSummary(List.of(
+                            EvalResult.fail("event-in-future", EvalSeverity.CRITICAL,
+                                    "Event has already occurred"))));
         }
 
         @Test

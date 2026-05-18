@@ -1,7 +1,7 @@
 # Agentic Commerce Strategy for MockHub and the August Training Course
 
 **Date:** May 13, 2026
-**Status:** Decisions captured; implementation pending
+**Status:** Decisions captured; implementation underway
 **Suggested home in repo:** `docs/strategy/2026-05-13-agentic-commerce.md`
 
 ## 1. Context
@@ -31,12 +31,13 @@ These don't have one answer. They divide across layers, which is exactly why pro
 
 ## 3. Where MockHub Stands
 
-As of May 16, 2026, MockHub already implements substantial parts of the agentic-commerce stack:
+As of May 18, 2026, MockHub already implements substantial parts of the agentic-commerce stack:
 
-- **MCP server** with 32 tools covering events, cart, orders, pricing, mandates, approvals, and payment credentials
+- **MCP server** with 33 tools covering events, cart, orders, pricing, mandates, approvals, payment credentials, and risk summaries
 - **ACP checkout endpoints** at `/acp/v1/checkout/**`
 - **Agent mandates** with scope and spending limits
 - **Scoped payment credentials** with mock-backed instruments, agent/user/amount/currency constraints, one-time consumption, and ACP/MCP checkout validation
+- **Agent risk signals** for rapid cart holds, mandate mismatches, failed checkouts, high-spend attempts, and payment-credential failures
 - **OAuth 2.1 / MCP security** via `spring-ai-community/mcp-security`
 - **Agent discovery** through `llms.txt`
 - **Evaluation conditions** as Design-by-Contract sanity checks for AI agents
@@ -44,7 +45,6 @@ As of May 16, 2026, MockHub already implements substantial parts of the agentic-
 What MockHub does *not* yet implement:
 
 - Stripe-backed wallet or Link-style credentials
-- Agent risk and abuse signals
 - A unified evidence trail across mandate, credential, checkout, and fulfillment
 - UCP capability declarations
 - An agent-side client that exercises the full stack
@@ -55,13 +55,13 @@ Eight issues now tracked in the backlog or decision log, grouped by what they ac
 
 ### Building the parts
 
-- **#217** — Agent risk and abuse signals. Tracks unknown agents, repeated mandate mismatches, failed checkouts, high spend attempts. Integrates with eval conditions as WARNING or CRITICAL.
+- **#217** — Agent risk and abuse signals. Tracks repeated mandate mismatches, failed checkouts, rapid cart holds, high-spend attempts, and payment-credential failures. Integrates with eval conditions as WARNING or CRITICAL and exposes `getAgentRiskSummary`.
 - **#218** — Scoped payment credential abstraction *distinct from* mandates. Mandates answer "is this agent allowed to act?"; credentials answer "is this agent allowed to pay with this instrument, under these constraints?" Closer to the Stripe Link wallet pattern.
 - **#219** — Buyer preference memory. Lets agents translate fuzzy intent into a structured purchasing brief.
 
 ### Building the evidence layer
 
-- **#238** — Agent purchase evidence trail view. A single read-only artifact that assembles mandate, approval record, scoped credential, checkout, risk signals (post-#217), fulfillment, and eval condition outcomes for a given order. This is the keystone: it is the *new shape of the evidence* that Nate identifies as the missing piece, made concrete in code.
+- **#238** — Agent purchase evidence trail view. A single read-only artifact that assembles mandate, approval record, scoped credential, checkout, risk signals, fulfillment, and eval condition outcomes for a given order. This is the keystone: it is the *new shape of the evidence* that Nate identifies as the missing piece, made concrete in code.
 
 ### Making it visible to students
 
@@ -70,7 +70,7 @@ Eight issues now tracked in the backlog or decision log, grouped by what they ac
 
 ### Keeping it honest
 
-- **#237** — UCP discovery profile spike (decision captured: not yet). Investigated whether a `/.well-known/ucp` manifest is worth publishing and concluded that a profile should wait until MockHub has UCP-shaped service bindings, risk signals, and profile-content tests. Scoped payment credentials (#218) and pinned protocol revisions (#240) now provide two of the prerequisites; a misleading manifest is still worse than none, especially for a teaching repo.
+- **#237** — UCP discovery profile spike (decision captured: not yet). Investigated whether a `/.well-known/ucp` manifest is worth publishing and concluded that a profile should wait until MockHub has UCP-shaped service bindings, buyer-context decisions, and profile-content tests. Scoped payment credentials (#218), risk signals (#217), and pinned protocol revisions (#240) now provide key prerequisites; a misleading manifest is still worse than none, especially for a teaching repo.
 - **#240** — Spec version pins (captured in `docs/agentic-commerce.md`). Records which ACP / UCP / AP2 / x402 revisions MockHub targets, with last-verified dates. Protocols are churning weekly; without this pin, course materials silently age out of date.
 
 ## 5. The August Course Arc

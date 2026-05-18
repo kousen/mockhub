@@ -27,7 +27,7 @@ Agentic commerce in MockHub is organized into three layers, each independently v
 
 ### Tool Inventory
 
-MockHub exposes 32 MCP tools across 7 tool classes:
+MockHub exposes 33 MCP tools across 8 tool classes:
 
 | Tool Class | Tools | Purpose |
 |---|---|---|
@@ -38,6 +38,7 @@ MockHub exposes 32 MCP tools across 7 tool classes:
 | **MandateTools** | `createMandate`, `revokeMandate`, `listMandates`, `validateMandate`, `getBestMandate` | Agent authorization |
 | **AgentApprovalTools** | `proposePurchase`, `approvePurchase`, `denyPurchase`, `listPurchaseApprovals` | Purchase approval audit trail |
 | **PaymentCredentialTools** | `issuePaymentCredential`, `listPaymentCredentials`, `revokePaymentCredential` | Scoped payment authority |
+| **AgentRiskTools** | `getAgentRiskSummary` | Deterministic local risk and abuse visibility |
 
 ### The Complete Purchase Flow
 
@@ -52,21 +53,24 @@ An agent can now execute a full purchase on behalf of a user:
              agentId="shopping-agent-1", mandateId="abc-123")
    → Eval conditions check: event in future, listing active
    → MandateCondition checks agent identity, mandate proof, and purchase authority
+   → AgentRiskService records cart-hold activity and returns warnings when thresholds are crossed
    → Returns cart with any warnings
 
 3. checkout(userEmail="buyer@example.com", paymentMethod="mock",
             agentId="shopping-agent-1", mandateId="abc-123")
    → Validates listings, reserves tickets, creates PENDING order
-   → Returns OrderDto with order number
+   → AgentRiskCondition checks recent agent risk signals before the order is created
+   → Records checkout attempts and returns OrderDto with any warnings
 
 4. confirmOrder(userEmail="buyer@example.com", orderNumber="MH-20260323-0001",
                 agentId="shopping-agent-1", mandateId="abc-123",
                 paymentCredentialId="cred-789")
    → Routes through PaymentService
    → Validates and consumes the scoped payment credential when supplied
+   → Records payment-credential validation failures as risk signals when they happen
    → Marks order CONFIRMED only after successful payment confirmation
    → Records mandate spend once, updates ticket status to SOLD, triggers SMS + email
-   → Returns confirmed OrderDto
+   → Returns confirmed OrderDto with any risk warnings
 ```
 
 ### Purchase Approval Records
@@ -99,6 +103,23 @@ This keeps three commercial facts separate for students:
 | Can the agent take this action? | Mandate + `MandateCondition` |
 | Did a human approve this specific proposal? | Purchase approval record |
 | Can the agent pay with this payment authority? | Scoped payment credential |
+
+### Agent Risk and Abuse Signals
+
+Useful shopping agents and abusive automation arrive through the same doors: cart holds, mandate proofs, checkout attempts, and payment credentials. MockHub now records deterministic local risk signals for those agent actions without introducing an external fraud provider.
+
+The initial model lives in `com.mockhub.agentrisk` and records:
+
+- Cart-hold attempts and rapid cart-hold bursts
+- Checkout and confirmation attempts
+- Mandate mismatches
+- Failed checkouts
+- High-spend attempts over `mockhub.agent-risk.high-spend-threshold`
+- Payment-credential validation failures
+
+`AgentRiskCondition` reads the recent signal window during MCP and ACP purchase flows. Repeated mandate mismatches become a CRITICAL eval failure and block the action. Repeated failed checkouts, rapid cart holds, and high-spend attempts remain WARNING-level signals that are returned to MCP agents alongside the normal cart or order payload. Agents can also call `getAgentRiskSummary(userEmail, agentId)` to inspect the recent signals, warning reasons, highest severity, and blocked status.
+
+This is deliberately smaller than a production fraud stack. The teaching point is the boundary: authorization says whether the agent is allowed to act, payment credentials say whether it can pay, and risk signals describe whether the pattern of behavior still looks acceptable.
 
 ### Key Design: `findTickets` — The Compound Search Tool
 
@@ -377,7 +398,7 @@ Coverage labels in this table describe MockHub surfaces that exist today. They d
 | Commerce policy | REST commerce policy endpoints, MCP `getCommercePolicy`, policy snapshots in ACP/listing responses | Implemented | Agents can fetch structured policy context before proposing or completing purchases. |
 | Authorization and proof | Mandates, `MandateCondition`, approval records, approval-required mandates | Partial | These map closely to AP2 concepts, but they are not cryptographically signed AP2 mandate credentials. Scoped payment credentials now keep "allowed to act" separate from "allowed to pay." |
 | Payment credentials | `PaymentCredentialService`, `PaymentCredentialTools`, ACP/MCP `paymentCredentialId`, mock payment service | Partial | MockHub supports mock-backed scoped credentials with one-time/reusable usage, expiration, revocation, limits, and checkout validation. Stripe-backed wallet credentials remain future work. |
-| Risk and abuse signals | Eval conditions, spending warnings, price plausibility warnings, mandate failures | Planned | Existing eval conditions can warn or block, but MockHub does not yet persist agent risk signals. Issue #217 should add deterministic local risk tracking and at least one blocking condition. |
+| Risk and abuse signals | `AgentRiskSignal`, `AgentRiskService`, `AgentRiskCondition`, MCP `getAgentRiskSummary` | Partial | MockHub persists deterministic local risk signals, returns warnings to MCP agents, and blocks repeated mandate mismatches. It does not integrate an external fraud/risk provider. |
 | Preference and personalization memory | Favorites, purchase history, Spotify listening data, future user preference package | Planned | Recommendations already use several signals; #219 should turn explicit buyer preferences into a first-class agent-shopping model. |
 | Extensions and version negotiation | None | Not implemented | UCP's capability model relies on dated protocol versions and negotiated capability versions. MockHub should not advertise support until it can produce a truthful profile and validate versioned requests. |
 | Machine-to-machine API payments | None | Intentionally out of scope | x402 and similar rails monetize API access. MockHub's agents buy tickets; API access itself is free. |
@@ -393,11 +414,11 @@ MockHub should wait until it can do at least the following:
 1. Keep the pinned UCP protocol version in [Spec Versions](#spec-versions) current, including the relevant service/capability schema references.
 2. Expose UCP-shaped service bindings or clearly documented adapters, rather than pointing UCP clients at ACP endpoints with different request and response envelopes.
 3. Keep payment credentials separate from mandates (#218), because UCP payment handlers and AP2-style autonomous payment flows depend on that boundary.
-4. Add basic agent risk signals (#217), because UCP's signal model expects transaction-environment data for authorization, rate limiting, and abuse prevention.
+4. Preserve basic agent risk signals (#217), because UCP's signal model expects transaction-environment data for authorization, rate limiting, and abuse prevention.
 5. Decide whether identity-linking and buyer-preference state (#219) belong in the first profile or remain outside the UCP surface.
 6. Add tests that assert the profile content matches the code's live endpoints and supported capabilities.
 
-Until then, `llms.txt`, MCP OAuth metadata, ACP endpoints, and the A2A agent card remain the honest discovery surfaces. No follow-up UCP profile implementation issue exists yet; open one only after #217 and #219 have clarified risk and buyer context. Use [Spec Versions](#spec-versions) as the pinned protocol reference, and include profile-content tests in that future issue.
+Until then, `llms.txt`, MCP OAuth metadata, ACP endpoints, and the A2A agent card remain the honest discovery surfaces. No follow-up UCP profile implementation issue exists yet; open one only after #219 clarifies buyer context and the UCP service/profile tests are scoped. Use [Spec Versions](#spec-versions) as the pinned protocol reference, and include profile-content tests in that future issue.
 
 ### Why UCP Matters for the Training Course
 
@@ -407,7 +428,7 @@ UCP is useful in the August 2026 course because it forces the broader question: 
 2. Authorization happens through mandates and approval records.
 3. Payment still routes through ordinary payment services, with scoped payment credentials making agent payment authority explicit before confirmation.
 4. Fulfillment happens through tickets, QR codes, calendar files, and notifications.
-5. Risk and preference memory are named gaps rather than invisible magic.
+5. Risk is explicit through local signals, while preference memory remains a named gap rather than invisible magic.
 
 That lets students compare a working partial system against the protocol map. The lesson is not "MockHub implements every new standard." The lesson is that responsible agentic commerce needs a legible division of responsibility: capability discovery, user authority, payment authority, risk evaluation, checkout, fulfillment, and evidence.
 
@@ -463,9 +484,11 @@ The implementation is considered working when all of the following are true:
 3. ACP and MCP purchase completion routes through `PaymentService`, not direct order confirmation.
 4. Duplicate confirm/cancel/payment callbacks do not double-sell inventory, double-send notifications, or double-record mandate spend.
 5. Successful confirmation increments mandate `totalSpent` exactly once.
-6. `cd backend && ./gradlew test` passes.
-7. UCP readiness documentation is manually checked against the current MockHub tool/endpoint names and the pinned external protocol references. There is no automated UCP conformance check yet.
-8. The [Spec Versions](#spec-versions) table is re-checked before release prep and before any future UCP profile work. There is no automated spec-freshness check yet.
+6. Repeated mandate mismatches for the same user and agent create persisted risk signals and cause `AgentRiskCondition` to block later purchase actions.
+7. `getAgentRiskSummary` returns recent signals, warning reasons, highest severity, and blocked status for a user/agent pair.
+8. `cd backend && ./gradlew test` passes.
+9. UCP readiness documentation is manually checked against the current MockHub tool/endpoint names and the pinned external protocol references. There is no automated UCP conformance check yet.
+10. The [Spec Versions](#spec-versions) table is re-checked before release prep and before any future UCP profile work. There is no automated spec-freshness check yet.
 
 ---
 

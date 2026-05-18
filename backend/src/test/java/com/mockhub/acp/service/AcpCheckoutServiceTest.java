@@ -17,6 +17,7 @@ import com.mockhub.acp.dto.AcpCheckoutRequest;
 import com.mockhub.acp.dto.AcpCheckoutResponse;
 import com.mockhub.acp.dto.AcpLineItem;
 import com.mockhub.acp.dto.AcpUpdateRequest;
+import com.mockhub.agentrisk.service.AgentRiskService;
 import com.mockhub.agentapproval.service.AgentPurchaseApprovalService;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
@@ -87,6 +88,9 @@ class AcpCheckoutServiceTest {
 
     @Mock
     private PaymentCredentialService paymentCredentialService;
+
+    @Mock
+    private AgentRiskService agentRiskService;
 
     @InjectMocks
     private AcpCheckoutService acpCheckoutService;
