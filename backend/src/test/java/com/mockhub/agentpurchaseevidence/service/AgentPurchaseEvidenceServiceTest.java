@@ -119,6 +119,8 @@ class AgentPurchaseEvidenceServiceTest {
         assertThat(evidence.fulfillment().ticketPdfAvailable()).isTrue();
         assertThat(evidence.fulfillment().publicTicketViewUrl()).contains("order-view-token");
         assertThat(evidence.fulfillment().ticketArtifacts()).hasSize(1);
+        assertThat(evidence.fulfillment().ticketArtifacts().getFirst().qrCodeUrl())
+                .startsWith("/api/v1/tickets/");
         assertThat(evidence.riskSignals()).hasSize(2);
         assertThat(evidence.evalOutcomes())
                 .extracting(AgentPurchaseEvidenceDto.AgentPurchaseEvidenceEvalOutcomeDto::ruleName)
@@ -126,6 +128,41 @@ class AgentPurchaseEvidenceServiceTest {
         assertThat(evidence.actorTimeline())
                 .extracting(AgentPurchaseEvidenceDto.AgentPurchaseEvidenceActorStepDto::step)
                 .contains("MANDATE_CREATED", "ORDER_CONFIRMED", "PAYMENT_CREDENTIAL_CONSUMED");
+    }
+
+    @Test
+    @DisplayName("getEvidence - risk resourceId matches order - includes only order-specific signals")
+    void getEvidence_givenRiskResourceIdMatchesOrder_includesOnlyOrderSpecificSignals() {
+        Order order = confirmedAgentOrder();
+        AgentRiskSignal blockedConfirmation = riskSignal(
+                3L, AgentRiskSignalType.MANDATE_MISMATCH, EvalSeverity.CRITICAL,
+                "ACP_CONFIRMATION_VALIDATION", "ORDER", ORDER_NUMBER);
+        blockedConfirmation.setOrderNumber(null);
+        AgentRiskSignal genericCheckout = riskSignal(
+                4L, AgentRiskSignalType.CHECKOUT_ATTEMPT, EvalSeverity.INFO,
+                "CHECKOUT", "ORDER", null);
+        genericCheckout.setOrderNumber(null);
+        genericCheckout.setResourceId(null);
+
+        when(orderRepository.findByOrderNumber(ORDER_NUMBER)).thenReturn(Optional.of(order));
+        when(mandateRepository.findByMandateId(MANDATE_ID)).thenReturn(Optional.empty());
+        when(approvalRepository.findFirstByFinalOrderNumberOrderByCreatedAtDesc(ORDER_NUMBER))
+                .thenReturn(Optional.empty());
+        when(paymentCredentialRepository.findFirstByConsumedByOrderNumberOrderByConsumedAtDesc(ORDER_NUMBER))
+                .thenReturn(Optional.empty());
+        when(agentRiskSignalRepository.findByUserEmailAndAgentIdAndCreatedAtBetweenOrderByCreatedAtAsc(
+                any(), any(), any(), any()))
+                .thenReturn(List.of(blockedConfirmation, genericCheckout));
+        when(ticketSigningService.generateOrderViewToken(ORDER_NUMBER)).thenReturn("order-view-token");
+
+        AgentPurchaseEvidenceDto evidence = evidenceService.getEvidence(ORDER_NUMBER, USER_EMAIL, false);
+
+        assertThat(evidence.riskSignals())
+                .extracting(AgentPurchaseEvidenceDto.AgentPurchaseEvidenceRiskSignalDto::id)
+                .containsExactly(3L);
+        assertThat(evidence.evalOutcomes())
+                .anyMatch(outcome -> outcome.ruleName().equals("mandate-authorization")
+                        && outcome.status().equals("BLOCKED"));
     }
 
     @Test

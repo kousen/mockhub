@@ -178,12 +178,13 @@ public class AgentPurchaseEvidenceService {
         if (orderNumber.equals(signal.getOrderNumber())) {
             return true;
         }
+        if (orderNumber.equals(signal.getResourceId())) {
+            return true;
+        }
         if (signal.getResourceId() != null && listingIds.contains(signal.getResourceId())) {
             return true;
         }
-        return signal.getOrderNumber() == null && signal.getResourceId() == null
-                && signal.getActionType() != null
-                && (signal.getActionType().contains("CHECKOUT") || signal.getActionType().contains("CONFIRM"));
+        return false;
     }
 
     private AgentPurchaseEvidenceOrderDto toOrderDto(Order order) {
@@ -364,7 +365,7 @@ public class AgentPurchaseEvidenceService {
                 item.getTicket().getId(),
                 item.getId(),
                 ticketPdfUrl,
-                qrCodeUrl,
+                qrCodeUrl != null ? hostRelativeUrl(qrCodeUrl) : null,
                 confirmed ? TICKET_VERIFICATION_TOKEN_TYPE : null,
                 item.getScannedAt());
     }
@@ -455,14 +456,11 @@ public class AgentPurchaseEvidenceService {
         if (credential == null) {
             return;
         }
-        boolean consumedForOrder = order.getOrderNumber().equals(credential.getConsumedByOrderNumber());
         outcomes.add(new AgentPurchaseEvidenceEvalOutcomeDto(
                 "payment-credential",
-                consumedForOrder ? PASSED : WARNING,
-                consumedForOrder ? EvalSeverity.INFO.name() : EvalSeverity.WARNING.name(),
-                consumedForOrder
-                        ? "Scoped payment credential was consumed for this order"
-                        : "Payment credential was found but is not consumed by this order",
+                PASSED,
+                EvalSeverity.INFO.name(),
+                "Scoped payment credential was consumed for this order",
                 Optional.ofNullable(credential.getConsumedAt()).orElse(credential.getCreatedAt()),
                 credential.getCredentialId()));
     }
@@ -631,5 +629,13 @@ public class AgentPurchaseEvidenceService {
             trimmed = trimmed.substring(0, trimmed.length() - 1);
         }
         return trimmed;
+    }
+
+    private String hostRelativeUrl(String absoluteUrl) {
+        String prefix = orderBaseUrl + "/";
+        if (absoluteUrl.startsWith(prefix)) {
+            return "/" + absoluteUrl.substring(prefix.length());
+        }
+        return absoluteUrl;
     }
 }

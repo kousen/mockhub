@@ -13,6 +13,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.agentpurchaseevidence.dto.AgentPurchaseEvidenceDto;
+import com.mockhub.agentpurchaseevidence.dto.AgentPurchaseEvidenceDto.AgentPurchaseEvidenceFulfillmentDto;
+import com.mockhub.agentpurchaseevidence.dto.AgentPurchaseEvidenceDto.AgentPurchaseEvidenceTicketArtifactDto;
 import com.mockhub.agentpurchaseevidence.service.AgentPurchaseEvidenceService;
 import com.mockhub.ai.service.ChatContext;
 
@@ -52,6 +54,10 @@ class AgentPurchaseEvidenceToolsTest {
 
         assertThat(result).contains("\"orderNumber\":\"" + ORDER_NUMBER + "\"");
         assertThat(result).contains("\"agentId\":\"agent-1\"");
+        assertThat(result).contains("\"ticketPdfUrl\":\"/api/v1/orders/" + ORDER_NUMBER);
+        assertThat(result).contains("\"publicTicketViewUrl\":null");
+        assertThat(result).contains("\"qrCodeUrl\":null");
+        assertThat(result).doesNotContain("order-view-token");
         verify(evidenceService).getEvidenceForUser("buyer@example.com", ORDER_NUMBER);
     }
 
@@ -91,7 +97,20 @@ class AgentPurchaseEvidenceToolsTest {
                 null,
                 null,
                 null,
-                null,
+                new AgentPurchaseEvidenceFulfillmentDto(
+                        true,
+                        "https://mockhub.example/tickets/view?token=order-view-token",
+                        "order-view",
+                        "mockhub.ticket.signing-secret",
+                        null,
+                        null,
+                        List.of(new AgentPurchaseEvidenceTicketArtifactDto(
+                                10L,
+                                20L,
+                                "/api/v1/orders/" + ORDER_NUMBER + "/tickets/10/download",
+                                "/api/v1/tickets/" + ORDER_NUMBER + "/10/qr?token=order-view-token",
+                                "ticket-verification",
+                                null))),
                 List.of(),
                 List.of(),
                 List.of());

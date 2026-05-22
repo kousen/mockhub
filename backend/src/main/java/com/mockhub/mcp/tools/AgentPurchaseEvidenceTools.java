@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.agentpurchaseevidence.dto.AgentPurchaseEvidenceDto;
+import com.mockhub.agentpurchaseevidence.dto.AgentPurchaseEvidenceDto.AgentPurchaseEvidenceFulfillmentDto;
+import com.mockhub.agentpurchaseevidence.dto.AgentPurchaseEvidenceDto.AgentPurchaseEvidenceTicketArtifactDto;
 import com.mockhub.agentpurchaseevidence.service.AgentPurchaseEvidenceService;
 import com.mockhub.ai.service.ChatContext;
 
@@ -36,7 +38,7 @@ public class AgentPurchaseEvidenceTools {
         try {
             String effectiveEmail = ChatContext.resolveEmail(userEmail);
             AgentPurchaseEvidenceDto evidence = evidenceService.getEvidenceForUser(effectiveEmail, orderNumber);
-            return objectMapper.writeValueAsString(evidence);
+            return objectMapper.writeValueAsString(redactPublicTicketTokens(evidence));
         } catch (Exception e) {
             log.error("Error getting agent purchase evidence for order '{}' and user '{}': {}",
                     orderNumber, userEmail, e.getMessage(), e);
@@ -44,5 +46,49 @@ public class AgentPurchaseEvidenceTools {
                     .put("error", "Failed to get agent purchase evidence: " + e.getMessage())
                     .toString();
         }
+    }
+
+    private AgentPurchaseEvidenceDto redactPublicTicketTokens(AgentPurchaseEvidenceDto evidence) {
+        AgentPurchaseEvidenceFulfillmentDto fulfillment = evidence.fulfillment();
+        if (fulfillment == null) {
+            return evidence;
+        }
+
+        var redactedArtifacts = fulfillment.ticketArtifacts() == null
+                ? null
+                : fulfillment.ticketArtifacts().stream()
+                        .map(artifact -> new AgentPurchaseEvidenceTicketArtifactDto(
+                                artifact.ticketId(),
+                                artifact.orderItemId(),
+                                artifact.ticketPdfUrl(),
+                                null,
+                                artifact.verificationTokenType(),
+                                artifact.scannedAt()))
+                        .toList();
+
+        AgentPurchaseEvidenceFulfillmentDto redactedFulfillment = new AgentPurchaseEvidenceFulfillmentDto(
+                fulfillment.ticketPdfAvailable(),
+                null,
+                fulfillment.orderViewTokenType(),
+                fulfillment.qrSigningKeyReference(),
+                fulfillment.emailDispatch(),
+                fulfillment.smsDispatch(),
+                redactedArtifacts);
+
+        return new AgentPurchaseEvidenceDto(
+                evidence.orderNumber(),
+                evidence.userEmail(),
+                evidence.agentId(),
+                evidence.status(),
+                evidence.createdAt(),
+                evidence.order(),
+                evidence.mandate(),
+                evidence.approval(),
+                evidence.paymentCredential(),
+                evidence.checkout(),
+                redactedFulfillment,
+                evidence.riskSignals(),
+                evidence.evalOutcomes(),
+                evidence.actorTimeline());
     }
 }
