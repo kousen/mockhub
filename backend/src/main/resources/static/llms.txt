@@ -79,6 +79,7 @@ POST /api/v1/orders/checkout — Create order from cart. JSON body: {"paymentMet
 GET /api/v1/orders — List user's orders (paginated)
 GET /api/v1/orders/{orderNumber} — Order detail
 GET /api/v1/orders/{orderNumber}/calendar — Download .ics calendar file for event
+GET /api/v1/orders/{orderNumber}/agent-evidence — Owner/admin-scoped agent purchase evidence trail: mandate, approval, scoped payment credential, checkout, risk, eval, actor timeline, and fulfillment artifacts
 
 ## Ticket Download (requires auth)
 GET /api/v1/orders/{orderNumber}/tickets/{ticketId}/download — Download ticket PDF with QR code
@@ -149,6 +150,7 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 - listPaymentCredentials(userEmail) — list active, consumed, revoked, and expired scoped payment credentials for a user
 - revokePaymentCredential(userEmail, credentialId) — revoke an active payment credential so it can no longer authorize payment
 - getAgentRiskSummary(userEmail, agentId) — get deterministic local risk summary for a user/agent pair, including recent signals, warning reasons, highest severity, and blocked status
+- getAgentPurchaseEvidence(userEmail, orderNumber) — get the read-only evidence trail for an agent-initiated order owned by the user
 
 ## ACP Endpoints (Agentic Commerce Protocol, requires API key: X-API-Key header)
 ACP-compatible checkout endpoints at /acp/v1/:
@@ -196,6 +198,12 @@ Agent risk signals are deterministic local records for agent shopping behavior. 
 Signals include cart hold attempts, rapid cart holds, checkout attempts, mandate mismatches, failed checkouts, high-spend attempts, payment-credential failures, and risk-condition blocks.
 AgentRiskCondition blocks repeated mandate mismatches as CRITICAL. Repeated failed checkouts, rapid cart holds, and high-spend attempts produce WARNING signals.
 MCP agents can call `getAgentRiskSummary(userEmail, agentId)` before or after a purchase flow.
+
+## Agent Purchase Evidence
+
+Agent purchase evidence is a read-only assembled record for a single order. It includes order/cart line items, mandate scope and budget, purchase approval state when present, scoped payment credential status and consumption, ACP-aligned checkout status, risk signals, derived eval outcomes, actor timeline entries, and ticket fulfillment artifacts.
+Use REST `GET /api/v1/orders/{orderNumber}/agent-evidence` as the authenticated owner/admin endpoint or MCP `getAgentPurchaseEvidence(userEmail, orderNumber)` for agent self-inspection.
+Email/SMS provider delivery receipts are not persisted; the evidence record marks those dispatch fields as not persisted instead of inventing provider IDs.
 
 ### Mandate Lifecycle
 

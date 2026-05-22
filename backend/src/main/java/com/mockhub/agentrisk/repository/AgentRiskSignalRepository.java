@@ -33,4 +33,7 @@ public interface AgentRiskSignalRepository extends JpaRepository<AgentRiskSignal
             String userEmail, String agentId, EvalSeverity severity, Instant since);
 
     long countByUserEmailAndAgentIdAndCreatedAtAfter(String userEmail, String agentId, Instant since);
+
+    List<AgentRiskSignal> findByUserEmailAndAgentIdAndCreatedAtBetweenOrderByCreatedAtAsc(
+            String userEmail, String agentId, Instant start, Instant end);
 }

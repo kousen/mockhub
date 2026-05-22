@@ -16,6 +16,8 @@ public interface AgentPurchaseApprovalRepository extends JpaRepository<AgentPurc
 
     Optional<AgentPurchaseApproval> findByApprovalId(String approvalId);
 
+    Optional<AgentPurchaseApproval> findFirstByFinalOrderNumberOrderByCreatedAtDesc(String finalOrderNumber);
+
     List<AgentPurchaseApproval> findByUserEmailOrderByCreatedAtDesc(String userEmail);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
