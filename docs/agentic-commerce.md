@@ -27,7 +27,7 @@ Agentic commerce in MockHub is organized into three layers, each independently v
 
 ### Tool Inventory
 
-MockHub exposes 33 MCP tools across 8 tool classes:
+MockHub exposes 34 MCP tools across 9 tool classes:
 
 | Tool Class | Tools | Purpose |
 |---|---|---|
@@ -39,6 +39,7 @@ MockHub exposes 33 MCP tools across 8 tool classes:
 | **AgentApprovalTools** | `proposePurchase`, `approvePurchase`, `denyPurchase`, `listPurchaseApprovals` | Purchase approval audit trail |
 | **PaymentCredentialTools** | `issuePaymentCredential`, `listPaymentCredentials`, `revokePaymentCredential` | Scoped payment authority |
 | **AgentRiskTools** | `getAgentRiskSummary` | Deterministic local risk and abuse visibility |
+| **AgentPurchaseEvidenceTools** | `getAgentPurchaseEvidence` | Read-only purchase evidence trail for completed agent flows |
 
 ### The Complete Purchase Flow
 
@@ -71,6 +72,11 @@ An agent can now execute a full purchase on behalf of a user:
    → Marks order CONFIRMED only after successful payment confirmation
    → Records mandate spend once, updates ticket status to SOLD, triggers SMS + email
    → Returns confirmed OrderDto with any risk warnings
+
+5. getAgentPurchaseEvidence(userEmail="buyer@example.com",
+                            orderNumber="MH-20260323-0001")
+   → Returns the read-only mandate, approval, payment credential, checkout, risk,
+     eval, actor timeline, and fulfillment evidence trail for the order owner
 ```
 
 ### Purchase Approval Records
@@ -120,6 +126,27 @@ The initial model lives in `com.mockhub.agentrisk` and records:
 `AgentRiskCondition` reads the recent signal window during MCP and ACP purchase flows. Repeated mandate mismatches become a CRITICAL eval failure and block the action. Repeated failed checkouts, rapid cart holds, and high-spend attempts remain WARNING-level signals that are returned to MCP agents alongside the normal cart or order payload. Agents can also call `getAgentRiskSummary(userEmail, agentId)` to inspect the recent signals, warning reasons, highest severity, and blocked status.
 
 This is deliberately smaller than a production fraud stack. The teaching point is the boundary: authorization says whether the agent is allowed to act, payment credentials say whether it can pay, and risk signals describe whether the pattern of behavior still looks acceptable.
+
+### Agent Purchase Evidence Trails
+
+Agentic checkout adds more proof obligations than traditional checkout. A normal MockHub order needs buyer, cart, payment, ticket, and notification evidence. An agent order also needs to show which agent acted, what mandate authorized it, whether a user approval record was required and completed, which scoped payment credential paid, what risk signals were recorded, and which eval conditions passed, warned, or blocked.
+
+MockHub exposes that assembled record through:
+
+- `GET /api/v1/orders/{orderNumber}/agent-evidence` for the authenticated order owner or an admin.
+- MCP `getAgentPurchaseEvidence(userEmail, orderNumber)` for agent self-inspection. Website chat calls still use `ChatContext` so the authenticated user's email overrides any LLM-supplied email.
+
+The evidence service is intentionally read-only. It assembles existing durable records from `Order`, `Mandate`, `AgentPurchaseApproval`, `PaymentCredential`, and `AgentRiskSignal`, then derives ACP-aligned checkout status and fulfillment artifact links. Missing optional pieces are returned as `null` or empty lists rather than errors, because some legitimate orders use `AUTO_PURCHASE`, skip scoped credentials, or predate risk-signal persistence.
+
+| Evidence area | Traditional checkout | Agent checkout evidence |
+|---|---|---|
+| Authority | Authenticated buyer owns the cart/order | Buyer owner plus `agentId`, mandate scope, budget, expiry, and approval mode |
+| Human approval | Not separately modeled | Optional/required `AgentPurchaseApproval` record with proposal, decision, and final order |
+| Payment | Payment method and payment intent | Payment method plus optional scoped credential status and consumption state |
+| Risk/eval | Standard validation failures | Persisted local risk signals plus derived eval outcomes such as mandate authorization, purchase approval, payment credential, and agent risk |
+| Fulfillment | PDF tickets, QR verification, email/SMS notification attempts | Same fulfillment artifacts, attached to an actor timeline for the agent purchase flow |
+
+This fills one of the UCP-readiness gaps noted below: MockHub still does not publish a UCP profile or versioned UCP service envelope, but it can now explain the evidence behind an agent checkout in a single owner-scoped record.
 
 ### Key Design: `findTickets` — The Compound Search Tool
 
@@ -412,10 +439,10 @@ Coverage labels in this table describe MockHub surfaces that exist today. They d
 | Catalog and offer discovery | MCP `searchEvents`, `findTickets`, `compareTickets`; ACP `GET /catalog` and `GET /listings`; REST event/listing APIs | Implemented | Agents can discover products and actionable ticket offers through both MCP and ACP-shaped endpoints. |
 | Cart lifecycle | MCP cart tools, REST cart API, ACP checkout creation/update flow | Implemented | ACP treats checkout creation as the agent-facing cart/checkout boundary; MCP exposes explicit cart operations. |
 | Checkout lifecycle | ACP `/acp/v1/checkout/**`, MCP `checkout` and `confirmOrder`, `OrderService`, `PaymentService` | Partial | MockHub supports create, update, cancel, and complete flows, but does not implement UCP version negotiation or UCP response envelopes. |
-| Order and post-purchase support | MCP `getOrder`, `listOrders`, `getCalendarEntry`; public ticket view; PDF/QR tickets; SMS/email fulfillment | Partial | MockHub covers order lookup and fulfillment well for tickets, though it does not yet model returns, disputes, or shipment tracking. |
+| Order and post-purchase support | MCP `getOrder`, `listOrders`, `getCalendarEntry`, `getAgentPurchaseEvidence`; REST agent evidence endpoint; public ticket view; PDF/QR tickets; SMS/email fulfillment | Partial | MockHub covers order lookup, fulfillment, and owner-scoped agent evidence well for tickets, though it does not yet model returns, disputes, or shipment tracking. |
 | Identity linking | Website OAuth account linking, authenticated website user context, MCP OAuth2 for agent access | Partial | MockHub has account linking and authenticated agent transport, but not UCP identity-linking capability declarations. Buyer preference memory adds explicit user context without becoming a UCP identity-linking surface. |
 | Commerce policy | REST commerce policy endpoints, MCP `getCommercePolicy`, policy snapshots in ACP/listing responses | Implemented | Agents can fetch structured policy context before proposing or completing purchases. |
-| Authorization and proof | Mandates, `MandateCondition`, approval records, approval-required mandates | Partial | These map closely to AP2 concepts, but they are not cryptographically signed AP2 mandate credentials. Scoped payment credentials now keep "allowed to act" separate from "allowed to pay." |
+| Authorization and proof | Mandates, `MandateCondition`, approval records, approval-required mandates, agent purchase evidence trails | Partial | These map closely to AP2 concepts, but they are not cryptographically signed AP2 mandate credentials. Scoped payment credentials now keep "allowed to act" separate from "allowed to pay"; evidence trails assemble the records after checkout. |
 | Payment credentials | `PaymentCredentialService`, `PaymentCredentialTools`, ACP/MCP `paymentCredentialId`, mock payment service | Partial | MockHub supports mock-backed scoped credentials with one-time/reusable usage, expiration, revocation, limits, and checkout validation. Stripe-backed wallet credentials remain future work. |
 | Risk and abuse signals | `AgentRiskSignal`, `AgentRiskService`, `AgentRiskCondition`, MCP `getAgentRiskSummary` | Partial | MockHub persists deterministic local risk signals, returns warnings to MCP agents, and blocks repeated mandate mismatches. It does not integrate an external fraud/risk provider. |
 | Preference and personalization memory | `BuyerPreferenceService`, `buyer_preferences`, `GET/PUT /api/v1/preferences/me`, MCP `findTickets`/`compareTickets`, AI recommendations | Partial | MockHub stores explicit buyer preferences and returns preference-use metadata. It does not publish UCP capability declarations or cross-platform preference synchronization. |
@@ -505,10 +532,11 @@ The implementation is considered working when all of the following are true:
 5. Successful confirmation increments mandate `totalSpent` exactly once.
 6. Repeated mandate mismatches for the same user and agent create persisted risk signals and cause `AgentRiskCondition` to block later purchase actions.
 7. `getAgentRiskSummary` returns recent signals, warning reasons, highest severity, and blocked status for a user/agent pair.
-8. Users can store and update buyer preferences, and preference-aware searches return explicit `preferenceContext` metadata.
-9. `cd backend && ./gradlew test` passes.
-10. UCP readiness documentation is manually checked against the current MockHub tool/endpoint names and the pinned external protocol references. There is no automated UCP conformance check yet.
-11. The [Spec Versions](#spec-versions) table is re-checked before release prep and before any future UCP profile work. There is no automated spec-freshness check yet.
+8. `getAgentPurchaseEvidence` and `GET /api/v1/orders/{orderNumber}/agent-evidence` return the assembled agent purchase evidence record for the order owner or an admin.
+9. Users can store and update buyer preferences, and preference-aware searches return explicit `preferenceContext` metadata.
+10. `cd backend && ./gradlew test` passes.
+11. UCP readiness documentation is manually checked against the current MockHub tool/endpoint names and the pinned external protocol references. There is no automated UCP conformance check yet.
+12. The [Spec Versions](#spec-versions) table is re-checked before release prep and before any future UCP profile work. There is no automated spec-freshness check yet.
 
 ---
 
@@ -620,6 +648,11 @@ CREATE TABLE mandates (
 - `backend/src/main/java/com/mockhub/agentapproval/` — approval audit entity, DTOs, service, controller
 - `backend/src/main/java/com/mockhub/mcp/tools/AgentApprovalTools.java`
 - `backend/src/main/resources/db/migration/V31__create_agent_purchase_approvals.sql`
+
+### Phase 2c: Agent Purchase Evidence
+- `backend/src/main/java/com/mockhub/agentpurchaseevidence/` — owner/admin-scoped evidence DTOs, service, and REST controller
+- `backend/src/main/java/com/mockhub/mcp/tools/AgentPurchaseEvidenceTools.java` — MCP self-inspection tool
+- `backend/src/test/java/com/mockhub/AgentPurchaseEvidenceIntegrationTest.java` — full mandate, approval, credential, checkout, and fulfillment evidence flow
 
 ### Phase 3: ACP
 - `backend/src/main/java/com/mockhub/acp/` — controller, service, dto, API key filter

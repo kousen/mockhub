@@ -19,6 +19,8 @@ public interface PaymentCredentialRepository extends JpaRepository<PaymentCreden
 
     Optional<PaymentCredential> findByCredentialId(String credentialId);
 
+    Optional<PaymentCredential> findFirstByConsumedByOrderNumberOrderByConsumedAtDesc(String consumedByOrderNumber);
+
     List<PaymentCredential> findByUserEmailOrderByCreatedAtDesc(String userEmail);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.mockhub.mcp.tools.AgentApprovalTools;
+import com.mockhub.mcp.tools.AgentPurchaseEvidenceTools;
 import com.mockhub.mcp.tools.AgentRiskTools;
 import com.mockhub.mcp.tools.CartTools;
 import com.mockhub.mcp.tools.EventTools;
@@ -27,10 +28,11 @@ public class McpConfig {
                                                        MandateTools mandateTools,
                                                        AgentApprovalTools agentApprovalTools,
                                                        PaymentCredentialTools paymentCredentialTools,
-                                                       AgentRiskTools agentRiskTools) {
+                                                       AgentRiskTools agentRiskTools,
+                                                       AgentPurchaseEvidenceTools agentPurchaseEvidenceTools) {
         return MethodToolCallbackProvider.builder()
                 .toolObjects(eventTools, pricingTools, cartTools, orderTools, mandateTools,
-                        agentApprovalTools, paymentCredentialTools, agentRiskTools)
+                        agentApprovalTools, paymentCredentialTools, agentRiskTools, agentPurchaseEvidenceTools)
                 .build();
     }
 }
