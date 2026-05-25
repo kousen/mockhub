@@ -5,6 +5,7 @@ import java.security.KeyPairGenerator;
 import java.time.Duration;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.List;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -13,17 +14,22 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.server.authorization.OAuth2ClientRegistration;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationProvider;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.converter.OAuth2ClientRegistrationRegisteredClientConverter;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.web.SecurityFilterChain;
@@ -67,7 +73,7 @@ public class McpOAuth2SecurityConfig {
      *
      * <p>Handles OAuth2 endpoints: {@code /oauth2/authorize}, {@code /oauth2/token},
      * {@code /oauth2/jwks}, {@code /.well-known/oauth-authorization-server},
-     * and DCR at {@code /connect/register}.</p>
+     * and DCR at {@code /oauth2/register}.</p>
      *
      * <p>Uses {@link McpAuthorizationServerConfigurer} which configures DCR with open
      * registration (any client can register), token generation with resource identifier
@@ -76,7 +82,11 @@ public class McpOAuth2SecurityConfig {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain authorizationServerFilterChain(HttpSecurity http) throws Exception {
-        http.with(McpAuthorizationServerConfigurer.mcpAuthorizationServer(), Customizer.withDefaults());
+        http.with(McpAuthorizationServerConfigurer.mcpAuthorizationServer()
+                .authorizationServer(authz -> authz.clientRegistrationEndpoint(registration ->
+                        registration.authenticationProviders(
+                                McpOAuth2SecurityConfig::customizeClientRegistrationProviders))),
+                Customizer.withDefaults());
 
         // Scope this chain to OAuth2 authorization server endpoints + login page.
         // Must be set after the MCP configurer applies, because it configures
@@ -204,13 +214,43 @@ public class McpOAuth2SecurityConfig {
                 .redirectUri("https://claude.ai/api/mcp/auth_callback")
                 .redirectUri("http://localhost:6274/oauth/callback")
                 .redirectUri("http://127.0.0.1:6274/oauth/callback")
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(8))
-                        .refreshTokenTimeToLive(Duration.ofDays(30))
-                        .reuseRefreshTokens(false)
-                        .build())
+                .tokenSettings(mcpTokenSettings())
                 .build();
         return new InMemoryRegisteredClientRepository(claudeClient);
+    }
+
+    private static void customizeClientRegistrationProviders(
+            List<AuthenticationProvider> authenticationProviders) {
+        authenticationProviders.stream()
+                .filter(OAuth2ClientRegistrationAuthenticationProvider.class::isInstance)
+                .map(OAuth2ClientRegistrationAuthenticationProvider.class::cast)
+                .forEach(provider -> provider.setRegisteredClientConverter(
+                        McpOAuth2SecurityConfig::toMcpRegisteredClient));
+    }
+
+    static RegisteredClient toMcpRegisteredClient(OAuth2ClientRegistration clientRegistration) {
+        Converter<OAuth2ClientRegistration, RegisteredClient> defaultConverter =
+                new OAuth2ClientRegistrationRegisteredClientConverter();
+        RegisteredClient registeredClient = defaultConverter.convert(clientRegistration);
+        if (registeredClient == null) {
+            throw new IllegalStateException("Failed to convert dynamic MCP client registration");
+        }
+        return applyMcpClientDefaults(registeredClient);
+    }
+
+    static RegisteredClient applyMcpClientDefaults(RegisteredClient registeredClient) {
+        return RegisteredClient.from(registeredClient)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .tokenSettings(mcpTokenSettings())
+                .build();
+    }
+
+    private static TokenSettings mcpTokenSettings() {
+        return TokenSettings.builder()
+                .accessTokenTimeToLive(Duration.ofHours(8))
+                .refreshTokenTimeToLive(Duration.ofDays(30))
+                .reuseRefreshTokens(false)
+                .build();
     }
 
     @Bean

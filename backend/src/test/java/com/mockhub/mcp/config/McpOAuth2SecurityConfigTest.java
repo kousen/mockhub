@@ -13,11 +13,13 @@ import com.nimbusds.jose.proc.SecurityContext;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.OAuth2ClientRegistration;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 
 import java.time.Duration;
 
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -138,11 +140,44 @@ class McpOAuth2SecurityConfigTest {
     }
 
     @Test
+    void toMcpRegisteredClient_dynamicClientHasRefreshTokenGrant() {
+        var client = McpOAuth2SecurityConfig.toMcpRegisteredClient(dynamicAuthorizationCodeRegistration());
+
+        assertTrue(client.getAuthorizationGrantTypes()
+                        .contains(AuthorizationGrantType.REFRESH_TOKEN),
+                "DCR clients must support refresh_token grant type");
+    }
+
+    @Test
+    void toMcpRegisteredClient_dynamicClientHasEightHourAccessToken() {
+        var client = McpOAuth2SecurityConfig.toMcpRegisteredClient(dynamicAuthorizationCodeRegistration());
+
+        assertEquals(Duration.ofHours(8), client.getTokenSettings().getAccessTokenTimeToLive());
+    }
+
+    @Test
+    void toMcpRegisteredClient_dynamicClientHasThirtyDayRefreshToken() {
+        var client = McpOAuth2SecurityConfig.toMcpRegisteredClient(dynamicAuthorizationCodeRegistration());
+
+        assertEquals(Duration.ofDays(30), client.getTokenSettings().getRefreshTokenTimeToLive());
+    }
+
+    @Test
     void authorizationServerSettings_usesLocalhostIssuerUri() {
         String issuerUri = "http://localhost:8080";
 
         AuthorizationServerSettings settings = config.authorizationServerSettings(issuerUri);
 
         assertEquals(issuerUri, settings.getIssuer());
+    }
+
+    private static OAuth2ClientRegistration dynamicAuthorizationCodeRegistration() {
+        return OAuth2ClientRegistration.builder()
+                .clientName("Codex MCP client")
+                .redirectUri("http://127.0.0.1:1455/oauth/callback")
+                .grantType(AuthorizationGrantType.AUTHORIZATION_CODE.getValue())
+                .responseType("code")
+                .tokenEndpointAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC.getValue())
+                .build();
     }
 }

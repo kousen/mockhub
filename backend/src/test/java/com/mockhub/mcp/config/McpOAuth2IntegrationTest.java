@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -79,6 +81,44 @@ class McpOAuth2IntegrationTest {
     private TestRestTemplate restTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Nested
+    @DisplayName("Dynamic Client Registration")
+    class DynamicClientRegistration {
+
+        @Test
+        @DisplayName("DCR response includes refresh token grant")
+        void dcrResponse_includesRefreshTokenGrant() throws Exception {
+            JsonNode registration = registerClient("codex-mcp-client");
+
+            assertTrue(arrayContains(registration.get("grant_types"), "refresh_token"),
+                    "DCR response should advertise refresh_token grant: " + registration);
+        }
+
+        @Test
+        @DisplayName("DCR client credentials token uses MCP access token TTL")
+        void clientCredentialsToken_usesMcpAccessTokenTtl() throws Exception {
+            JsonNode registration = registerClient("codex-mcp-client-token");
+            String clientId = registration.get("client_id").asText();
+            String clientSecret = registration.get("client_secret").asText();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.setBasicAuth(clientId, clientSecret);
+
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("grant_type", "client_credentials");
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    "/oauth2/token", new HttpEntity<>(body, headers), String.class);
+
+            assertEquals(HttpStatus.OK, response.getStatusCode(),
+                    "Token endpoint should accept dynamically registered client: " + response.getBody());
+            JsonNode token = objectMapper.readTree(response.getBody());
+            assertTrue(token.get("expires_in").asLong() > 28_000,
+                    "DCR client access token should use the 8-hour MCP TTL: " + token);
+        }
+    }
 
     @Nested
     @DisplayName("Authorization Server Metadata")
@@ -171,5 +211,34 @@ class McpOAuth2IntegrationTest {
 
             assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         }
+    }
+
+    private JsonNode registerClient(String clientName) throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        var request = objectMapper.createObjectNode();
+        request.put("client_name", clientName);
+        request.put("token_endpoint_auth_method", "client_secret_basic");
+        request.putArray("grant_types").add("client_credentials");
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                "/oauth2/register", new HttpEntity<>(request.toString(), headers), String.class);
+
+        assertTrue(response.getStatusCode().is2xxSuccessful(),
+                "DCR endpoint should register clients: " + response.getBody());
+        return objectMapper.readTree(response.getBody());
+    }
+
+    private static boolean arrayContains(JsonNode array, String expectedValue) {
+        if (array == null || !array.isArray()) {
+            return false;
+        }
+        for (JsonNode value : array) {
+            if (expectedValue.equals(value.asText())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
