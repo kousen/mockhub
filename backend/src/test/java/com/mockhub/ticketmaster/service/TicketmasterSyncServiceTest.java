@@ -460,10 +460,14 @@ class TicketmasterSyncServiceTest {
                                 "89169",
                                 new TicketmasterVenueResponse.Country("US", "US"),
                                 new TicketmasterVenueResponse.Location("36.12", "-115.16"))),
-                        List.of(new TicketmasterAttractionResponse(
-                                "ATTR-001", "Eagles",
-                                Map.of("spotify", List.of(
-                                        new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))))
+                        List.of(TicketmasterAttractionResponse.builder()
+                                .id("ATTR-001")
+                                .name("Eagles")
+                                .externalLinks(Map.of("spotify", List.of(
+                                        new ExternalLink(
+                                                "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+                                                null))))
+                                .build())))
                 .build();
     }
 
