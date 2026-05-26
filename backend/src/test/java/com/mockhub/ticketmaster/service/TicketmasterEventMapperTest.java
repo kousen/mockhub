@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.mockhub.event.entity.Category;
+import com.mockhub.event.entity.Event;
 import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse;
 import com.mockhub.ticketmaster.dto.TicketmasterAttractionResponse.ExternalLink;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse;
@@ -26,8 +27,6 @@ import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.Status;
 import com.mockhub.ticketmaster.dto.TicketmasterEventResponse.SubGenre;
 import com.mockhub.ticketmaster.dto.TicketmasterVenueResponse;
 import com.mockhub.venue.entity.Venue;
-
-import com.mockhub.event.entity.Event;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -114,88 +113,110 @@ class TicketmasterEventMapperTest {
 
         @Test
         void extractSpotifyArtistId_givenStandardUrl_returnsArtistId() {
-            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                    "K8vZ9171ob7", "Eagles",
-                    Map.of("spotify", List.of(
-                            new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null))));
+            TicketmasterAttractionResponse attraction = TicketmasterAttractionResponse.builder()
+                    .id("K8vZ9171ob7")
+                    .name("Eagles")
+                    .externalLinks(Map.of("spotify", List.of(
+                            new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null))))
+                    .build();
 
             assertThat(mapper.extractSpotifyArtistId(attraction)).isEqualTo("0ECwFtbIWEVNwjlrfc6xoL");
         }
 
         @Test
         void extractSpotifyArtistId_givenMangledUri_recoversArtistId() {
-            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                    "K8vZ917abc", "Luna",
-                    Map.of("spotify", List.of(
-                            new ExternalLink("https://open.spotify.com/user/spotify:artist:2AACqFGo8offvHCKGvrWxq", null))));
+            TicketmasterAttractionResponse attraction = TicketmasterAttractionResponse.builder()
+                    .id("K8vZ917abc")
+                    .name("Luna")
+                    .externalLinks(Map.of("spotify", List.of(
+                            new ExternalLink(
+                                    "https://open.spotify.com/user/spotify:artist:2AACqFGo8offvHCKGvrWxq",
+                                    null))))
+                    .build();
 
             assertThat(mapper.extractSpotifyArtistId(attraction)).isEqualTo("2AACqFGo8offvHCKGvrWxq");
         }
 
         @Test
         void extractSpotifyArtistId_givenUserProfileUrl_returnsNull() {
-            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                    "K8vZ917def", "Black Joe Lewis",
-                    Map.of("spotify", List.of(
-                            new ExternalLink("https://open.spotify.com/user/blackjoelewismusic", null))));
+            TicketmasterAttractionResponse attraction = TicketmasterAttractionResponse.builder()
+                    .id("K8vZ917def")
+                    .name("Black Joe Lewis")
+                    .externalLinks(Map.of("spotify", List.of(
+                            new ExternalLink("https://open.spotify.com/user/blackjoelewismusic", null))))
+                    .build();
 
             assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
         }
 
         @Test
         void extractSpotifyArtistId_givenPlaylistUrl_returnsNull() {
-            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                    "K8vZ917ghi", "Emo Night",
-                    Map.of("spotify", List.of(
-                            new ExternalLink("https://open.spotify.com/playlist/3vwjBackAZ0Rl9hueMkOwp", null))));
+            TicketmasterAttractionResponse attraction = TicketmasterAttractionResponse.builder()
+                    .id("K8vZ917ghi")
+                    .name("Emo Night")
+                    .externalLinks(Map.of("spotify", List.of(
+                            new ExternalLink("https://open.spotify.com/playlist/3vwjBackAZ0Rl9hueMkOwp", null))))
+                    .build();
 
             assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
         }
 
         @Test
         void extractSpotifyArtistId_givenAppleMusicUrl_returnsNull() {
-            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                    "K8vZ917jkl", "Microwave",
-                    Map.of("spotify", List.of(
-                            new ExternalLink("https://music.apple.com/us/artist/microwave/613522668", null))));
+            TicketmasterAttractionResponse attraction = TicketmasterAttractionResponse.builder()
+                    .id("K8vZ917jkl")
+                    .name("Microwave")
+                    .externalLinks(Map.of("spotify", List.of(
+                            new ExternalLink("https://music.apple.com/us/artist/microwave/613522668", null))))
+                    .build();
 
             assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
         }
 
         @Test
         void extractSpotifyArtistId_givenUnrelatedUrl_returnsNull() {
-            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                    "K8vZ917mno", "Trap Karaoke",
-                    Map.of("spotify", List.of(
-                            new ExternalLink("https://trapkaraoke.com/", null))));
+            TicketmasterAttractionResponse attraction = TicketmasterAttractionResponse.builder()
+                    .id("K8vZ917mno")
+                    .name("Trap Karaoke")
+                    .externalLinks(Map.of("spotify", List.of(
+                            new ExternalLink("https://trapkaraoke.com/", null))))
+                    .build();
 
             assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
         }
 
         @Test
         void extractSpotifyArtistId_givenNoExternalLinks_returnsNull() {
-            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                    "K8vZ9171ob7", "Eagles", null);
+            TicketmasterAttractionResponse attraction = TicketmasterAttractionResponse.builder()
+                    .id("K8vZ9171ob7")
+                    .name("Eagles")
+                    .build();
 
             assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
         }
 
         @Test
         void extractSpotifyArtistId_givenNoSpotifyLink_returnsNull() {
-            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                    "K8vZ9171ob7", "Eagles",
-                    Map.of("youtube", List.of(
-                            new ExternalLink("https://youtube.com/test", null))));
+            TicketmasterAttractionResponse attraction = TicketmasterAttractionResponse.builder()
+                    .id("K8vZ9171ob7")
+                    .name("Eagles")
+                    .externalLinks(Map.of("youtube", List.of(
+                            new ExternalLink("https://youtube.com/test", null))))
+                    .build();
 
             assertThat(mapper.extractSpotifyArtistId(attraction)).isNull();
         }
 
         @Test
         void extractSpotifyArtistId_givenUrlWithQueryParams_extractsCleanId() {
-            TicketmasterAttractionResponse attraction = new TicketmasterAttractionResponse(
-                    "K8vZ917pqr", "Taylor Swift",
-                    Map.of("spotify", List.of(
-                            new ExternalLink("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=abc123", null))));
+            TicketmasterAttractionResponse attraction = TicketmasterAttractionResponse.builder()
+                    .id("K8vZ917pqr")
+                    .name("Taylor Swift")
+                    .externalLinks(Map.of("spotify", List.of(
+                            new ExternalLink(
+                                    "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=abc123",
+                                    null))))
+                    .build();
 
             assertThat(mapper.extractSpotifyArtistId(attraction)).isEqualTo("06HL4z0CvFAxyc27GXpf02");
         }
@@ -488,10 +509,14 @@ class TicketmasterEventMapperTest {
                 .priceRanges(List.of(new PriceRange("standard", "USD", 75.0, 250.0)))
                 .embedded(new Embedded(
                         List.of(createSampleVenueResponse()),
-                        List.of(new TicketmasterAttractionResponse(
-                                "K8vZ9171ob7", "Eagles",
-                                Map.of("spotify", List.of(
-                                        new ExternalLink("https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL", null)))))))
+                        List.of(TicketmasterAttractionResponse.builder()
+                                .id("K8vZ9171ob7")
+                                .name("Eagles")
+                                .externalLinks(Map.of("spotify", List.of(
+                                        new ExternalLink(
+                                                "https://open.spotify.com/artist/0ECwFtbIWEVNwjlrfc6xoL",
+                                                null))))
+                                .build())))
                 .build();
     }
 
