@@ -87,3 +87,5 @@ frontend/test-results/
 .zencoder/
 skills/
 skills-lock.json
+!.claude/skills/
+!.claude/skills/**
