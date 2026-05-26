@@ -77,10 +77,7 @@ describe('checkout review gate', () => {
     const cart = makeCart();
     markReviewPassed(cart);
     const withMore = makeCart({
-      items: [
-        cart.items[0],
-        { ...cart.items[0], id: 101, listingId: 11 },
-      ],
+      items: [cart.items[0], { ...cart.items[0], id: 101, listingId: 11 }],
       itemCount: 2,
       subtotal: 200,
     });
