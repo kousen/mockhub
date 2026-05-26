@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { Loader2, ShoppingCart } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +13,7 @@ import { useCart } from '@/hooks/use-cart';
 import { useCheckout } from '@/hooks/use-orders';
 import { createPaymentIntent, confirmPayment } from '@/api/payments';
 import { ROUTES } from '@/lib/constants';
+import { clearReviewPassed, hasReviewPassed } from '@/lib/checkout-review-gate';
 
 const SERVICE_FEE_RATE = 0.1;
 
@@ -105,6 +106,14 @@ export function CheckoutPage() {
     toast.error(message);
   }, []);
 
+  // Once payment completes (mock or stripe) the cart is cleared on the server.
+  // Clear the review gate too so a future cart cycle re-enters review.
+  useEffect(() => {
+    if (cart && cart.items.length === 0) {
+      clearReviewPassed();
+    }
+  }, [cart]);
+
   if (isLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
@@ -119,6 +128,13 @@ export function CheckoutPage() {
         </div>
       </div>
     );
+  }
+
+  // Gate: direct nav to /checkout with a fresh cart bounces back to review.
+  // Skip when a payment flow is already in flight (cart may have just cleared).
+  const inPaymentFlow = stripeReady || isMockProcessing;
+  if (!inPaymentFlow && cart && cart.items.length > 0 && !hasReviewPassed(cart)) {
+    return <Navigate to={ROUTES.CHECKOUT_REVIEW} replace />;
   }
 
   // Show empty state only if cart is empty AND we're not in a payment flow

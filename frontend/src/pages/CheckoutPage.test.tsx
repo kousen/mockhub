@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { renderWithProviders, screen } from '@/test/test-utils';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderWithProviders, screen, userEvent, waitFor } from '@/test/test-utils';
 import { CheckoutPage } from './CheckoutPage';
 import type { Cart } from '@/types/cart';
+import { markReviewPassed, clearReviewPassed, hasReviewPassed } from '@/lib/checkout-review-gate';
 
 vi.mock('@/hooks/use-cart', () => ({
   useCart: vi.fn(() => ({
@@ -37,6 +38,7 @@ vi.mock('@/stores/cart-store', () => ({
 }));
 
 import { useCart } from '@/hooks/use-cart';
+import { useCheckout } from '@/hooks/use-orders';
 
 const mockCart: Cart = {
   id: 1,
@@ -82,13 +84,32 @@ function setCartState(data: Cart | undefined, isLoading = false) {
 }
 
 describe('CheckoutPage', () => {
-  it('renders order summary when cart has items', () => {
+  beforeEach(() => {
+    clearReviewPassed();
+    vi.mocked(useCheckout).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof useCheckout>);
+  });
+
+  it('renders order summary when cart has items and review has passed', () => {
     setCartState(mockCart);
+    markReviewPassed(mockCart);
 
     renderWithProviders(<CheckoutPage />);
 
     expect(screen.getByText('Checkout')).toBeDefined();
     expect(screen.getByText('Payment Method')).toBeDefined();
+  });
+
+  it('redirects to /checkout/review when cart has items but review gate not passed', () => {
+    setCartState(mockCart);
+    // Do not mark review passed
+
+    renderWithProviders(<CheckoutPage />);
+
+    // Navigate replaces the rendered content, so the Checkout heading is gone
+    expect(screen.queryByRole('heading', { name: 'Checkout' })).toBeNull();
   });
 
   it('shows empty cart message when no items', () => {
@@ -108,6 +129,43 @@ describe('CheckoutPage', () => {
     expect(screen.getByText('Nothing to checkout')).toBeDefined();
   });
 
+  it('clears the review gate after a reviewed cart becomes empty', async () => {
+    setCartState(mockCart);
+    markReviewPassed(mockCart);
+
+    const { rerender } = renderWithProviders(<CheckoutPage />);
+    expect(hasReviewPassed(mockCart)).toBe(true);
+
+    setCartState({ ...mockCart, items: [], itemCount: 0, subtotal: 0 });
+    rerender(<CheckoutPage />);
+
+    await waitFor(() => expect(hasReviewPassed(mockCart)).toBe(false));
+  });
+
+  it('keeps the payment view visible if the cart clears while mock payment is processing', async () => {
+    const mutate = vi.fn();
+    vi.mocked(useCheckout).mockReturnValue({
+      mutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useCheckout>);
+    setCartState(mockCart);
+    markReviewPassed(mockCart);
+
+    const { rerender } = renderWithProviders(<CheckoutPage />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pay $368.50' }));
+    expect(mutate).toHaveBeenCalled();
+
+    setCartState({ ...mockCart, items: [], itemCount: 0, subtotal: 0 });
+    rerender(<CheckoutPage />);
+
+    expect(screen.queryByText('Nothing to checkout')).toBeNull();
+    expect(screen.getByText('Your order has been created. Complete payment below.')).toBeDefined();
+    expect((screen.getByRole('button', { name: /Processing/ }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+
   it('shows loading skeleton while fetching', () => {
     setCartState(undefined, true);
 
@@ -120,6 +178,7 @@ describe('CheckoutPage', () => {
 
   it('payment method tabs are visible when cart has items', () => {
     setCartState(mockCart);
+    markReviewPassed(mockCart);
 
     renderWithProviders(<CheckoutPage />);
 
@@ -130,6 +189,7 @@ describe('CheckoutPage', () => {
 
   it('renders order review with cart items', () => {
     setCartState(mockCart);
+    markReviewPassed(mockCart);
 
     renderWithProviders(<CheckoutPage />);
 
@@ -139,6 +199,7 @@ describe('CheckoutPage', () => {
 
   it('renders checkout heading', () => {
     setCartState(mockCart);
+    markReviewPassed(mockCart);
 
     renderWithProviders(<CheckoutPage />);
 
@@ -147,6 +208,7 @@ describe('CheckoutPage', () => {
 
   it('shows stripe tab', () => {
     setCartState(mockCart);
+    markReviewPassed(mockCart);
 
     renderWithProviders(<CheckoutPage />);
 

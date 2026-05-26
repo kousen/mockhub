@@ -222,7 +222,7 @@ Run demo reset to clear any mandates. No orders to worry about (BROWSE-only mand
 ### Script
 
 1. **Both tabs:** Click the same listing → "Add to Cart"
-2. **Tab 1 (buyer):** Go to `/cart` → click "Checkout" → complete purchase
+2. **Tab 1 (buyer):** Go to `/cart` → click "Checkout" → review the order → complete purchase
 3. **Tab 2 (seller):** Go to `/cart` → click "Checkout"
 4. **Tab 2 result:** "This ticket was just purchased by another buyer" (409 Conflict)
 

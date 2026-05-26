@@ -13,6 +13,7 @@ import { EventListPage } from '@/pages/EventListPage';
 import { EventDetailPage } from '@/pages/EventDetailPage';
 import { CartPage } from '@/pages/CartPage';
 import { CheckoutPage } from '@/pages/CheckoutPage';
+import { OrderReviewPage } from '@/pages/OrderReviewPage';
 import { OrderHistoryPage } from '@/pages/OrderHistoryPage';
 import { OrderConfirmationPage } from '@/pages/OrderConfirmationPage';
 import { FavoritesPage } from '@/pages/FavoritesPage';
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
         Component: ProtectedRoute,
         children: [
           { path: 'cart', Component: CartPage },
+          { path: 'checkout/review', Component: OrderReviewPage },
           { path: 'checkout', Component: CheckoutPage },
           { path: 'orders', Component: OrderHistoryPage },
           {
