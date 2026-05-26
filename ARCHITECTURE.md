@@ -629,6 +629,7 @@ Never cached: carts, orders, notifications, pricing data.
 /events                          → EventListPage (search, filter, sort, paginate)
 /events/:slug                    → EventDetailPage (listings, price history, price prediction)
 /cart                            → CartPage
+/checkout/review                 → OrderReviewPage (auth required)
 /checkout                        → CheckoutPage (auth required)
 /orders/:orderNumber/confirmation → OrderConfirmationPage
 /orders                          → OrderHistoryPage (auth required)

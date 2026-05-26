@@ -10,6 +10,7 @@ export const ROUTES = {
   EVENT_DETAIL: '/events/:slug',
   CART: '/cart',
   CHECKOUT: '/checkout',
+  CHECKOUT_REVIEW: '/checkout/review',
   ORDERS: '/orders',
   FAVORITES: '/favorites',
   PROFILE: '/my/profile',

@@ -47,7 +47,7 @@ export function CartSummary({
       </div>
       {showCheckoutButton && (
         <Button className="mt-4 w-full" size="lg" asChild>
-          <Link to={ROUTES.CHECKOUT}>Proceed to Checkout</Link>
+          <Link to={ROUTES.CHECKOUT_REVIEW}>Proceed to Checkout</Link>
         </Button>
       )}
     </div>

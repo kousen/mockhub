@@ -86,7 +86,7 @@ Any authenticated user can both buy and sell tickets.
 
 - **Event browsing** — search, filter by category/city/date/price, sort, paginate
 - **Dynamic pricing** — prices adjust based on supply, demand, and time to event
-- **Shopping cart and checkout** — full purchase flow with Stripe test mode
+- **Shopping cart and checkout** — cart → review → payment flow with Stripe test mode
 - **Seller marketplace** — any user can list tickets (with owned-ticket quick-sell and visual venue map), manage listings, track earnings
 - **OAuth social login** — Google, GitHub, and Spotify sign-in alongside email/password
 - **User profiles** — edit name/phone, view connected OAuth providers
@@ -143,7 +143,7 @@ Any authenticated user can both buy and sell tickets.
 
 ## Testing
 
-988 backend tests, 427 frontend tests, E2E across 3 browsers (Chrome, Safari, Mobile iOS) with CI sharding.
+988 backend tests, 465 frontend tests, E2E across 3 browsers (Chrome, Safari, Mobile iOS) with CI sharding.
 
 ```bash
 # Backend (requires Docker for Testcontainers)

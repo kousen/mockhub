@@ -75,7 +75,7 @@ export function CartDrawer() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button asChild onClick={closeDrawer}>
-                    <Link to={ROUTES.CHECKOUT}>Checkout</Link>
+                    <Link to={ROUTES.CHECKOUT_REVIEW}>Checkout</Link>
                   </Button>
                   <Button variant="outline" asChild onClick={closeDrawer}>
                     <Link to={ROUTES.CART}>View Cart</Link>
