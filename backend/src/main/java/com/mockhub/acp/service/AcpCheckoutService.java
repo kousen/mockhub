@@ -40,6 +40,7 @@ import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
 import com.mockhub.order.service.OrderService;
+import com.mockhub.order.service.PaymentMethodSupport;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
 import com.mockhub.paymentcredential.service.PaymentCredentialService;
@@ -97,7 +98,7 @@ public class AcpCheckoutService {
         String agentId = request.agentId().strip();
         String mandateId = request.mandateId().strip();
 
-        String paymentMethod = request.paymentMethod() != null ? request.paymentMethod() : "mock";
+        String paymentMethod = PaymentMethodSupport.normalizeOrMock(request.paymentMethod());
 
         // Note: On idempotent retries, cart mutations below are harmless —
         // OrderService.checkout() returns the existing order before reading the cart.
@@ -174,8 +175,8 @@ public class AcpCheckoutService {
         }
         validateCartForAgent(user, request.agentId(), request.mandateId());
 
-        // Create new order
-        CheckoutRequest checkoutRequest = new CheckoutRequest("mock");
+        // Create new order with the original payment method preserved.
+        CheckoutRequest checkoutRequest = new CheckoutRequest(PaymentMethodSupport.normalizeOrMock(order.getPaymentMethod()));
         OrderDto newOrderDto = orderService.checkout(
                 user, checkoutRequest, null, request.agentId(), request.mandateId());
 

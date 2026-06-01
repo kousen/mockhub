@@ -79,6 +79,106 @@ class AgentRiskServiceTest {
     }
 
     @Test
+    @DisplayName("recordCheckoutFailure - oversized audit fields - truncates before persist")
+    void recordCheckoutFailure_givenOversizedAuditFields_truncatesBeforePersist() {
+        when(agentRiskSignalRepository.save(any(AgentRiskSignal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        String oversizedOrderNumber = "MH-20260319-0001-" + "x".repeat(120);
+        String oversizedMessage = "x".repeat(600);
+
+        agentRiskService.recordCheckoutFailure(
+                "buyer@example.com", "agent-1", oversizedOrderNumber, null, oversizedMessage);
+
+        ArgumentCaptor<AgentRiskSignal> captor = ArgumentCaptor.forClass(AgentRiskSignal.class);
+        verify(agentRiskSignalRepository).save(captor.capture());
+        AgentRiskSignal saved = captor.getValue();
+        assertThat(saved.getOrderNumber()).hasSize(30);
+        assertThat(saved.getResourceId()).hasSize(100);
+        assertThat(saved.getMessage()).hasSize(500);
+    }
+
+    @Test
+    @DisplayName("recordSignal - oversized identity fields - truncates before persist")
+    void recordSignal_givenOversizedIdentityFields_truncatesBeforePersist() {
+        when(agentRiskSignalRepository.save(any(AgentRiskSignal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        agentRiskService.recordSignal(new RecordAgentRiskSignalRequest(
+                "u".repeat(300),
+                "a".repeat(300),
+                AgentRiskSignalType.FAILED_CHECKOUT,
+                EvalSeverity.WARNING,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "message"));
+
+        ArgumentCaptor<AgentRiskSignal> captor = ArgumentCaptor.forClass(AgentRiskSignal.class);
+        verify(agentRiskSignalRepository).save(captor.capture());
+        AgentRiskSignal saved = captor.getValue();
+        assertThat(saved.getUserEmail()).hasSize(255);
+        assertThat(saved.getAgentId()).hasSize(255);
+    }
+
+    @Test
+    @DisplayName("recordSignal - oversized optional audit fields - truncates before persist")
+    void recordSignal_givenOversizedOptionalAuditFields_truncatesBeforePersist() {
+        when(agentRiskSignalRepository.save(any(AgentRiskSignal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        agentRiskService.recordSignal(new RecordAgentRiskSignalRequest(
+                "buyer@example.com",
+                "agent-1",
+                AgentRiskSignalType.FAILED_CHECKOUT,
+                EvalSeverity.WARNING,
+                "a".repeat(80),
+                "r".repeat(80),
+                "resource-1",
+                null,
+                "m".repeat(120),
+                null,
+                "message"));
+
+        ArgumentCaptor<AgentRiskSignal> captor = ArgumentCaptor.forClass(AgentRiskSignal.class);
+        verify(agentRiskSignalRepository).save(captor.capture());
+        AgentRiskSignal saved = captor.getValue();
+        assertThat(saved.getActionType()).hasSize(50);
+        assertThat(saved.getResourceType()).hasSize(50);
+        assertThat(saved.getMandateId()).hasSize(100);
+    }
+
+    @Test
+    @DisplayName("recordCheckoutFailure - null message - records fallback message")
+    void recordCheckoutFailure_givenNullMessage_recordsFallbackMessage() {
+        when(agentRiskSignalRepository.save(any(AgentRiskSignal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        agentRiskService.recordCheckoutFailure(
+                "buyer@example.com", "agent-1", "MH-20260319-0001", null, null);
+
+        ArgumentCaptor<AgentRiskSignal> captor = ArgumentCaptor.forClass(AgentRiskSignal.class);
+        verify(agentRiskSignalRepository).save(captor.capture());
+        assertThat(captor.getValue().getMessage()).isEqualTo("Checkout failed");
+    }
+
+    @Test
+    @DisplayName("recordPaymentCredentialFailure - blank message - records fallback message")
+    void recordPaymentCredentialFailure_givenBlankMessage_recordsFallbackMessage() {
+        when(agentRiskSignalRepository.save(any(AgentRiskSignal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        agentRiskService.recordPaymentCredentialFailure(
+                "buyer@example.com", "agent-1", "MH-20260319-0001", null, " ");
+
+        ArgumentCaptor<AgentRiskSignal> captor = ArgumentCaptor.forClass(AgentRiskSignal.class);
+        verify(agentRiskSignalRepository).save(captor.capture());
+        assertThat(captor.getValue().getMessage()).isEqualTo("Payment credential validation failed");
+    }
+
+    @Test
     @DisplayName("recordSignal - missing user email - rejects request")
     void recordSignal_givenMissingUserEmail_rejectsRequest() {
         RecordAgentRiskSignalRequest request = new RecordAgentRiskSignalRequest(
@@ -177,6 +277,32 @@ class AgentRiskServiceTest {
         assertThat(summary.highestSeverity()).isEqualTo("CRITICAL");
         assertThat(summary.reasons()).anySatisfy(reason -> assertThat(reason).contains("Repeated mandate"));
         assertThat(summary.recentSignals()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("summarizeRisk - oversized identity fields - queries with truncated values")
+    void summarizeRisk_givenOversizedIdentityFields_queriesWithTruncatedValues() {
+        String longUserEmail = "u".repeat(300);
+        String longAgentId = "a".repeat(300);
+        String truncatedUserEmail = "u".repeat(255);
+        String truncatedAgentId = "a".repeat(255);
+
+        when(agentRiskSignalRepository.findRecent(
+                eq(truncatedUserEmail), eq(truncatedAgentId), any(Instant.class), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(agentRiskSignalRepository.countByUserEmailAndAgentIdAndCreatedAtAfter(
+                eq(truncatedUserEmail), eq(truncatedAgentId), any())).thenReturn(0L);
+        when(agentRiskSignalRepository.countByUserEmailAndAgentIdAndSeverityAndCreatedAtAfter(
+                eq(truncatedUserEmail), eq(truncatedAgentId), any(EvalSeverity.class), any())).thenReturn(0L);
+        when(agentRiskSignalRepository.countByUserEmailAndAgentIdAndSignalTypeAndCreatedAtAfter(
+                eq(truncatedUserEmail), eq(truncatedAgentId), any(AgentRiskSignalType.class), any())).thenReturn(0L);
+
+        AgentRiskSummaryDto summary = agentRiskService.summarizeRisk(longUserEmail, longAgentId);
+
+        assertThat(summary.userEmail()).isEqualTo(truncatedUserEmail);
+        assertThat(summary.agentId()).isEqualTo(truncatedAgentId);
+        verify(agentRiskSignalRepository).findRecent(
+                eq(truncatedUserEmail), eq(truncatedAgentId), any(Instant.class), any(Pageable.class));
     }
 
     private AgentRiskSignal signal(AgentRiskSignalType type, EvalSeverity severity) {

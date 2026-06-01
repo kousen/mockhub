@@ -29,6 +29,14 @@ import com.mockhub.eval.dto.EvalSummary;
 public class AgentRiskService {
 
     private static final int RECENT_SIGNAL_LIMIT = 20;
+    private static final int USER_EMAIL_MAX_LENGTH = 255;
+    private static final int AGENT_ID_MAX_LENGTH = 255;
+    private static final int ACTION_TYPE_MAX_LENGTH = 50;
+    private static final int RESOURCE_TYPE_MAX_LENGTH = 50;
+    private static final int RESOURCE_ID_MAX_LENGTH = 100;
+    private static final int ORDER_NUMBER_MAX_LENGTH = 30;
+    private static final int MANDATE_ID_MAX_LENGTH = 100;
+    private static final int MESSAGE_MAX_LENGTH = 500;
     private static final String MANDATE_CONDITION = "mandate-authorization";
     private static final String AGENT_RISK_CONDITION = "agent-risk";
 
@@ -63,17 +71,17 @@ public class AgentRiskService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public AgentRiskSignalDto recordSignal(RecordAgentRiskSignalRequest request) {
         AgentRiskSignal signal = new AgentRiskSignal();
-        signal.setUserEmail(normalizeRequired(request.userEmail(), "User email"));
-        signal.setAgentId(normalizeRequired(request.agentId(), "Agent ID"));
+        signal.setUserEmail(normalizeRequired(request.userEmail(), "User email", USER_EMAIL_MAX_LENGTH));
+        signal.setAgentId(normalizeRequired(request.agentId(), "Agent ID", AGENT_ID_MAX_LENGTH));
         signal.setSignalType(requireNonNull(request.signalType(), "Signal type"));
         signal.setSeverity(request.severity() != null ? request.severity() : EvalSeverity.WARNING);
-        signal.setActionType(normalizeOptional(request.actionType()));
-        signal.setResourceType(normalizeOptional(request.resourceType()));
-        signal.setResourceId(normalizeOptional(request.resourceId()));
-        signal.setOrderNumber(normalizeOptional(request.orderNumber()));
-        signal.setMandateId(normalizeOptional(request.mandateId()));
+        signal.setActionType(normalizeOptional(request.actionType(), ACTION_TYPE_MAX_LENGTH));
+        signal.setResourceType(normalizeOptional(request.resourceType(), RESOURCE_TYPE_MAX_LENGTH));
+        signal.setResourceId(normalizeOptional(request.resourceId(), RESOURCE_ID_MAX_LENGTH));
+        signal.setOrderNumber(normalizeOptional(request.orderNumber(), ORDER_NUMBER_MAX_LENGTH));
+        signal.setMandateId(normalizeOptional(request.mandateId(), MANDATE_ID_MAX_LENGTH));
         signal.setAmount(normalizeAmount(request.amount()));
-        signal.setMessage(normalizeRequired(request.message(), "Message"));
+        signal.setMessage(limitLength(normalizeRequired(request.message(), "Message"), MESSAGE_MAX_LENGTH));
         return toDto(agentRiskSignalRepository.save(signal));
     }
 
@@ -221,7 +229,7 @@ public class AgentRiskService {
                 orderNumber,
                 null,
                 amount,
-                message));
+                messageOrDefault(message, "Checkout failed")));
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -257,13 +265,13 @@ public class AgentRiskService {
                 orderNumber,
                 null,
                 amount,
-                message));
+                messageOrDefault(message, "Payment credential validation failed")));
     }
 
     @Transactional(readOnly = true)
     public AgentRiskSummaryDto summarizeRisk(String userEmail, String agentId) {
-        String normalizedUserEmail = normalizeRequired(userEmail, "User email");
-        String normalizedAgentId = normalizeRequired(agentId, "Agent ID");
+        String normalizedUserEmail = normalizeRequired(userEmail, "User email", USER_EMAIL_MAX_LENGTH);
+        String normalizedAgentId = normalizeRequired(agentId, "Agent ID", AGENT_ID_MAX_LENGTH);
         Instant since = Instant.now().minus(riskWindow);
         List<AgentRiskSignal> recentSignals = agentRiskSignalRepository.findRecent(
                 normalizedUserEmail, normalizedAgentId, since, PageRequest.of(0, RECENT_SIGNAL_LIMIT));
@@ -357,8 +365,26 @@ public class AgentRiskService {
         return value.strip();
     }
 
-    private String normalizeOptional(String value) {
-        return isBlank(value) ? null : value.strip();
+    private String normalizeRequired(String value, String fieldName, int maxLength) {
+        return limitLength(normalizeRequired(value, fieldName), maxLength);
+    }
+
+    private String normalizeOptional(String value, int maxLength) {
+        if (isBlank(value)) {
+            return null;
+        }
+        return limitLength(value.strip(), maxLength);
+    }
+
+    private String limitLength(String value, int maxLength) {
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
+    }
+
+    private String messageOrDefault(String message, String fallback) {
+        return isBlank(message) ? fallback : message;
     }
 
     private BigDecimal normalizeAmount(BigDecimal amount) {

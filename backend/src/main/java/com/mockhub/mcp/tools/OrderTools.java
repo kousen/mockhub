@@ -37,7 +37,9 @@ import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.service.CalendarService;
+import com.mockhub.order.service.OrderNumberSupport;
 import com.mockhub.order.service.OrderService;
+import com.mockhub.order.service.PaymentMethodSupport;
 import com.mockhub.payment.dto.PaymentIntentDto;
 import com.mockhub.payment.service.PaymentService;
 import com.mockhub.paymentcredential.service.PaymentCredentialService;
@@ -105,6 +107,7 @@ public class OrderTools {
             if (mandateId == null || mandateId.isBlank()) {
                 return errorJson("Mandate ID is required");
             }
+            String normalizedPaymentMethod = PaymentMethodSupport.normalize(paymentMethod);
             User user = resolveUser(userEmail);
             CartDto cartDto = cartService.getCartDto(user);
             List<String> warnings = new ArrayList<>();
@@ -131,7 +134,7 @@ public class OrderTools {
                         "CHECKOUT", "CART", null, cartDto.subtotal(), authorizationFailure);
                 return errorJson("Cannot checkout: " + authorizationFailure);
             }
-            CheckoutRequest request = new CheckoutRequest(paymentMethod.strip());
+            CheckoutRequest request = new CheckoutRequest(normalizedPaymentMethod);
             OrderDto order = orderService.checkout(user, request, null, agentId.strip(), mandateId.strip());
             if (!warnings.isEmpty()) {
                 return responseWithWarnings("order", order, warnings);
@@ -196,10 +199,14 @@ public class OrderTools {
                     required = false) String paymentCredentialId,
             @ToolParam(description = "Optional approved purchase approval ID for audit linkage",
                     required = false) String approvalId) {
+        String trimmedOrderNumber;
         try {
-            if (orderNumber == null || orderNumber.isBlank()) {
-                return errorJson(ORDER_NUMBER_REQUIRED);
-            }
+            trimmedOrderNumber = OrderNumberSupport.normalizeGeneratedOrderNumber(orderNumber);
+        } catch (IllegalArgumentException e) {
+            return errorJson(e.getMessage());
+        }
+
+        try {
             if (agentId == null || agentId.isBlank()) {
                 return errorJson("Agent ID is required");
             }
@@ -207,7 +214,6 @@ public class OrderTools {
                 return errorJson("Mandate ID is required");
             }
             User user = resolveUser(userEmail);
-            String trimmedOrderNumber = orderNumber.strip();
             // Verify ownership before confirming — getOrder throws UnauthorizedException if mismatch
             orderService.getOrder(user, trimmedOrderNumber);
             Order order = orderService.getOrderEntity(trimmedOrderNumber);

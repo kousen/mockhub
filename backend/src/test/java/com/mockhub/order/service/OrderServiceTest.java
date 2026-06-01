@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -199,6 +200,57 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("checkout - given uppercase payment method - stores normalized value")
+    void checkout_givenUppercasePaymentMethod_storesNormalizedValue() {
+        CheckoutRequest request = new CheckoutRequest("STRIPE");
+
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
+        when(orderRepository.findMaxOrderNumberByPrefix(anyString())).thenReturn(Optional.empty());
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(1L);
+            order.setCreatedAt(Instant.now());
+            return order;
+        });
+
+        OrderDto result = orderService.checkout(testUser, request, null);
+
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        assertEquals("stripe", orderCaptor.getValue().getPaymentMethod());
+        assertEquals("stripe", result.paymentMethod());
+    }
+
+    @Test
+    @DisplayName("checkout - given unsupported payment method - rejects before reserving tickets")
+    void checkout_givenUnsupportedPaymentMethod_rejectsBeforeReservingTickets() {
+        CheckoutRequest request = new CheckoutRequest("use the mock payment fallback for this purchase");
+
+        ConflictException exception = assertThrows(ConflictException.class,
+                () -> orderService.checkout(testUser, request, null));
+
+        assertEquals("Unsupported payment method 'use the mock payment fallback for this purchase'. "
+                + "Supported payment methods are: mock, stripe", exception.getMessage());
+        verify(cartRepository, never()).findByUser(any());
+        verify(ticketService, never()).reserveTicket(anyLong());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("checkout - given blank payment method - rejects before reserving tickets")
+    void checkout_givenBlankPaymentMethod_rejectsBeforeReservingTickets() {
+        CheckoutRequest request = new CheckoutRequest("   ");
+
+        ConflictException exception = assertThrows(ConflictException.class,
+                () -> orderService.checkout(testUser, request, null));
+
+        assertEquals("Payment method is required", exception.getMessage());
+        verify(cartRepository, never()).findByUser(any());
+        verify(ticketService, never()).reserveTicket(anyLong());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("checkout - given empty cart - throws ConflictException")
     void checkout_givenEmptyCart_throwsConflictException() {
         testCart.setItems(new ArrayList<>());
@@ -248,6 +300,34 @@ class OrderServiceTest {
         assertNotNull(result);
         assertEquals("MH-20260319-0001", result.orderNumber());
         verify(cartRepository, org.mockito.Mockito.never()).findByUser(any());
+    }
+
+    @Test
+    @DisplayName("checkout - given duplicate idempotency key with invalid payment method - returns existing order")
+    void checkout_givenDuplicateIdempotencyKeyWithInvalidPaymentMethod_returnsExistingOrder() {
+        Order existingOrder = new Order();
+        existingOrder.setId(99L);
+        existingOrder.setUser(testUser);
+        existingOrder.setOrderNumber("MH-20260319-0001");
+        existingOrder.setStatus(OrderStatus.PENDING);
+        existingOrder.setSubtotal(new BigDecimal("75.00"));
+        existingOrder.setServiceFee(new BigDecimal("7.50"));
+        existingOrder.setTotal(new BigDecimal("82.50"));
+        existingOrder.setPaymentMethod("mock");
+        existingOrder.setIdempotencyKey("idem-key-123");
+        existingOrder.setItems(new ArrayList<>());
+        existingOrder.setCreatedAt(Instant.now());
+
+        when(orderRepository.findByIdempotencyKey("idem-key-123"))
+                .thenReturn(Optional.of(existingOrder));
+
+        CheckoutRequest request = new CheckoutRequest("verbose invalid payment method");
+        OrderDto result = orderService.checkout(testUser, request, "idem-key-123");
+
+        assertNotNull(result);
+        assertEquals("MH-20260319-0001", result.orderNumber());
+        verify(cartRepository, never()).findByUser(any());
+        verify(orderRepository, never()).save(any());
     }
 
     @Test

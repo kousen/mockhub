@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -225,7 +226,8 @@ class AcpCheckoutServiceTest {
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
         when(cartService.addToCart(testUser, 10L)).thenReturn(
                 new CartDto(1L, 1L, List.of(), BigDecimal.ZERO, 1, null));
-        when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), eq("idem-123"), eq(AGENT_ID), eq(MANDATE_ID)))
+        when(orderService.checkout(
+                eq(testUser), any(CheckoutRequest.class), eq("idem-123"), eq(AGENT_ID), eq(MANDATE_ID)))
                 .thenReturn(testOrderDto);
 
         AcpCheckoutResponse response = acpCheckoutService.createCheckout(request);
@@ -243,6 +245,51 @@ class AcpCheckoutServiceTest {
         verify(cartService).clearCart(testUser);
         verify(cartService).addToCart(testUser, 10L);
         verify(orderService).checkout(eq(testUser), any(CheckoutRequest.class), eq("idem-123"), eq(AGENT_ID), eq(MANDATE_ID));
+    }
+
+    @Test
+    @DisplayName("createCheckout - uppercase payment method - normalizes before checkout")
+    void createCheckout_uppercasePaymentMethod_normalizesBeforeCheckout() {
+        AcpCheckoutRequest request = createCheckoutRequest(
+                "buyer@test.com",
+                List.of(new AcpLineItem(10L, 1)),
+                "STRIPE",
+                "idem-123"
+        );
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(cartService.addToCart(testUser, 10L)).thenReturn(
+                new CartDto(1L, 1L, List.of(), BigDecimal.ZERO, 1, null));
+        when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), eq("idem-123"), eq(AGENT_ID), eq(MANDATE_ID)))
+                .thenReturn(testOrderDto);
+
+        acpCheckoutService.createCheckout(request);
+
+        ArgumentCaptor<CheckoutRequest> requestCaptor = ArgumentCaptor.forClass(CheckoutRequest.class);
+        verify(orderService).checkout(
+                eq(testUser), requestCaptor.capture(), eq("idem-123"), eq(AGENT_ID), eq(MANDATE_ID));
+        assertEquals("stripe", requestCaptor.getValue().paymentMethod());
+    }
+
+    @Test
+    @DisplayName("createCheckout - verbose payment method - rejects before cart mutation")
+    void createCheckout_verbosePaymentMethod_rejectsBeforeCartMutation() {
+        AcpCheckoutRequest request = createCheckoutRequest(
+                "buyer@test.com",
+                List.of(new AcpLineItem(10L, 1)),
+                "use the mock payment fallback for this purchase",
+                "idem-123"
+        );
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+
+        ConflictException exception = assertThrows(ConflictException.class, () ->
+                acpCheckoutService.createCheckout(request));
+
+        assertEquals("Unsupported payment method 'use the mock payment fallback for this purchase'. "
+                + "Supported payment methods are: mock, stripe", exception.getMessage());
+        verify(cartService, never()).clearCart(any());
+        verify(orderService, never()).checkout(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -621,6 +668,39 @@ class AcpCheckoutServiceTest {
         verify(cartService).addToCart(testUser, 10L);
         // Added new listing 30L
         verify(cartService).addToCart(testUser, 30L);
+    }
+
+    @Test
+    @DisplayName("updateCheckout - stripe order - preserves original payment method")
+    void updateCheckout_givenStripeOrder_preservesOriginalPaymentMethod() {
+        List<OrderItemDto> existingItems = List.of(
+                new OrderItemDto(1L, 10L, 100L, "Concert A", "concert-a",
+                        "Floor", "A", "1", "GENERAL", new BigDecimal("50.00")));
+        OrderDto pendingOrder = new OrderDto(
+                1L, "MH-20260323-0001", "PENDING",
+                new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
+                "stripe", null, Instant.now(), existingItems, null, null);
+        OrderDto newOrder = new OrderDto(
+                2L, "MH-20260323-0002", "PENDING",
+                new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
+                "stripe", null, Instant.now(), existingItems, null, null);
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(pendingOrder);
+        when(orderService.getOrderEntity("MH-20260323-0001"))
+                .thenReturn(createAgentOrder("MH-20260323-0001", "stripe"));
+        when(cartService.addToCart(eq(testUser), any(Long.class))).thenReturn(
+                new CartDto(1L, 1L, List.of(), BigDecimal.ZERO, 1, null));
+        when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), eq(null), eq(AGENT_ID), eq(MANDATE_ID)))
+                .thenReturn(newOrder);
+
+        acpCheckoutService.updateCheckout(
+                "MH-20260323-0001", createUpdateRequest(null, null), "buyer@test.com");
+
+        ArgumentCaptor<CheckoutRequest> requestCaptor = ArgumentCaptor.forClass(CheckoutRequest.class);
+        verify(orderService).checkout(
+                eq(testUser), requestCaptor.capture(), eq(null), eq(AGENT_ID), eq(MANDATE_ID));
+        assertEquals("stripe", requestCaptor.getValue().paymentMethod());
     }
 
     @Test

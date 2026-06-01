@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -43,6 +44,7 @@ import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.entity.Category;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -180,7 +182,8 @@ class OrderToolsTest {
                     .thenReturn(true);
             OrderDto orderDto = new OrderDto(
                     null, null, null, null, null, null, null, null, null, null, null, null);
-            when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID)))
+            when(orderService.checkout(
+                    eq(testUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID)))
                     .thenReturn(orderDto);
 
             String result = orderTools.checkout("buyer@example.com", "mock", AGENT_ID, MANDATE_ID);
@@ -189,6 +192,40 @@ class OrderToolsTest {
             verify(mandateService).validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
                     java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor");
             assertTrue(!result.contains("\"error\""), "Result should not contain error field");
+        }
+
+        @Test
+        @DisplayName("given uppercase payment method - normalizes before checkout")
+        void givenUppercasePaymentMethod_normalizesBeforeCheckout() {
+            stubUserLookup("buyer@example.com");
+            when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
+            stubPassingEval();
+            when(mandateService.validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
+                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor"))
+                    .thenReturn(true);
+            OrderDto orderDto = new OrderDto(
+                    null, null, null, null, null, null, null, null, null, null, null, null);
+            when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID)))
+                    .thenReturn(orderDto);
+
+            orderTools.checkout("buyer@example.com", "STRIPE", AGENT_ID, MANDATE_ID);
+
+            ArgumentCaptor<CheckoutRequest> requestCaptor = ArgumentCaptor.forClass(CheckoutRequest.class);
+            verify(orderService).checkout(
+                    eq(testUser), requestCaptor.capture(), any(), eq(AGENT_ID), eq(MANDATE_ID));
+            assertEquals("stripe", requestCaptor.getValue().paymentMethod());
+        }
+
+        @Test
+        @DisplayName("given verbose payment method - returns error before checkout")
+        void givenVerbosePaymentMethod_returnsErrorBeforeCheckout() {
+            String result = orderTools.checkout(
+                    "buyer@example.com", "use the mock payment fallback for this purchase", AGENT_ID, MANDATE_ID);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Unsupported payment method"), "Result should explain supported methods");
+            verify(orderService, never()).checkout(any(), any(), any(), any(), any());
+            verify(cartService, never()).getCartDto(any());
         }
 
         @Test
@@ -480,6 +517,25 @@ class OrderToolsTest {
         }
 
         @Test
+        @DisplayName("given malformed order number - returns validation error before lookup")
+        void givenMalformedOrderNumber_returnsValidationErrorBeforeLookup() {
+            String result = orderTools.confirmOrder(
+                    "buyer@example.com",
+                    "MH-20260319-0001 and please confirm this order now",
+                    AGENT_ID,
+                    MANDATE_ID,
+                    null,
+                    null,
+                    null);
+
+            assertTrue(result.contains("\"error\""), "Result should contain error field");
+            assertTrue(result.contains("Order number must use format"),
+                    "Result should describe the order number contract");
+            verify(userRepository, never()).findByEmail(any());
+            verify(agentRiskService, never()).recordCheckoutFailure(any(), any(), any(), any(), any());
+        }
+
+        @Test
         @DisplayName("given order number with whitespace - strips whitespace before lookup")
         void givenOrderNumberWithWhitespace_stripsWhitespace() {
             stubUserLookup("buyer@example.com");
@@ -522,10 +578,10 @@ class OrderToolsTest {
         @DisplayName("given service throws exception - returns error JSON")
         void givenServiceThrowsException_returnsErrorJson() {
             stubUserLookup("buyer@example.com");
-            Order orderEntity = createAgentOrderEntity("MH-INVALID");
-            when(orderService.getOrder(testUser, "MH-INVALID")).thenReturn(
+            Order orderEntity = createAgentOrderEntity("MH-20260319-9999");
+            when(orderService.getOrder(testUser, "MH-20260319-9999")).thenReturn(
                     new OrderDto(null, null, null, null, null, null, null, null, null, null, null, null));
-            when(orderService.getOrderEntity("MH-INVALID")).thenReturn(orderEntity);
+            when(orderService.getOrderEntity("MH-20260319-9999")).thenReturn(orderEntity);
             stubPassingEval();
             when(paymentService.createPaymentIntent(orderEntity))
                     .thenReturn(new PaymentIntentDto("pi_invalid", "secret", java.math.BigDecimal.TEN, "USD"));
@@ -533,7 +589,7 @@ class OrderToolsTest {
                     .when(paymentService).confirmPayment("pi_invalid");
 
             String result = orderTools.confirmOrder(
-                    "buyer@example.com", "MH-INVALID", AGENT_ID, MANDATE_ID, null, null, null);
+                    "buyer@example.com", "MH-20260319-9999", AGENT_ID, MANDATE_ID, null, null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to confirm order"), "Result should contain failure message");

@@ -95,8 +95,10 @@ public class OrderService {
             }
         }
 
+        String normalizedPaymentMethod = PaymentMethodSupport.normalize(request.paymentMethod());
         List<CartItem> cartItems = validateAndReserveTickets(user);
-        Order order = createOrder(user, request, cartItems, idempotencyKey, agentId, mandateId);
+        Order order = createOrder(user, cartItems, idempotencyKey, agentId,
+                mandateId, normalizedPaymentMethod);
 
         Order savedOrder = orderRepository.save(order);
         log.info("Created order {} for user {} with {} items, total={}",
@@ -313,8 +315,9 @@ public class OrderService {
         return cartItems;
     }
 
-    private Order createOrder(User user, CheckoutRequest request, List<CartItem> cartItems,
-                               String idempotencyKey, String agentId, String mandateId) {
+    private Order createOrder(User user, List<CartItem> cartItems,
+                               String idempotencyKey, String agentId, String mandateId,
+                               String paymentMethod) {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (CartItem cartItem : cartItems) {
             subtotal = subtotal.add(cartItem.getListing().getComputedPrice());
@@ -329,7 +332,7 @@ public class OrderService {
         order.setSubtotal(subtotal);
         order.setServiceFee(serviceFee);
         order.setTotal(total);
-        order.setPaymentMethod(request.paymentMethod());
+        order.setPaymentMethod(paymentMethod);
         order.setAgentId(normalize(agentId));
         order.setMandateId(normalize(mandateId));
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
