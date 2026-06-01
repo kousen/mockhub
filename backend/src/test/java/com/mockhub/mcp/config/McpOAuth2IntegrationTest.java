@@ -1,15 +1,15 @@
 package com.mockhub.mcp.config;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Base64;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -22,10 +22,13 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.testcontainers.containers.PostgreSQLContainer;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Integration test for the MCP OAuth 2.1 security configuration.
@@ -80,6 +83,9 @@ class McpOAuth2IntegrationTest {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @LocalServerPort
+    private int port;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Nested
@@ -99,24 +105,32 @@ class McpOAuth2IntegrationTest {
         @DisplayName("DCR client credentials token uses MCP access token TTL")
         void clientCredentialsToken_usesMcpAccessTokenTtl() throws Exception {
             JsonNode registration = registerClient("codex-mcp-client-token");
-            String clientId = registration.get("client_id").asText();
-            String clientSecret = registration.get("client_secret").asText();
+            JsonNode token = requestClientCredentialsToken(registration, null);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setBasicAuth(clientId, clientSecret);
-
-            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("grant_type", "client_credentials");
-
-            ResponseEntity<String> response = restTemplate.postForEntity(
-                    "/oauth2/token", new HttpEntity<>(body, headers), String.class);
-
-            assertEquals(HttpStatus.OK, response.getStatusCode(),
-                    "Token endpoint should accept dynamically registered client: " + response.getBody());
-            JsonNode token = objectMapper.readTree(response.getBody());
             assertTrue(token.get("expires_in").asLong() > 28_000,
                     "DCR client access token should use the 8-hour MCP TTL: " + token);
+        }
+
+        @Test
+        @DisplayName("DCR token without resource defaults audience to MCP resource")
+        void clientCredentialsToken_withoutResource_defaultsAudienceToMcpResource() throws Exception {
+            JsonNode registration = registerClient("codex-mcp-client-default-audience");
+
+            JsonNode token = requestClientCredentialsToken(registration, null);
+            JsonNode jwt = decodeJwtPayload(token.get("access_token").asText());
+
+            assertEquals(localMcpResourceUri(), jwt.get("aud").asText());
+        }
+
+        @Test
+        @DisplayName("DCR token with resource uses requested audience")
+        void clientCredentialsToken_withResource_usesRequestedAudience() throws Exception {
+            JsonNode registration = registerClient("codex-mcp-client-requested-audience");
+
+            JsonNode token = requestClientCredentialsToken(registration, "https://example.test/custom-mcp");
+            JsonNode jwt = decodeJwtPayload(token.get("access_token").asText());
+
+            assertEquals("https://example.test/custom-mcp", jwt.get("aud").asText());
         }
     }
 
@@ -170,6 +184,24 @@ class McpOAuth2IntegrationTest {
                     "/mcp/", HttpMethod.POST, request, String.class);
 
             assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        }
+
+        @Test
+        @DisplayName("MCP endpoint accepts DCR token without resource parameter")
+        void mcpEndpoint_withDcrTokenWithoutResource_acceptsRequest() throws Exception {
+            JsonNode registration = registerClient("codex-mcp-client-mcp-request");
+            JsonNode token = requestClientCredentialsToken(registration, null);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(token.get("access_token").asText());
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Accept", "text/event-stream, application/json");
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    "/mcp", new HttpEntity<>(mcpInitializeRequest().toString(), headers), String.class);
+
+            assertEquals(HttpStatus.OK, response.getStatusCode(),
+                    "MCP endpoint should accept a DCR token with default MCP audience: " + response.getBody());
         }
     }
 
@@ -228,6 +260,54 @@ class McpOAuth2IntegrationTest {
         assertTrue(response.getStatusCode().is2xxSuccessful(),
                 "DCR endpoint should register clients: " + response.getBody());
         return objectMapper.readTree(response.getBody());
+    }
+
+    private JsonNode requestClientCredentialsToken(JsonNode registration, String resource) throws Exception {
+        String clientId = registration.get("client_id").asText();
+        String clientSecret = registration.get("client_secret").asText();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.setBasicAuth(clientId, clientSecret);
+
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("grant_type", "client_credentials");
+        if (resource != null) {
+            body.add("resource", resource);
+        }
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                "/oauth2/token", new HttpEntity<>(body, headers), String.class);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Token endpoint should accept dynamically registered client: " + response.getBody());
+        return objectMapper.readTree(response.getBody());
+    }
+
+    private JsonNode decodeJwtPayload(String accessToken) throws Exception {
+        String encodedPayload = accessToken.split("\\.")[1];
+        byte[] decodedPayload = Base64.getUrlDecoder().decode(encodedPayload);
+        return objectMapper.readTree(decodedPayload);
+    }
+
+    private ObjectNode mcpInitializeRequest() {
+        ObjectNode params = objectMapper.createObjectNode();
+        ObjectNode clientInfo = objectMapper.createObjectNode();
+        clientInfo.put("name", "test-client");
+        clientInfo.put("version", "1.0");
+        params.set("clientInfo", clientInfo);
+        params.put("protocolVersion", "2025-03-26");
+
+        ObjectNode request = objectMapper.createObjectNode();
+        request.put("jsonrpc", "2.0");
+        request.put("method", "initialize");
+        request.put("id", 1);
+        request.set("params", params);
+        return request;
+    }
+
+    private String localMcpResourceUri() {
+        return "http://localhost:" + port + "/mcp";
     }
 
     private static boolean arrayContains(JsonNode array, String expectedValue) {

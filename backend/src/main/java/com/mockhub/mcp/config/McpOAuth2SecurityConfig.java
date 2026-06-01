@@ -2,29 +2,39 @@ package com.mockhub.mcp.config;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.time.Duration;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
 import org.slf4j.Logger;
+import org.springaicommunity.mcp.security.authorizationserver.config.McpAuthorizationServerConfigurer;
+import org.springaicommunity.mcp.security.server.config.McpServerOAuth2Configurer;
+import org.springaicommunity.mcp.security.server.oauth2.metadata.ResourceIdentifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
-import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.OAuth2Token;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2ClientRegistration;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationGrantAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationProvider;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
@@ -32,11 +42,14 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.converter.OAuth2ClientRegistrationRegisteredClientConverter;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.JwtGenerator;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2RefreshTokenGenerator;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springaicommunity.mcp.security.authorizationserver.config.McpAuthorizationServerConfigurer;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springaicommunity.mcp.security.server.config.McpServerOAuth2Configurer;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -65,8 +78,10 @@ import com.nimbusds.jose.proc.SecurityContext;
 public class McpOAuth2SecurityConfig {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(McpOAuth2SecurityConfig.class);
+    private static final String RESOURCE_PARAM_NAME = "resource";
     private static final String OAUTH2_LOGIN_PATH = "/oauth2/login";
     private static final String OAUTH2_AUTHORIZED_PATH = "/oauth2/authorized";
+    private static final ResourceIdentifier MCP_RESOURCE_IDENTIFIER = new ResourceIdentifier("/mcp");
 
     /**
      * Authorization server SecurityFilterChain.
@@ -151,6 +166,35 @@ public class McpOAuth2SecurityConfig {
     @Bean
     public JwtDecoder mcpJwtDecoder(JWKSource<SecurityContext> jwkSource) {
         return NimbusJwtDecoder.withJwkSource(jwkSource).build();
+    }
+
+    @Bean
+    public OAuth2TokenGenerator<? extends OAuth2Token> mcpOAuth2TokenGenerator(
+            JWKSource<SecurityContext> jwkSource) {
+        JwtGenerator jwtGenerator = new JwtGenerator(new NimbusJwtEncoder(jwkSource));
+        jwtGenerator.setJwtCustomizer(mcpAudienceTokenCustomizer());
+        OAuth2RefreshTokenGenerator refreshTokenGenerator = new OAuth2RefreshTokenGenerator();
+        return new DelegatingOAuth2TokenGenerator(jwtGenerator, refreshTokenGenerator);
+    }
+
+    static OAuth2TokenCustomizer<JwtEncodingContext> mcpAudienceTokenCustomizer() {
+        return context -> {
+            if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())
+                    || context.getAuthorizedScopes().contains(OidcScopes.OPENID)) {
+                return;
+            }
+            context.getClaims().claim(JwtClaimNames.AUD, requestedResource(context));
+        };
+    }
+
+    private static String requestedResource(JwtEncodingContext context) {
+        if (context.getAuthorizationGrant() instanceof OAuth2AuthorizationGrantAuthenticationToken token) {
+            Object resource = token.getAdditionalParameters().get(RESOURCE_PARAM_NAME);
+            if (resource instanceof String resourceValue && !resourceValue.isBlank()) {
+                return resourceValue;
+            }
+        }
+        return MCP_RESOURCE_IDENTIFIER.getResource();
     }
 
     /**
