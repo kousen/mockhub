@@ -73,7 +73,7 @@ GET /api/v1/my/owned-tickets — Tickets from confirmed orders available to reli
 GET /api/v1/my/earnings — Seller earnings summary with recent sales
 
 ## Checkout (requires auth)
-POST /api/v1/orders/checkout — Create order from cart. JSON body: {"paymentMethod": "string"}. Optional header: Idempotency-Key
+POST /api/v1/orders/checkout — Create order from cart. JSON body: {"paymentMethod": "mock"|"stripe"}. Optional header: Idempotency-Key
 
 ## Orders (requires auth)
 GET /api/v1/orders — List user's orders (paginated)
@@ -132,7 +132,7 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 - removeFromCart(userEmail, itemId) — remove cart item
 - clearCart(userEmail) — empty cart
 - refreshCart(userEmail) — reset cart 15-minute TTL without modifying contents
-- checkout(userEmail, paymentMethod, agentId, mandateId) — create order from cart. May include agent-risk warnings.
+- checkout(userEmail, paymentMethod, agentId, mandateId) — create order from cart. paymentMethod must be exactly "mock" or "stripe"; use "mock" for MockHub's built-in mock-payment flow. May include agent-risk warnings.
 - confirmOrder(userEmail, orderNumber, agentId, mandateId, paymentIntentId?, paymentCredentialId?, approvalId?) — complete payment; non-mock payments require paymentIntentId. Optional paymentCredentialId validates scoped payment authority before payment. Optional approvalId links the purchase to an approved audit record. May include agent-risk warnings.
 - getOrder(userEmail, orderNumber) — order details
 - listOrders(userEmail, page?, size?) — order history with pagination
@@ -154,7 +154,7 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 
 ## ACP Endpoints (Agentic Commerce Protocol, requires API key: X-API-Key header)
 ACP-compatible checkout endpoints at /acp/v1/:
-POST /acp/v1/checkout — Create checkout. JSON body: {"buyerEmail", "lineItems": [{"listingId", "quantity"}], "agentId", "mandateId", "paymentMethod", "idempotencyKey"}
+POST /acp/v1/checkout — Create checkout. JSON body: {"buyerEmail", "lineItems": [{"listingId", "quantity"}], "agentId", "mandateId", "paymentMethod": "mock"|"stripe", "idempotencyKey"}. If omitted, paymentMethod defaults to "mock".
 GET /acp/v1/checkout/{checkoutId} — Get checkout status. Header: X-Buyer-Email
 PUT /acp/v1/checkout/{checkoutId} — Update checkout (PENDING only). JSON body: {"agentId", "mandateId", "addItems", "removeListingIds"}. Header: X-Buyer-Email
 POST /acp/v1/checkout/{checkoutId}/complete — Complete checkout. JSON body: {"agentId", "mandateId", "paymentIntentId", "approvalId", "paymentCredentialId"}. Header: X-Buyer-Email
@@ -215,7 +215,7 @@ Email/SMS provider delivery receipts are not persisted; the evidence record mark
 
 ### Purchase Flow with Mandates
 
-findTickets(query, filters) → getBestMandate(agentId, userEmail, eventSlug, categorySlug?, amount?, sectionName?) → addToCart(userEmail, listingId, agentId, mandateId) → checkout(userEmail, paymentMethod, agentId, mandateId) → confirmOrder(userEmail, orderNumber, agentId, mandateId)
+findTickets(query, filters) → getBestMandate(agentId, userEmail, eventSlug, categorySlug?, amount?, sectionName?) → addToCart(userEmail, listingId, agentId, mandateId) → checkout(userEmail, paymentMethod="mock", agentId, mandateId) → confirmOrder(userEmail, orderNumber, agentId, mandateId)
 
 Each step validates the mandate via eval conditions. Spend is recorded on confirmation. If the order is later cancelled, spend is reversed.
 

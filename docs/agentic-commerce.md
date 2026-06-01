@@ -60,6 +60,7 @@ An agent can now execute a full purchase on behalf of a user:
 3. checkout(userEmail="buyer@example.com", paymentMethod="mock",
             agentId="shopping-agent-1", mandateId="abc-123")
    → Validates listings, reserves tickets, creates PENDING order
+   → Requires paymentMethod to be exactly "mock" or "stripe"; use "mock" for the built-in mock-payment flow
    → AgentRiskCondition checks recent agent risk signals before the order is created
    → Records checkout attempts and returns OrderDto with any warnings
 
@@ -364,6 +365,7 @@ The listing search endpoint is a MockHub offer-discovery extension around the pi
      "paymentMethod": "mock"
    }
    → Returns AcpCheckoutResponse with status CREATED and commercePolicy
+   → paymentMethod is optional for ACP checkout; when present it must be exactly "mock" or "stripe"
 
 3. Agent completes checkout
    POST /acp/v1/checkout/MH-20260323-0001/complete

@@ -322,7 +322,10 @@ components:
           minItems: 1
         paymentMethod:
           type: string
-          description: Payment method (default "mock")
+          description: Payment method. Defaults to "mock" when omitted.
+          enum:
+            - mock
+            - stripe
           default: mock
         idempotencyKey:
           type: string
