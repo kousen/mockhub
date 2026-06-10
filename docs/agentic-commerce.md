@@ -559,6 +559,11 @@ The implementation is considered working when all of the following are true:
 ```yaml
 # MCP OAuth2 (when mcp-oauth2 profile active)
 mockhub.mcp.oauth2.issuer-uri: ${MCP_OAUTH2_ISSUER_URI:http://localhost:8080}
+# Access tokens refresh silently; TTL only bounds a stolen bearer token's usefulness.
+mockhub.mcp.oauth2.access-token-ttl: ${MCP_OAUTH2_ACCESS_TOKEN_TTL:8h}
+# Refresh tokens rotate, so this is a sliding window: active connectors never
+# re-auth, idle ones expire. Spending is bounded by mandates, not token lifetime.
+mockhub.mcp.oauth2.refresh-token-ttl: ${MCP_OAUTH2_REFRESH_TOKEN_TTL:60d}
 
 # ACP API key
 mockhub.mcp.api-key: ${MCP_API_KEY:dev-api-key}

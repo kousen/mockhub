@@ -71,6 +71,24 @@ public class McpOAuth2SecurityConfig {
     private static final String OAUTH2_LOGIN_PATH = "/oauth2/login";
     private static final String OAUTH2_AUTHORIZED_PATH = "/oauth2/authorized";
 
+    private final Duration accessTokenTtl;
+    private final Duration refreshTokenTtl;
+
+    /**
+     * Token lifetimes are configurable so different policies can be demonstrated
+     * (e.g. a 5-minute access token to make the silent-refresh flow visible).
+     * Refresh tokens rotate on use, so {@code refreshTokenTtl} is a sliding window:
+     * an actively-used connector never re-authenticates, an idle one expires.
+     * Spending authority is bounded by mandate limits and expiry, not token lifetime,
+     * which is why a generous refresh window is acceptable here.
+     */
+    public McpOAuth2SecurityConfig(
+            @Value("${mockhub.mcp.oauth2.access-token-ttl:8h}") Duration accessTokenTtl,
+            @Value("${mockhub.mcp.oauth2.refresh-token-ttl:60d}") Duration refreshTokenTtl) {
+        this.accessTokenTtl = accessTokenTtl;
+        this.refreshTokenTtl = refreshTokenTtl;
+    }
+
     /**
      * Authorization server SecurityFilterChain.
      *
@@ -88,7 +106,7 @@ public class McpOAuth2SecurityConfig {
         http.with(McpAuthorizationServerConfigurer.mcpAuthorizationServer()
                 .authorizationServer(authz -> authz.clientRegistrationEndpoint(registration ->
                         registration.authenticationProviders(
-                                McpOAuth2SecurityConfig::customizeClientRegistrationProviders))),
+                                this::customizeClientRegistrationProviders))),
                 Customizer.withDefaults());
 
         // Scope this chain to OAuth2 authorization server endpoints + login page.
@@ -228,16 +246,16 @@ public class McpOAuth2SecurityConfig {
         return new InMemoryRegisteredClientRepository(claudeClient);
     }
 
-    private static void customizeClientRegistrationProviders(
+    private void customizeClientRegistrationProviders(
             List<AuthenticationProvider> authenticationProviders) {
         authenticationProviders.stream()
                 .filter(OAuth2ClientRegistrationAuthenticationProvider.class::isInstance)
                 .map(OAuth2ClientRegistrationAuthenticationProvider.class::cast)
                 .forEach(provider -> provider.setRegisteredClientConverter(
-                        McpOAuth2SecurityConfig::toMcpRegisteredClient));
+                        this::toMcpRegisteredClient));
     }
 
-    static RegisteredClient toMcpRegisteredClient(OAuth2ClientRegistration clientRegistration) {
+    RegisteredClient toMcpRegisteredClient(OAuth2ClientRegistration clientRegistration) {
         Converter<OAuth2ClientRegistration, RegisteredClient> defaultConverter =
                 new OAuth2ClientRegistrationRegisteredClientConverter();
         RegisteredClient registeredClient = defaultConverter.convert(clientRegistration);
@@ -247,17 +265,17 @@ public class McpOAuth2SecurityConfig {
         return applyMcpClientDefaults(registeredClient);
     }
 
-    static RegisteredClient applyMcpClientDefaults(RegisteredClient registeredClient) {
+    RegisteredClient applyMcpClientDefaults(RegisteredClient registeredClient) {
         return RegisteredClient.from(registeredClient)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .tokenSettings(mcpTokenSettings())
                 .build();
     }
 
-    private static TokenSettings mcpTokenSettings() {
+    private TokenSettings mcpTokenSettings() {
         return TokenSettings.builder()
-                .accessTokenTimeToLive(Duration.ofHours(8))
-                .refreshTokenTimeToLive(Duration.ofDays(30))
+                .accessTokenTimeToLive(accessTokenTtl)
+                .refreshTokenTimeToLive(refreshTokenTtl)
                 .reuseRefreshTokens(false)
                 .build();
     }

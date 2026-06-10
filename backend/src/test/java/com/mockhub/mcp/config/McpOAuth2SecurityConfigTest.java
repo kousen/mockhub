@@ -28,7 +28,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class McpOAuth2SecurityConfigTest {
 
-    private final McpOAuth2SecurityConfig config = new McpOAuth2SecurityConfig();
+    private static final Duration DEFAULT_ACCESS_TTL = Duration.ofHours(8);
+    private static final Duration DEFAULT_REFRESH_TTL = Duration.ofDays(60);
+
+    private final McpOAuth2SecurityConfig config =
+            new McpOAuth2SecurityConfig(DEFAULT_ACCESS_TTL, DEFAULT_REFRESH_TTL);
 
     private static final JWKSelector RSA_SELECTOR = new JWKSelector(
             new JWKMatcher.Builder().keyType(KeyType.RSA).build());
@@ -110,23 +114,35 @@ class McpOAuth2SecurityConfigTest {
     }
 
     @Test
-    void registeredClientRepository_claudeClientHasEightHourAccessToken() {
+    void registeredClientRepository_claudeClientUsesConfiguredAccessTokenTtl() {
         RegisteredClientRepository repository = config.registeredClientRepository();
 
         var client = repository.findByClientId("claude-mcp-client");
         assertNotNull(client);
         Duration accessTokenTtl = client.getTokenSettings().getAccessTokenTimeToLive();
-        assertEquals(Duration.ofHours(8), accessTokenTtl);
+        assertEquals(DEFAULT_ACCESS_TTL, accessTokenTtl);
     }
 
     @Test
-    void registeredClientRepository_claudeClientHasThirtyDayRefreshToken() {
+    void registeredClientRepository_claudeClientUsesConfiguredRefreshTokenTtl() {
         RegisteredClientRepository repository = config.registeredClientRepository();
 
         var client = repository.findByClientId("claude-mcp-client");
         assertNotNull(client);
         Duration refreshTokenTtl = client.getTokenSettings().getRefreshTokenTimeToLive();
-        assertEquals(Duration.ofDays(30), refreshTokenTtl);
+        assertEquals(DEFAULT_REFRESH_TTL, refreshTokenTtl);
+    }
+
+    @Test
+    void registeredClientRepository_customTtlsFlowThroughToTokenSettings() {
+        McpOAuth2SecurityConfig customConfig =
+                new McpOAuth2SecurityConfig(Duration.ofMinutes(5), Duration.ofDays(7));
+        RegisteredClientRepository repository = customConfig.registeredClientRepository();
+
+        var client = repository.findByClientId("claude-mcp-client");
+        assertNotNull(client);
+        assertEquals(Duration.ofMinutes(5), client.getTokenSettings().getAccessTokenTimeToLive());
+        assertEquals(Duration.ofDays(7), client.getTokenSettings().getRefreshTokenTimeToLive());
     }
 
     @Test
@@ -141,7 +157,7 @@ class McpOAuth2SecurityConfigTest {
 
     @Test
     void toMcpRegisteredClient_dynamicClientHasRefreshTokenGrant() {
-        var client = McpOAuth2SecurityConfig.toMcpRegisteredClient(dynamicAuthorizationCodeRegistration());
+        var client = config.toMcpRegisteredClient(dynamicAuthorizationCodeRegistration());
 
         assertTrue(client.getAuthorizationGrantTypes()
                         .contains(AuthorizationGrantType.REFRESH_TOKEN),
@@ -149,17 +165,17 @@ class McpOAuth2SecurityConfigTest {
     }
 
     @Test
-    void toMcpRegisteredClient_dynamicClientHasEightHourAccessToken() {
-        var client = McpOAuth2SecurityConfig.toMcpRegisteredClient(dynamicAuthorizationCodeRegistration());
+    void toMcpRegisteredClient_dynamicClientUsesConfiguredAccessTokenTtl() {
+        var client = config.toMcpRegisteredClient(dynamicAuthorizationCodeRegistration());
 
-        assertEquals(Duration.ofHours(8), client.getTokenSettings().getAccessTokenTimeToLive());
+        assertEquals(DEFAULT_ACCESS_TTL, client.getTokenSettings().getAccessTokenTimeToLive());
     }
 
     @Test
-    void toMcpRegisteredClient_dynamicClientHasThirtyDayRefreshToken() {
-        var client = McpOAuth2SecurityConfig.toMcpRegisteredClient(dynamicAuthorizationCodeRegistration());
+    void toMcpRegisteredClient_dynamicClientUsesConfiguredRefreshTokenTtl() {
+        var client = config.toMcpRegisteredClient(dynamicAuthorizationCodeRegistration());
 
-        assertEquals(Duration.ofDays(30), client.getTokenSettings().getRefreshTokenTimeToLive());
+        assertEquals(DEFAULT_REFRESH_TTL, client.getTokenSettings().getRefreshTokenTimeToLive());
     }
 
     @Test

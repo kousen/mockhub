@@ -6,3 +6,10 @@ mockhub:
   mcp:
     oauth2:
       issuer-uri: ${MCP_OAUTH2_ISSUER_URI:http://localhost:8080}
+      # Access tokens are refreshed silently by the connector; this only bounds
+      # how long a stolen bearer token stays usable.
+      access-token-ttl: ${MCP_OAUTH2_ACCESS_TOKEN_TTL:8h}
+      # Refresh tokens rotate on each use, so this is a sliding window: an
+      # actively-used connector never re-authenticates, an idle one expires.
+      # Spending is bounded by mandate limits/expiry, not by token lifetime.
+      refresh-token-ttl: ${MCP_OAUTH2_REFRESH_TOKEN_TTL:60d}
