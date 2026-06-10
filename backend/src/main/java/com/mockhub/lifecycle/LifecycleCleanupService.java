@@ -10,6 +10,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mockhub.agentapproval.entity.AgentPurchaseApprovalStatus;
+import com.mockhub.agentapproval.repository.AgentPurchaseApprovalRepository;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.repository.NotificationRepository;
 import com.mockhub.paymentcredential.entity.PaymentCredentialStatus;
@@ -29,15 +31,18 @@ public class LifecycleCleanupService {
     private final EventRepository eventRepository;
     private final NotificationRepository notificationRepository;
     private final PaymentCredentialRepository paymentCredentialRepository;
+    private final AgentPurchaseApprovalRepository approvalRepository;
 
     public LifecycleCleanupService(ListingRepository listingRepository,
                                    EventRepository eventRepository,
                                    NotificationRepository notificationRepository,
-                                   PaymentCredentialRepository paymentCredentialRepository) {
+                                   PaymentCredentialRepository paymentCredentialRepository,
+                                   AgentPurchaseApprovalRepository approvalRepository) {
         this.listingRepository = listingRepository;
         this.eventRepository = eventRepository;
         this.notificationRepository = notificationRepository;
         this.paymentCredentialRepository = paymentCredentialRepository;
+        this.approvalRepository = approvalRepository;
     }
 
     @Scheduled(fixedRateString = "${mockhub.lifecycle.cleanup-interval:900000}")
@@ -50,13 +55,15 @@ public class LifecycleCleanupService {
         int completedEvents = markPastEventsAsCompleted(now);
         int deletedNotifications = deleteOldReadNotifications(now);
         int expiredPaymentCredentials = expirePaymentCredentials(now);
+        int expiredApprovals = expireProposedApprovals(now);
 
         if (expiredByDeadline + expiredByEvent + completedEvents + deletedNotifications
-                + expiredPaymentCredentials > 0) {
+                + expiredPaymentCredentials + expiredApprovals > 0) {
             log.info("Lifecycle cleanup: expired {} listings (deadline), {} listings (past events), "
-                    + "completed {} events, deleted {} old notifications, expired {} payment credentials",
+                    + "completed {} events, deleted {} old notifications, expired {} payment credentials, "
+                    + "expired {} purchase approvals",
                     expiredByDeadline, expiredByEvent, completedEvents, deletedNotifications,
-                    expiredPaymentCredentials);
+                    expiredPaymentCredentials, expiredApprovals);
         }
     }
 
@@ -84,6 +91,11 @@ public class LifecycleCleanupService {
     int expirePaymentCredentials(Instant now) {
         return paymentCredentialRepository.expireActiveCredentials(
                 now, PaymentCredentialStatus.ACTIVE, PaymentCredentialStatus.EXPIRED);
+    }
+
+    int expireProposedApprovals(Instant now) {
+        return approvalRepository.expireProposedApprovals(
+                now, AgentPurchaseApprovalStatus.PROPOSED, AgentPurchaseApprovalStatus.EXPIRED);
     }
 
     private void expireListingsAndReleaseTickets(List<Listing> listings) {

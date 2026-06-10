@@ -1,9 +1,13 @@
 package com.mockhub.ai.service;
 
 /**
- * Carries the authenticated user's email into tool calls during website chat.
- * When set, MCP tools must use this email instead of the LLM-provided userEmail parameter.
- * External MCP requests do not set this context, so the parameter is honored as-is.
+ * Carries the authenticated user's email into tool calls.
+ * When set, MCP tools must use this email instead of the caller-supplied userEmail parameter.
+ *
+ * <p>Two paths set it: website chat ({@code ChatService} pins the logged-in user before invoking
+ * the ChatClient) and OAuth2 MCP ({@code McpAuthenticatedEmailFilter} pins the access-token subject
+ * for {@code /mcp/**} requests). Under plain {@code X-API-Key} MCP auth nothing sets it, so the
+ * parameter is honored as-is.</p>
  */
 public final class ChatContext {
 

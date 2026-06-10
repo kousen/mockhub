@@ -101,7 +101,7 @@ The initial implementation is deliberately mock-backed:
 - If supplied, the credential is validated before payment confirmation against user, agent, merchant (`MOCKHUB`), currency, payment method, expiration, status, and amount limit.
 - One-time credentials are consumed exactly once for the order number. Repeated completion for the same confirmed order is idempotent; reuse for another order is rejected.
 - Revoked, expired, over-limit, wrong-user, or wrong-agent credentials fail before money moves.
-- MCP issuance is a teaching convenience that mirrors `MandateTools`: website chat calls are constrained by `ChatContext`, while external MCP callers are still responsible for supplying the correct user email until a dedicated authenticated credential-issuance UI/API exists.
+- MCP issuance mirrors `MandateTools` and is constrained by the same identity binding (see [Who is the user?](#who-is-the-user-identity-binding) below): under the `mcp-oauth2` profile the credential is issued for the OAuth-authenticated user regardless of the `userEmail` parameter; under `X-API-Key` auth the email is self-asserted.
 
 This keeps three commercial facts separate for students:
 
@@ -345,6 +345,16 @@ The listing search endpoint is a MockHub offer-discovery extension around the pi
 **MCP endpoints** use OAuth 2.1 with Dynamic Client Registration (DCR) when the `mcp-oauth2` profile is active. The embedded Spring Authorization Server handles token issuance and client registration. MCP clients (Codex, Claude, Cursor, etc.) connect directly to `https://mockhub.kousenit.com/mcp` — the OAuth flow is automatic. Production uses this OAuth setup; do not configure `mcp-remote` or `X-API-Key` headers for MCP client access.
 
 **ACP endpoints** use API key authentication (`X-API-Key` header, configured via `mockhub.mcp.api-key`). The `AcpApiKeyFilter` handles this independently.
+
+### Who is the user? (identity binding)
+
+Every user-scoped tool takes a `userEmail` parameter. The trust question is: **who decides that value?** Authentication (proving identity) and authorization (granting an agent authority) are separate acts that happen at separate times — agentic commerce removes the shopping UI, not the one-time identity step.
+
+- **`mcp-oauth2` profile (production / native Claude connector).** The user authorizes the connector once via the OAuth 2.1 authorization-code login (MockHub's own `/oauth2/login`, backed by `UserDetailsServiceImpl`). The access token's subject is that user's email. `McpAuthenticatedEmailFilter` runs on the `/mcp/**` resource-server chain, resolves the token subject to a known user, and pins it into `ChatContext` for the request. Every tool then calls `ChatContext.resolveEmail(...)`, which **ignores** the `userEmail` parameter and uses the authenticated identity. Consequence: an agent can search, create a mandate, issue a payment credential, and purchase entirely through MCP — but only ever *as the user who logged in*. It cannot act as, or mint authority for, anyone else. This is what makes the "delegate the whole purchase to your agent, never visit the website" demo trustworthy rather than forgeable.
+- **`X-API-Key` fallback (local / dev / trusted operator).** There is no per-user identity — the key authenticates the *deployment*, not a person — so `userEmail` is self-asserted and honored as-is. Use the `mcp-oauth2` profile whenever per-user identity binding matters.
+- **Website chat** uses the same `ChatContext` mechanism: `ChatService` pins the logged-in user before invoking the ChatClient tools.
+
+Note that `agentId` remains self-asserted in all modes (agents identify themselves). This is safe because a mandate lookup matches on *both* `agentId` and the resolved `userEmail`, so an agent cannot borrow another agent's mandate for a user.
 
 ### ACP Checkout Flow
 

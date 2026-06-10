@@ -5,18 +5,22 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mockhub.ai.service.ChatContext;
 import com.mockhub.mandate.dto.CreateMandateRequest;
 import com.mockhub.mandate.dto.MandateDto;
 import com.mockhub.mandate.service.MandateService;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -38,6 +42,34 @@ class MandateToolsTest {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
         mandateTools = new MandateTools(mandateService, objectMapper);
+    }
+
+    @AfterEach
+    void clearChatContext() {
+        ChatContext.clear();
+    }
+
+    @Test
+    @DisplayName("createMandate - given authenticated email in context - ignores spoofed userEmail parameter")
+    void createMandate_givenAuthenticatedEmail_ignoresSpoofedParameter() {
+        // Simulates the OAuth2 MCP path: McpAuthenticatedEmailFilter has pinned the
+        // token subject. An agent passing a different userEmail must not be able to
+        // create a mandate for someone else.
+        ChatContext.setAuthenticatedEmail("owner@real.com");
+        MandateDto mandateDto = new MandateDto(
+                1L, "mandate-xyz", "agent-1", "owner@real.com", "PURCHASE",
+                new BigDecimal("100.00"), null, BigDecimal.ZERO, null, null, null, null,
+                "AUTO_PURCHASE", "ACTIVE", null, Instant.now());
+        when(mandateService.createMandate(any(CreateMandateRequest.class))).thenReturn(mandateDto);
+
+        mandateTools.createMandate(
+                "agent-1", "victim@spoof.com", "PURCHASE",
+                new BigDecimal("100.00"), null, null, null, null, null, null);
+
+        ArgumentCaptor<CreateMandateRequest> captor = ArgumentCaptor.forClass(CreateMandateRequest.class);
+        verify(mandateService).createMandate(captor.capture());
+        assertEquals("owner@real.com", captor.getValue().userEmail(),
+                "Mandate must be created for the authenticated user, not the spoofed parameter");
     }
 
     // --- createMandate ---

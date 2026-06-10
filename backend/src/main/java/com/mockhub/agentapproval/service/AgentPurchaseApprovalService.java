@@ -172,8 +172,9 @@ public class AgentPurchaseApprovalService {
     private void ensureNotExpired(AgentPurchaseApproval approval) {
         Instant expiresAt = approval.getExpiresAt();
         if (expiresAt != null && !expiresAt.isAfter(Instant.now())) {
-            approval.setStatus(AgentPurchaseApprovalStatus.EXPIRED);
-            approvalRepository.save(approval);
+            // The durable PROPOSED -> EXPIRED transition is handled by LifecycleCleanupService.
+            // Persisting it here would be discarded by the rollback this ConflictException triggers
+            // (and the rejection is timestamp-based, so it holds regardless of the stored status).
             throw new ConflictException("Purchase approval " + approval.getApprovalId() + " is expired");
         }
     }

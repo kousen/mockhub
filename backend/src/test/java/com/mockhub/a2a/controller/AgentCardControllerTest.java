@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AgentCardController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class})
+@TestPropertySource(properties = "mockhub.public-base-url=https://test.mockhub.example")
 class AgentCardControllerTest {
 
     @Autowired
@@ -64,7 +66,17 @@ class AgentCardControllerTest {
         mockMvc.perform(get("/.well-known/agent.json"))
                 .andExpect(jsonPath("$.supported_interfaces.length()").value(1))
                 .andExpect(jsonPath("$.supported_interfaces[0].protocol_binding").value("mcp/streamable-http"))
-                .andExpect(jsonPath("$.supported_interfaces[0].url").value("https://mockhub.kousenit.com/mcp"));
+                .andExpect(jsonPath("$.supported_interfaces[0].url").value("https://test.mockhub.example/mcp"));
+    }
+
+    @Test
+    @DisplayName("GET /.well-known/agent.json - derives all URLs from configured public base URL")
+    void agentCard_derivesUrlsFromConfiguredBaseUrl() throws Exception {
+        mockMvc.perform(get("/.well-known/agent.json"))
+                .andExpect(jsonPath("$.provider.url").value("https://test.mockhub.example"))
+                .andExpect(jsonPath("$.documentation_url").value("https://test.mockhub.example/llms.txt"))
+                .andExpect(jsonPath("$.security_schemes.oauth2.oauth2_metadata_url")
+                        .value("https://test.mockhub.example/.well-known/openid-configuration"));
     }
 
     @Test

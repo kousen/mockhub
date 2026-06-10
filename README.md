@@ -22,7 +22,7 @@ MockHub mimics the functionality of sites like StubHub and TicketNetwork — reg
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Spring Boot 4, Java 25, Spring AI 2.0.0-M3 |
+| Backend | Spring Boot 4, Java 25, Spring AI 2.0.0-M4 |
 | Database | PostgreSQL 17 (full-text search via tsvector) |
 | Frontend | React 19, TypeScript, Tailwind CSS, shadcn/ui |
 | Build | Gradle 9.4.0, Vite |
@@ -94,7 +94,7 @@ Any authenticated user can both buy and sell tickets.
 - **AI chat assistant** — ask questions about events and pricing (function-calling enabled)
 - **AI recommendations** — personalized event suggestions with relevance scores
 - **AI price predictions** — trend analysis on event detail pages
-- **MCP server** — 33 tools for AI agent integration (events, cart, orders, pricing, mandates, approvals, payment credentials, risk summaries) with OAuth 2.1 authentication and Dynamic Client Registration (DCR) — works natively with Claude (desktop, web, mobile), Cursor, and any MCP-compatible client
+- **MCP server** — 34 tools for AI agent integration (events, cart, orders, pricing, mandates, approvals, payment credentials, risk summaries, purchase evidence) with OAuth 2.1 authentication and Dynamic Client Registration (DCR) — works natively with Claude (desktop, web, mobile), Cursor, and any MCP-compatible client
 - **Buyer preference memory** — authenticated ticket-shopping preferences that agents and recommendations can use explicitly
 - **Agent mandates** — authorization model for AI agents with spending limits, scope/category/event/section restrictions, and optional approval-required completion
 - **Scoped payment credentials** — mock-backed payment authority records that separate "agent may act" from "agent may pay"
