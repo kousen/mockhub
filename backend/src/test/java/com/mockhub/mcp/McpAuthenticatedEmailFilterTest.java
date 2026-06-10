@@ -30,6 +30,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class McpAuthenticatedEmailFilterTest {
 
+    private static final String BUYER_EMAIL = "buyer@test.com";
+
     @Mock
     private UserRepository userRepository;
 
@@ -55,17 +57,17 @@ class McpAuthenticatedEmailFilterTest {
     @Test
     @DisplayName("doFilterInternal - given authenticated known user - pins email for the request and clears after")
     void doFilterInternal_givenAuthenticatedKnownUser_pinsEmailThenClears() throws Exception {
-        authenticateAs("buyer@test.com");
+        authenticateAs(BUYER_EMAIL);
         User user = new User();
-        user.setEmail("buyer@test.com");
-        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(user));
+        user.setEmail(BUYER_EMAIL);
+        when(userRepository.findByEmail(BUYER_EMAIL)).thenReturn(Optional.of(user));
 
         AtomicReference<String> emailDuringChain = new AtomicReference<>();
         FilterChain chain = (req, res) -> emailDuringChain.set(ChatContext.getAuthenticatedEmail());
 
         filter.doFilterInternal(request, response, chain);
 
-        assertEquals("buyer@test.com", emailDuringChain.get(),
+        assertEquals(BUYER_EMAIL, emailDuringChain.get(),
                 "Tool calls should see the authenticated user's email");
         assertNull(ChatContext.getAuthenticatedEmail(), "Context must be cleared after the request");
     }
