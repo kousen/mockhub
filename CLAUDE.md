@@ -200,7 +200,7 @@ The codebase uses Java DOP patterns where they add value:
 - **OAuth2 SecurityFilterChain architecture** (when `mcp-oauth2` active): Three chains with explicit `@Order` — (1) authorization server chain (OAuth2 endpoints, `/.well-known/**`, DCR), (2) MCP resource server chain (`/mcp/**`, validates Bearer tokens), (3) existing chain (everything else, unchanged). Chains are mutually exclusive with `McpApiKeyFilter` via `@Profile("!mcp-oauth2")`.
 - **OAuth2 authorization server** embedded in MockHub. Ephemeral RSA key pair for JWT signing (regenerated on restart). Pre-registered Claude client with redirect URI `https://claude.ai/api/mcp/auth_callback`. DCR allows additional clients to self-register.
 - **OAuth2 login page** at `/oauth2/login` — form for authorization_code flow. Separate from React SPA login. Uses MockHub's existing `UserDetailsServiceImpl`. After clicking "Authorize", shows "Authorizing..." then transitions to an "Authorization Complete" card with a checkmark, since the OAuth2 redirect chain sends the browser to the client callback URL and may not provide its own feedback.
-- **Environment variables:** `MCP_OAUTH2_ISSUER_URI` (must match public URL in production, e.g., `https://mockhub.kousenit.com`). `MCP_OAUTH2_JWK` (persisted RSA signing key — without it every redeploy invalidates all outstanding tokens, forcing connector re-auth). `MCP_OAUTH2_ACCESS_TOKEN_TTL` / `MCP_OAUTH2_REFRESH_TOKEN_TTL` (defaults `8h` / `60d`).
+- **Environment variables:** `MCP_OAUTH2_ISSUER_URI` (must match public URL in production, e.g., `https://mockhub.kousenit.com`). `MCP_OAUTH2_JWK` (persisted RSA signing key — without it every redeploy invalidates all outstanding tokens, forcing connector re-auth; generation and rotation instructions in `docs/mcp-oauth2-jwk-setup.md`). `MCP_OAUTH2_ACCESS_TOKEN_TTL` / `MCP_OAUTH2_REFRESH_TOKEN_TTL` (defaults `8h` / `60d`).
 - **Token lifetimes:** Access tokens refresh silently; their TTL only bounds how long a stolen bearer token stays usable. Refresh tokens rotate on use, so the refresh TTL is a sliding window — an actively-used connector never re-authenticates, an idle one expires. A generous refresh window is acceptable because spending is bounded by mandate limits/expiry and revocation, not token lifetime.
 - **SPA exclusions:** `oauth2/`, `.well-known/` added to `SpaForwardingConfig`.
 - **MCP tools identify users by email** — cart and order tools accept a `userEmail` parameter, not auth tokens. How that email is trusted depends on the auth mode:
@@ -310,6 +310,7 @@ The codebase uses Java DOP patterns where they add value:
 - `PROJECT_JOURNAL.md` — Build report with session notes, challenges, metrics, and commit history
 - `docs/demo-transcript-agentic-purchase.md` — Full agentic purchase demo transcript (Claude Desktop + MCP, 2026-03-26)
 - `docs/stripe-test-setup.md` — Stripe test mode API key setup instructions
+- `docs/mcp-oauth2-jwk-setup.md` — MCP OAuth2 signing key (`MCP_OAUTH2_JWK`) generation, Railway setup, and rotation
 - `sonar-project.properties` — SonarCloud configuration for frontend (coverage exclusions, issue suppressions)
 - `backend/build.gradle.kts` — Backend build config (dependencies, test setup, code style)
 - `.github/workflows/ci.yml` — CI pipeline (backend tests incl. Testcontainers, frontend lint/typecheck/tests, SonarCloud, Docker build)
