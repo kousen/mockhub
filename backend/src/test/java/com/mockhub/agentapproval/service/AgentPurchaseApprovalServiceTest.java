@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -98,15 +99,17 @@ class AgentPurchaseApprovalServiceTest {
     }
 
     @Test
-    void approve_givenExpiredApproval_marksExpiredAndThrowsConflictException() {
+    void approve_givenExpiredApproval_throwsConflictExceptionWithoutMutatingStatus() {
         AgentPurchaseApproval approval = approval("approval-123", AgentPurchaseApprovalStatus.PROPOSED);
         approval.setExpiresAt(Instant.now().minusSeconds(60));
         when(approvalRepository.findByApprovalIdForUpdate("approval-123")).thenReturn(Optional.of(approval));
-        when(approvalRepository.save(any(AgentPurchaseApproval.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
 
+        // Rejection is timestamp-based and holds regardless of stored status. The durable
+        // PROPOSED -> EXPIRED transition is left to LifecycleCleanupService, since persisting
+        // it here would be discarded by the rollback this ConflictException triggers.
         assertThrows(ConflictException.class, () -> approvalService.approve("approval-123", USER_EMAIL));
-        assertEquals(AgentPurchaseApprovalStatus.EXPIRED, approval.getStatus());
+        assertEquals(AgentPurchaseApprovalStatus.PROPOSED, approval.getStatus());
+        verify(approvalRepository, never()).save(any(AgentPurchaseApproval.class));
     }
 
     @Test

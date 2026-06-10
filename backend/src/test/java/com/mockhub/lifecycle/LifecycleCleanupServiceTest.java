@@ -12,6 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.mockhub.agentapproval.entity.AgentPurchaseApprovalStatus;
+import com.mockhub.agentapproval.repository.AgentPurchaseApprovalRepository;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.repository.NotificationRepository;
 import com.mockhub.paymentcredential.entity.PaymentCredentialStatus;
@@ -40,12 +42,16 @@ class LifecycleCleanupServiceTest {
     @Mock
     private PaymentCredentialRepository paymentCredentialRepository;
 
+    @Mock
+    private AgentPurchaseApprovalRepository approvalRepository;
+
     private LifecycleCleanupService cleanupService;
 
     @BeforeEach
     void setUp() {
         cleanupService = new LifecycleCleanupService(
-                listingRepository, eventRepository, notificationRepository, paymentCredentialRepository);
+                listingRepository, eventRepository, notificationRepository,
+                paymentCredentialRepository, approvalRepository);
     }
 
     @Test
@@ -60,6 +66,9 @@ class LifecycleCleanupServiceTest {
         when(paymentCredentialRepository.expireActiveCredentials(
                 any(Instant.class), any(PaymentCredentialStatus.class), any(PaymentCredentialStatus.class)))
                 .thenReturn(0);
+        when(approvalRepository.expireProposedApprovals(
+                any(Instant.class), any(AgentPurchaseApprovalStatus.class), any(AgentPurchaseApprovalStatus.class)))
+                .thenReturn(0);
 
         cleanupService.runCleanup();
 
@@ -69,6 +78,8 @@ class LifecycleCleanupServiceTest {
         verify(notificationRepository).deleteReadNotificationsOlderThan(any(Instant.class));
         verify(paymentCredentialRepository).expireActiveCredentials(
                 any(Instant.class), any(PaymentCredentialStatus.class), any(PaymentCredentialStatus.class));
+        verify(approvalRepository).expireProposedApprovals(
+                any(Instant.class), any(AgentPurchaseApprovalStatus.class), any(AgentPurchaseApprovalStatus.class));
     }
 
     @Test
@@ -134,6 +145,19 @@ class LifecycleCleanupServiceTest {
         int result = cleanupService.expirePaymentCredentials(now);
 
         assertEquals(3, result);
+    }
+
+    @Test
+    @DisplayName("expireProposedApprovals - transitions expired proposed approvals to EXPIRED")
+    void expireProposedApprovals_transitionsExpiredProposedApprovals() {
+        Instant now = Instant.now();
+        when(approvalRepository.expireProposedApprovals(
+                now, AgentPurchaseApprovalStatus.PROPOSED, AgentPurchaseApprovalStatus.EXPIRED))
+                .thenReturn(2);
+
+        int result = cleanupService.expireProposedApprovals(now);
+
+        assertEquals(2, result);
     }
 
     @Test

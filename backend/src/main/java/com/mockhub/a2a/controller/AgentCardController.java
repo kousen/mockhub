@@ -3,6 +3,7 @@ package com.mockhub.a2a.controller;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +22,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "A2A", description = "Agent-to-Agent protocol discovery")
 public class AgentCardController {
 
+    private final String baseUrl;
+
+    public AgentCardController(@Value("${mockhub.public-base-url}") String publicBaseUrl) {
+        // Strip any trailing slash so we can concatenate paths cleanly.
+        this.baseUrl = publicBaseUrl.endsWith("/")
+                ? publicBaseUrl.substring(0, publicBaseUrl.length() - 1)
+                : publicBaseUrl;
+    }
+
     @GetMapping(value = "/.well-known/agent.json", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "A2A Agent Card",
             description = "Returns the A2A Agent Card describing MockHub's capabilities and skills")
@@ -31,21 +41,21 @@ public class AgentCardController {
                         + "Search events, browse listings, manage cart, purchase tickets, "
                         + "and manage agent mandates via MCP tools.",
                 List.of(new AgentInterface(
-                        "https://mockhub.kousenit.com/mcp",
+                        baseUrl + "/mcp",
                         "mcp/streamable-http",
                         "2025-03-26"
                 )),
                 new AgentProvider(
-                        "https://mockhub.kousenit.com",
+                        baseUrl,
                         "MockHub"
                 ),
                 "1.0.0",
-                "https://mockhub.kousenit.com/llms.txt",
+                baseUrl + "/llms.txt",
                 new AgentCapabilities(true, false),
                 Map.of("oauth2", new SecurityScheme(
                         "oauth2",
                         "OAuth 2.1 with Dynamic Client Registration",
-                        "https://mockhub.kousenit.com/.well-known/openid-configuration"
+                        baseUrl + "/.well-known/openid-configuration"
                 )),
                 List.of("text/plain"),
                 List.of("text/plain", "application/json"),

@@ -77,6 +77,9 @@ springdoc:
     operations-sorter: method
 
 mockhub:
+  # Public base URL of this deployment, used to build absolute URLs advertised to
+  # external agents (e.g. the A2A agent card at /.well-known/agent.json).
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
   mcp:
     enabled: false
     api-key: ${MCP_API_KEY:mockhub-dev-key}

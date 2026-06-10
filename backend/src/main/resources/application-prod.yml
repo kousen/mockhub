@@ -24,6 +24,7 @@ spring:
     enabled: true
 
 mockhub:
+  public-base-url: ${PUBLIC_BASE_URL:https://mockhub.kousenit.com}
   mcp:
     enabled: true
   cookie:

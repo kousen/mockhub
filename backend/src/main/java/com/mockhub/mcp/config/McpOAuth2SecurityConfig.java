@@ -33,11 +33,14 @@ import org.springframework.security.oauth2.server.authorization.converter.OAuth2
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springaicommunity.mcp.security.authorizationserver.config.McpAuthorizationServerConfigurer;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springaicommunity.mcp.security.server.config.McpServerOAuth2Configurer;
 
+import com.mockhub.auth.repository.UserRepository;
+import com.mockhub.mcp.McpAuthenticatedEmailFilter;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
@@ -125,6 +128,7 @@ public class McpOAuth2SecurityConfig {
     public SecurityFilterChain mcpResourceServerFilterChain(
             HttpSecurity http,
             JwtDecoder mcpJwtDecoder,
+            UserRepository userRepository,
             @Value("${mockhub.mcp.oauth2.issuer-uri}") String issuerUri) throws Exception {
         return http
                 .securityMatcher("/mcp/**", "/.well-known/oauth-protected-resource",
@@ -139,6 +143,11 @@ public class McpOAuth2SecurityConfig {
                     mcp.jwtDecoder(mcpJwtDecoder);
                     mcp.validateAudienceClaim(true);
                 })
+                // Pin the authenticated token subject onto the tool-call thread so MCP tools act
+                // strictly as the logged-in user, not whatever userEmail the agent supplies. Runs
+                // after authentication (populated by the bearer token filter) and before
+                // authorization, so the SecurityContext is available.
+                .addFilterBefore(new McpAuthenticatedEmailFilter(userRepository), AuthorizationFilter.class)
                 .csrf(csrf -> csrf.disable())
                 .build();
     }
