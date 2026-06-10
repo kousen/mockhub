@@ -31,6 +31,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class MandateToolsTest {
 
+    private static final String OWNER_EMAIL = "owner@real.com";
+
     @Mock
     private MandateService mandateService;
 
@@ -55,9 +57,9 @@ class MandateToolsTest {
         // Simulates the OAuth2 MCP path: McpAuthenticatedEmailFilter has pinned the
         // token subject. An agent passing a different userEmail must not be able to
         // create a mandate for someone else.
-        ChatContext.setAuthenticatedEmail("owner@real.com");
+        ChatContext.setAuthenticatedEmail(OWNER_EMAIL);
         MandateDto mandateDto = new MandateDto(
-                1L, "mandate-xyz", "agent-1", "owner@real.com", "PURCHASE",
+                1L, "mandate-xyz", "agent-1", OWNER_EMAIL, "PURCHASE",
                 new BigDecimal("100.00"), null, BigDecimal.ZERO, null, null, null, null,
                 "AUTO_PURCHASE", "ACTIVE", null, Instant.now());
         when(mandateService.createMandate(any(CreateMandateRequest.class))).thenReturn(mandateDto);
@@ -68,7 +70,7 @@ class MandateToolsTest {
 
         ArgumentCaptor<CreateMandateRequest> captor = ArgumentCaptor.forClass(CreateMandateRequest.class);
         verify(mandateService).createMandate(captor.capture());
-        assertEquals("owner@real.com", captor.getValue().userEmail(),
+        assertEquals(OWNER_EMAIL, captor.getValue().userEmail(),
                 "Mandate must be created for the authenticated user, not the spoofed parameter");
     }
 
