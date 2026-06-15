@@ -8,7 +8,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 
 - **Backend:** Spring Boot 4, Java 25, Gradle 9.4.0 (Kotlin DSL)
 - **Database:** PostgreSQL 17 (standard — pgvector removed, all search uses tsvector full-text)
-- **AI:** Spring AI 2.0.0-M4 (milestone — requires Spring Milestones repo in Gradle)
+- **AI:** Spring AI 2.0.0
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack React Query, Zustand
 - **Testing:** JUnit 5 + Mockito + Testcontainers (backend), Vitest + React Testing Library + MSW (frontend), Playwright (E2E, 3 browsers, sharded CI)
 - **Payments:** Stripe test mode + mock fallback via Spring profiles
@@ -52,7 +52,7 @@ The codebase uses Java DOP patterns where they add value:
 - **Conditional activation:** AI services use `@ConditionalOnProperty(name = "spring.ai.anthropic.api-key")` (NOT `@ConditionalOnBean` — that evaluates before auto-config creates the beans). The `AiController` injects `Optional<ChatService>` etc. and returns 503 when no AI provider is active.
 - **Profile activation:** `SPRING_PROFILES_ACTIVE=dev,ai-anthropic` — just add the AI provider to dev.
 - **Services:** `ChatService` (chat assistant with 10-message `MessageWindowChatMemory`), `PricePredictionService` (price trend analysis), `RecommendationService` (AI-ranked event recommendations).
-- **ChatClient has function-calling tools.** `EventTools` and `PricingTools` are wired into the ChatClient via `.defaultToolCallbacks(ToolCallbacks.from(...))`. The same `@Tool`-annotated classes serve both the MCP server (external agents) and the chat endpoint (users on the website).
+- **ChatClient has function-calling tools.** `EventTools` and `PricingTools` are wired into the ChatClient via `.defaultTools(...)`. The same `@Tool`-annotated classes serve both the MCP server (external agents) and the chat endpoint (users on the website).
 - **AI responses are parsed from JSON.** Services prompt the LLM for JSON output and parse with Jackson. Fallback logic returns safe defaults if parsing fails.
 - **Circular dependency:** MCP tool registration → PricingTools → PricePredictionService → ChatClient creates a cycle. Broken with `@Lazy` on the `ChatClient` parameter in `PricePredictionService`.
 - **ChatContext email enforcement:** Website chat tool calls use `ChatContext` (ThreadLocal) to override the LLM-provided `userEmail` with the authenticated user's email. Prevents prompt injection from operating as a different user. External MCP calls don't set the context, so `userEmail` is honored as-is. All tool classes use `ChatContext.resolveEmail(paramEmail)` for consistent resolution.

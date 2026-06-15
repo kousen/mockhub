@@ -19,8 +19,8 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 /**
  * Converts Spring AI's "Session not found" JSON-RPC errors to HTTP 404 responses.
  *
- * Spring AI 2.0.0-M3 returns session-not-found errors as HTTP 200 with a JSON-RPC
- * error body. MCP clients (like mcp-remote) can't recover from this because they
+ * Spring AI's MCP server can return session-not-found errors as HTTP 200 with a JSON-RPC
+ * error body. MCP clients can't recover from this because they
  * see a successful HTTP response with an opaque error payload.
  *
  * Per the MCP spec, an unknown session ID should return HTTP 404, which signals
@@ -63,7 +63,8 @@ public class McpSessionRecoveryFilter extends OncePerRequestFilter {
                 wrappedResponse.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 wrappedResponse.setContentType("application/json");
                 wrappedResponse.getWriter().write(
-                        "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,\"message\":\"Session expired. Please reconnect.\"}}");
+                        "{\"jsonrpc\":\"2.0\",\"error\":{\"code\":-32600,"
+                                + "\"message\":\"Session expired. Please reconnect.\"}}");
                 wrappedResponse.copyBodyToResponse();
                 return;
             }
