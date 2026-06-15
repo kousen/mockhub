@@ -1,5 +1,6 @@
 package com.mockhub.eval.config;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -8,7 +9,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.lang.Nullable;
 
 import com.mockhub.eval.condition.GroundingEvalCondition;
 

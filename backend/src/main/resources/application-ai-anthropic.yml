@@ -3,8 +3,7 @@ spring:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
       chat:
-        options:
-          model: claude-sonnet-4-6
+        model: claude-sonnet-4-6
 
   # Override base exclusions: keep Anthropic, exclude everything else
   autoconfigure:

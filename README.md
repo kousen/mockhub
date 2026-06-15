@@ -22,7 +22,7 @@ MockHub mimics the functionality of sites like StubHub and TicketNetwork — reg
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Spring Boot 4, Java 25, Spring AI 2.0.0-M4 |
+| Backend | Spring Boot 4, Java 25, Spring AI 2.0.0 |
 | Database | PostgreSQL 17 (full-text search via tsvector) |
 | Frontend | React 19, TypeScript, Tailwind CSS, shadcn/ui |
 | Build | Gradle 9.4.0, Vite |
