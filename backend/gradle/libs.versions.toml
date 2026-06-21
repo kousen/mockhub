@@ -20,9 +20,6 @@ springdoc = "2.8.6"
 # Payments
 stripe = "28.3.0"
 
-# Image processing
-thumbnailator = "0.4.20"
-
 # PDF generation and QR codes
 pdfbox = "3.0.4"
 zxing = "3.5.3"
@@ -75,9 +72,6 @@ springdoc-openapi = { module = "org.springdoc:springdoc-openapi-starter-webmvc-u
 
 # Payments
 stripe = { module = "com.stripe:stripe-java", version.ref = "stripe" }
-
-# Image processing
-thumbnailator = { module = "net.coobird:thumbnailator", version.ref = "thumbnailator" }
 
 # PDF generation and QR codes
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }

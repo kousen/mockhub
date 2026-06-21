@@ -105,10 +105,6 @@ mockhub:
     secure: ${COOKIE_SECURE:false}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
-  pricing:
-    service-fee-percent: 15.0
-    min-multiplier: 0.5
-    max-multiplier: 5.0
   spotify:
     client-id: ${SPOTIFY_CLIENT_ID:}
     client-secret: ${SPOTIFY_CLIENT_SECRET:}
@@ -119,11 +115,6 @@ mockhub:
     api-key: ${TICKETMASTER_API_KEY:}
     sync-cron: "0 0 4 * * *"
     events-per-category: 50
-  images:
-    upload-dir: ${UPLOAD_DIR:./uploads}
-    max-size-mb: 10
-    thumbnail-width: 300
-    thumbnail-height: 200
 
 stripe:
   secret-key: ${STRIPE_SECRET_KEY:sk_test_placeholder}

@@ -66,9 +66,6 @@ dependencies {
     // Payments
     implementation(libs.stripe)
 
-    // Image processing
-    implementation(libs.thumbnailator)
-
     // PDF generation and QR codes
     implementation(libs.pdfbox)
     implementation(libs.zxing.core)
