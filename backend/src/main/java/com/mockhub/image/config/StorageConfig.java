@@ -16,6 +16,8 @@ public class StorageConfig {
 
     private static final Logger log = LoggerFactory.getLogger(StorageConfig.class);
 
+    // Uploads are ephemeral on Railway (lost on redeploy); there is no env override by design.
+    // Seed images are repainted from the classpath on startup — see SeedImageRestorer.
     @Value("${mockhub.storage.location:./uploads}")
     private String storageLocation;
 
