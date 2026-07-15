@@ -26,6 +26,7 @@ public class LifecycleCleanupService {
 
     private static final Logger log = LoggerFactory.getLogger(LifecycleCleanupService.class);
     private static final int NOTIFICATION_RETENTION_DAYS = 30;
+    private static final int DCR_CLIENT_RETENTION_DAYS = 30;
     private static final String STATUS_EXPIRED = "EXPIRED";
     private static final String TICKET_AVAILABLE = "AVAILABLE";
 
@@ -62,14 +63,18 @@ public class LifecycleCleanupService {
         int expiredPaymentCredentials = expirePaymentCredentials(now);
         int expiredApprovals = expireProposedApprovals(now);
         int deletedOAuth2Authorizations = deleteExpiredOAuth2Authorizations(now);
+        int deletedOAuth2Clients = deleteStaleUnauthorizedOAuth2Clients(now);
 
         if (expiredByDeadline + expiredByEvent + completedEvents + deletedNotifications
-                + expiredPaymentCredentials + expiredApprovals + deletedOAuth2Authorizations > 0) {
+                + expiredPaymentCredentials + expiredApprovals + deletedOAuth2Authorizations
+                + deletedOAuth2Clients > 0) {
             log.info("Lifecycle cleanup: expired {} listings (deadline), {} listings (past events), "
                     + "completed {} events, deleted {} old notifications, expired {} payment credentials, "
-                    + "expired {} purchase approvals, deleted {} expired OAuth2 authorizations",
+                    + "expired {} purchase approvals, deleted {} expired OAuth2 authorizations, "
+                    + "deleted {} stale OAuth2 clients",
                     expiredByDeadline, expiredByEvent, completedEvents, deletedNotifications,
-                    expiredPaymentCredentials, expiredApprovals, deletedOAuth2Authorizations);
+                    expiredPaymentCredentials, expiredApprovals, deletedOAuth2Authorizations,
+                    deletedOAuth2Clients);
         }
     }
 
@@ -109,7 +114,7 @@ public class LifecycleCleanupService {
      * table doesn't grow forever now that authorizations are persisted (issue #266).
      *
      * <p>Postgres {@code GREATEST} ignores NULLs, so a row is deleted once every token
-     * it actually has (authorization code, access token, refresh token) is expired.
+     * it actually has (across all grant types the schema supports) is expired.
      * Rows with no expiries at all (abandoned in-flight authorize requests) are left
      * alone — they carry no tokens and are replaced on the next login attempt.</p>
      */
@@ -118,8 +123,30 @@ public class LifecycleCleanupService {
                 DELETE FROM oauth2_authorization
                 WHERE GREATEST(authorization_code_expires_at,
                                access_token_expires_at,
-                               refresh_token_expires_at) < ?
+                               refresh_token_expires_at,
+                               oidc_id_token_expires_at,
+                               user_code_expires_at,
+                               device_code_expires_at) < ?
                 """, Timestamp.from(now));
+    }
+
+    /**
+     * Deletes DCR-registered OAuth2 clients that were never authorized (or whose
+     * authorizations have all been cleaned up) after 30 days. The DCR endpoint is
+     * intentionally open, so without this an attacker could accumulate unbounded
+     * permanent rows. Clients with any live authorization are kept — an idle-but-valid
+     * connector still has its refresh-token authorization row. The pre-registered
+     * Claude client is excluded (and re-seeded on startup regardless).
+     */
+    int deleteStaleUnauthorizedOAuth2Clients(Instant now) {
+        Instant cutoff = now.minus(DCR_CLIENT_RETENTION_DAYS, ChronoUnit.DAYS);
+        return jdbcTemplate.update("""
+                DELETE FROM oauth2_registered_client c
+                WHERE c.client_id_issued_at < ?
+                  AND c.client_id <> 'claude-mcp-client'
+                  AND NOT EXISTS (SELECT 1 FROM oauth2_authorization a
+                                  WHERE a.registered_client_id = c.id)
+                """, Timestamp.from(cutoff));
     }
 
     private void expireListingsAndReleaseTickets(List<Listing> listings) {

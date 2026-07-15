@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -89,7 +90,7 @@ class LifecycleCleanupServiceTest {
                 any(Instant.class), any(PaymentCredentialStatus.class), any(PaymentCredentialStatus.class));
         verify(approvalRepository).expireProposedApprovals(
                 any(Instant.class), any(AgentPurchaseApprovalStatus.class), any(AgentPurchaseApprovalStatus.class));
-        verify(jdbcTemplate).update(anyString(), any(Timestamp.class));
+        verify(jdbcTemplate, times(2)).update(anyString(), any(Timestamp.class));
     }
 
     @Test
@@ -181,6 +182,20 @@ class LifecycleCleanupServiceTest {
         assertEquals(7, result);
         verify(jdbcTemplate).update(contains("DELETE FROM oauth2_authorization"),
                 eq(Timestamp.from(now)));
+    }
+
+    @Test
+    @DisplayName("deleteStaleUnauthorizedOAuth2Clients - uses 30-day cutoff and spares Claude client")
+    void deleteStaleUnauthorizedOAuth2Clients_uses30DayCutoff() {
+        Instant now = Instant.now();
+        Instant expectedCutoff = now.minus(30, ChronoUnit.DAYS);
+        when(jdbcTemplate.update(anyString(), any(Timestamp.class))).thenReturn(2);
+
+        int result = cleanupService.deleteStaleUnauthorizedOAuth2Clients(now);
+
+        assertEquals(2, result);
+        verify(jdbcTemplate).update(contains("DELETE FROM oauth2_registered_client"),
+                eq(Timestamp.from(expectedCutoff)));
     }
 
     @Test

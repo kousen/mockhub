@@ -199,6 +199,32 @@ class McpOAuth2PersistenceIntegrationTest {
         authorizationService.remove(live);
     }
 
+    @Test
+    @DisplayName("lifecycle cleanup deletes stale never-authorized DCR clients but keeps the Claude client")
+    void lifecycleCleanup_deletesStaleUnauthorizedClients_keepsClaudeClient() {
+        String staleId = "stale-client-" + UUID.randomUUID();
+        Timestamp fortyDaysAgo = Timestamp.from(Instant.now().minus(Duration.ofDays(40)));
+        jdbcTemplate.update("""
+                INSERT INTO oauth2_registered_client
+                    (id, client_id, client_id_issued_at, client_name,
+                     client_authentication_methods, authorization_grant_types, scopes,
+                     client_settings, token_settings)
+                VALUES (?, ?, ?, 'stale test client', 'client_secret_basic',
+                        'client_credentials', 'openid', '{}', '{}')
+                """, staleId, staleId, fortyDaysAgo);
+
+        cleanupService.runCleanup();
+
+        Integer staleCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM oauth2_registered_client WHERE id = ?",
+                Integer.class, staleId);
+        Integer claudeCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM oauth2_registered_client WHERE client_id = 'claude-mcp-client'",
+                Integer.class);
+        assertEquals(0, staleCount, "Never-authorized DCR clients past retention should be deleted");
+        assertEquals(1, claudeCount, "Pre-registered Claude client must never be cleaned up");
+    }
+
     private OAuth2Authorization authorizationWithRefreshToken(String tokenValue, Instant expiresAt) {
         RegisteredClient claudeClient = registeredClientRepository.findByClientId("claude-mcp-client");
         assertNotNull(claudeClient);

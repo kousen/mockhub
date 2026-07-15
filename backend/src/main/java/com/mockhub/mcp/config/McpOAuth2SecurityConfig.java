@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
@@ -244,7 +245,13 @@ public class McpOAuth2SecurityConfig {
     @DependsOnDatabaseInitialization
     public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
         JdbcRegisteredClientRepository repository = new JdbcRegisteredClientRepository(jdbcTemplate);
-        repository.save(claudeRegisteredClient());
+        try {
+            repository.save(claudeRegisteredClient());
+        } catch (DuplicateKeyException e) {
+            // Two instances starting against a fresh database can race the initial
+            // insert; the row exists either way, so the loser just moves on.
+            log.info("Claude MCP client already seeded by a concurrent instance");
+        }
         return repository;
     }
 

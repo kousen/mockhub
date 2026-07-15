@@ -12,6 +12,8 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.server.authorization.OAuth2ClientRegistration;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 
@@ -69,6 +71,26 @@ class McpOAuth2SecurityConfigTest {
         assertNotNull(jwkSource);
         List<JWK> keys = jwkSource.get(RSA_SELECTOR, null);
         assertEquals(1, keys.size());
+    }
+
+    @Test
+    void registeredClientRepository_givenSeedingRace_swallowsDuplicateKeyException() {
+        JdbcTemplate jdbcTemplate = org.mockito.Mockito.mock(JdbcTemplate.class);
+        // save() first SELECTs by id (no row), then INSERTs — simulate a concurrent
+        // instance winning the insert race
+        org.mockito.Mockito.when(jdbcTemplate.query(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.RowMapper<Object>>any(),
+                        org.mockito.ArgumentMatchers.any(Object[].class)))
+                .thenReturn(List.of());
+        org.mockito.Mockito.when(jdbcTemplate.update(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(
+                                org.springframework.jdbc.core.PreparedStatementSetter.class)))
+                .thenThrow(new DuplicateKeyException("duplicate key value violates unique constraint"));
+
+        assertNotNull(config.registeredClientRepository(jdbcTemplate),
+                "Losing the seeding race must not fail startup");
     }
 
     @Test
