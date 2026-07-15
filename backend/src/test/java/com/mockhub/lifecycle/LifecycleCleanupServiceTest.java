@@ -1,5 +1,6 @@
 package com.mockhub.lifecycle;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.mockhub.agentapproval.entity.AgentPurchaseApprovalStatus;
 import com.mockhub.agentapproval.repository.AgentPurchaseApprovalRepository;
@@ -24,6 +26,10 @@ import com.mockhub.ticket.repository.ListingRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,13 +51,16 @@ class LifecycleCleanupServiceTest {
     @Mock
     private AgentPurchaseApprovalRepository approvalRepository;
 
+    @Mock
+    private JdbcTemplate jdbcTemplate;
+
     private LifecycleCleanupService cleanupService;
 
     @BeforeEach
     void setUp() {
         cleanupService = new LifecycleCleanupService(
                 listingRepository, eventRepository, notificationRepository,
-                paymentCredentialRepository, approvalRepository);
+                paymentCredentialRepository, approvalRepository, jdbcTemplate);
     }
 
     @Test
@@ -69,6 +78,7 @@ class LifecycleCleanupServiceTest {
         when(approvalRepository.expireProposedApprovals(
                 any(Instant.class), any(AgentPurchaseApprovalStatus.class), any(AgentPurchaseApprovalStatus.class)))
                 .thenReturn(0);
+        when(jdbcTemplate.update(anyString(), any(Timestamp.class))).thenReturn(0);
 
         cleanupService.runCleanup();
 
@@ -80,6 +90,7 @@ class LifecycleCleanupServiceTest {
                 any(Instant.class), any(PaymentCredentialStatus.class), any(PaymentCredentialStatus.class));
         verify(approvalRepository).expireProposedApprovals(
                 any(Instant.class), any(AgentPurchaseApprovalStatus.class), any(AgentPurchaseApprovalStatus.class));
+        verify(jdbcTemplate, times(2)).update(anyString(), any(Timestamp.class));
     }
 
     @Test
@@ -158,6 +169,33 @@ class LifecycleCleanupServiceTest {
         int result = cleanupService.expireProposedApprovals(now);
 
         assertEquals(2, result);
+    }
+
+    @Test
+    @DisplayName("deleteExpiredOAuth2Authorizations - deletes rows whose latest token expiry has passed")
+    void deleteExpiredOAuth2Authorizations_deletesRowsPastLatestExpiry() {
+        Instant now = Instant.now();
+        when(jdbcTemplate.update(anyString(), any(Timestamp.class))).thenReturn(7);
+
+        int result = cleanupService.deleteExpiredOAuth2Authorizations(now);
+
+        assertEquals(7, result);
+        verify(jdbcTemplate).update(contains("DELETE FROM oauth2_authorization"),
+                eq(Timestamp.from(now)));
+    }
+
+    @Test
+    @DisplayName("deleteStaleUnauthorizedOAuth2Clients - uses 30-day cutoff and spares Claude client")
+    void deleteStaleUnauthorizedOAuth2Clients_uses30DayCutoff() {
+        Instant now = Instant.now();
+        Instant expectedCutoff = now.minus(30, ChronoUnit.DAYS);
+        when(jdbcTemplate.update(anyString(), any(Timestamp.class))).thenReturn(2);
+
+        int result = cleanupService.deleteStaleUnauthorizedOAuth2Clients(now);
+
+        assertEquals(2, result);
+        verify(jdbcTemplate).update(contains("DELETE FROM oauth2_registered_client"),
+                eq(Timestamp.from(expectedCutoff)));
     }
 
     @Test

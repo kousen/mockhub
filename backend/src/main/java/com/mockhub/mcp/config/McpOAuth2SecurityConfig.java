@@ -11,12 +11,15 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -24,9 +27,13 @@ import org.springframework.security.config.annotation.web.configurers.oauth2.ser
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2ClientRegistration;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationProvider;
-import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.converter.OAuth2ClientRegistrationRegisteredClientConverter;
@@ -224,15 +231,39 @@ public class McpOAuth2SecurityConfig {
     }
 
     /**
+     * JDBC-backed client repository so DCR registrations survive Railway redeploys.
+     *
+     * <p>Claude and Codex register via DCR. With the previous in-memory repository,
+     * every redeploy forgot their {@code client_id}, so token refresh failed with
+     * {@code invalid_client} and connectors demanded re-authentication daily.</p>
+     *
+     * <p>The pre-registered Claude client is seeded on startup with a fixed entity id,
+     * making {@code save()} an idempotent create-or-update — TTL config changes are
+     * re-applied on restart without duplicating rows.</p>
+     */
+    @Bean
+    @DependsOnDatabaseInitialization
+    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
+        JdbcRegisteredClientRepository repository = new JdbcRegisteredClientRepository(jdbcTemplate);
+        try {
+            repository.save(claudeRegisteredClient());
+        } catch (DuplicateKeyException e) {
+            // Two instances starting against a fresh database can race the initial
+            // insert; the row exists either way, so the loser just moves on.
+            log.info("Claude MCP client already seeded by a concurrent instance");
+        }
+        return repository;
+    }
+
+    /**
      * Pre-registered OAuth2 client for Claude's connector.
      *
      * <p>Claude's custom connector uses DCR to register dynamically, but having a
      * pre-registered client ensures the authorization server is functional even before
      * DCR occurs. The redirect URI matches Claude's expected callback endpoint.</p>
      */
-    @Bean
-    public RegisteredClientRepository registeredClientRepository() {
-        RegisteredClient claudeClient = RegisteredClient.withId(UUID.randomUUID().toString())
+    RegisteredClient claudeRegisteredClient() {
+        return RegisteredClient.withId("claude-mcp-client")
                 .clientId("claude-mcp-client")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
@@ -243,7 +274,38 @@ public class McpOAuth2SecurityConfig {
                 .redirectUri("http://127.0.0.1:6274/oauth/callback")
                 .tokenSettings(mcpTokenSettings())
                 .build();
-        return new InMemoryRegisteredClientRepository(claudeClient);
+    }
+
+    /**
+     * JDBC-backed authorization service so refresh tokens survive Railway redeploys.
+     *
+     * <p>Refresh tokens are opaque server-side tokens — unlike the JWT access tokens
+     * (which only need the persisted signing key), they live in this store. Without
+     * persistence, the first silent refresh after a redeploy failed and Claude/Codex
+     * showed "Authentication expired. Reconnect."</p>
+     *
+     * <p>Wrapped in {@link PrincipalSanitizingOAuth2AuthorizationService} because the
+     * JDBC service serializes the login principal with Jackson's security allowlist,
+     * which rejects MockHub's custom {@code SecurityUser}.</p>
+     */
+    @Bean
+    @DependsOnDatabaseInitialization
+    public OAuth2AuthorizationService authorizationService(
+            JdbcTemplate jdbcTemplate, RegisteredClientRepository registeredClientRepository) {
+        return new PrincipalSanitizingOAuth2AuthorizationService(
+                new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository));
+    }
+
+    /**
+     * JDBC-backed consent service for completeness. MCP flows are consent-free (no
+     * scopes requested), so this table stays empty in practice, but if a client ever
+     * requests scopes the recorded consent survives redeploys like everything else.
+     */
+    @Bean
+    @DependsOnDatabaseInitialization
+    public OAuth2AuthorizationConsentService authorizationConsentService(
+            JdbcTemplate jdbcTemplate, RegisteredClientRepository registeredClientRepository) {
+        return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
     }
 
     private void customizeClientRegistrationProviders(

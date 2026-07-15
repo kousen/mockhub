@@ -12,7 +12,8 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.server.authorization.OAuth2ClientRegistration;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 
@@ -73,17 +74,44 @@ class McpOAuth2SecurityConfigTest {
     }
 
     @Test
-    void registeredClientRepository_containsClaudeClient() {
-        RegisteredClientRepository repository = config.registeredClientRepository();
+    void registeredClientRepository_givenSeedingRace_swallowsDuplicateKeyException() {
+        JdbcTemplate jdbcTemplate = org.mockito.Mockito.mock(JdbcTemplate.class);
+        // Simulate a concurrent instance winning the insert race: the lookup by id
+        // finds no row, and the subsequent insert hits the unique constraint.
+        org.mockito.Mockito.when(jdbcTemplate.query(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.RowMapper<Object>>any(),
+                        org.mockito.ArgumentMatchers.any(Object[].class)))
+                .thenReturn(List.of());
+        org.mockito.Mockito.when(jdbcTemplate.update(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(
+                                org.springframework.jdbc.core.PreparedStatementSetter.class)))
+                .thenThrow(new DuplicateKeyException("duplicate key value violates unique constraint"));
 
-        assertNotNull(repository.findByClientId("claude-mcp-client"));
+        assertNotNull(config.registeredClientRepository(jdbcTemplate),
+                "Losing the seeding race must not fail startup");
     }
 
     @Test
-    void registeredClientRepository_claudeClientHasCorrectRedirectUris() {
-        RegisteredClientRepository repository = config.registeredClientRepository();
+    void claudeRegisteredClient_hasClaudeClientId() {
+        var client = config.claudeRegisteredClient();
 
-        var client = repository.findByClientId("claude-mcp-client");
+        assertEquals("claude-mcp-client", client.getClientId());
+    }
+
+    @Test
+    void claudeRegisteredClient_hasFixedEntityId_soSeedingIsIdempotent() {
+        // The JDBC repository's save is an update when the id already exists; with a
+        // random id every startup would insert a duplicate client_id row instead.
+        assertEquals(config.claudeRegisteredClient().getId(),
+                config.claudeRegisteredClient().getId());
+        assertEquals("claude-mcp-client", config.claudeRegisteredClient().getId());
+    }
+
+    @Test
+    void claudeRegisteredClient_hasCorrectRedirectUris() {
+        var client = config.claudeRegisteredClient();
         assertNotNull(client);
         assertFalse(client.getRedirectUris().isEmpty());
         // Claude's callback URI must be registered
@@ -103,54 +131,44 @@ class McpOAuth2SecurityConfigTest {
     }
 
     @Test
-    void registeredClientRepository_claudeClientHasRefreshTokenGrant() {
-        RegisteredClientRepository repository = config.registeredClientRepository();
+    void claudeRegisteredClient_hasRefreshTokenGrant() {
+        var client = config.claudeRegisteredClient();
 
-        var client = repository.findByClientId("claude-mcp-client");
-        assertNotNull(client);
         assertTrue(client.getAuthorizationGrantTypes()
                         .contains(AuthorizationGrantType.REFRESH_TOKEN),
                 "Client must support refresh_token grant type");
     }
 
     @Test
-    void registeredClientRepository_claudeClientUsesConfiguredAccessTokenTtl() {
-        RegisteredClientRepository repository = config.registeredClientRepository();
+    void claudeRegisteredClient_usesConfiguredAccessTokenTtl() {
+        var client = config.claudeRegisteredClient();
 
-        var client = repository.findByClientId("claude-mcp-client");
-        assertNotNull(client);
         Duration accessTokenTtl = client.getTokenSettings().getAccessTokenTimeToLive();
         assertEquals(DEFAULT_ACCESS_TTL, accessTokenTtl);
     }
 
     @Test
-    void registeredClientRepository_claudeClientUsesConfiguredRefreshTokenTtl() {
-        RegisteredClientRepository repository = config.registeredClientRepository();
+    void claudeRegisteredClient_usesConfiguredRefreshTokenTtl() {
+        var client = config.claudeRegisteredClient();
 
-        var client = repository.findByClientId("claude-mcp-client");
-        assertNotNull(client);
         Duration refreshTokenTtl = client.getTokenSettings().getRefreshTokenTimeToLive();
         assertEquals(DEFAULT_REFRESH_TTL, refreshTokenTtl);
     }
 
     @Test
-    void registeredClientRepository_customTtlsFlowThroughToTokenSettings() {
+    void claudeRegisteredClient_customTtlsFlowThroughToTokenSettings() {
         McpOAuth2SecurityConfig customConfig =
                 new McpOAuth2SecurityConfig(Duration.ofMinutes(5), Duration.ofDays(7));
-        RegisteredClientRepository repository = customConfig.registeredClientRepository();
 
-        var client = repository.findByClientId("claude-mcp-client");
-        assertNotNull(client);
+        var client = customConfig.claudeRegisteredClient();
         assertEquals(Duration.ofMinutes(5), client.getTokenSettings().getAccessTokenTimeToLive());
         assertEquals(Duration.ofDays(7), client.getTokenSettings().getRefreshTokenTimeToLive());
     }
 
     @Test
-    void registeredClientRepository_claudeClientDoesNotReuseRefreshTokens() {
-        RegisteredClientRepository repository = config.registeredClientRepository();
+    void claudeRegisteredClient_doesNotReuseRefreshTokens() {
+        var client = config.claudeRegisteredClient();
 
-        var client = repository.findByClientId("claude-mcp-client");
-        assertNotNull(client);
         assertFalse(client.getTokenSettings().isReuseRefreshTokens(),
                 "Refresh tokens should rotate on each use");
     }

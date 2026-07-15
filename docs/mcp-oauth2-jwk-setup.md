@@ -13,6 +13,14 @@ With the key persisted, the refresh-token sliding window (default 60 days, see
 `mockhub.mcp.oauth2.refresh-token-ttl`) works as designed: an actively-used
 connector never re-authenticates; an idle one expires on schedule.
 
+The signing key is only half of redeploy survival. Refresh tokens are opaque
+server-side tokens, and DCR client registrations are server-side state — both
+are persisted to Postgres (`oauth2_authorization` / `oauth2_registered_client`,
+Flyway V36) rather than held in memory. Before that migration, every redeploy
+wiped both stores and connectors demanded re-authentication daily even with the
+JWK persisted (issue #266). No extra configuration is needed; the tables ship
+with the schema.
+
 You can confirm which mode you are in from the startup logs:
 
 ```
