@@ -102,8 +102,8 @@ class McpOAuth2SecurityConfigTest {
 
     @Test
     void claudeRegisteredClient_hasFixedEntityId_soSeedingIsIdempotent() {
-        // JdbcRegisteredClientRepository.save() updates when the id already exists;
-        // a random id would insert a duplicate client_id row on every startup.
+        // The JDBC repository's save is an update when the id already exists; with a
+        // random id every startup would insert a duplicate client_id row instead.
         assertEquals(config.claudeRegisteredClient().getId(),
                 config.claudeRegisteredClient().getId());
         assertEquals("claude-mcp-client", config.claudeRegisteredClient().getId());
