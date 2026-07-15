@@ -1,11 +1,13 @@
 package com.mockhub.lifecycle;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,17 +34,20 @@ public class LifecycleCleanupService {
     private final NotificationRepository notificationRepository;
     private final PaymentCredentialRepository paymentCredentialRepository;
     private final AgentPurchaseApprovalRepository approvalRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public LifecycleCleanupService(ListingRepository listingRepository,
                                    EventRepository eventRepository,
                                    NotificationRepository notificationRepository,
                                    PaymentCredentialRepository paymentCredentialRepository,
-                                   AgentPurchaseApprovalRepository approvalRepository) {
+                                   AgentPurchaseApprovalRepository approvalRepository,
+                                   JdbcTemplate jdbcTemplate) {
         this.listingRepository = listingRepository;
         this.eventRepository = eventRepository;
         this.notificationRepository = notificationRepository;
         this.paymentCredentialRepository = paymentCredentialRepository;
         this.approvalRepository = approvalRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Scheduled(fixedRateString = "${mockhub.lifecycle.cleanup-interval:900000}")
@@ -56,14 +61,15 @@ public class LifecycleCleanupService {
         int deletedNotifications = deleteOldReadNotifications(now);
         int expiredPaymentCredentials = expirePaymentCredentials(now);
         int expiredApprovals = expireProposedApprovals(now);
+        int deletedOAuth2Authorizations = deleteExpiredOAuth2Authorizations(now);
 
         if (expiredByDeadline + expiredByEvent + completedEvents + deletedNotifications
-                + expiredPaymentCredentials + expiredApprovals > 0) {
+                + expiredPaymentCredentials + expiredApprovals + deletedOAuth2Authorizations > 0) {
             log.info("Lifecycle cleanup: expired {} listings (deadline), {} listings (past events), "
                     + "completed {} events, deleted {} old notifications, expired {} payment credentials, "
-                    + "expired {} purchase approvals",
+                    + "expired {} purchase approvals, deleted {} expired OAuth2 authorizations",
                     expiredByDeadline, expiredByEvent, completedEvents, deletedNotifications,
-                    expiredPaymentCredentials, expiredApprovals);
+                    expiredPaymentCredentials, expiredApprovals, deletedOAuth2Authorizations);
         }
     }
 
@@ -96,6 +102,24 @@ public class LifecycleCleanupService {
     int expireProposedApprovals(Instant now) {
         return approvalRepository.expireProposedApprovals(
                 now, AgentPurchaseApprovalStatus.PROPOSED, AgentPurchaseApprovalStatus.EXPIRED);
+    }
+
+    /**
+     * Deletes MCP OAuth2 authorizations whose latest token expiry has passed, so the
+     * table doesn't grow forever now that authorizations are persisted (issue #266).
+     *
+     * <p>Postgres {@code GREATEST} ignores NULLs, so a row is deleted once every token
+     * it actually has (authorization code, access token, refresh token) is expired.
+     * Rows with no expiries at all (abandoned in-flight authorize requests) are left
+     * alone — they carry no tokens and are replaced on the next login attempt.</p>
+     */
+    int deleteExpiredOAuth2Authorizations(Instant now) {
+        return jdbcTemplate.update("""
+                DELETE FROM oauth2_authorization
+                WHERE GREATEST(authorization_code_expires_at,
+                               access_token_expires_at,
+                               refresh_token_expires_at) < ?
+                """, Timestamp.from(now));
     }
 
     private void expireListingsAndReleaseTickets(List<Listing> listings) {
