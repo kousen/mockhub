@@ -76,8 +76,8 @@ class McpOAuth2SecurityConfigTest {
     @Test
     void registeredClientRepository_givenSeedingRace_swallowsDuplicateKeyException() {
         JdbcTemplate jdbcTemplate = org.mockito.Mockito.mock(JdbcTemplate.class);
-        // save() first SELECTs by id (no row), then INSERTs — simulate a concurrent
-        // instance winning the insert race
+        // Simulate a concurrent instance winning the insert race: the lookup by id
+        // finds no row, and the subsequent insert hits the unique constraint.
         org.mockito.Mockito.when(jdbcTemplate.query(
                         org.mockito.ArgumentMatchers.anyString(),
                         org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.RowMapper<Object>>any(),
