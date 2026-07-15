@@ -1,4 +1,8 @@
-# MockHub — Project Instructions for Codex
+# MockHub — Project Instructions for AI Coding Agents
+
+This is the canonical instruction file for all AI coding agents working on
+MockHub. Codex reads it directly; Claude Code loads it via the `@AGENTS.md`
+import in `CLAUDE.md`. Edit project instructions here, in one place.
 
 ## Project Overview
 
@@ -34,6 +38,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
   - `test` — Testcontainers PostgreSQL, mock payment
   - `mock-payment` / `stripe` — payment implementation (`@Primary` on Stripe resolves conflicts when both active)
   - `ai-anthropic` / `ai-openai` / `ai-ollama` — AI provider (each overrides the base AI exclusion list to enable only its own provider)
+  - `mcp-oauth2` — OAuth 2.1 with DCR on MCP endpoints (replaces API key auth). Without it, falls back to `X-API-Key` header.
   - Base `application.yml` excludes all AI auto-configs. Each `ai-*` profile overrides with a narrower list.
   - To enable AI: `SPRING_PROFILES_ACTIVE=dev,ai-anthropic` (just add the provider to dev)
 
@@ -116,8 +121,11 @@ The codebase uses Java DOP patterns where they add value:
 - **Ownership enforcement:** Update price and deactivate check `listing.seller.id == authenticated user`. Throws `UnauthorizedException` on mismatch.
 - **Duplicate prevention:** `existsByTicketIdAndStatus(ticketId, "ACTIVE")` rejects re-listing an already-listed ticket.
 - **Earnings aggregation:** Computed from `OrderItem` where `listing.seller.id` matches and `order.status = 'COMPLETED'`.
-- **Endpoints:** `POST /api/v1/listings`, `GET /api/v1/my/listings`, `PUT /api/v1/listings/{id}/price`, `DELETE /api/v1/listings/{id}`, `GET /api/v1/my/earnings`
-- **Frontend:** 3 pages (SellPage with 3-step form, MyListingsPage with tab filtering, EarningsPage dashboard), seller API + hooks, nav links visible when authenticated.
+- **Endpoints:** `POST /api/v1/listings`, `GET /api/v1/my/listings`, `PUT /api/v1/listings/{id}/price`, `DELETE /api/v1/listings/{id}`, `GET /api/v1/my/owned-tickets`, `GET /api/v1/my/earnings`
+- **Owned tickets endpoint:** `GET /api/v1/my/owned-tickets` returns tickets from confirmed orders (status `SOLD`) that the user can relist. Queries `OrderItem → Ticket` with eager joins for event/venue/section/seat data. Returns `List<OwnedTicketDto>`.
+- **Frontend:** 3 pages (SellPage, MyListingsPage with tab filtering, EarningsPage dashboard), seller API + hooks, nav links visible when authenticated.
+- **SellPage smart step 1:** Shows owned tickets as selectable cards above the event search. Clicking one pre-fills event/section/row/seat and skips to the price step. GA tickets without row/seat go to the seat details step instead. Falls through to the search flow when user has no owned tickets.
+- **VenueMap in sell form:** Step 2 renders the `VenueMap` component when SVG section data is available. Clicking a section auto-fills the section dropdown. Row and seat remain manual text inputs.
 
 ### OAuth2 Social Login
 
@@ -151,6 +159,21 @@ The codebase uses Java DOP patterns where they add value:
 - **Caching:** Artist metadata cached 1 hour in `ConcurrentHashMap`.
 - **Profile-based:** `spotify` profile activates `SpotifyApiService` (`@Primary`) and `SpotifyListeningApiService`. Without it, mock implementations return empty/hardcoded data.
 
+### Concurrency Control
+
+- **Optimistic locking** on `Ticket`, `Listing`, and `Order` entities via JPA `@Version` fields (Flyway V30). Hibernate includes `WHERE version = ?` on every UPDATE and throws `OptimisticLockException` if the row changed since read.
+- **`TicketService.reserveTicket()` uses `saveAndFlush()`** — forces the SQL UPDATE immediately so the version check happens inside the `try/catch` in `OrderService`, not at deferred transaction commit time. Without this, the exception escapes the catch block.
+- **`OrderService.validateAndReserveTickets()`** catches `OptimisticLockingFailureException` and converts it to `ConflictException("was just purchased by another buyer")` — user-friendly 409 response.
+- **`GlobalExceptionHandler`** also catches `OptimisticLockingFailureException` as a safety net for any uncaught optimistic lock failures outside the checkout flow.
+- **Atomic SQL for `Event.availableTickets`** — `decrementAvailableTickets()` and `incrementAvailableTickets()` in `EventRepository` use `UPDATE ... SET available_tickets = available_tickets - 1 WHERE available_tickets > 0`. Avoids version contention when multiple different tickets for the same popular event sell concurrently. Return value is checked — logs a warning if zero rows affected.
+- **Pessimistic locking on Order state transitions** — `confirmOrder()`, `failOrder()`, `cancelOrder()` use `findByOrderNumberForUpdate()` with `@Lock(LockModeType.PESSIMISTIC_WRITE)`. This was pre-existing; optimistic locking on Ticket/Listing complements it.
+- **Concurrency integration test** — `TicketConcurrencyIntegrationTest` uses `ExecutorService` with two threads attempting to checkout the same ticket simultaneously via Testcontainers. Verifies exactly one succeeds.
+
+### Seed Data and Image Restoration
+
+- **`DataSeeder`** — `@Profile("dev")` only. Seeds sample users, venues, events, and tickets. Does NOT run in production.
+- **`SeedImageRestorer`** — no profile restriction, runs on every startup in all environments. Restores event images from classpath to the filesystem. Required because Railway's ephemeral filesystem loses uploaded files on every redeploy. Extracted from `EventSeeder` to separate the production-critical image restoration from dev-only sample data seeding.
+
 ### Lifecycle Cleanup
 
 - **`LifecycleCleanupService`** — `@Scheduled` every 15 min (configurable via `mockhub.lifecycle.cleanup-interval`).
@@ -158,7 +181,7 @@ The codebase uses Java DOP patterns where they add value:
 - **Ticket release:** When listings expire, their tickets are released from LISTED back to AVAILABLE. Uses SELECT + iterate (not bulk UPDATE) because both listing and ticket state must update together.
 - **Listing → SOLD:** `OrderService.markTicketsAsSold()` also sets `listing.status = "SOLD"`.
 - **Cancel re-activates:** `OrderService.releaseOrderTickets()` resets listing status back to ACTIVE alongside ticket release.
-- **MCP session recovery:** `McpSessionRecoveryFilter` converts Spring AI's "Session not found" JSON-RPC errors (HTTP 200) to HTTP 404, enabling MCP clients to detect stale sessions after Railway redeploys.
+- **MCP session recovery:** `McpSessionRecoveryFilter` converts Spring AI's "Session not found" JSON-RPC errors (HTTP 200) to HTTP 404, enabling `mcp-remote` clients to detect stale sessions after Railway redeploys.
 
 ### Calendar Integration
 
@@ -173,13 +196,31 @@ The codebase uses Java DOP patterns where they add value:
 - **Three-layer architecture:** (1) MCP tools for agent capabilities, (2) Mandates for agent authorization, (3) ACP endpoints for protocol interoperability. See `docs/agentic-commerce.md` for full documentation.
 - **`llms.txt`** — served at `/llms.txt` (static resource), describes all API endpoints, MCP tools, and ACP endpoints for AI agents.
 - **RFC 9457 Problem Details** — all error responses use Spring's `ProblemDetail` format for machine-readable errors.
-- **MCP server** — 33 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools, AgentApprovalTools, PaymentCredentialTools, AgentRiskTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp` with OAuth 2.1 + Dynamic Client Registration when the `mcp-oauth2` profile is active. Codex and other MCP clients should connect directly to `https://mockhub.kousenit.com/mcp` so the OAuth flow can run; do not use `mcp-remote` or `X-API-Key` headers for the production OAuth setup.
+- **MCP server** — 34 tools registered (EventTools, PricingTools, CartTools, OrderTools, MandateTools, AgentApprovalTools, PaymentCredentialTools, AgentRiskTools, AgentPurchaseEvidenceTools) via `spring-ai-starter-mcp-server-webmvc`. Uses Streamable HTTP transport (protocol: `STREAMABLE`) at `/mcp`.
 - **MCP registration is explicit** — new `@Tool` classes must be added to `McpConfig.mcpToolCallbackProvider(...)`; `McpConfigTest` asserts the registered callback count so docs and runtime do not drift.
-- **MCP tools identify users by email** — cart and order tools accept `userEmail` parameter, not auth tokens.
+- **MCP auth (two modes, profile-based):**
+  - `mcp-oauth2` profile: OAuth 2.1 with Dynamic Client Registration (DCR). Enables native Claude connector support on all platforms (desktop, web, mobile) without `mcp-remote`. Uses `org.springaicommunity:mcp-authorization-server:0.1.5` and `org.springaicommunity:mcp-server-security:0.1.5`.
+  - Without `mcp-oauth2` profile: Falls back to `X-API-Key` header auth via `McpApiKeyFilter`. Requires `mcp-remote` bridge for Claude Desktop.
+  - Codex and other MCP clients with native OAuth support should connect directly to `https://mockhub.kousenit.com/mcp` so the OAuth flow can run; do not use `mcp-remote` or `X-API-Key` headers against the production OAuth setup.
+- **OAuth2 SecurityFilterChain architecture** (when `mcp-oauth2` active): Three chains with explicit `@Order` — (1) authorization server chain (OAuth2 endpoints, `/.well-known/**`, DCR), (2) MCP resource server chain (`/mcp/**`, validates Bearer tokens), (3) existing chain (everything else, unchanged). Chains are mutually exclusive with `McpApiKeyFilter` via `@Profile("!mcp-oauth2")`.
+- **OAuth2 authorization server** embedded in MockHub. RSA signing key loaded from `MCP_OAUTH2_JWK` (ephemeral fallback only when unset — dev/test). Pre-registered Claude client with redirect URI `https://claude.ai/api/mcp/auth_callback`. DCR allows additional clients to self-register.
+- **OAuth2 login page** at `/oauth2/login` — form for authorization_code flow. Separate from React SPA login. Uses MockHub's existing `UserDetailsServiceImpl`. After clicking "Authorize", shows "Authorizing..." then transitions to an "Authorization Complete" card with a checkmark, since the OAuth2 redirect chain sends the browser to the client callback URL and may not provide its own feedback.
+- **Environment variables:** `MCP_OAUTH2_ISSUER_URI` (must match public URL in production, e.g., `https://mockhub.kousenit.com`). `MCP_OAUTH2_JWK` (persisted RSA signing key — without it every redeploy invalidates all outstanding tokens, forcing connector re-auth; generation and rotation instructions in `docs/mcp-oauth2-jwk-setup.md`). `MCP_OAUTH2_ACCESS_TOKEN_TTL` / `MCP_OAUTH2_REFRESH_TOKEN_TTL` (defaults `8h` / `60d`).
+- **Token lifetimes:** Access tokens refresh silently; their TTL only bounds how long a stolen bearer token stays usable. Refresh tokens rotate on use, so the refresh TTL is a sliding window — an actively-used connector never re-authenticates, an idle one expires. A generous refresh window is acceptable because spending is bounded by mandate limits/expiry and revocation, not token lifetime.
+- **OAuth2 persistence (V36):** Client registrations (including DCR) and authorizations (including refresh tokens) are stored in Postgres via `JdbcRegisteredClientRepository` / `JdbcOAuth2AuthorizationService`, so connector sessions survive Railway redeploys — the persisted `MCP_OAUTH2_JWK` alone only covers access-token signatures. The authorization service is wrapped in `PrincipalSanitizingOAuth2AuthorizationService`, which swaps the custom `SecurityUser` principal for its email string before saving (Jackson's security allowlist rejects custom principals; refresh only needs name + authorities). `LifecycleCleanupService` purges expired authorization rows and never-authorized DCR clients after 30 days.
+- **SPA exclusions:** `oauth2/`, `.well-known/` added to `SpaForwardingConfig`.
+- **MCP tools identify users by email** — cart and order tools accept a `userEmail` parameter, not auth tokens. How that email is trusted depends on the auth mode:
+  - **`mcp-oauth2` profile (production, native Claude connector):** `McpAuthenticatedEmailFilter` pins the access-token subject (the user who completed the OAuth 2.1 authorization-code login) into `ChatContext` for the duration of each `/mcp/**` request. `ChatContext.resolveEmail(...)` then makes every tool act strictly as that authenticated user, **ignoring** any `userEmail` the agent passes. This means an agent cannot act as — or mint mandates/payment credentials for — a different user: authorization is established once, up front, by the connector login. Client-credentials tokens (no user) leave the context unset.
+  - **`X-API-Key` fallback (local/dev, trusted-operator):** there is no per-user identity, so `userEmail` is self-asserted and honored as-is. The API key authenticates the *deployment*, not a person. Use the `mcp-oauth2` profile when per-user identity binding matters.
+  - The website chat path uses the same `ChatContext` mechanism, pinning the logged-in user's email before invoking the ChatClient tools.
 - **Complete agent purchase flow:** `findTickets` → `addToCart` → `checkout` → `confirmOrder` — agents can now execute full purchases.
 - **Buyer preference memory** — explicit ticket-shopping preferences in `com.mockhub.buyerpreference`, managed via `GET/PUT /api/v1/preferences/me`. MCP `findTickets` and `compareTickets` accept optional `userEmail` to apply stored preferences and return `preferenceContext`; recommendations include explicit preferences in the prompt when present.
 - **Scoped payment credentials** — mock-backed payment authority in `com.mockhub.paymentcredential`, distinct from mandates. MCP `confirmOrder` and ACP `completeCheckout` accept optional `paymentCredentialId`; one-time credentials are consumed for the completed order, while revoked, expired, over-limit, wrong-agent, or wrong-user credentials are rejected before payment confirmation.
 - **Agent risk signals** — deterministic local risk records in `com.mockhub.agentrisk` for cart holds, mandate mismatches, failed checkouts, high-spend attempts, and payment-credential failures. `AgentRiskCondition` warns on recent risk reasons and blocks repeated mandate mismatches. MCP `getAgentRiskSummary` exposes recent signals for a user/agent pair.
+- **Agent purchase approvals** — human-in-the-loop checkpoint in `com.mockhub.agentapproval`. An agent calls `proposePurchase` (MCP) to create a PROPOSED approval snapshot; the user approves/denies (web or `approvePurchase`/`denyPurchase`); `checkout`/`completeCheckout` accept an optional `approvalId` that must match the agent, mandate, and total. Used when a mandate's `approvalMode` is `APPROVAL_REQUIRED`. Statuses: PROPOSED → APPROVED/DENIED → COMPLETED/FAILED/EXPIRED. Expiry transition is handled durably by `LifecycleCleanupService` (the read-path check is timestamp-based, so rejection holds regardless of stored status).
+- **Agent purchase evidence** — read-only audit assembly in `com.mockhub.agentpurchaseevidence`. Stitches order, mandate, approval, payment-credential, and risk records into a single `AgentPurchaseEvidenceDto` for a completed agent-initiated order. Exposed via `GET /api/v1/agent-evidence/{orderNumber}` and the MCP `getAgentPurchaseEvidence` tool.
+- **Commerce policy** — static, machine-readable purchase policy in `com.mockhub.commerce` (refunds, cancellations, ticket transfer, fees, support). Served at `GET /api/v1/commerce/policies/default` and `/events/{slug}`, and via the MCP `getCommercePolicy` tool, so agents can disclose terms before purchase.
+- **A2A discovery** — `com.mockhub.a2a` serves the Agent-to-Agent Agent Card at `GET /.well-known/agent.json`, describing MockHub's skills, MCP interface, and OAuth2 security scheme. All advertised URLs derive from `mockhub.public-base-url` (env `PUBLIC_BASE_URL`) so non-production instances don't advertise production endpoints.
 - **`findTickets` compound tool** — single-call search with query, category, city, date range, price range, section filter, returning matching listings sorted by price. Uses JPA `Specification` with `findBy` fluent API (no `COUNT` query overhead). `ListingSearchCriteria` record encapsulates all filters; `ListingSearchSpecification` builds predicates dynamically for non-null criteria only. Date parameters are `String` (not `Instant`) because Spring AI MCP can't deserialize ISO-8601 to `Instant`. Reduces agent round-trips from 3 to 1. Server-side execution: ~54ms.
 - **`compareTickets` decision-support tool** — reuses the compound ticket search criteria and returns ranked options, cheapest/best-value/best-section/lowest-risk recommendations, deterministic reason codes, rationale, and price plausibility warnings. Objective listing data remains separate from heuristic judgment fields.
 - **`getEventListings` paginated** — accepts `page`/`size` params (default 20, max 50), returns `{ listings, page, size, totalListings }`. Without pagination, popular events (500+ listings) exceeded MCP context limits.
@@ -248,13 +289,13 @@ The codebase uses Java DOP patterns where they add value:
 - One logical change per commit
 - Use TDD on feature branches: write tests first (RED), implement (GREEN), refactor
 - GitHub issue/PR writes: if the GitHub connector fails with `403 Resource not accessible by integration`, treat that as connector permission only. Fall back to local `gh` before assuming the user's GitHub account lacks permission. If `gh` cannot reach `api.github.com` from Codex, request sandbox network escalation; only ask the user to re-authenticate when `gh auth status` reports invalid auth.
-- PR-ready feature work should follow the `mockhub-pr-readiness` skill: confirm issue and plan first, work on a feature branch, keep new-code coverage above SonarCloud's 80% gate, commit passing code before `claude ultrareview origin/main`, fix valid findings, then push and verify GitHub Actions plus SonarCloud/SonarQube.
+- PR-ready feature work: confirm issue and plan first, work on a feature branch, keep new-code coverage above SonarCloud's 80% gate, run the `pre-push-gate` skill before publishing, commit passing code and run a headless Codex review of the diff before pushing (Claude Code: `/codex-review`; optionally `claude ultrareview origin/main` for a deeper multi-agent pass), fix valid findings, then push and verify GitHub Actions plus SonarCloud/SonarQube. The GitHub Codex auto-review integration is retired — do not wait for a PR review to appear before merging.
 
 ## CI / Quality
 
 - **GitHub Actions** (`.github/workflows/ci.yml`) runs on push to main and PRs: backend tests, frontend lint/typecheck/tests, SonarCloud analysis, Docker build smoke test
 - **SonarCloud** — org: `kousen-it-inc`, project: `kousen_mockhub`. All config is in `sonar-project.properties` at the repo root (both backend and frontend). CI uses `SonarSource/sonarqube-scan-action` (not the Gradle plugin). Token stored as `SONAR_TOKEN` GitHub secret. Both JaCoCo (backend) and lcov (frontend) coverage feed the quality gate.
-- **Issue exclusions** are in `sonar-project.properties`: S1186 (JPA empty constructors), S1192 (seed data literals), S3776 (seed data complexity), S6218 (byte[] record), S6863 (verification endpoint), S7746 (Axios throw style).
+- **Issue exclusions** are in `sonar-project.properties` (16 rules). Key suppressions: S1186 (JPA empty constructors), S1192 (seed data/SQL literals), S3776 (seed data complexity), S6218 (byte[] record), S6863 (verification endpoint), S7746 (Axios throw style), S107 (PDFBox parameter count), S6845 (tooltip tabIndex), S6395 (regex grouping), S125 (regex doc comment), S7764 (window vs globalThis), S7748 (mock data zero fractions), S1075 (filter hardcoded URIs), S7735 (negated ternaries), S135 (sync loop breaks). See `sonar-project.properties` for the complete list with justifications.
 - **SonarQube MCP server** is available in this project. Use it to query SonarCloud for issues, quality gate status, and hotspots. When fixing code, check SonarCloud issues first.
 - **GitHub repo:** `kousen/mockhub` (public, MIT license)
 
@@ -266,8 +307,9 @@ The codebase uses Java DOP patterns where they add value:
 - **Dockerfile:** Root `Dockerfile` builds frontend (Node), bundles into Spring Boot jar, runs on JRE Alpine
 - **SPA routing:** `SpaForwardingConfig` serves `index.html` for client-side routes, excludes `api/`, `actuator/`, `mcp/`, `acp/`, `swagger-ui/`, `v3/` paths
 - **Security:** Static frontend routes (`/`, `/events/**`, `/sell`, `/my/**`, etc.) are `permitAll()` in SecurityConfig. CORS allows the Railway production domain.
-- **Ephemeral filesystem:** Seed images are restored from classpath on every container startup via `restoreSeedImages()` in `EventSeeder`
-- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend` — production datasource, Anthropic AI, mock payment, real SMS and email
+- **Ephemeral filesystem:** Seed images are restored from classpath on every container startup via `SeedImageRestorer` (runs in all profiles). `DataSeeder` is dev-only — does NOT run in production.
+- **Graceful shutdown:** `server.shutdown=graceful` with `spring.lifecycle.timeout-per-shutdown-phase=30s` in `application-prod.yml`. In-flight requests (especially checkout/payment) complete before the container stops during Railway redeploys.
+- **Profiles:** `prod,ai-anthropic,mock-payment,sms-twilio,email-resend,spotify,ticketmaster,mcp-oauth2` — production datasource, Anthropic AI, mock payment, real SMS and email, Spotify, Ticketmaster, MCP OAuth2
 - **Database:** Railway PostgreSQL with separate `SPRING_DATASOURCE_URL`, `_USERNAME`, `_PASSWORD` env vars (Railway's `DATABASE_URL` format is incompatible with JDBC)
 - **JWT secret:** Must be valid Base64 (no dots or special characters)
 - **Auto-deploy:** Pushes to `main` trigger automatic Railway deployments
@@ -277,8 +319,9 @@ The codebase uses Java DOP patterns where they add value:
 
 - `ARCHITECTURE.md` — Database schema, API design, backend/frontend architecture, key decisions
 - `PROJECT_JOURNAL.md` — Build report with session notes, challenges, metrics, and commit history
-- `docs/demo-transcript-agentic-purchase.md` — Full agentic purchase demo transcript (Codex Desktop + MCP, 2026-03-26)
+- `docs/demo-transcript-agentic-purchase.md` — Full agentic purchase demo transcript (Claude Desktop + MCP, 2026-03-26)
 - `docs/stripe-test-setup.md` — Stripe test mode API key setup instructions
+- `docs/mcp-oauth2-jwk-setup.md` — MCP OAuth2 signing key (`MCP_OAUTH2_JWK`) generation, Railway setup, and rotation
 - `sonar-project.properties` — SonarCloud configuration for frontend (coverage exclusions, issue suppressions)
 - `backend/build.gradle.kts` — Backend build config (dependencies, test setup, code style)
 - `.github/workflows/ci.yml` — CI pipeline (backend tests incl. Testcontainers, frontend lint/typecheck/tests, SonarCloud, Docker build)
