@@ -28,7 +28,6 @@ import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.common.exception.UnauthorizedException;
-import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.mandate.service.MandateService;
 import com.mockhub.order.dto.CheckoutRequest;

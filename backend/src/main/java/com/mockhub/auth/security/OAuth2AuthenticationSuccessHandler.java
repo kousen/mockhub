@@ -224,7 +224,6 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         };
     }
 
-    @SuppressWarnings("unchecked")
     private String extractAvatarUrl(OAuth2User user, String provider) {
         return switch (provider) {
             case PROVIDER_GOOGLE -> user.getAttribute("picture");

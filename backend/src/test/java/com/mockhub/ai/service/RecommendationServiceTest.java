@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +29,6 @@ import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.event.entity.Category;
 import com.mockhub.event.entity.Event;
-import com.mockhub.event.entity.Tag;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.favorite.entity.Favorite;
 import com.mockhub.favorite.repository.FavoriteRepository;
@@ -364,7 +362,6 @@ class RecommendationServiceTest {
         Event spotifyEvent = createTestEvent(1L, "Beyoncé Concert", "beyonce", "Arena", "LA");
         spotifyEvent.setSpotifyArtistId("6vWDO969PvNqNYHIOW5v0m");
 
-        @SuppressWarnings("unchecked")
         SpotifyListeningService mockListeningService =
                 org.mockito.Mockito.mock(SpotifyListeningService.class);
         RecommendationService serviceWithSpotify = new RecommendationService(
@@ -434,7 +431,6 @@ class RecommendationServiceTest {
     @Test
     @DisplayName("getRecommendations with Spotify - includes Spotify artists in prompt")
     void getRecommendations_withSpotify_includesSpotifyArtistsInPrompt() {
-        @SuppressWarnings("unchecked")
         SpotifyListeningService mockListeningService =
                 org.mockito.Mockito.mock(SpotifyListeningService.class);
         RecommendationService serviceWithSpotify = new RecommendationService(

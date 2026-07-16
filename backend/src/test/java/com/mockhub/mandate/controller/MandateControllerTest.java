@@ -28,9 +28,7 @@ import com.mockhub.config.SecurityConfig;
 import com.mockhub.mandate.dto.MandateDto;
 import com.mockhub.mandate.service.MandateService;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
