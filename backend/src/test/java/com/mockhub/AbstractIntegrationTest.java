@@ -1,6 +1,7 @@
 package com.mockhub;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.http.client.HttpCookieHandling;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
@@ -58,8 +59,15 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
     }
 
-    @Autowired
     protected TestRestTemplate restTemplate;
+
+    // Spring Boot 4.1 lets the HTTP client keep a cookie jar by default (gh-49261),
+    // which leaks the refresh_token cookie between tests. Tests assume independent
+    // requests, so restore the pre-4.1 behavior of ignoring cookies.
+    @Autowired
+    void configureRestTemplate(TestRestTemplate restTemplate) {
+        this.restTemplate = restTemplate.withCookieHandling(HttpCookieHandling.DISABLE);
+    }
 
     /**
      * Registers a new user and returns the auth response containing a JWT token.
