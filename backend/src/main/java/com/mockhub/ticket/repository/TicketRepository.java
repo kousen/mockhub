@@ -6,11 +6,9 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import com.mockhub.ticket.entity.Ticket;
 
-@Repository
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     List<Ticket> findByEventId(Long eventId);

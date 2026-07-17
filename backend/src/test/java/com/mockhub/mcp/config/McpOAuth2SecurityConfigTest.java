@@ -3,7 +3,6 @@ package com.mockhub.mcp.config;
 import java.security.interfaces.RSAPublicKey;
 import java.util.List;
 
-import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKMatcher;
 import com.nimbusds.jose.jwk.JWKSelector;

@@ -24,8 +24,6 @@ import org.springframework.data.domain.Pageable;
 import com.mockhub.admin.dto.AdminEventDto;
 import com.mockhub.common.dto.PagedResponse;
 import com.mockhub.common.exception.ResourceNotFoundException;
-import com.mockhub.event.dto.EventCreateRequest;
-import com.mockhub.event.dto.EventDto;
 import com.mockhub.event.entity.Category;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
