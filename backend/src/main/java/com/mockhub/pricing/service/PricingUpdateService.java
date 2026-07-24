@@ -44,18 +44,13 @@ public class PricingUpdateService {
             return;
         }
 
-        // Skip-if-unchanged: with static supply/demand the engine used to write
-        // an identical snapshot every 5 minutes (3.3M rows in production, one
-        // real price change). Same multiplier means computed listing prices are
-        // already correct, so only a listing-set change can move the price.
+        // updateListingPrices only touches listings whose stored multiplier
+        // differs (new listings start at 1.000), so this is a cheap no-op when
+        // nothing changed.
+        listingService.updateListingPrices(eventId, multiplier);
+
         PriceHistory lastSnapshot = priceHistoryRepository
                 .findFirstByEventIdOrderByRecordedAtDesc(eventId).orElse(null);
-        boolean multiplierUnchanged = lastSnapshot != null
-                && lastSnapshot.getMultiplier().compareTo(multiplier) == 0;
-
-        if (!multiplierUnchanged) {
-            listingService.updateListingPrices(eventId, multiplier);
-        }
 
         BigDecimal[] priceRange = listingService.getComputedPriceRange(eventId);
         BigDecimal newMinPrice = priceRange[0] != null
@@ -64,7 +59,15 @@ public class PricingUpdateService {
         BigDecimal newMaxPrice = priceRange[1] != null
                 ? priceRange[1]
                 : newMinPrice;
-        if (multiplierUnchanged && lastSnapshot.getPrice().compareTo(newMinPrice) == 0) {
+        // Skip-if-unchanged: with static supply/demand the engine used to write
+        // an identical snapshot every 5 minutes (3.3M rows in production, one
+        // real price change). Snapshot only when something actually moved.
+        boolean unchanged = lastSnapshot != null
+                && lastSnapshot.getMultiplier().compareTo(multiplier) == 0
+                && lastSnapshot.getPrice().compareTo(newMinPrice) == 0
+                && event.getMaxPrice() != null
+                && event.getMaxPrice().compareTo(newMaxPrice) == 0;
+        if (unchanged) {
             return; // nothing moved — no event write, no snapshot
         }
 

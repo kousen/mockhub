@@ -182,6 +182,7 @@ class PricingUpdateServiceTest {
         PriceHistory last = new PriceHistory();
         last.setMultiplier(new BigDecimal("1.250"));
         last.setPrice(new BigDecimal("125.00"));
+        testEvent.setMaxPrice(new BigDecimal("125.00"));
         when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
         when(priceHistoryRepository.findFirstByEventIdOrderByRecordedAtDesc(1L))
                 .thenReturn(Optional.of(last));
@@ -190,13 +191,13 @@ class PricingUpdateServiceTest {
 
         pricingUpdateService.updateEventPricing(1L, multiplier);
 
-        verify(listingService, never()).updateListingPrices(any(), any());
+        verify(listingService).updateListingPrices(1L, multiplier);
         verify(eventRepository, never()).save(any(Event.class));
         verify(priceHistoryRepository, never()).save(any(PriceHistory.class));
     }
 
     @Test
-    @DisplayName("updateEventPricing - given same multiplier but moved price - writes snapshot without relisting")
+    @DisplayName("updateEventPricing - given same multiplier but moved price - writes snapshot")
     void updateEventPricing_givenSameMultiplierMovedPrice_writesSnapshotOnly() {
         BigDecimal multiplier = new BigDecimal("1.250");
         PriceHistory last = new PriceHistory();
@@ -210,11 +211,31 @@ class PricingUpdateServiceTest {
 
         pricingUpdateService.updateEventPricing(1L, multiplier);
 
-        verify(listingService, never()).updateListingPrices(any(), any());
         verify(eventRepository).save(testEvent);
         verify(priceHistoryRepository).save(any(PriceHistory.class));
         assertEquals(new BigDecimal("99.00"), testEvent.getMinPrice(),
                 "Min price should reflect the moved listing floor");
+    }
+
+    @Test
+    @DisplayName("updateEventPricing - given max-only price change - writes snapshot")
+    void updateEventPricing_givenMaxOnlyPriceChange_writesSnapshot() {
+        BigDecimal multiplier = new BigDecimal("1.250");
+        PriceHistory last = new PriceHistory();
+        last.setMultiplier(new BigDecimal("1.250"));
+        last.setPrice(new BigDecimal("125.00"));
+        testEvent.setMaxPrice(new BigDecimal("125.00"));
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(priceHistoryRepository.findFirstByEventIdOrderByRecordedAtDesc(1L))
+                .thenReturn(Optional.of(last));
+        when(listingService.getComputedPriceRange(1L))
+                .thenReturn(new BigDecimal[]{new BigDecimal("125.00"), new BigDecimal("300.00")});
+
+        pricingUpdateService.updateEventPricing(1L, multiplier);
+
+        verify(eventRepository).save(testEvent);
+        assertEquals(new BigDecimal("300.00"), testEvent.getMaxPrice(),
+                "Max price should update when only the ceiling moved");
     }
 
     @Test

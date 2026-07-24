@@ -15,6 +15,9 @@ import com.mockhub.auth.entity.Role;
 import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.RoleRepository;
 import com.mockhub.auth.repository.UserRepository;
+import com.mockhub.cart.entity.Cart;
+import com.mockhub.cart.entity.CartItem;
+import com.mockhub.cart.repository.CartRepository;
 import com.mockhub.event.entity.Category;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.CategoryRepository;
@@ -51,6 +54,7 @@ class DeadEventDataPurgeIntegrationTest extends AbstractIntegrationTest {
     @Autowired private ListingRepository listingRepository;
     @Autowired private PriceHistoryRepository priceHistoryRepository;
     @Autowired private OrderRepository orderRepository;
+    @Autowired private CartRepository cartRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private RoleRepository roleRepository;
     @Autowired private PasswordEncoder passwordEncoder;
@@ -61,6 +65,7 @@ class DeadEventDataPurgeIntegrationTest extends AbstractIntegrationTest {
     private Listing orphanListing;
     private Ticket orderedTicket;
     private Listing orderedListing;
+    private Listing cartedListing;
     private PriceHistory deadEventSnapshot;
     private PriceHistory freshLiveSnapshot;
     private PriceHistory staleLiveSnapshot;
@@ -106,7 +111,11 @@ class DeadEventDataPurgeIntegrationTest extends AbstractIntegrationTest {
 
         orderedTicket = createTicket(deadEvent, section, "PURGE-ORDERED-" + stamp);
         orderedListing = createListing(deadEvent, orderedTicket, "SOLD");
-        createConfirmedOrder(orderedTicket, orderedListing, stamp);
+        User buyer = createConfirmedOrder(orderedTicket, orderedListing, stamp);
+
+        Ticket cartedTicket = createTicket(deadEvent, section, "PURGE-CARTED-" + stamp);
+        cartedListing = createListing(deadEvent, cartedTicket, "ACTIVE");
+        createCartWithItem(buyer, cartedListing);
 
         deadEventSnapshot = createSnapshot(deadEvent, Instant.now().minus(1, ChronoUnit.DAYS));
         freshLiveSnapshot = createSnapshot(liveEvent, Instant.now().minus(1, ChronoUnit.DAYS));
@@ -128,6 +137,8 @@ class DeadEventDataPurgeIntegrationTest extends AbstractIntegrationTest {
                 "Order-referenced listing must survive");
         assertTrue(ticketRepository.existsById(orderedTicket.getId()),
                 "Order-referenced ticket must survive");
+        assertTrue(listingRepository.existsById(cartedListing.getId()),
+                "Cart-referenced listing must survive");
     }
 
     @Test
@@ -185,7 +196,7 @@ class DeadEventDataPurgeIntegrationTest extends AbstractIntegrationTest {
         return listingRepository.save(listing);
     }
 
-    private void createConfirmedOrder(Ticket ticket, Listing listing, long stamp) {
+    private User createConfirmedOrder(Ticket ticket, Listing listing, long stamp) {
         Role role = roleRepository.findByName("ROLE_BUYER")
                 .orElseGet(() -> roleRepository.save(new Role("ROLE_BUYER")));
         User user = new User();
@@ -213,6 +224,20 @@ class DeadEventDataPurgeIntegrationTest extends AbstractIntegrationTest {
         item.setPricePaid(new BigDecimal("75.00"));
         order.getItems().add(item);
         orderRepository.save(order);
+        return user;
+    }
+
+    private void createCartWithItem(User user, Listing listing) {
+        Cart cart = new Cart();
+        cart.setUser(user);
+        cart.setExpiresAt(Instant.now().plus(15, ChronoUnit.MINUTES));
+        CartItem item = new CartItem();
+        item.setCart(cart);
+        item.setListing(listing);
+        item.setPriceAtAdd(listing.getComputedPrice());
+        item.setAddedAt(Instant.now());
+        cart.getItems().add(item);
+        cartRepository.save(cart);
     }
 
     private PriceHistory createSnapshot(Event event, Instant recordedAt) {

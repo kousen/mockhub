@@ -208,6 +208,22 @@ class ListingServiceTest {
     }
 
     @Test
+    @DisplayName("updateListingPrices - reprices only listings whose multiplier differs")
+    void updateListingPrices_repricesOnlyStaleListings() {
+        BigDecimal multiplier = new BigDecimal("1.5");
+        testListing.setPriceMultiplier(new BigDecimal("1.500"));
+        testListing.setComputedPrice(new BigDecimal("112.50"));
+        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE"))
+                .thenReturn(List.of(testListing));
+
+        listingService.updateListingPrices(1L, multiplier);
+
+        verify(listingRepository).saveAll(List.of());
+        assertEquals(new BigDecimal("112.50"), testListing.getComputedPrice(),
+                "Already-current listing should not be touched");
+    }
+
+    @Test
     @DisplayName("getActiveListingsByEventId - given active listings - returns listing DTOs")
     void getActiveListingsByEventId_givenActiveListings_returnsListingDtos() {
         when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE"))
