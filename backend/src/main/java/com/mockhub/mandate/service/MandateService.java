@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -297,7 +298,7 @@ public class MandateService {
         }
         List<String> requested = Arrays.stream(allowedCategories.split(","))
                 .map(String::strip)
-                .map(String::toLowerCase)
+                .map(slug -> slug.toLowerCase(Locale.ROOT))
                 .filter(slug -> !slug.isEmpty())
                 .distinct()
                 .toList();
@@ -322,7 +323,7 @@ public class MandateService {
     private Set<String> parseCommaSeparated(String value) {
         return Arrays.stream(value.split(","))
                 .map(String::strip)
-                .map(String::toLowerCase)
+                .map(slug -> slug.toLowerCase(Locale.ROOT))
                 .collect(Collectors.toSet());
     }
 

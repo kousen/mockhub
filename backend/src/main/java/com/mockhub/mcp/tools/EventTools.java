@@ -60,9 +60,9 @@ public class EventTools {
     @Tool(description = "Search and filter MockHub events by query text, category, city, and pagination. "
             + "Returns a paginated list of event summaries with name, artist, venue, date, and price.")
     public String searchEvents(
-            @ToolParam(description = "Search text matched against event name and artist name only "
-                    + "(substring match). There is no genre search — for a genre like jazz, "
-                    + "search by artist name or filter by category",
+            @ToolParam(description = "Full-text search over event name, artist name, and description "
+                    + "(word-based with stemming, not substring). There is no genre field — a genre "
+                    + "like 'jazz' matches only where those fields mention it",
                     required = false) String query,
             @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', "
                     + "'theater', 'comedy', 'festivals'",

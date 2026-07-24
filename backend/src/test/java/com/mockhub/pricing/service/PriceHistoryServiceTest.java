@@ -135,6 +135,20 @@ class PriceHistoryServiceTest {
     }
 
     @Test
+    @DisplayName("getRecentByEventSlug - given zero or negative limit - clamps to one")
+    void getRecentByEventSlug_givenZeroLimit_clampsToOne() {
+        when(eventRepository.findBySlug("test-event")).thenReturn(Optional.of(testEvent));
+        when(priceHistoryRepository.findByEventIdOrderByRecordedAtDesc(1L, PageRequest.of(0, 1)))
+                .thenReturn(List.of(historyEntry2));
+        when(priceHistoryRepository.countByEventId(1L)).thenReturn(2L);
+
+        PriceHistoryPageDto result = priceHistoryService.getRecentByEventSlug("test-event", 0);
+
+        assertEquals(1, result.limit(), "Zero limit should be clamped to one");
+        assertEquals(1, result.returned(), "Should return a single snapshot");
+    }
+
+    @Test
     @DisplayName("getRecentByEventSlug - given non-existent slug - throws ResourceNotFoundException")
     void getRecentByEventSlug_givenNonExistentSlug_throwsResourceNotFoundException() {
         when(eventRepository.findBySlug("missing")).thenReturn(Optional.empty());
