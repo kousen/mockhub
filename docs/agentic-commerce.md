@@ -292,7 +292,7 @@ If any check fails, the condition returns a CRITICAL failure — the action is b
 
 ### Connection to AP2
 
-Google's Agent Payments Protocol (AP2) defines "mandates" as digitally signed statements of agent authority. MockHub's mandates serve the same purpose but are enforced through the eval conditions framework rather than cryptographic signatures.
+The Agent Payments Protocol (AP2) — created by Google and donated to the FIDO Alliance in April 2026 — defines "mandates" as digitally signed statements of agent authority. MockHub's mandates serve the same purpose but are enforced through the eval conditions framework rather than cryptographic signatures.
 
 The conceptual mapping:
 
@@ -322,7 +322,7 @@ This is the same DbC → eval conditions → mandates progression that Nate Jone
 
 ### What is ACP?
 
-The Agentic Commerce Protocol (ACP) is an open standard codeveloped by Stripe, OpenAI, and Meta that enables programmatic commerce between AI agents and businesses. It defines a RESTful interface for checkout operations that any ACP-compatible agent can use.
+The Agentic Commerce Protocol (ACP) is an open standard codeveloped by Stripe and OpenAI that enables programmatic commerce between AI agents and businesses. It defines a RESTful interface for checkout operations that any ACP-compatible agent can use.
 
 ### MockHub's ACP Implementation
 
@@ -417,8 +417,8 @@ ACP is one of several emerging standards for agentic commerce:
 
 | Protocol | Layer | Owner | MockHub Status |
 |---|---|---|---|
-| **ACP** | Checkout, cart, payment delegation, merchant integration | Stripe + OpenAI + Meta | Partially implemented through `/acp/v1/**` (Layer 3) |
-| **AP2** | Trust, authorization, signed mandates, evidence | Google | Conceptually implemented through mandates and approval records (Layer 2) |
+| **ACP** | Checkout, cart, payment delegation, merchant integration | Stripe + OpenAI | Partially implemented through `/acp/v1/**` (Layer 3) |
+| **AP2** | Trust, authorization, signed mandates, evidence | Google → FIDO Alliance (donated April 2026) | Conceptually implemented through mandates and approval records (Layer 2) |
 | **UCP** | Cross-surface commerce discovery and capability negotiation | Google + industry partners | Not UCP-compliant; many concepts map to existing MockHub surfaces |
 | **x402** | Machine-to-machine API payments over HTTP 402 | [x402.org](https://docs.x402.org/) + Coinbase CDP | Not implemented — interesting pattern, different problem ([details](#x402-http-402-for-machine-to-machine-payments)) |
 
