@@ -117,6 +117,7 @@ class OrderServiceTest {
         testEvent.setId(1L);
         testEvent.setName("Test Event");
         testEvent.setSlug("test-event");
+        testEvent.setStatus("ACTIVE");
         testEvent.setAvailableTickets(10);
         testEvent.setEventDate(java.time.Instant.parse("2026-09-15T20:00:00Z"));
         testEvent.setVenue(testVenue);
@@ -382,6 +383,22 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("confirmOrder - cancelled event blocks confirmation")
+    void confirmOrder_givenCancelledEvent_throwsConflictException() {
+        testListing.getEvent().setStatus("CANCELLED");
+        when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
+                .thenReturn(Optional.of(testOrder));
+
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> orderService.confirmOrder("MH-20260317-0001"),
+                "Should refuse to confirm an order for a cancelled event");
+        assertTrue(ex.getMessage().contains("CANCELLED"),
+                "Message should include the event status");
+        assertEquals(OrderStatus.PENDING, testOrder.getStatus(),
+                "Order should remain PENDING");
+    }
+
+    @Test
     @DisplayName("failOrder - duplicate failure is idempotent")
     void failOrder_givenDuplicateFailure_isIdempotent() {
         when(orderRepository.findByOrderNumberForUpdate("MH-20260317-0001"))
@@ -591,6 +608,20 @@ class OrderServiceTest {
 
         assertThrows(ResourceNotFoundException.class,
                 () -> orderService.getOrderEntityWithItems("MH-MISSING"));
+    }
+
+    @Test
+    @DisplayName("checkout - given cancelled event in cart - throws ConflictException")
+    void checkout_givenCancelledEventInCart_throwsConflictException() {
+        CheckoutRequest request = new CheckoutRequest("mock");
+        testListing.getEvent().setStatus("CANCELLED");
+        when(cartRepository.findByUser(testUser)).thenReturn(Optional.of(testCart));
+
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> orderService.checkout(testUser, request, null),
+                "Should refuse checkout when a carted event was cancelled");
+        assertTrue(ex.getMessage().contains("CANCELLED"),
+                "Message should include the event status");
     }
 
     @Test

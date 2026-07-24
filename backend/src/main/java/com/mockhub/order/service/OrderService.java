@@ -122,6 +122,17 @@ public class OrderService {
             throw new ConflictException("Cannot confirm " + order.getStatus().name().toLowerCase() + " order " + orderNumber);
         }
 
+        // Events can be cancelled between checkout and confirmation (e.g. by the
+        // Ticketmaster status sync) — never complete a sale for a dead event
+        for (OrderItem item : order.getItems()) {
+            String eventStatus = item.getListing().getEvent().getStatus();
+            if (!"ACTIVE".equals(eventStatus)) {
+                throw new ConflictException("Cannot confirm order " + orderNumber + ": event "
+                        + item.getListing().getEvent().getName()
+                        + " is no longer available (status: " + eventStatus + ")");
+            }
+        }
+
         order.transitionTo(OrderStatus.CONFIRMED);
         order.setConfirmedAt(Instant.now());
         markTicketsAsSold(order);
@@ -294,6 +305,12 @@ public class OrderService {
             if (!"ACTIVE".equals(listing.getStatus())) {
                 throw new ConflictException(
                         "Listing for " + listing.getEvent().getName() + " is no longer available");
+            }
+
+            if (!"ACTIVE".equals(listing.getEvent().getStatus())) {
+                throw new ConflictException(
+                        "Event " + listing.getEvent().getName() + " is no longer available (status: "
+                                + listing.getEvent().getStatus() + ")");
             }
 
             Ticket ticket = listing.getTicket();

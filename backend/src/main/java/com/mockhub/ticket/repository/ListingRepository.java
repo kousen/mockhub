@@ -110,6 +110,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long>, JpaSpec
             SELECT l FROM Listing l
             JOIN FETCH l.ticket t
             WHERE l.status = 'ACTIVE' AND l.event.status <> 'ACTIVE'
+                AND t.status = 'LISTED'
             """)
     List<Listing> findActiveListingsForInactiveEvents();
 }
