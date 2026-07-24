@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ai.dto.PricePredictionDto;
 import com.mockhub.ai.service.PricePredictionService;
+import com.mockhub.pricing.dto.PriceHistoryPageDto;
 import com.mockhub.pricing.service.PriceHistoryService;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,30 +51,45 @@ class PricingToolsTest {
         }
 
         @Test
-        @DisplayName("given valid event slug - returns price history JSON")
+        @DisplayName("given valid event slug - returns bounded price history JSON with default limit")
         void givenValidEventSlug_returnsPriceHistoryJson() {
-            when(priceHistoryService.getByEventSlug("rock-festival")).thenReturn(List.of());
+            when(priceHistoryService.getRecentByEventSlug("rock-festival", 50))
+                    .thenReturn(new PriceHistoryPageDto(List.of(), 0, 0, 50));
 
-            String result = pricingTools.getPriceHistory("rock-festival");
+            String result = pricingTools.getPriceHistory("rock-festival", null);
 
-            assertTrue(result.startsWith("["), "Result should be a JSON array");
-            verify(priceHistoryService).getByEventSlug("rock-festival");
+            assertTrue(result.contains("\"snapshots\""), "Result should contain snapshots field");
+            assertTrue(result.contains("\"totalSnapshots\""), "Result should contain totalSnapshots field");
+            verify(priceHistoryService).getRecentByEventSlug("rock-festival", 50);
+        }
+
+        @Test
+        @DisplayName("given explicit limit - passes limit through to service")
+        void givenExplicitLimit_passesLimitToService() {
+            when(priceHistoryService.getRecentByEventSlug("rock-festival", 10))
+                    .thenReturn(new PriceHistoryPageDto(List.of(), 0, 3495, 10));
+
+            String result = pricingTools.getPriceHistory("rock-festival", 10);
+
+            assertTrue(result.contains("3495"), "Result should carry the total snapshot count");
+            verify(priceHistoryService).getRecentByEventSlug("rock-festival", 10);
         }
 
         @Test
         @DisplayName("given slug with whitespace - strips whitespace before lookup")
         void givenSlugWithWhitespace_stripsWhitespace() {
-            when(priceHistoryService.getByEventSlug("rock-festival")).thenReturn(List.of());
+            when(priceHistoryService.getRecentByEventSlug("rock-festival", 50))
+                    .thenReturn(new PriceHistoryPageDto(List.of(), 0, 0, 50));
 
-            pricingTools.getPriceHistory("  rock-festival  ");
+            pricingTools.getPriceHistory("  rock-festival  ", null);
 
-            verify(priceHistoryService).getByEventSlug("rock-festival");
+            verify(priceHistoryService).getRecentByEventSlug("rock-festival", 50);
         }
 
         @Test
         @DisplayName("given null slug - returns error JSON")
         void givenNullSlug_returnsErrorJson() {
-            String result = pricingTools.getPriceHistory(null);
+            String result = pricingTools.getPriceHistory(null, null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Event slug is required"), "Result should indicate slug is required");
@@ -82,7 +98,7 @@ class PricingToolsTest {
         @Test
         @DisplayName("given blank slug - returns error JSON")
         void givenBlankSlug_returnsErrorJson() {
-            String result = pricingTools.getPriceHistory("   ");
+            String result = pricingTools.getPriceHistory("   ", null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
         }
@@ -90,10 +106,10 @@ class PricingToolsTest {
         @Test
         @DisplayName("given service throws exception - returns error JSON")
         void givenServiceThrowsException_returnsErrorJson() {
-            when(priceHistoryService.getByEventSlug("bad-slug"))
+            when(priceHistoryService.getRecentByEventSlug("bad-slug", 50))
                     .thenThrow(new RuntimeException("DB error"));
 
-            String result = pricingTools.getPriceHistory("bad-slug");
+            String result = pricingTools.getPriceHistory("bad-slug", null);
 
             assertTrue(result.contains("\"error\""), "Result should contain error field");
             assertTrue(result.contains("Failed to get price history"), "Result should contain failure message");

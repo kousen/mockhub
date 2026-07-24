@@ -133,6 +133,22 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("handleIllegalArgument - returns 400 ProblemDetail with exception message")
+    void handleIllegalArgument_returns400ProblemDetail() {
+        IllegalArgumentException ex =
+                new IllegalArgumentException("Unknown category slug(s): [jazz]");
+
+        ResponseEntity<ProblemDetail> response = handler.handleIllegalArgument(ex);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ProblemDetail body = response.getBody();
+        assertNotNull(body);
+        assertEquals(400, body.getStatus());
+        assertEquals("Bad Request", body.getTitle());
+        assertEquals("Unknown category slug(s): [jazz]", body.getDetail());
+    }
+
+    @Test
     @DisplayName("handleOptimisticLock - returns 409 ProblemDetail with retry message")
     void handleOptimisticLock_returns409ProblemDetail() {
         OptimisticLockingFailureException ex =

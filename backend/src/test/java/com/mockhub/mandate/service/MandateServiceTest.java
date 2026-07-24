@@ -15,6 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.mockhub.common.exception.ResourceNotFoundException;
+import com.mockhub.event.entity.Category;
+import com.mockhub.event.repository.CategoryRepository;
 import com.mockhub.mandate.dto.CreateMandateRequest;
 import com.mockhub.mandate.dto.MandateDto;
 import com.mockhub.mandate.entity.Mandate;
@@ -23,6 +25,7 @@ import com.mockhub.mandate.repository.MandateRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,11 +36,26 @@ class MandateServiceTest {
     @Mock
     private MandateRepository mandateRepository;
 
+    @Mock
+    private CategoryRepository categoryRepository;
+
     private MandateService mandateService;
 
     @BeforeEach
     void setUp() {
-        mandateService = new MandateService(mandateRepository);
+        mandateService = new MandateService(mandateRepository, categoryRepository);
+    }
+
+    private void stubCategorySlugs() {
+        when(categoryRepository.findAll()).thenReturn(List.of(
+                category("concerts"), category("sports"), category("theater"),
+                category("comedy"), category("festivals")));
+    }
+
+    private Category category(String slug) {
+        Category category = new Category();
+        category.setSlug(slug);
+        return category;
     }
 
     @Test
@@ -48,6 +66,7 @@ class MandateServiceTest {
                 new BigDecimal("100.00"), new BigDecimal("500.00"),
                 "concerts,sports", null, null, null, null);
 
+        stubCategorySlugs();
         when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> {
             Mandate mandate = invocation.getArgument(0);
             mandate.setId(1L);
@@ -71,6 +90,55 @@ class MandateServiceTest {
         ArgumentCaptor<Mandate> captor = ArgumentCaptor.forClass(Mandate.class);
         verify(mandateRepository).save(captor.capture());
         assertThat(captor.getValue().getMandateId()).hasSize(36);
+    }
+
+    @Test
+    @DisplayName("createMandate rejects unknown category slugs with valid slugs in message")
+    void createMandate_givenUnknownCategorySlug_throwsIllegalArgumentException() {
+        CreateMandateRequest request = new CreateMandateRequest(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("100.00"), new BigDecimal("500.00"),
+                "jazz,classical", null, null, null, null);
+
+        stubCategorySlugs();
+
+        assertThatThrownBy(() -> mandateService.createMandate(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("jazz")
+                .hasMessageContaining("classical")
+                .hasMessageContaining("concerts");
+    }
+
+    @Test
+    @DisplayName("createMandate normalizes category slug case and whitespace")
+    void createMandate_givenMixedCaseCategoriesWithSpaces_storesNormalizedSlugs() {
+        CreateMandateRequest request = new CreateMandateRequest(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("100.00"), new BigDecimal("500.00"),
+                " Concerts, SPORTS ", null, null, null, null);
+
+        stubCategorySlugs();
+        when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MandateDto result = mandateService.createMandate(request);
+
+        assertThat(result.allowedCategories()).isEqualTo("concerts,sports");
+    }
+
+    @Test
+    @DisplayName("createMandate stores null for blank category list")
+    void createMandate_givenBlankCategories_storesNullWithoutValidation() {
+        CreateMandateRequest request = new CreateMandateRequest(
+                "agent-1", "user@example.com", "PURCHASE",
+                new BigDecimal("100.00"), new BigDecimal("500.00"),
+                " , ", null, null, null, null);
+
+        when(mandateRepository.save(any(Mandate.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MandateDto result = mandateService.createMandate(request);
+
+        assertThat(result.allowedCategories()).isNull();
+        verify(categoryRepository, never()).findAll();
     }
 
     @Test
