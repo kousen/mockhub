@@ -31,6 +31,9 @@ public final class ListingSearchSpecification {
             predicates.add(cb.equal(root.get("status"), "ACTIVE"));
 
             Join<Object, Object> event = root.join("event");
+            // Cancelled/completed events keep their listings until lifecycle
+            // cleanup runs — never surface them to buyers or agents
+            predicates.add(cb.equal(event.get("status"), "ACTIVE"));
             Join<Object, Object> venue = event.join("venue");
             Join<Object, Object> category = event.join("category");
             Join<Object, Object> ticket = root.join("ticket");

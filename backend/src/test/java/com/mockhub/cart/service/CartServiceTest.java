@@ -33,6 +33,7 @@ import com.mockhub.venue.entity.Section;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -79,6 +80,7 @@ class CartServiceTest {
         testEvent.setId(1L);
         testEvent.setName("Test Event");
         testEvent.setSlug("test-event");
+        testEvent.setStatus("ACTIVE");
 
         Section testSection = new Section();
         testSection.setId(1L);
@@ -161,6 +163,19 @@ class CartServiceTest {
         assertThrows(ConflictException.class,
                 () -> cartService.addToCart(testUser, 1L),
                 "Should throw ConflictException for inactive listing");
+    }
+
+    @Test
+    @DisplayName("addToCart - given cancelled event - throws ConflictException")
+    void addToCart_givenCancelledEvent_throwsConflictException() {
+        testListing.getEvent().setStatus("CANCELLED");
+        when(listingRepository.findById(1L)).thenReturn(Optional.of(testListing));
+
+        ConflictException ex = assertThrows(ConflictException.class,
+                () -> cartService.addToCart(testUser, 1L),
+                "Should throw ConflictException for cancelled event");
+        assertTrue(ex.getMessage().contains("CANCELLED"),
+                "Message should include the event status");
     }
 
     @Test

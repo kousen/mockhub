@@ -105,4 +105,11 @@ public interface ListingRepository extends JpaRepository<Listing, Long>, JpaSpec
             )
             """)
     List<Listing> findActiveListingsForPastEvents(@Param("now") Instant now);
+
+    @Query("""
+            SELECT l FROM Listing l
+            JOIN FETCH l.ticket t
+            WHERE l.status = 'ACTIVE' AND l.event.status <> 'ACTIVE'
+            """)
+    List<Listing> findActiveListingsForInactiveEvents();
 }

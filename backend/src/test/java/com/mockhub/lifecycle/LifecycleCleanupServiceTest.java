@@ -70,6 +70,8 @@ class LifecycleCleanupServiceTest {
                 .thenReturn(Collections.emptyList());
         when(listingRepository.findActiveListingsForPastEvents(any(Instant.class)))
                 .thenReturn(Collections.emptyList());
+        when(listingRepository.findActiveListingsForInactiveEvents())
+                .thenReturn(Collections.emptyList());
         when(eventRepository.markPastEventsAsCompleted(any(Instant.class))).thenReturn(0);
         when(notificationRepository.deleteReadNotificationsOlderThan(any(Instant.class))).thenReturn(0);
         when(paymentCredentialRepository.expireActiveCredentials(
@@ -84,6 +86,7 @@ class LifecycleCleanupServiceTest {
 
         verify(listingRepository).findActiveListingsPastDeadline(any(Instant.class));
         verify(listingRepository).findActiveListingsForPastEvents(any(Instant.class));
+        verify(listingRepository).findActiveListingsForInactiveEvents();
         verify(eventRepository).markPastEventsAsCompleted(any(Instant.class));
         verify(notificationRepository).deleteReadNotificationsOlderThan(any(Instant.class));
         verify(paymentCredentialRepository).expireActiveCredentials(
@@ -115,6 +118,19 @@ class LifecycleCleanupServiceTest {
         when(listingRepository.findActiveListingsForPastEvents(now)).thenReturn(List.of(listing));
 
         int result = cleanupService.expireListingsForPastEvents(now);
+
+        assertEquals(1, result);
+        assertEquals("EXPIRED", listing.getStatus());
+        assertEquals("AVAILABLE", listing.getTicket().getStatus());
+    }
+
+    @Test
+    @DisplayName("expireListingsForInactiveEvents - expires listings and releases tickets")
+    void expireListingsForInactiveEvents_expiresListingsAndReleasesTickets() {
+        Listing listing = createActiveListingWithTicket();
+        when(listingRepository.findActiveListingsForInactiveEvents()).thenReturn(List.of(listing));
+
+        int result = cleanupService.expireListingsForInactiveEvents();
 
         assertEquals(1, result);
         assertEquals("EXPIRED", listing.getStatus());
