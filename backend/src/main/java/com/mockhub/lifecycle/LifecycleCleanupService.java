@@ -58,6 +58,7 @@ public class LifecycleCleanupService {
 
         int expiredByDeadline = expireListingsPastDeadline(now);
         int expiredByEvent = expireListingsForPastEvents(now);
+        int expiredByInactiveEvent = expireListingsForInactiveEvents();
         int completedEvents = markPastEventsAsCompleted(now);
         int deletedNotifications = deleteOldReadNotifications(now);
         int expiredPaymentCredentials = expirePaymentCredentials(now);
@@ -65,16 +66,17 @@ public class LifecycleCleanupService {
         int deletedOAuth2Authorizations = deleteExpiredOAuth2Authorizations(now);
         int deletedOAuth2Clients = deleteStaleUnauthorizedOAuth2Clients(now);
 
-        if (expiredByDeadline + expiredByEvent + completedEvents + deletedNotifications
-                + expiredPaymentCredentials + expiredApprovals + deletedOAuth2Authorizations
-                + deletedOAuth2Clients > 0) {
+        if (expiredByDeadline + expiredByEvent + expiredByInactiveEvent + completedEvents
+                + deletedNotifications + expiredPaymentCredentials + expiredApprovals
+                + deletedOAuth2Authorizations + deletedOAuth2Clients > 0) {
             log.info("Lifecycle cleanup: expired {} listings (deadline), {} listings (past events), "
+                    + "{} listings (cancelled/inactive events), "
                     + "completed {} events, deleted {} old notifications, expired {} payment credentials, "
                     + "expired {} purchase approvals, deleted {} expired OAuth2 authorizations, "
                     + "deleted {} stale OAuth2 clients",
-                    expiredByDeadline, expiredByEvent, completedEvents, deletedNotifications,
-                    expiredPaymentCredentials, expiredApprovals, deletedOAuth2Authorizations,
-                    deletedOAuth2Clients);
+                    expiredByDeadline, expiredByEvent, expiredByInactiveEvent, completedEvents,
+                    deletedNotifications, expiredPaymentCredentials, expiredApprovals,
+                    deletedOAuth2Authorizations, deletedOAuth2Clients);
         }
     }
 
@@ -86,6 +88,18 @@ public class LifecycleCleanupService {
 
     int expireListingsForPastEvents(Instant now) {
         List<Listing> listings = listingRepository.findActiveListingsForPastEvents(now);
+        expireListingsAndReleaseTickets(listings);
+        return listings.size();
+    }
+
+    /**
+     * Cancelled (or otherwise deactivated) future events keep their listings
+     * ACTIVE until this runs — e.g. the Ticketmaster sync honoring a "cancelled"
+     * status from upstream. Search already filters these out; this releases the
+     * inventory so it stops appearing anywhere.
+     */
+    int expireListingsForInactiveEvents() {
+        List<Listing> listings = listingRepository.findActiveListingsForInactiveEvents();
         expireListingsAndReleaseTickets(listings);
         return listings.size();
     }

@@ -76,6 +76,11 @@ public class CartService {
             throw new ConflictException("Listing is not available");
         }
 
+        if (!"ACTIVE".equals(listing.getEvent().getStatus())) {
+            throw new ConflictException("Event is no longer available (status: "
+                    + listing.getEvent().getStatus() + ")");
+        }
+
         Cart cart = getOrCreateCart(user);
 
         // Check if expired — if so, clear items and reuse cart
