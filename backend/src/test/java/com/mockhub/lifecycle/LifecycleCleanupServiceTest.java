@@ -20,9 +20,11 @@ import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.repository.NotificationRepository;
 import com.mockhub.paymentcredential.entity.PaymentCredentialStatus;
 import com.mockhub.paymentcredential.repository.PaymentCredentialRepository;
+import com.mockhub.pricing.repository.PriceHistoryRepository;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.entity.Ticket;
 import com.mockhub.ticket.repository.ListingRepository;
+import com.mockhub.ticket.repository.TicketRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,13 +56,20 @@ class LifecycleCleanupServiceTest {
     @Mock
     private JdbcTemplate jdbcTemplate;
 
+    @Mock
+    private PriceHistoryRepository priceHistoryRepository;
+
+    @Mock
+    private TicketRepository ticketRepository;
+
     private LifecycleCleanupService cleanupService;
 
     @BeforeEach
     void setUp() {
         cleanupService = new LifecycleCleanupService(
                 listingRepository, eventRepository, notificationRepository,
-                paymentCredentialRepository, approvalRepository, jdbcTemplate);
+                paymentCredentialRepository, approvalRepository, jdbcTemplate,
+                priceHistoryRepository, ticketRepository, 90);
     }
 
     @Test
@@ -87,6 +96,10 @@ class LifecycleCleanupServiceTest {
         verify(listingRepository).findActiveListingsPastDeadline(any(Instant.class));
         verify(listingRepository).findActiveListingsForPastEvents(any(Instant.class));
         verify(listingRepository).findActiveListingsForInactiveEvents();
+        verify(priceHistoryRepository).deleteForInactiveEvents();
+        verify(priceHistoryRepository).deleteRecordedBefore(any(Instant.class));
+        verify(listingRepository).deleteOrphanedForInactiveEvents();
+        verify(ticketRepository).deleteOrphanedForInactiveEvents();
         verify(eventRepository).markPastEventsAsCompleted(any(Instant.class));
         verify(notificationRepository).deleteReadNotificationsOlderThan(any(Instant.class));
         verify(paymentCredentialRepository).expireActiveCredentials(
@@ -122,6 +135,29 @@ class LifecycleCleanupServiceTest {
         assertEquals(1, result);
         assertEquals("EXPIRED", listing.getStatus());
         assertEquals("AVAILABLE", listing.getTicket().getStatus());
+    }
+
+    @Test
+    @DisplayName("purgeDeadPriceHistory - sums dead-event and retention deletions with correct cutoff")
+    void purgeDeadPriceHistory_sumsDeletionsWithRetentionCutoff() {
+        Instant now = Instant.now();
+        when(priceHistoryRepository.deleteForInactiveEvents()).thenReturn(3_000_000);
+        when(priceHistoryRepository.deleteRecordedBefore(now.minus(90, ChronoUnit.DAYS)))
+                .thenReturn(1_000);
+
+        int result = cleanupService.purgeDeadPriceHistory(now);
+
+        assertEquals(3_001_000, result);
+    }
+
+    @Test
+    @DisplayName("purge operations - delegate to repository bulk deletes")
+    void purgeOperations_delegateToRepositoryBulkDeletes() {
+        when(listingRepository.deleteOrphanedForInactiveEvents()).thenReturn(59_053);
+        when(ticketRepository.deleteOrphanedForInactiveEvents()).thenReturn(169_214);
+
+        assertEquals(59_053, cleanupService.purgeOrphanedListingsForInactiveEvents());
+        assertEquals(169_214, cleanupService.purgeOrphanedTicketsForInactiveEvents());
     }
 
     @Test

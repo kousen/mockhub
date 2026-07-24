@@ -147,14 +147,21 @@ public class ListingService {
     public void updateListingPrices(Long eventId, BigDecimal multiplier) {
         List<Listing> activeListings = listingRepository.findByEventIdAndStatus(eventId, STATUS_ACTIVE);
 
-        for (Listing listing : activeListings) {
+        // Only touch listings whose multiplier actually differs — new listings
+        // start at 1.000 and must be repriced even when the event multiplier
+        // hasn't moved since the last pricing run.
+        List<Listing> stale = activeListings.stream()
+                .filter(listing -> listing.getPriceMultiplier().compareTo(multiplier) != 0)
+                .toList();
+
+        for (Listing listing : stale) {
             BigDecimal computedPrice = listing.getListedPrice().multiply(multiplier);
             listing.setComputedPrice(computedPrice);
             listing.setPriceMultiplier(multiplier);
         }
 
-        listingRepository.saveAll(activeListings);
-        log.debug("Updated {} listing prices for event {}", activeListings.size(), eventId);
+        listingRepository.saveAll(stale);
+        log.debug("Updated {} listing prices for event {}", stale.size(), eventId);
     }
 
     @Transactional(readOnly = true)
