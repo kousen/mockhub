@@ -233,7 +233,7 @@ The codebase uses Java DOP patterns where they add value:
 - **`MandateCondition`** — CRITICAL eval condition that blocks agent actions without a valid mandate. Checks scope, spending limits, and category/event constraints.
 - **MandateTools** — 5 MCP tools for mandate lifecycle: `createMandate`, `revokeMandate`, `listMandates`, `validateMandate`, `getBestMandate` (compound lookup, recommended before `addToCart`).
 - **Mandate entity** in `com.mockhub.mandate` package. Flyway migration `V22__create_mandates_table.sql`.
-- **Inspired by AP2** (Google's Agent Payments Protocol) — mandates are MockHub's implementation of AP2's digitally signed authorization concept, enforced through the eval conditions framework.
+- **Inspired by AP2** (the Agent Payments Protocol, created by Google, now stewarded by the FIDO Alliance) — mandates are MockHub's implementation of AP2's digitally signed authorization concept, enforced through the eval conditions framework.
 - **PURCHASE scope subsumes BROWSE** — an agent authorized to buy can also browse.
 
 ### ACP (Agentic Commerce Protocol)
