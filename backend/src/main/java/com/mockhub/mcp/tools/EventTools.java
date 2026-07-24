@@ -60,7 +60,9 @@ public class EventTools {
     @Tool(description = "Search and filter MockHub events by query text, category, city, and pagination. "
             + "Returns a paginated list of event summaries with name, artist, venue, date, and price.")
     public String searchEvents(
-            @ToolParam(description = "Search query text to match event name or artist",
+            @ToolParam(description = "Search text matched against event name and artist name only "
+                    + "(substring match). There is no genre search — for a genre like jazz, "
+                    + "search by artist name or filter by category",
                     required = false) String query,
             @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', "
                     + "'theater', 'comedy', 'festivals'",
@@ -187,7 +189,9 @@ public class EventTools {
             + "For broad queries, ask the user to narrow by city, category, or date range "
             + "before calling — this produces faster, more relevant results.")
     public String findTickets(
-            @ToolParam(description = "Search query text to match event name or artist",
+            @ToolParam(description = "Search text matched against event name and artist name only "
+                    + "(substring match). There is no genre search — for a genre like jazz, "
+                    + "search by artist name or filter by category",
                     required = false) String query,
             @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', "
                     + "'theater', 'comedy', 'festivals'",
@@ -240,7 +244,9 @@ public class EventTools {
             + "and price plausibility warnings. Objective listing fields are returned separately from "
             + "heuristic judgment fields.")
     public String compareTickets(
-            @ToolParam(description = "Search query text to match event name or artist",
+            @ToolParam(description = "Search text matched against event name and artist name only "
+                    + "(substring match). There is no genre search — for a genre like jazz, "
+                    + "search by artist name or filter by category",
                     required = false) String query,
             @ToolParam(description = "Category slug to filter by: 'concerts', 'sports', "
                     + "'theater', 'comedy', 'festivals'",

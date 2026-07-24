@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.common.exception.UnauthorizedException;
+import com.mockhub.event.entity.Category;
+import com.mockhub.event.repository.CategoryRepository;
 import com.mockhub.mandate.dto.CreateMandateRequest;
 import com.mockhub.mandate.dto.MandateDto;
 import com.mockhub.mandate.entity.Mandate;
@@ -33,9 +35,11 @@ public class MandateService {
     private static final String APPROVAL_MODE_APPROVAL_REQUIRED = "APPROVAL_REQUIRED";
 
     private final MandateRepository mandateRepository;
+    private final CategoryRepository categoryRepository;
 
-    public MandateService(MandateRepository mandateRepository) {
+    public MandateService(MandateRepository mandateRepository, CategoryRepository categoryRepository) {
         this.mandateRepository = mandateRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     @Transactional
@@ -48,7 +52,7 @@ public class MandateService {
         mandate.setMaxSpendPerTransaction(request.maxSpendPerTransaction());
         mandate.setMaxSpendTotal(request.maxSpendTotal());
         mandate.setTotalSpent(BigDecimal.ZERO);
-        mandate.setAllowedCategories(request.allowedCategories());
+        mandate.setAllowedCategories(normalizeAndValidateCategories(request.allowedCategories()));
         mandate.setAllowedEvents(request.allowedEvents());
         mandate.setAllowedSections(request.allowedSections());
         mandate.setApprovalMode(normalizeApprovalMode(request.approvalMode()));
@@ -279,6 +283,40 @@ public class MandateService {
             return true;
         }
         return grantedScope.equals(requiredScope);
+    }
+
+    /**
+     * Normalizes a comma-separated category list (trim, lowercase, drop blanks)
+     * and validates each slug against the categories table. Agents frequently
+     * pass genres like "jazz" here; rejecting unknown slugs at creation time
+     * prevents mandates that can never authorize anything.
+     */
+    private String normalizeAndValidateCategories(String allowedCategories) {
+        if (allowedCategories == null || allowedCategories.isBlank()) {
+            return null;
+        }
+        List<String> requested = Arrays.stream(allowedCategories.split(","))
+                .map(String::strip)
+                .map(String::toLowerCase)
+                .filter(slug -> !slug.isEmpty())
+                .distinct()
+                .toList();
+        if (requested.isEmpty()) {
+            return null;
+        }
+        Set<String> validSlugs = categoryRepository.findAll().stream()
+                .map(Category::getSlug)
+                .collect(Collectors.toSet());
+        List<String> unknown = requested.stream()
+                .filter(slug -> !validSlugs.contains(slug))
+                .toList();
+        if (!unknown.isEmpty()) {
+            throw new IllegalArgumentException("Unknown category slug(s): " + unknown
+                    + ". Valid category slugs: " + validSlugs.stream().sorted()
+                            .collect(Collectors.joining(", "))
+                    + ". Categories are event types, not genres.");
+        }
+        return String.join(",", requested);
     }
 
     private Set<String> parseCommaSeparated(String value) {

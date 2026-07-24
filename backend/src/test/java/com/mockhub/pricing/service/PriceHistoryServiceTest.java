@@ -12,11 +12,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.event.entity.Event;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.pricing.dto.PriceHistoryDto;
+import com.mockhub.pricing.dto.PriceHistoryPageDto;
 import com.mockhub.pricing.entity.PriceHistory;
 import com.mockhub.pricing.repository.PriceHistoryRepository;
 
@@ -99,6 +101,48 @@ class PriceHistoryServiceTest {
         assertEquals(10L, secondDto.id(), "Second entry ID should match");
         assertEquals(new BigDecimal("120.00"), secondDto.price(), "Second entry price should match");
         assertEquals(14, secondDto.daysToEvent(), "Second entry days to event should match");
+    }
+
+    @Test
+    @DisplayName("getRecentByEventSlug - given limit - returns bounded page with total count")
+    void getRecentByEventSlug_givenLimit_returnsBoundedPage() {
+        when(eventRepository.findBySlug("test-event")).thenReturn(Optional.of(testEvent));
+        when(priceHistoryRepository.findByEventIdOrderByRecordedAtDesc(1L, PageRequest.of(0, 1)))
+                .thenReturn(List.of(historyEntry2));
+        when(priceHistoryRepository.countByEventId(1L)).thenReturn(3495L);
+
+        PriceHistoryPageDto result = priceHistoryService.getRecentByEventSlug("test-event", 1);
+
+        assertEquals(1, result.returned(), "Should return one snapshot");
+        assertEquals(3495L, result.totalSnapshots(), "Should report full history size");
+        assertEquals(1, result.limit(), "Should echo the applied limit");
+        assertEquals(11L, result.snapshots().get(0).id(), "Should return the newest snapshot");
+    }
+
+    @Test
+    @DisplayName("getRecentByEventSlug - given oversized limit - clamps to maximum")
+    void getRecentByEventSlug_givenOversizedLimit_clampsToMax() {
+        when(eventRepository.findBySlug("test-event")).thenReturn(Optional.of(testEvent));
+        when(priceHistoryRepository.findByEventIdOrderByRecordedAtDesc(
+                1L, PageRequest.of(0, PriceHistoryService.MAX_SNAPSHOT_LIMIT)))
+                .thenReturn(List.of());
+        when(priceHistoryRepository.countByEventId(1L)).thenReturn(0L);
+
+        PriceHistoryPageDto result = priceHistoryService.getRecentByEventSlug("test-event", 10_000);
+
+        assertEquals(PriceHistoryService.MAX_SNAPSHOT_LIMIT, result.limit(),
+                "Limit should be clamped to the maximum");
+    }
+
+    @Test
+    @DisplayName("getRecentByEventSlug - given non-existent slug - throws ResourceNotFoundException")
+    void getRecentByEventSlug_givenNonExistentSlug_throwsResourceNotFoundException() {
+        when(eventRepository.findBySlug("missing")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> priceHistoryService.getRecentByEventSlug("missing", 50),
+                "Should throw ResourceNotFoundException for unknown slug");
+        verifyNoInteractions(priceHistoryRepository);
     }
 
     @Test

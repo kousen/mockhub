@@ -40,7 +40,10 @@ public class MandateTools {
             @ToolParam(description = "Scope of the mandate: BROWSE or PURCHASE", required = true) String scope,
             @ToolParam(description = "Maximum spend per transaction (optional)") BigDecimal maxSpendPerTransaction,
             @ToolParam(description = "Maximum cumulative spend limit (optional)") BigDecimal maxSpendTotal,
-            @ToolParam(description = "Comma-separated category slugs (optional, null = all)") String allowedCategories,
+            @ToolParam(description = "Comma-separated event category slugs the agent may buy from: "
+                    + "concerts, sports, theater, comedy, festivals (optional, null = all). "
+                    + "These are event categories, not genres — a genre like 'jazz' is rejected")
+                    String allowedCategories,
             @ToolParam(description = "Comma-separated event slugs (optional, null = all)") String allowedEvents,
             @ToolParam(description = "Comma-separated section names (optional, null = all sections)") String allowedSections,
             @ToolParam(description = "AUTO_PURCHASE or APPROVAL_REQUIRED (optional, defaults to AUTO_PURCHASE)")

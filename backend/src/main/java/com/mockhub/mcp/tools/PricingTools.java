@@ -1,7 +1,5 @@
 package com.mockhub.mcp.tools;
 
-import java.util.List;
-
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,13 +10,14 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ai.dto.PricePredictionDto;
 import com.mockhub.ai.service.PricePredictionService;
-import com.mockhub.pricing.dto.PriceHistoryDto;
+import com.mockhub.pricing.dto.PriceHistoryPageDto;
 import com.mockhub.pricing.service.PriceHistoryService;
 
 @Component
 public class PricingTools {
 
     private static final Logger log = LoggerFactory.getLogger(PricingTools.class);
+    private static final int DEFAULT_HISTORY_LIMIT = 50;
 
     private final PriceHistoryService priceHistoryService;
     private final PricePredictionService pricePredictionService;
@@ -32,15 +31,22 @@ public class PricingTools {
         this.objectMapper = objectMapper;
     }
 
-    @Tool(description = "Get MockHub price history for an event showing how ticket prices have changed over time. "
-            + "Returns a list of price snapshots with price, multiplier, supply ratio, and demand score.")
+    @Tool(description = "Get recent MockHub price history snapshots for an event, newest first. "
+            + "Returns { snapshots, returned, totalSnapshots, limit }. Snapshots may be stale — "
+            + "check the newest recordedAt before treating the series as current. "
+            + "Events can have thousands of snapshots; use the limit parameter, not repeated calls, "
+            + "to control response size.")
     public String getPriceHistory(
-            @ToolParam(description = "Event URL slug to get price history for", required = true) String eventSlug) {
+            @ToolParam(description = "Event URL slug to get price history for", required = true) String eventSlug,
+            @ToolParam(description = "Maximum snapshots to return, newest first (default 50, max 500)",
+                    required = false) Integer limit) {
         try {
             if (eventSlug == null || eventSlug.isBlank()) {
                 return errorJson("Event slug is required");
             }
-            List<PriceHistoryDto> history = priceHistoryService.getByEventSlug(eventSlug.strip());
+            int effectiveLimit = limit != null ? limit : DEFAULT_HISTORY_LIMIT;
+            PriceHistoryPageDto history =
+                    priceHistoryService.getRecentByEventSlug(eventSlug.strip(), effectiveLimit);
             return objectMapper.writeValueAsString(history);
         } catch (Exception e) {
             log.error("Error getting price history for '{}': {}", eventSlug, e.getMessage(), e);
