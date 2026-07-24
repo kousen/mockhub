@@ -4,12 +4,22 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.mockhub.ticket.entity.Ticket;
 
 public interface TicketRepository extends JpaRepository<Ticket, Long> {
+
+    @Modifying
+    @Query("""
+            DELETE FROM Ticket t
+            WHERE t.event.id IN (SELECT e.id FROM Event e WHERE e.status <> 'ACTIVE')
+                AND NOT EXISTS (SELECT 1 FROM Listing l WHERE l.ticket = t)
+                AND NOT EXISTS (SELECT 1 FROM OrderItem oi WHERE oi.ticket = t)
+            """)
+    int deleteOrphanedForInactiveEvents();
 
     List<Ticket> findByEventId(Long eventId);
 

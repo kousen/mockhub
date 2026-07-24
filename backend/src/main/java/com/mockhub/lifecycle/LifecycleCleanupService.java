@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -18,8 +19,10 @@ import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.repository.NotificationRepository;
 import com.mockhub.paymentcredential.entity.PaymentCredentialStatus;
 import com.mockhub.paymentcredential.repository.PaymentCredentialRepository;
+import com.mockhub.pricing.repository.PriceHistoryRepository;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.repository.ListingRepository;
+import com.mockhub.ticket.repository.TicketRepository;
 
 @Service
 public class LifecycleCleanupService {
@@ -36,19 +39,29 @@ public class LifecycleCleanupService {
     private final PaymentCredentialRepository paymentCredentialRepository;
     private final AgentPurchaseApprovalRepository approvalRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final PriceHistoryRepository priceHistoryRepository;
+    private final TicketRepository ticketRepository;
+    private final int priceHistoryRetentionDays;
 
     public LifecycleCleanupService(ListingRepository listingRepository,
                                    EventRepository eventRepository,
                                    NotificationRepository notificationRepository,
                                    PaymentCredentialRepository paymentCredentialRepository,
                                    AgentPurchaseApprovalRepository approvalRepository,
-                                   JdbcTemplate jdbcTemplate) {
+                                   JdbcTemplate jdbcTemplate,
+                                   PriceHistoryRepository priceHistoryRepository,
+                                   TicketRepository ticketRepository,
+                                   @Value("${mockhub.pricing.history-retention-days:90}")
+                                   int priceHistoryRetentionDays) {
         this.listingRepository = listingRepository;
         this.eventRepository = eventRepository;
         this.notificationRepository = notificationRepository;
         this.paymentCredentialRepository = paymentCredentialRepository;
         this.approvalRepository = approvalRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.priceHistoryRepository = priceHistoryRepository;
+        this.ticketRepository = ticketRepository;
+        this.priceHistoryRetentionDays = priceHistoryRetentionDays;
     }
 
     @Scheduled(fixedRateString = "${mockhub.lifecycle.cleanup-interval:900000}")
@@ -65,18 +78,24 @@ public class LifecycleCleanupService {
         int expiredApprovals = expireProposedApprovals(now);
         int deletedOAuth2Authorizations = deleteExpiredOAuth2Authorizations(now);
         int deletedOAuth2Clients = deleteStaleUnauthorizedOAuth2Clients(now);
+        int purgedPriceRows = purgeDeadPriceHistory(now);
+        int purgedListings = purgeOrphanedListingsForInactiveEvents();
+        int purgedTickets = purgeOrphanedTicketsForInactiveEvents();
 
         if (expiredByDeadline + expiredByEvent + expiredByInactiveEvent + completedEvents
                 + deletedNotifications + expiredPaymentCredentials + expiredApprovals
-                + deletedOAuth2Authorizations + deletedOAuth2Clients > 0) {
+                + deletedOAuth2Authorizations + deletedOAuth2Clients
+                + purgedPriceRows + purgedListings + purgedTickets > 0) {
             log.info("Lifecycle cleanup: expired {} listings (deadline), {} listings (past events), "
                     + "{} listings (cancelled/inactive events), "
                     + "completed {} events, deleted {} old notifications, expired {} payment credentials, "
                     + "expired {} purchase approvals, deleted {} expired OAuth2 authorizations, "
-                    + "deleted {} stale OAuth2 clients",
+                    + "deleted {} stale OAuth2 clients, purged {} price snapshots, "
+                    + "purged {} orphaned listings, purged {} orphaned tickets",
                     expiredByDeadline, expiredByEvent, expiredByInactiveEvent, completedEvents,
                     deletedNotifications, expiredPaymentCredentials, expiredApprovals,
-                    deletedOAuth2Authorizations, deletedOAuth2Clients);
+                    deletedOAuth2Authorizations, deletedOAuth2Clients,
+                    purgedPriceRows, purgedListings, purgedTickets);
         }
     }
 
@@ -102,6 +121,30 @@ public class LifecycleCleanupService {
         List<Listing> listings = listingRepository.findActiveListingsForInactiveEvents();
         expireListingsAndReleaseTickets(listings);
         return listings.size();
+    }
+
+    /**
+     * Dead events don't need price history, and live events don't need it
+     * forever (one snapshot per price change; retention window still bounds it).
+     * ponytail: single-statement bulk deletes — the first production run removes
+     * ~3M rows in one transaction; batch it if that ever times out.
+     */
+    int purgeDeadPriceHistory(Instant now) {
+        int purged = priceHistoryRepository.deleteForInactiveEvents();
+        Instant cutoff = now.minus(priceHistoryRetentionDays, ChronoUnit.DAYS);
+        return purged + priceHistoryRepository.deleteRecordedBefore(cutoff);
+    }
+
+    /**
+     * Inventory for dead events is unsellable; keep only rows that order
+     * history references. Listings go first so their tickets become orphans.
+     */
+    int purgeOrphanedListingsForInactiveEvents() {
+        return listingRepository.deleteOrphanedForInactiveEvents();
+    }
+
+    int purgeOrphanedTicketsForInactiveEvents() {
+        return ticketRepository.deleteOrphanedForInactiveEvents();
     }
 
     int markPastEventsAsCompleted(Instant now) {

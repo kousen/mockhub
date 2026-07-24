@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -113,4 +114,13 @@ public interface ListingRepository extends JpaRepository<Listing, Long>, JpaSpec
                 AND t.status = 'LISTED'
             """)
     List<Listing> findActiveListingsForInactiveEvents();
+
+    @Modifying
+    @Query("""
+            DELETE FROM Listing l
+            WHERE l.event.id IN (SELECT e.id FROM Event e WHERE e.status <> 'ACTIVE')
+                AND NOT EXISTS (SELECT 1 FROM OrderItem oi WHERE oi.listing = l)
+                AND NOT EXISTS (SELECT 1 FROM CartItem ci WHERE ci.listing = l)
+            """)
+    int deleteOrphanedForInactiveEvents();
 }

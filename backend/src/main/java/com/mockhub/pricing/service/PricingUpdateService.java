@@ -44,7 +44,18 @@ public class PricingUpdateService {
             return;
         }
 
-        listingService.updateListingPrices(eventId, multiplier);
+        // Skip-if-unchanged: with static supply/demand the engine used to write
+        // an identical snapshot every 5 minutes (3.3M rows in production, one
+        // real price change). Same multiplier means computed listing prices are
+        // already correct, so only a listing-set change can move the price.
+        PriceHistory lastSnapshot = priceHistoryRepository
+                .findFirstByEventIdOrderByRecordedAtDesc(eventId).orElse(null);
+        boolean multiplierUnchanged = lastSnapshot != null
+                && lastSnapshot.getMultiplier().compareTo(multiplier) == 0;
+
+        if (!multiplierUnchanged) {
+            listingService.updateListingPrices(eventId, multiplier);
+        }
 
         BigDecimal[] priceRange = listingService.getComputedPriceRange(eventId);
         BigDecimal newMinPrice = priceRange[0] != null
@@ -53,6 +64,10 @@ public class PricingUpdateService {
         BigDecimal newMaxPrice = priceRange[1] != null
                 ? priceRange[1]
                 : newMinPrice;
+        if (multiplierUnchanged && lastSnapshot.getPrice().compareTo(newMinPrice) == 0) {
+            return; // nothing moved — no event write, no snapshot
+        }
+
         event.setMinPrice(newMinPrice);
         event.setMaxPrice(newMaxPrice);
         eventRepository.save(event);

@@ -176,6 +176,48 @@ class PricingUpdateServiceTest {
     }
 
     @Test
+    @DisplayName("updateEventPricing - given unchanged multiplier and price - writes nothing")
+    void updateEventPricing_givenUnchangedMultiplierAndPrice_writesNothing() {
+        BigDecimal multiplier = new BigDecimal("1.250");
+        PriceHistory last = new PriceHistory();
+        last.setMultiplier(new BigDecimal("1.250"));
+        last.setPrice(new BigDecimal("125.00"));
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(priceHistoryRepository.findFirstByEventIdOrderByRecordedAtDesc(1L))
+                .thenReturn(Optional.of(last));
+        when(listingService.getComputedPriceRange(1L))
+                .thenReturn(new BigDecimal[]{new BigDecimal("125.00"), new BigDecimal("125.00")});
+
+        pricingUpdateService.updateEventPricing(1L, multiplier);
+
+        verify(listingService, never()).updateListingPrices(any(), any());
+        verify(eventRepository, never()).save(any(Event.class));
+        verify(priceHistoryRepository, never()).save(any(PriceHistory.class));
+    }
+
+    @Test
+    @DisplayName("updateEventPricing - given same multiplier but moved price - writes snapshot without relisting")
+    void updateEventPricing_givenSameMultiplierMovedPrice_writesSnapshotOnly() {
+        BigDecimal multiplier = new BigDecimal("1.250");
+        PriceHistory last = new PriceHistory();
+        last.setMultiplier(new BigDecimal("1.250"));
+        last.setPrice(new BigDecimal("125.00"));
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
+        when(priceHistoryRepository.findFirstByEventIdOrderByRecordedAtDesc(1L))
+                .thenReturn(Optional.of(last));
+        when(listingService.getComputedPriceRange(1L))
+                .thenReturn(new BigDecimal[]{new BigDecimal("99.00"), new BigDecimal("140.00")});
+
+        pricingUpdateService.updateEventPricing(1L, multiplier);
+
+        verify(listingService, never()).updateListingPrices(any(), any());
+        verify(eventRepository).save(testEvent);
+        verify(priceHistoryRepository).save(any(PriceHistory.class));
+        assertEquals(new BigDecimal("99.00"), testEvent.getMinPrice(),
+                "Min price should reflect the moved listing floor");
+    }
+
+    @Test
     @DisplayName("updateEventPricing - given event with COMPLETED status - does nothing")
     void updateEventPricing_givenCompletedEvent_doesNothing() {
         testEvent.setStatus("COMPLETED");
