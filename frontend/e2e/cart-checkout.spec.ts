@@ -75,6 +75,15 @@ async function authenticateUser(page: Page) {
     });
   });
 
+  // Pending-approval badge polls this on every authenticated page
+  await page.route(/\/api\/v1\/agent-approvals/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    });
+  });
+
   await page.route(/\/api\/v1\/favorites/, async (route) => {
     await route.fulfill({
       status: 200,
