@@ -8,7 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/EmptyState';
-import { useApproveApproval, useDenyApproval, useMyApprovals } from '@/hooks/use-agent-approvals';
+import {
+  isActionablePending,
+  useApproveApproval,
+  useDenyApproval,
+  useMyApprovals,
+} from '@/hooks/use-agent-approvals';
 import type { AgentPurchaseApproval, AgentApprovalStatus } from '@/types/agentApproval';
 
 function formatCurrency(amount: number): string {
@@ -32,8 +37,14 @@ interface SnapshotItem {
  * proposedOrderSnapshot is agent-supplied JSON or free text — parse
  * defensively and fall back to showing the raw string.
  */
+const MAX_SNAPSHOT_CHARS = 10_000;
+const MAX_RENDERED_ITEMS = 10;
+const MAX_FIELD_CHARS = 120;
+
 export function parseSnapshot(snapshot: string | null): SnapshotItem[] | null {
   if (!snapshot) return null;
+  // Agent-supplied and unbounded — refuse to parse pathological payloads
+  if (snapshot.length > MAX_SNAPSHOT_CHARS) return null;
   try {
     const parsed: unknown = JSON.parse(snapshot);
     const rawItems: unknown[] = Array.isArray(parsed)
@@ -61,7 +72,7 @@ export function parseSnapshot(snapshot: string | null): SnapshotItem[] | null {
 function str(obj: Record<string, unknown>, keys: string[]): string | undefined {
   for (const key of keys) {
     const value = obj[key];
-    if (typeof value === 'string' && value) return value;
+    if (typeof value === 'string' && value) return value.slice(0, MAX_FIELD_CHARS);
     if (typeof value === 'number') return String(value);
   }
   return undefined;
@@ -85,9 +96,10 @@ function OrderSnapshot({ snapshot }: Readonly<{ snapshot: string | null }>) {
       </p>
     );
   }
+  const shown = items.slice(0, MAX_RENDERED_ITEMS);
   return (
     <ul className="space-y-1 text-sm">
-      {items.map((item, index) => (
+      {shown.map((item, index) => (
         <li key={`${item.event}-${item.section}-${item.seat}-${index}`}>
           {item.event && <span className="font-medium">{item.event}</span>}
           <span className="text-muted-foreground">
@@ -99,6 +111,11 @@ function OrderSnapshot({ snapshot }: Readonly<{ snapshot: string | null }>) {
           </span>
         </li>
       ))}
+      {items.length > MAX_RENDERED_ITEMS && (
+        <li className="text-xs text-muted-foreground">
+          …and {items.length - MAX_RENDERED_ITEMS} more items
+        </li>
+      )}
     </ul>
   );
 }
@@ -184,8 +201,15 @@ function PendingApprovalCard({ approval }: Readonly<{ approval: AgentPurchaseApp
 
         {approval.agentRationale && (
           <p className="text-sm italic text-muted-foreground">
-            &ldquo;{approval.agentRationale}&rdquo;
+            &ldquo;{approval.agentRationale.slice(0, 500)}&rdquo;
           </p>
+        )}
+
+        {approval.commercePolicySnapshot && (
+          <details className="text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium">Policy at proposal time</summary>
+            <p className="mt-1 break-words">{approval.commercePolicySnapshot.slice(0, 600)}</p>
+          </details>
         )}
 
         <Separator />
@@ -294,6 +318,9 @@ function decisionTimestamp(approval: AgentPurchaseApproval): string | null {
 }
 
 function HistoryRow({ approval }: Readonly<{ approval: AgentPurchaseApproval }>) {
+  // A PROPOSED record only reaches history when its expiry passed but the
+  // cleanup job hasn't persisted EXPIRED yet — show what it effectively is.
+  const displayStatus = approval.status === 'PROPOSED' ? 'EXPIRED' : approval.status;
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm">
       <div className="min-w-0">
@@ -311,7 +338,7 @@ function HistoryRow({ approval }: Readonly<{ approval: AgentPurchaseApproval }>)
           <p className="text-xs text-muted-foreground">Failed: {approval.failureReason}</p>
         )}
       </div>
-      <Badge variant={statusBadgeVariant(approval.status)}>{approval.status}</Badge>
+      <Badge variant={statusBadgeVariant(displayStatus)}>{displayStatus}</Badge>
     </div>
   );
 }
@@ -322,7 +349,7 @@ function HistoryRow({ approval }: Readonly<{ approval: AgentPurchaseApproval }>)
  * removed because an agent could approve its own proposal in-band.
  */
 export function ApprovalsPage() {
-  const { data: approvals, isLoading } = useMyApprovals();
+  const { data: approvals, isLoading, isError, refetch } = useMyApprovals();
 
   if (isLoading) {
     return (
@@ -339,10 +366,10 @@ export function ApprovalsPage() {
 
   const all = approvals ?? [];
   const pending = all
-    .filter((a) => a.status === 'PROPOSED')
+    .filter(isActionablePending)
     .sort((a, b) => b.proposedAt.localeCompare(a.proposedAt));
   const history = all
-    .filter((a) => a.status !== 'PROPOSED')
+    .filter((a) => !isActionablePending(a))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return (
@@ -351,6 +378,15 @@ export function ApprovalsPage() {
         <ShieldCheck className="h-6 w-6" />
         Purchase Approvals
       </h1>
+
+      {isError && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm">
+          <span>Couldn&apos;t load approvals — pending proposals may be hidden.</span>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       <section aria-label="Pending approvals">
         {pending.length === 0 ? (

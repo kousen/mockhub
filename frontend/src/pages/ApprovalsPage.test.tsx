@@ -8,6 +8,8 @@ vi.mock('@/hooks/use-agent-approvals', () => ({
   usePendingApprovalCount: vi.fn(() => 0),
   useApproveApproval: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
   useDenyApproval: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  isActionablePending: (a: { status: string; expiresAt?: string | null }) =>
+    a.status === 'PROPOSED' && (a.expiresAt == null || Date.parse(a.expiresAt) > Date.now()),
 }));
 
 import { useMyApprovals, useApproveApproval, useDenyApproval } from '@/hooks/use-agent-approvals';
@@ -114,13 +116,31 @@ describe('ApprovalsPage', () => {
     );
   });
 
-  it('disables actions for an expired proposal', () => {
+  it('moves an expired proposal out of pending and shows it as EXPIRED in history', () => {
     setApprovals([approval({ expiresAt: PAST })]);
 
     renderWithProviders(<ApprovalsPage />);
 
-    expect(screen.getByText('Expired')).toBeDefined();
-    expect(screen.getByRole('button', { name: /Approve/ })).toHaveProperty('disabled', true);
+    expect(screen.getByText('Nothing waiting for you')).toBeDefined();
+    expect(screen.getByText('EXPIRED')).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Approve/ })).toBeNull();
+  });
+
+  it('shows an error banner with retry when the query fails', async () => {
+    const refetch = vi.fn();
+    vi.mocked(useMyApprovals).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useMyApprovals>);
+
+    const user = userEvent.setup();
+    renderWithProviders(<ApprovalsPage />);
+
+    expect(screen.getByText(/Couldn't load approvals/)).toBeDefined();
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(refetch).toHaveBeenCalled();
   });
 
   it('shows the empty state when nothing is pending', () => {
@@ -178,5 +198,10 @@ describe('parseSnapshot', () => {
 
   it('returns null for null input', () => {
     expect(parseSnapshot(null)).toBeNull();
+  });
+
+  it('refuses to parse oversized snapshots', () => {
+    const huge = JSON.stringify({ items: [{ event: 'x'.repeat(11_000) }] });
+    expect(parseSnapshot(huge)).toBeNull();
   });
 });
