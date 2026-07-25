@@ -24,6 +24,7 @@ import com.mockhub.order.entity.Order;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -175,6 +176,27 @@ class AgentPurchaseApprovalServiceTest {
 
         assertEquals(1, dtos.size());
         assertEquals("approval-123", dtos.getFirst().approvalId());
+    }
+
+    @Test
+    void createProposal_givenOversizedSnapshot_throwsIllegalArgumentException() {
+        CreateAgentPurchaseApprovalRequest request = new CreateAgentPurchaseApprovalRequest(
+                USER_EMAIL,
+                AGENT_ID,
+                MANDATE_ID,
+                "x".repeat(20_001),
+                "Best value",
+                new BigDecimal("50.00"),
+                new BigDecimal("5.00"),
+                new BigDecimal("55.00"),
+                null,
+                null
+        );
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> approvalService.createProposal(request));
+        assertTrue(ex.getMessage().contains("proposedOrderSnapshot"));
+        verify(approvalRepository, never()).save(any(AgentPurchaseApproval.class));
     }
 
     private CreateAgentPurchaseApprovalRequest createRequest() {

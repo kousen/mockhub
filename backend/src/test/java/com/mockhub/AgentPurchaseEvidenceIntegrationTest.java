@@ -61,6 +61,9 @@ class AgentPurchaseEvidenceIntegrationTest extends AbstractIntegrationTest {
     private AgentApprovalTools agentApprovalTools;
 
     @Autowired
+    private com.mockhub.agentapproval.service.AgentPurchaseApprovalService approvalService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -124,9 +127,9 @@ class AgentPurchaseEvidenceIntegrationTest extends AbstractIntegrationTest {
                 pendingOrder.total(),
                 "{\"policyId\":\"default\"}",
                 null), AgentPurchaseApprovalDto.class);
-        AgentPurchaseApprovalDto approved = objectMapper.readValue(
-                agentApprovalTools.approvePurchase(email, approval.approvalId()),
-                AgentPurchaseApprovalDto.class);
+        // Approval is web-only now — this is the same service call the
+        // /my/approvals page goes through.
+        AgentPurchaseApprovalDto approved = approvalService.approve(approval.approvalId(), email);
         assertThat(approved.status()).isEqualTo("APPROVED");
 
         PaymentCredentialDto credential = paymentCredentialService.issueCredential(

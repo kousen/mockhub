@@ -18,6 +18,7 @@ export const ROUTES = {
   MY_LISTINGS: '/my/listings',
   EARNINGS: '/my/earnings',
   MANDATES: '/my/mandates',
+  APPROVALS: '/my/approvals',
   ADMIN: '/admin',
   ADMIN_DASHBOARD: '/admin',
   ADMIN_EVENTS: '/admin/events',

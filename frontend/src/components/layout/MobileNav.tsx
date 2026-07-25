@@ -4,6 +4,7 @@ import {
   DollarSign,
   Heart,
   Shield,
+  ShieldCheck,
   LogOut,
   Settings,
   ShoppingCart,
@@ -19,6 +20,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useCartStore } from '@/stores/cart-store';
 import { useLogout } from '@/hooks/use-auth';
+import { usePendingApprovalCount } from '@/hooks/use-agent-approvals';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 
 export function MobileNav() {
@@ -28,6 +30,7 @@ export function MobileNav() {
   const closeMobileNav = useUiStore((state) => state.closeMobileNav);
   const itemCount = useCartStore((state) => state.itemCount);
   const logout = useLogout();
+  const pendingApprovals = usePendingApprovalCount();
   const location = useLocation();
 
   const isAdmin = user?.roles?.includes('ROLE_ADMIN') ?? false;
@@ -142,6 +145,19 @@ export function MobileNav() {
               >
                 <Shield className="h-4 w-4" />
                 Mandates
+              </Link>
+              <Link
+                to={ROUTES.APPROVALS}
+                onClick={closeMobileNav}
+                className={navLinkClass(ROUTES.APPROVALS)}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Approvals
+                {pendingApprovals > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+                    {pendingApprovals}
+                  </span>
+                )}
               </Link>
               {isAdmin && (
                 <>

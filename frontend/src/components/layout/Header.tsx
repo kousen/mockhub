@@ -10,6 +10,7 @@ import {
   Tag,
   DollarSign,
   Shield,
+  ShieldCheck,
 } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useUiStore } from '@/stores/ui-store';
 import { useCartStore } from '@/stores/cart-store';
 import { useLogout } from '@/hooks/use-auth';
+import { usePendingApprovalCount } from '@/hooks/use-agent-approvals';
 import { APP_NAME, ROUTES } from '@/lib/constants';
 
 function getInitials(firstName: string, lastName: string): string {
@@ -38,6 +40,7 @@ export function Header() {
   const itemCount = useCartStore((state) => state.itemCount);
   const openDrawer = useCartStore((state) => state.openDrawer);
   const logout = useLogout();
+  const pendingApprovals = usePendingApprovalCount();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -96,6 +99,14 @@ export function Header() {
                       {getInitials(user.firstName, user.lastName)}
                     </AvatarFallback>
                   </Avatar>
+                  {pendingApprovals > 0 && (
+                    <span
+                      data-testid="approval-badge"
+                      className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white"
+                    >
+                      {pendingApprovals > 9 ? '9+' : pendingApprovals}
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -143,6 +154,17 @@ export function Header() {
                   <Link to={ROUTES.MANDATES}>
                     <Shield className="mr-2 h-4 w-4" />
                     Mandates
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to={ROUTES.APPROVALS}>
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Approvals
+                    {pendingApprovals > 0 && (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+                        {pendingApprovals}
+                      </span>
+                    )}
                   </Link>
                 </DropdownMenuItem>
                 {user.roles?.includes('ROLE_ADMIN') && (

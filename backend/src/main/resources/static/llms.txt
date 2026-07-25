@@ -137,9 +137,7 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 - getOrder(userEmail, orderNumber) — order details
 - listOrders(userEmail, page?, size?) — order history with pagination
 - getCalendarEntry(userEmail, orderNumber) — RFC 5545 .ics calendar content for a confirmed order
-- proposePurchase(userEmail, agentId, mandateId, proposedOrderSnapshot, agentRationale?, subtotal, serviceFee, total, commercePolicySnapshot?, expiresAt?) — create a durable purchase proposal audit record before user approval
-- approvePurchase(userEmail, approvalId) — approve a proposed agent purchase
-- denyPurchase(userEmail, approvalId, reason?) — deny a proposed agent purchase
+- proposePurchase(userEmail, agentId, mandateId, proposedOrderSnapshot, agentRationale?, subtotal, serviceFee, total, commercePolicySnapshot?, expiresAt?) — create a durable purchase proposal audit record before user approval. Approval and denial are HUMAN-ONLY actions performed on the MockHub website (/my/approvals); there is deliberately no MCP tool for them, so an agent cannot approve its own proposal.
 - listPurchaseApprovals(userEmail) — list purchase proposals, approvals, denials, and outcomes
 - createMandate(agentId, userEmail, scope, maxSpendPerTransaction?, maxSpendTotal?, allowedCategories?, allowedEvents?, allowedSections?, approvalMode?, expiresAt?) — authorize agent actions
 - revokeMandate(mandateId) — revoke agent authorization

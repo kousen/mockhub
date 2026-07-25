@@ -32,6 +32,12 @@ public class AgentPurchaseApprovalService {
 
     @Transactional
     public AgentPurchaseApprovalDto createProposal(CreateAgentPurchaseApprovalRequest request) {
+        // Agent-supplied free-form text — bound it so a hostile agent cannot
+        // stuff megabytes into the approval page a human has to render
+        requireMaxLength("proposedOrderSnapshot", request.proposedOrderSnapshot());
+        requireMaxLength("commercePolicySnapshot", request.commercePolicySnapshot());
+        requireMaxLength("agentRationale", request.agentRationale());
+
         AgentPurchaseApproval approval = new AgentPurchaseApproval();
         approval.setApprovalId(UUID.randomUUID().toString());
         approval.setUserEmail(request.userEmail().strip());
@@ -176,6 +182,15 @@ public class AgentPurchaseApprovalService {
             // Persisting it here would be discarded by the rollback this ConflictException triggers
             // (and the rejection is timestamp-based, so it holds regardless of the stored status).
             throw new ConflictException("Purchase approval " + approval.getApprovalId() + " is expired");
+        }
+    }
+
+    private static final int MAX_TEXT_FIELD_LENGTH = 20_000;
+
+    private void requireMaxLength(String fieldName, String value) {
+        if (value != null && value.length() > MAX_TEXT_FIELD_LENGTH) {
+            throw new IllegalArgumentException(fieldName + " exceeds the maximum length of "
+                    + MAX_TEXT_FIELD_LENGTH + " characters");
         }
     }
 

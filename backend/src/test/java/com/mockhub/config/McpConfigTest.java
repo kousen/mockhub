@@ -18,6 +18,8 @@ import com.mockhub.mcp.tools.PaymentCredentialTools;
 import com.mockhub.mcp.tools.PricingTools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
 class McpConfigTest {
@@ -58,7 +60,19 @@ class McpConfigTest {
                 eventTools, pricingTools, cartTools, orderTools, mandateTools, agentApprovalTools,
                 paymentCredentialTools, agentRiskTools, agentPurchaseEvidenceTools);
 
-        assertEquals(34, provider.getToolCallbacks().length,
+        assertEquals(32, provider.getToolCallbacks().length,
                 "All MCP tool methods should be registered");
+
+        // Security invariant: approval is out-of-band only. An in-band MCP
+        // approval tool would let an agent approve its own proposal.
+        java.util.Set<String> names = java.util.Arrays.stream(provider.getToolCallbacks())
+                .map(callback -> callback.getToolDefinition().name())
+                .collect(java.util.stream.Collectors.toSet());
+        assertFalse(names.contains("approvePurchase"),
+                "approvePurchase must never be exposed over MCP");
+        assertFalse(names.contains("denyPurchase"),
+                "denyPurchase must never be exposed over MCP");
+        assertTrue(names.contains("proposePurchase"),
+                "proposePurchase should remain available");
     }
 }

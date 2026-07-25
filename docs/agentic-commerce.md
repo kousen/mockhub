@@ -27,7 +27,7 @@ Agentic commerce in MockHub is organized into three layers, each independently v
 
 ### Tool Inventory
 
-MockHub exposes 34 MCP tools across 9 tool classes:
+MockHub exposes 32 MCP tools across 9 tool classes:
 
 | Tool Class | Tools | Purpose |
 |---|---|---|
@@ -36,7 +36,7 @@ MockHub exposes 34 MCP tools across 9 tool classes:
 | **CartTools** | `getCart`, `addToCart`, `removeFromCart`, `clearCart`, `refreshCart` | Shopping cart management |
 | **OrderTools** | `checkout`, `confirmOrder`, `getOrder`, `listOrders`, `getCalendarEntry` | Order lifecycle |
 | **MandateTools** | `createMandate`, `revokeMandate`, `listMandates`, `validateMandate`, `getBestMandate` | Agent authorization |
-| **AgentApprovalTools** | `proposePurchase`, `approvePurchase`, `denyPurchase`, `listPurchaseApprovals` | Purchase approval audit trail |
+| **AgentApprovalTools** | `proposePurchase`, `listPurchaseApprovals` | Purchase approval audit trail. Approve/deny is deliberately web-only (`/my/approvals`) — an in-band MCP approval tool would let an agent approve its own proposal |
 | **PaymentCredentialTools** | `issuePaymentCredential`, `listPaymentCredentials`, `revokePaymentCredential` | Scoped payment authority |
 | **AgentRiskTools** | `getAgentRiskSummary` | Deterministic local risk and abuse visibility |
 | **AgentPurchaseEvidenceTools** | `getAgentPurchaseEvidence` | Read-only purchase evidence trail for completed agent flows |
