@@ -58,7 +58,7 @@ class McpConfigTest {
                 eventTools, pricingTools, cartTools, orderTools, mandateTools, agentApprovalTools,
                 paymentCredentialTools, agentRiskTools, agentPurchaseEvidenceTools);
 
-        assertEquals(34, provider.getToolCallbacks().length,
+        assertEquals(32, provider.getToolCallbacks().length,
                 "All MCP tool methods should be registered");
     }
 }

@@ -33,6 +33,12 @@ vi.mock('@/hooks/use-auth', () => ({
   useLogout: () => vi.fn(),
 }));
 
+vi.mock('@/hooks/use-agent-approvals', () => ({
+  usePendingApprovalCount: vi.fn(() => 0),
+}));
+
+import { usePendingApprovalCount } from '@/hooks/use-agent-approvals';
+
 describe('Header', () => {
   it('renders app name', () => {
     renderWithProviders(<Header />);
@@ -53,5 +59,23 @@ describe('Header', () => {
   it('renders mobile menu toggle button', () => {
     renderWithProviders(<Header />);
     expect(screen.getByText('Toggle menu')).toBeDefined();
+  });
+
+  it('shows pending approval badge on the avatar when authenticated with proposals waiting', () => {
+    mockAuthState.isAuthenticated = true;
+    mockAuthState.user = {
+      firstName: 'Ken',
+      lastName: 'Kousen',
+      email: 'ken@example.com',
+      roles: [],
+    } as unknown as typeof mockAuthState.user;
+    vi.mocked(usePendingApprovalCount).mockReturnValue(3);
+
+    renderWithProviders(<Header />);
+
+    expect(screen.getByTestId('approval-badge').textContent).toBe('3');
+
+    mockAuthState.isAuthenticated = false;
+    mockAuthState.user = null;
   });
 });

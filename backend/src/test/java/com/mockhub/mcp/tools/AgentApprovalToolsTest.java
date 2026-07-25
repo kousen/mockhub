@@ -82,25 +82,6 @@ class AgentApprovalToolsTest {
     }
 
     @Test
-    void approvePurchase_givenApprovalId_returnsApprovalJson() {
-        when(approvalService.approve("approval-123", "buyer@example.com")).thenReturn(dto("APPROVED"));
-
-        String result = tools.approvePurchase("buyer@example.com", "approval-123");
-
-        assertTrue(result.contains("\"status\":\"APPROVED\""));
-    }
-
-    @Test
-    void denyPurchase_givenReason_returnsDeniedApprovalJson() {
-        when(approvalService.deny("approval-123", "buyer@example.com", "Too expensive"))
-                .thenReturn(dto("DENIED"));
-
-        String result = tools.denyPurchase("buyer@example.com", "approval-123", "Too expensive");
-
-        assertTrue(result.contains("\"status\":\"DENIED\""));
-    }
-
-    @Test
     void listPurchaseApprovals_givenUserEmail_returnsApprovalsJson() {
         when(approvalService.listForUser("buyer@example.com")).thenReturn(List.of(dto("PROPOSED")));
 

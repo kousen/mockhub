@@ -67,37 +67,13 @@ public class AgentApprovalTools {
         }
     }
 
-    @Tool(description = "Approve a proposed MockHub agent purchase. "
-            + "An approved ID can be supplied later to checkout completion for audit linkage.")
-    public String approvePurchase(
-            @ToolParam(description = "Email of the user approving the purchase", required = true) String userEmail,
-            @ToolParam(description = "Purchase approval ID", required = true) String approvalId) {
-        try {
-            AgentPurchaseApprovalDto approval = approvalService.approve(
-                    required(approvalId, "Approval ID"), ChatContext.resolveEmail(userEmail));
-            return objectMapper.writeValueAsString(approval);
-        } catch (Exception e) {
-            log.error("Error approving purchase '{}': {}", approvalId, e.getMessage(), e);
-            return errorJson("Failed to approve purchase: " + e.getMessage());
-        }
-    }
+    // approvePurchase/denyPurchase were deliberately REMOVED from the MCP
+    // surface: approval must be out-of-band. An agent acting as the pinned
+    // OAuth user could otherwise approve its own proposal in-band, defeating
+    // the APPROVAL_REQUIRED checkpoint. Humans approve at /my/approvals.
 
-    @Tool(description = "Deny a proposed MockHub agent purchase and record the user's reason when provided.")
-    public String denyPurchase(
-            @ToolParam(description = "Email of the user denying the purchase", required = true) String userEmail,
-            @ToolParam(description = "Purchase approval ID", required = true) String approvalId,
-            @ToolParam(description = "Optional reason for denial", required = false) String reason) {
-        try {
-            AgentPurchaseApprovalDto approval = approvalService.deny(
-                    required(approvalId, "Approval ID"), ChatContext.resolveEmail(userEmail), reason);
-            return objectMapper.writeValueAsString(approval);
-        } catch (Exception e) {
-            log.error("Error denying purchase '{}': {}", approvalId, e.getMessage(), e);
-            return errorJson("Failed to deny purchase: " + e.getMessage());
-        }
-    }
-
-    @Tool(description = "List MockHub agent purchase proposals, approvals, denials, and outcomes for a user.")
+    @Tool(description = "List MockHub agent purchase proposals, approvals, denials, and outcomes for a user. "
+            + "Approving or denying is human-only, on the MockHub website — there is no MCP tool for it.")
     public String listPurchaseApprovals(
             @ToolParam(description = "Email of the user whose approvals should be listed", required = true)
                     String userEmail) {
