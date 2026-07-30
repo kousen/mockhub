@@ -9,6 +9,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +39,13 @@ public class PricePredictionService {
     private final PriceHistoryRepository priceHistoryRepository;
     private final EvalRunner evalRunner;
 
-    public PricePredictionService(@org.springframework.context.annotation.Lazy ChatClient chatClient,
+    // @Lazy breaks the cycle anthropicChatModel -> toolCallingManager ->
+    // toolCallbackResolver -> mcpToolCallbackProvider -> pricingTools -> this
+    // service -> chatClient -> anthropicChatModel. Every ChatClient bean needs
+    // the model, so the cycle exists regardless of which client is injected.
+    // Only forms when mockhub.mcp.enabled=true (production); see
+    // AiEnabledContextIntegrationTest.
+    public PricePredictionService(@Lazy @Qualifier("plainChatClient") ChatClient chatClient,
                                   EventRepository eventRepository,
                                   PriceHistoryRepository priceHistoryRepository,
                                   EvalRunner evalRunner) {
