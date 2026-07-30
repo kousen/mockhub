@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +52,7 @@ public class RecommendationService {
     private final Optional<SpotifyListeningService> spotifyListeningService;
     private final BuyerPreferenceService buyerPreferenceService;
 
-    public RecommendationService(ChatClient chatClient, EventRepository eventRepository,
+    public RecommendationService(@Qualifier("plainChatClient") ChatClient chatClient, EventRepository eventRepository,
                                   EvalRunner evalRunner, FavoriteRepository favoriteRepository,
                                   OrderItemRepository orderItemRepository,
                                   Optional<SpotifyListeningService> spotifyListeningService,
