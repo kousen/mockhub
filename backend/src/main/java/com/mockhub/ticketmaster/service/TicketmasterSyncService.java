@@ -10,6 +10,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -61,6 +62,9 @@ public class TicketmasterSyncService {
     }
 
     @Scheduled(cron = "${mockhub.ticketmaster.sync-cron:0 0 4 * * *}")
+    // The events/featuredEvents caches have no TTL — without this eviction the
+    // homepage serves pre-sync data until the next restart (#296).
+    @CacheEvict(value = {"events", "featuredEvents"}, allEntries = true)
     public void syncEvents() {
         log.info("Starting Ticketmaster event sync");
 

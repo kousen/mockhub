@@ -175,6 +175,52 @@ class EventServiceTest {
     }
 
     @Test
+    @DisplayName("listFeatured - given many events by same artist - returns one per artist")
+    void listFeatured_givenManyEventsBySameArtist_returnsOnePerArtist() {
+        Event jam1 = cloneTestEvent(2L, "Monster Jam", "monster-jam-1");
+        Event jam2 = cloneTestEvent(3L, "Monster Jam", "monster-jam-2");
+        Event other = cloneTestEvent(4L, "Lady A", "lady-a-1");
+        when(eventRepository.findFeaturedEvents()).thenReturn(List.of(jam1, jam2, other));
+
+        List<EventSummaryDto> result = eventService.listFeatured();
+
+        assertEquals(2, result.size(), "Should keep only the first event per artist");
+        assertEquals("monster-jam-1", result.get(0).slug(), "First event per artist wins (earliest date)");
+    }
+
+    @Test
+    @DisplayName("listFeatured - given more than eight artists - caps at eight")
+    void listFeatured_givenMoreThanEightArtists_capsAtEight() {
+        List<Event> many = new java.util.ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            many.add(cloneTestEvent(10L + i, "Artist " + i, "artist-" + i));
+        }
+        when(eventRepository.findFeaturedEvents()).thenReturn(many);
+
+        List<EventSummaryDto> result = eventService.listFeatured();
+
+        assertEquals(8, result.size(), "Featured list should cap at 8 for the homepage grid");
+    }
+
+    private Event cloneTestEvent(Long id, String artistName, String slug) {
+        Event event = new Event();
+        event.setId(id);
+        event.setName(artistName + " Live");
+        event.setSlug(slug);
+        event.setArtistName(artistName);
+        event.setEventDate(testEvent.getEventDate());
+        event.setStatus("ACTIVE");
+        event.setBasePrice(testEvent.getBasePrice());
+        event.setMinPrice(testEvent.getMinPrice());
+        event.setMaxPrice(testEvent.getMaxPrice());
+        event.setAvailableTickets(100);
+        event.setFeatured(true);
+        event.setVenue(testVenue);
+        event.setCategory(testCategory);
+        return event;
+    }
+
+    @Test
     @DisplayName("createEvent - given valid request - returns created event DTO")
     void createEvent_givenValidRequest_returnsCreatedEventDto() {
         EventCreateRequest request = new EventCreateRequest(
