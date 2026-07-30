@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +37,7 @@ public class PricePredictionService {
     private final PriceHistoryRepository priceHistoryRepository;
     private final EvalRunner evalRunner;
 
-    public PricePredictionService(@Qualifier("plainChatClient") ChatClient chatClient,
+    public PricePredictionService(@org.springframework.context.annotation.Lazy ChatClient chatClient,
                                   EventRepository eventRepository,
                                   PriceHistoryRepository priceHistoryRepository,
                                   EvalRunner evalRunner) {

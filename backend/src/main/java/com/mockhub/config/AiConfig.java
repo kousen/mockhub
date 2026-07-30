@@ -28,17 +28,6 @@ public class AiConfig {
                 .build();
     }
 
-    /**
-     * Plain client for one-shot AI calls (price prediction, recommendations).
-     * No memory advisor: since Spring AI 2.0 GA, MessageChatMemoryAdvisor requires
-     * a conversation id on every call, which one-shot callers don't have.
-     * No tools either — these services build self-contained prompts.
-     */
-    @Bean("plainChatClient")
-    public ChatClient plainChatClient(AnthropicChatModel anthropicChatModel) {
-        return ChatClient.builder(anthropicChatModel).build();
-    }
-
     @Bean
     public ChatClient chatClient(AnthropicChatModel anthropicChatModel,
                                   ChatMemory chatMemory,
