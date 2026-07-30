@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -507,5 +509,21 @@ class TicketmasterSyncServiceTest {
         venue.setZipCode("89169");
         venue.setCountry("US");
         return venue;
+    }
+
+    @Test
+    @DisplayName("syncEvents - evicts event caches so the homepage sees fresh data")
+    void syncEvents_declaresCacheEviction() throws NoSuchMethodException {
+        // The featuredEvents cache has no TTL; without this eviction the
+        // homepage serves pre-sync data until the next restart (#296).
+        org.springframework.cache.annotation.CacheEvict evict = TicketmasterSyncService.class
+                .getMethod("syncEvents")
+                .getAnnotation(org.springframework.cache.annotation.CacheEvict.class);
+
+        Assertions.assertNotNull(evict, "syncEvents must evict caches");
+        Assertions.assertTrue(evict.allEntries(), "must evict all entries");
+        List<String> caches = List.of(evict.value());
+        Assertions.assertTrue(caches.contains("featuredEvents") && caches.contains("events"),
+                "must evict both events and featuredEvents caches");
     }
 }

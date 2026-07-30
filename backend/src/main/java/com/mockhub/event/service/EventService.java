@@ -3,6 +3,7 @@ package com.mockhub.event.service;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -44,6 +45,7 @@ import com.mockhub.venue.repository.VenueRepository;
 public class EventService {
 
     private static final String SORT_EVENT_DATE = "eventDate";
+    private static final int MAX_FEATURED_EVENTS = 8;
 
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
@@ -101,8 +103,15 @@ public class EventService {
     @Transactional(readOnly = true)
     @Cacheable(value = "featuredEvents")
     public List<EventSummaryDto> listFeatured() {
-        List<Event> featured = eventRepository.findFeaturedEvents();
-        return featured.stream()
+        // The Ticketmaster sync marks every synced event featured, and the
+        // query is date-ordered — unbounded, the homepage would show ~100
+        // cards dominated by whichever tour has the most dates. Keep the
+        // earliest event per artist, capped to a homepage-sized grid.
+        Set<String> seenArtists = new HashSet<>();
+        return eventRepository.findFeaturedEvents().stream()
+                .filter(event -> seenArtists.add(
+                        event.getArtistName() != null ? event.getArtistName() : event.getName()))
+                .limit(MAX_FEATURED_EVENTS)
                 .map(this::toEventSummaryDto)
                 .toList();
     }
