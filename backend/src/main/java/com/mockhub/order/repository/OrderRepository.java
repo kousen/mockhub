@@ -7,6 +7,7 @@ import java.util.Optional;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Lock;
@@ -47,6 +48,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * these orders are failed and their inventory released.
      */
     @Query("SELECT o FROM Order o WHERE o.status = com.mockhub.order.entity.OrderStatus.PENDING "
-            + "AND o.createdAt < :cutoff")
-    List<Order> findAbandonedPendingOrders(@Param("cutoff") Instant cutoff);
+            + "AND o.createdAt < :cutoff ORDER BY o.createdAt ASC")
+    List<Order> findAbandonedPendingOrders(@Param("cutoff") Instant cutoff, Pageable pageable);
 }

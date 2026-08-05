@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.auth.entity.User;
@@ -144,6 +145,19 @@ public class OrderService {
         }
 
         orderNotificationService.sendConfirmationNotifications(order);
+    }
+
+    /**
+     * Fails an order in its own transaction, for callers that sweep many orders in one go.
+     *
+     * <p>Batch callers must not share a transaction with this: a participating transaction
+     * that throws is marked rollback-only, so catching the exception in the loop would still
+     * discard the caller's entire unit of work at commit. One transaction per order keeps a
+     * single bad order from taking the batch down with it.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void failOrderInNewTransaction(String orderNumber) {
+        failOrder(orderNumber);
     }
 
     @Transactional

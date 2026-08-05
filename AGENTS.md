@@ -178,7 +178,11 @@ The codebase uses Java DOP patterns where they add value:
 ### Lifecycle Cleanup
 
 - **`LifecycleCleanupService`** — `@Scheduled` every 15 min (configurable via `mockhub.lifecycle.cleanup-interval`).
-- **Five operations:** (1) Expire ACTIVE listings past `expires_at` → EXPIRED, (2) Expire ACTIVE listings for past events → EXPIRED, (3) Mark past ACTIVE events as COMPLETED, (4) Delete read notifications older than 30 days, (5) Mark expired ACTIVE payment credentials as EXPIRED.
+- **Six operations:** (1) Expire ACTIVE listings past `expires_at` → EXPIRED, (2) Expire ACTIVE listings for past events → EXPIRED, (3) Mark past ACTIVE events as COMPLETED, (4) Delete read notifications older than 30 days, (5) Mark expired ACTIVE payment credentials as EXPIRED, (6) Fail abandoned PENDING checkouts so their held tickets return to inventory.
+- **Abandoned checkouts:** a checkout never completed or cancelled holds its tickets indefinitely, so later attempts on those seats fail with "no longer available" though nobody bought them. `failAbandonedCheckouts` fails PENDING orders older than `mockhub.lifecycle.abandoned-checkout-minutes` (default 30), batched at 500 per sweep.
+  - **Each order commits in its own transaction** via `OrderService.failOrderInNewTransaction` (`REQUIRES_NEW`). This is not optional: `runCleanup()` is `@Transactional`, so a `failOrder` that joined it and threw would mark the shared transaction rollback-only, and catching the exception in the loop cannot clear that flag — the whole sweep would then be discarded at commit with `UnexpectedRollbackException`. Any batch operation added to this service needs the same treatment.
+  - A `ConflictException` (order confirmed or cancelled since the query) logs at INFO and is expected; anything else logs at ERROR with the stack, because those seats stay out of inventory until someone looks.
+  - **Interaction with human approval:** an `APPROVAL_REQUIRED` purchase awaiting a human on `/my/approvals` is failed if the human takes longer than the window. That matches how real marketplaces expire holds, but raise the property if a delivery needs longer.
 - **Ticket release:** When listings expire, their tickets are released from LISTED back to AVAILABLE. Uses SELECT + iterate (not bulk UPDATE) because both listing and ticket state must update together.
 - **Listing → SOLD:** `OrderService.markTicketsAsSold()` also sets `listing.status = "SOLD"`.
 - **Cancel re-activates:** `OrderService.releaseOrderTickets()` resets listing status back to ACTIVE alongside ticket release.
@@ -236,6 +240,8 @@ The codebase uses Java DOP patterns where they add value:
 - **Mandate entity** in `com.mockhub.mandate` package. Flyway migration `V22__create_mandates_table.sql`.
 - **Inspired by AP2** (the Agent Payments Protocol, created by Google, now stewarded by the FIDO Alliance) — mandates are MockHub's implementation of AP2's digitally signed authorization concept, enforced through the eval conditions framework.
 - **PURCHASE scope subsumes BROWSE** — an agent authorized to buy can also browse.
+- **Spending limits are fee-inclusive — this is a contract, not an implementation detail.** A `maxSpendPerTransaction` of $35 authorizes a purchase whose *charged total* is at most $35, service fee included; it does not mean a $35 ticket. Every authorization path derives that number from `OrderPricing.forSubtotal(...)`, which is also what `OrderService` uses to price the order, so the amount authorized and the amount charged cannot drift apart. Do not authorize against a subtotal or a listing price — that bug let a $35 ceiling permit a $38.50 charge.
+- **Completion re-authorizes.** `AcpCheckoutService.completeCheckout` re-runs the eval conditions against `order.getTotal()` before payment, so a mandate revoked or outgrown between checkout and completion stops the purchase. It returns early for an already-CONFIRMED order: `confirmOrder` has recorded the spend by then, and re-checking would count the order twice, reject a retry after a lost response, and log a mandate mismatch against the agent (three of which block it).
 
 ### ACP (Agentic Commerce Protocol)
 

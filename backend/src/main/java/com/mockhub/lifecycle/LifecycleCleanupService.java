@@ -8,6 +8,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.agentapproval.entity.AgentPurchaseApprovalStatus;
 import com.mockhub.agentapproval.repository.AgentPurchaseApprovalRepository;
+import com.mockhub.common.exception.ConflictException;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.repository.NotificationRepository;
 import com.mockhub.order.entity.Order;
@@ -34,6 +36,7 @@ public class LifecycleCleanupService {
     private static final int NOTIFICATION_RETENTION_DAYS = 30;
     private static final int DCR_CLIENT_RETENTION_DAYS = 30;
     private static final String STATUS_EXPIRED = "EXPIRED";
+    private static final int ABANDONED_CHECKOUT_BATCH_SIZE = 500;
     private static final String TICKET_AVAILABLE = "AVAILABLE";
 
     private final ListingRepository listingRepository;
@@ -191,16 +194,29 @@ public class LifecycleCleanupService {
      */
     int failAbandonedCheckouts(Instant now) {
         Instant cutoff = now.minus(abandonedCheckoutMinutes, ChronoUnit.MINUTES);
-        List<Order> abandoned = orderRepository.findAbandonedPendingOrders(cutoff);
+        List<Order> abandoned = orderRepository.findAbandonedPendingOrders(
+                cutoff, PageRequest.of(0, ABANDONED_CHECKOUT_BATCH_SIZE));
+        if (abandoned.size() == ABANDONED_CHECKOUT_BATCH_SIZE) {
+            log.warn("Abandoned-checkout sweep hit its batch limit of {}; a backlog is building",
+                    ABANDONED_CHECKOUT_BATCH_SIZE);
+        }
+
         int failed = 0;
         for (Order order : abandoned) {
             try {
-                orderService.failOrder(order.getOrderNumber());
+                // Each order commits on its own. Sharing this sweep's transaction would let
+                // one failing order mark it rollback-only and discard every other cleanup
+                // step at commit — catching the exception here cannot undo that.
+                orderService.failOrderInNewTransaction(order.getOrderNumber());
                 failed++;
+            } catch (ConflictException e) {
+                // The order was confirmed or cancelled between the query and the update.
+                log.info("Abandoned checkout {} changed state before cleanup could fail it: {}",
+                        order.getOrderNumber(), e.getMessage());
             } catch (RuntimeException e) {
-                // A concurrent completion is normal here, not a cleanup failure: skip the
-                // order and let the rest of the sweep proceed.
-                log.debug("Skipped abandoned checkout {}: {}", order.getOrderNumber(), e.getMessage());
+                // Anything else means these seats are still held and cleanup cannot free them.
+                log.error("Could not fail abandoned checkout {} — its tickets remain held and "
+                        + "stay out of inventory until this is resolved", order.getOrderNumber(), e);
             }
         }
         return failed;

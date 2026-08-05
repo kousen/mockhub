@@ -24,8 +24,11 @@ public record OrderPricing(
         if (subtotal == null) {
             throw new IllegalArgumentException("Subtotal is required");
         }
-        BigDecimal serviceFee = subtotal.multiply(SERVICE_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
-        return new OrderPricing(subtotal, serviceFee, subtotal.add(serviceFee));
+        // Normalize the subtotal's scale too, so callers comparing these values with equals()
+        // (Mockito argument matching, for one) don't trip over 30 vs 30.00.
+        BigDecimal normalized = subtotal.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal serviceFee = normalized.multiply(SERVICE_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
+        return new OrderPricing(normalized, serviceFee, normalized.add(serviceFee));
     }
 
     /**

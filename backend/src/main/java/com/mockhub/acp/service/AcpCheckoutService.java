@@ -36,6 +36,7 @@ import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
@@ -190,9 +191,19 @@ public class AcpCheckoutService {
     public AcpCheckoutResponse completeCheckout(String checkoutId, String buyerEmail, AcpCompleteRequest request) {
         User user = resolveUser(buyerEmail);
         // Verify the user owns this order
-        orderService.getOrder(user, checkoutId);
+        OrderDto existing = orderService.getOrder(user, checkoutId);
         Order order = orderService.getOrderEntity(checkoutId);
         validateStoredAgentContext(order, request.agentId(), request.mandateId());
+
+        // Completing an already-confirmed checkout is a retry, not a second purchase: return
+        // the same result. Re-running the checks below would double-count this order's total
+        // against the mandate (confirmOrder already recorded the spend), rejecting a retry
+        // that follows a lost response and logging a mandate mismatch against the agent.
+        if (OrderStatus.CONFIRMED.name().equals(existing.status())) {
+            log.info("Checkout {} is already confirmed; returning the existing order", checkoutId);
+            return toAcpCheckoutResponse(existing, buyerEmail);
+        }
+
         validateApprovalMode(user.getEmail(), request.agentId(), request.mandateId(), request.approvalId());
         approvalService.validateApprovedForCompletion(
                 request.approvalId(), user.getEmail(), request.agentId(), request.mandateId(), order);
