@@ -82,9 +82,13 @@ public class AcpCatalogService {
         int eventPageSize = 100;
         PagedResponse<EventSummaryDto> eventBatch;
         do {
+            // Deliberately no price bounds on the event query: event-level filtering compares
+            // against the event's own price range, so an event with any seat above maxPrice
+            // would be dropped whole — hiding the cheap seats the caller actually asked for.
+            // Prices are filtered per listing below, which is the question being asked.
             EventSearchRequest searchRequest = new EventSearchRequest(
                     query, category, null, city,
-                    dateFrom, dateTo, minPrice, maxPrice,
+                    dateFrom, dateTo, null, null,
                     STATUS_ACTIVE, "eventDate", eventPage, eventPageSize
             );
             eventBatch = eventService.listEvents(searchRequest);

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +26,8 @@ import com.mockhub.ticket.repository.ListingRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
@@ -117,6 +120,33 @@ class AcpCatalogServiceTest {
         assertEquals(10L, result.content().getFirst().listingId());
         assertEquals(new BigDecimal("80.00"), result.content().getFirst().price());
         assertEquals(testPolicy, result.content().getFirst().commercePolicy());
+    }
+
+    @Test
+    @DisplayName("getListings - given price cap - keeps affordable seats at events with pricier seats")
+    void getListings_givenMaxPrice_doesNotFilterEventsByPrice() {
+        // Regression: price bounds were also applied to the event query, which compares them
+        // against the event's own min/max. An event with any seat above the cap was dropped
+        // whole, so "tickets under $60" returned nothing for an event with $30 seats.
+        when(eventService.listEvents(any(EventSearchRequest.class)))
+                .thenReturn(new PagedResponse<>(List.of(testEvent), 0, 100, 1, 1));
+        when(listingRepository.findByEventIdAndStatus(1L, "ACTIVE")).thenReturn(List.of(
+                createListing(10L, "Upper", new BigDecimal("30.00")),
+                createListing(20L, "VIP", new BigDecimal("500.00"))));
+
+        PagedResponse<AcpListingItem> result = acpCatalogService.getListings(
+                "rock", null, null, null, null, null, new BigDecimal("60.00"), null, 0, 20);
+
+        assertEquals(1, result.content().size(), "the affordable seat should still be offered");
+        assertEquals(10L, result.content().getFirst().listingId());
+
+        ArgumentCaptor<EventSearchRequest> searchRequest =
+                ArgumentCaptor.forClass(EventSearchRequest.class);
+        verify(eventService).listEvents(searchRequest.capture());
+        assertNull(searchRequest.getValue().maxPrice(),
+                "price bounds must not be applied to the event query");
+        assertNull(searchRequest.getValue().minPrice(),
+                "price bounds must not be applied to the event query");
     }
 
     @Test
