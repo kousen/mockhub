@@ -39,6 +39,7 @@ import com.mockhub.order.entity.OrderItem;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
+import com.mockhub.order.dto.OrderPricing;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.order.service.PaymentMethodSupport;
 import com.mockhub.payment.dto.PaymentIntentDto;
@@ -195,6 +196,11 @@ public class AcpCheckoutService {
         validateApprovalMode(user.getEmail(), request.agentId(), request.mandateId(), request.approvalId());
         approvalService.validateApprovedForCompletion(
                 request.approvalId(), user.getEmail(), request.agentId(), request.mandateId(), order);
+        // Last line of defence before money moves: re-authorize against the order total.
+        // updateCheckout already did this; completion — the step that actually charges the
+        // buyer — did not, so a mandate could be revoked or outgrown between the two calls.
+        ensureOrderStillAuthorizedForConfirmation(
+                order, user.getEmail(), request.agentId(), request.mandateId());
 
         String paymentIntentId = request.paymentIntentId();
 
@@ -311,9 +317,12 @@ public class AcpCheckoutService {
         String categorySlug = listing.getEvent().getCategory() != null
                 ? listing.getEvent().getCategory().getSlug()
                 : null;
+        // Authorize against what the buyer will be charged, service fee included — not the
+        // ticket price alone, or a mandate ceiling silently permits a larger purchase.
+        BigDecimal amountToAuthorize = OrderPricing.totalForSubtotal(listing.getComputedPrice());
         EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forAgentAction(
                 agentId, userEmail, listing.getEvent(), listing,
-                listing.getComputedPrice(), categorySlug, mandateId));
+                amountToAuthorize, categorySlug, mandateId));
 
         if (evalSummary.hasCriticalFailure()) {
             agentRiskService.recordEvalFailures(userEmail, agentId, mandateId,
@@ -342,10 +351,12 @@ public class AcpCheckoutService {
         }
 
         for (CartItemDto item : cartDto.items()) {
-            BigDecimal amount = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
-            if (amount == null) {
-                amount = item.priceAtAdd();
+            BigDecimal subtotal = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
+            if (subtotal == null) {
+                subtotal = item.priceAtAdd();
             }
+            // The buyer pays subtotal + service fee, so that is what the mandate must cover.
+            BigDecimal amount = OrderPricing.totalForSubtotal(subtotal);
             boolean authorized = mandateService.validateAction(
                     agentId, user.getEmail(), "PURCHASE", amount, null,
                     item.eventSlug(), mandateId, item.sectionName());

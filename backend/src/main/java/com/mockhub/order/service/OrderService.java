@@ -33,6 +33,7 @@ import com.mockhub.mandate.service.MandateService;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
+import com.mockhub.order.dto.OrderPricing;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
@@ -46,7 +47,6 @@ import com.mockhub.ticket.service.TicketService;
 public class OrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
-    private static final BigDecimal SERVICE_FEE_RATE = new BigDecimal("0.10");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final String ORDER_RESOURCE = "Order";
     private static final String ORDER_NUMBER_FIELD = "orderNumber";
@@ -338,16 +338,15 @@ public class OrderService {
         for (CartItem cartItem : cartItems) {
             subtotal = subtotal.add(cartItem.getListing().getComputedPrice());
         }
-        BigDecimal serviceFee = subtotal.multiply(SERVICE_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = subtotal.add(serviceFee);
+        OrderPricing pricing = OrderPricing.forSubtotal(subtotal);
 
         Order order = new Order();
         order.setUser(user);
         order.setOrderNumber(generateOrderNumber());
         order.setStatus(OrderStatus.PENDING);
-        order.setSubtotal(subtotal);
-        order.setServiceFee(serviceFee);
-        order.setTotal(total);
+        order.setSubtotal(pricing.subtotal());
+        order.setServiceFee(pricing.serviceFee());
+        order.setTotal(pricing.total());
         order.setPaymentMethod(paymentMethod);
         order.setAgentId(normalize(agentId));
         order.setMandateId(normalize(mandateId));

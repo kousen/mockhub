@@ -33,6 +33,7 @@ import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
+import com.mockhub.order.dto.OrderPricing;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
@@ -390,10 +391,12 @@ public class OrderTools {
         }
 
         for (CartItemDto item : cartDto.items()) {
-            BigDecimal amount = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
-            if (amount == null) {
-                amount = item.priceAtAdd();
+            BigDecimal subtotal = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
+            if (subtotal == null) {
+                subtotal = item.priceAtAdd();
             }
+            // The buyer pays subtotal + service fee, so that is what the mandate must cover.
+            BigDecimal amount = OrderPricing.totalForSubtotal(subtotal);
             boolean authorized = mandateService.validateAction(
                     agentId, userEmail, "PURCHASE", amount, null, item.eventSlug(), mandateId, item.sectionName());
             if (!authorized) {
