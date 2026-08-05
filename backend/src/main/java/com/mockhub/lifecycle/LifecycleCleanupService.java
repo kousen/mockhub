@@ -17,6 +17,9 @@ import com.mockhub.agentapproval.entity.AgentPurchaseApprovalStatus;
 import com.mockhub.agentapproval.repository.AgentPurchaseApprovalRepository;
 import com.mockhub.event.repository.EventRepository;
 import com.mockhub.notification.repository.NotificationRepository;
+import com.mockhub.order.entity.Order;
+import com.mockhub.order.repository.OrderRepository;
+import com.mockhub.order.service.OrderService;
 import com.mockhub.paymentcredential.entity.PaymentCredentialStatus;
 import com.mockhub.paymentcredential.repository.PaymentCredentialRepository;
 import com.mockhub.pricing.repository.PriceHistoryRepository;
@@ -41,7 +44,10 @@ public class LifecycleCleanupService {
     private final JdbcTemplate jdbcTemplate;
     private final PriceHistoryRepository priceHistoryRepository;
     private final TicketRepository ticketRepository;
+    private final OrderRepository orderRepository;
+    private final OrderService orderService;
     private final int priceHistoryRetentionDays;
+    private final int abandonedCheckoutMinutes;
 
     public LifecycleCleanupService(ListingRepository listingRepository,
                                    EventRepository eventRepository,
@@ -51,8 +57,12 @@ public class LifecycleCleanupService {
                                    JdbcTemplate jdbcTemplate,
                                    PriceHistoryRepository priceHistoryRepository,
                                    TicketRepository ticketRepository,
+                                   OrderRepository orderRepository,
+                                   OrderService orderService,
                                    @Value("${mockhub.pricing.history-retention-days:90}")
-                                   int priceHistoryRetentionDays) {
+                                   int priceHistoryRetentionDays,
+                                   @Value("${mockhub.lifecycle.abandoned-checkout-minutes:30}")
+                                   int abandonedCheckoutMinutes) {
         this.listingRepository = listingRepository;
         this.eventRepository = eventRepository;
         this.notificationRepository = notificationRepository;
@@ -61,7 +71,10 @@ public class LifecycleCleanupService {
         this.jdbcTemplate = jdbcTemplate;
         this.priceHistoryRepository = priceHistoryRepository;
         this.ticketRepository = ticketRepository;
+        this.orderRepository = orderRepository;
+        this.orderService = orderService;
         this.priceHistoryRetentionDays = priceHistoryRetentionDays;
+        this.abandonedCheckoutMinutes = abandonedCheckoutMinutes;
     }
 
     @Scheduled(fixedRateString = "${mockhub.lifecycle.cleanup-interval:900000}")
@@ -76,6 +89,7 @@ public class LifecycleCleanupService {
         int deletedNotifications = deleteOldReadNotifications(now);
         int expiredPaymentCredentials = expirePaymentCredentials(now);
         int expiredApprovals = expireProposedApprovals(now);
+        int abandonedCheckouts = failAbandonedCheckouts(now);
         int deletedOAuth2Authorizations = deleteExpiredOAuth2Authorizations(now);
         int deletedOAuth2Clients = deleteStaleUnauthorizedOAuth2Clients(now);
         int purgedPriceRows = purgeDeadPriceHistory(now);
@@ -84,17 +98,18 @@ public class LifecycleCleanupService {
 
         if (expiredByDeadline + expiredByEvent + expiredByInactiveEvent + completedEvents
                 + deletedNotifications + expiredPaymentCredentials + expiredApprovals
-                + deletedOAuth2Authorizations + deletedOAuth2Clients
+                + abandonedCheckouts + deletedOAuth2Authorizations + deletedOAuth2Clients
                 + purgedPriceRows + purgedListings + purgedTickets > 0) {
             log.info("Lifecycle cleanup: expired {} listings (deadline), {} listings (past events), "
                     + "{} listings (cancelled/inactive events), "
                     + "completed {} events, deleted {} old notifications, expired {} payment credentials, "
-                    + "expired {} purchase approvals, deleted {} expired OAuth2 authorizations, "
+                    + "expired {} purchase approvals, failed {} abandoned checkouts, "
+                    + "deleted {} expired OAuth2 authorizations, "
                     + "deleted {} stale OAuth2 clients, purged {} price snapshots, "
                     + "purged {} orphaned listings, purged {} orphaned tickets",
                     expiredByDeadline, expiredByEvent, expiredByInactiveEvent, completedEvents,
                     deletedNotifications, expiredPaymentCredentials, expiredApprovals,
-                    deletedOAuth2Authorizations, deletedOAuth2Clients,
+                    abandonedCheckouts, deletedOAuth2Authorizations, deletedOAuth2Clients,
                     purgedPriceRows, purgedListings, purgedTickets);
         }
     }
@@ -164,6 +179,31 @@ public class LifecycleCleanupService {
     int expireProposedApprovals(Instant now) {
         return approvalRepository.expireProposedApprovals(
                 now, AgentPurchaseApprovalStatus.PROPOSED, AgentPurchaseApprovalStatus.EXPIRED);
+    }
+
+    /**
+     * Fails checkouts left pending past the abandonment window, releasing their tickets.
+     *
+     * <p>An agent that creates a checkout and never completes or cancels it holds those
+     * seats indefinitely — every later attempt on the same listing fails with "no longer
+     * available" even though nobody bought it. Failing the order is the existing path that
+     * returns the tickets to inventory.
+     */
+    int failAbandonedCheckouts(Instant now) {
+        Instant cutoff = now.minus(abandonedCheckoutMinutes, ChronoUnit.MINUTES);
+        List<Order> abandoned = orderRepository.findAbandonedPendingOrders(cutoff);
+        int failed = 0;
+        for (Order order : abandoned) {
+            try {
+                orderService.failOrder(order.getOrderNumber());
+                failed++;
+            } catch (RuntimeException e) {
+                // A concurrent completion is normal here, not a cleanup failure: skip the
+                // order and let the rest of the sweep proceed.
+                log.debug("Skipped abandoned checkout {}: {}", order.getOrderNumber(), e.getMessage());
+            }
+        }
+        return failed;
     }
 
     /**

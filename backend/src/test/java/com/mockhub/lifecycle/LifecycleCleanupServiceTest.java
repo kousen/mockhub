@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,6 +63,12 @@ class LifecycleCleanupServiceTest {
     @Mock
     private TicketRepository ticketRepository;
 
+    @Mock
+    private com.mockhub.order.repository.OrderRepository orderRepository;
+
+    @Mock
+    private com.mockhub.order.service.OrderService orderService;
+
     private LifecycleCleanupService cleanupService;
 
     @BeforeEach
@@ -69,7 +76,8 @@ class LifecycleCleanupServiceTest {
         cleanupService = new LifecycleCleanupService(
                 listingRepository, eventRepository, notificationRepository,
                 paymentCredentialRepository, approvalRepository, jdbcTemplate,
-                priceHistoryRepository, ticketRepository, 90);
+                priceHistoryRepository, ticketRepository, orderRepository, orderService,
+                90, 30);
     }
 
     @Test
@@ -221,6 +229,40 @@ class LifecycleCleanupServiceTest {
         int result = cleanupService.expireProposedApprovals(now);
 
         assertEquals(2, result);
+    }
+
+    @Test
+    @DisplayName("failAbandonedCheckouts - fails pending orders past the window so their tickets are released")
+    void failAbandonedCheckouts_failsPendingOrdersPastWindow() {
+        Instant now = Instant.now();
+        com.mockhub.order.entity.Order stale = new com.mockhub.order.entity.Order();
+        stale.setOrderNumber("MH-20260805-0001");
+        when(orderRepository.findAbandonedPendingOrders(any(Instant.class)))
+                .thenReturn(java.util.List.of(stale));
+
+        int result = cleanupService.failAbandonedCheckouts(now);
+
+        assertEquals(1, result);
+        verify(orderService).failOrder("MH-20260805-0001");
+    }
+
+    @Test
+    @DisplayName("failAbandonedCheckouts - a concurrently completed order does not abort the sweep")
+    void failAbandonedCheckouts_orderCompletedConcurrently_continuesSweep() {
+        Instant now = Instant.now();
+        com.mockhub.order.entity.Order raced = new com.mockhub.order.entity.Order();
+        raced.setOrderNumber("MH-20260805-0001");
+        com.mockhub.order.entity.Order stale = new com.mockhub.order.entity.Order();
+        stale.setOrderNumber("MH-20260805-0002");
+        when(orderRepository.findAbandonedPendingOrders(any(Instant.class)))
+                .thenReturn(java.util.List.of(raced, stale));
+        doThrow(new com.mockhub.common.exception.ConflictException("Cannot fail confirmed order"))
+                .when(orderService).failOrder("MH-20260805-0001");
+
+        int result = cleanupService.failAbandonedCheckouts(now);
+
+        assertEquals(1, result, "only the genuinely abandoned order counts");
+        verify(orderService).failOrder("MH-20260805-0002");
     }
 
     @Test
