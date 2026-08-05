@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.mockhub.auth.entity.User;
@@ -33,6 +34,7 @@ import com.mockhub.mandate.service.MandateService;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
+import com.mockhub.order.dto.OrderPricing;
 import com.mockhub.order.dto.OrderSummaryDto;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
@@ -46,7 +48,6 @@ import com.mockhub.ticket.service.TicketService;
 public class OrderService {
 
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
-    private static final BigDecimal SERVICE_FEE_RATE = new BigDecimal("0.10");
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final String ORDER_RESOURCE = "Order";
     private static final String ORDER_NUMBER_FIELD = "orderNumber";
@@ -144,6 +145,19 @@ public class OrderService {
         }
 
         orderNotificationService.sendConfirmationNotifications(order);
+    }
+
+    /**
+     * Fails an order in its own transaction, for callers that sweep many orders in one go.
+     *
+     * <p>Batch callers must not share a transaction with this: a participating transaction
+     * that throws is marked rollback-only, so catching the exception in the loop would still
+     * discard the caller's entire unit of work at commit. One transaction per order keeps a
+     * single bad order from taking the batch down with it.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void failOrderInNewTransaction(String orderNumber) {
+        failOrder(orderNumber);
     }
 
     @Transactional
@@ -338,16 +352,15 @@ public class OrderService {
         for (CartItem cartItem : cartItems) {
             subtotal = subtotal.add(cartItem.getListing().getComputedPrice());
         }
-        BigDecimal serviceFee = subtotal.multiply(SERVICE_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal total = subtotal.add(serviceFee);
+        OrderPricing pricing = OrderPricing.forSubtotal(subtotal);
 
         Order order = new Order();
         order.setUser(user);
         order.setOrderNumber(generateOrderNumber());
         order.setStatus(OrderStatus.PENDING);
-        order.setSubtotal(subtotal);
-        order.setServiceFee(serviceFee);
-        order.setTotal(total);
+        order.setSubtotal(pricing.subtotal());
+        order.setServiceFee(pricing.serviceFee());
+        order.setTotal(pricing.total());
         order.setPaymentMethod(paymentMethod);
         order.setAgentId(normalize(agentId));
         order.setMandateId(normalize(mandateId));

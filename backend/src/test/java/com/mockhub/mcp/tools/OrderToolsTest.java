@@ -177,8 +177,10 @@ class OrderToolsTest {
             stubUserLookup("buyer@example.com");
             when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
             stubPassingEval();
+            // 10.00 cart subtotal + 10% service fee = the 11.00 the buyer is charged, which
+            // is the amount the mandate has to authorize.
             when(mandateService.validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
-                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor"))
+                    new java.math.BigDecimal("11.00"), null, "test-event", MANDATE_ID, "Floor"))
                     .thenReturn(true);
             OrderDto orderDto = new OrderDto(
                     null, null, null, null, null, null, null, null, null, null, null, null);
@@ -190,7 +192,7 @@ class OrderToolsTest {
 
             verify(orderService).checkout(eq(testUser), any(CheckoutRequest.class), any(), eq(AGENT_ID), eq(MANDATE_ID));
             verify(mandateService).validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
-                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor");
+                    new java.math.BigDecimal("11.00"), null, "test-event", MANDATE_ID, "Floor");
             assertTrue(!result.contains("\"error\""), "Result should not contain error field");
         }
 
@@ -201,7 +203,7 @@ class OrderToolsTest {
             when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
             stubPassingEval();
             when(mandateService.validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
-                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor"))
+                    new java.math.BigDecimal("11.00"), null, "test-event", MANDATE_ID, "Floor"))
                     .thenReturn(true);
             OrderDto orderDto = new OrderDto(
                     null, null, null, null, null, null, null, null, null, null, null, null);
@@ -238,7 +240,7 @@ class OrderToolsTest {
                     "buyer@example.com", AGENT_ID, null, java.math.BigDecimal.TEN, "CHECKOUT"))
                     .thenReturn(List.of("agent-risk: high spend attempt"));
             when(mandateService.validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
-                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor"))
+                    new java.math.BigDecimal("11.00"), null, "test-event", MANDATE_ID, "Floor"))
                     .thenReturn(true);
             OrderDto orderDto = new OrderDto(
                     null, "MH-1", "PENDING", null, null, null, null, null, null, null, null, null);
@@ -285,7 +287,7 @@ class OrderToolsTest {
             when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
             stubPassingEval();
             when(mandateService.validateAction(AGENT_ID, "buyer@example.com", "PURCHASE",
-                    java.math.BigDecimal.TEN, null, "test-event", MANDATE_ID, "Floor"))
+                    new java.math.BigDecimal("11.00"), null, "test-event", MANDATE_ID, "Floor"))
                     .thenReturn(false);
 
             String result = orderTools.checkout("buyer@example.com", "mock", AGENT_ID, MANDATE_ID);

@@ -21,6 +21,7 @@ import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.eval.dto.EvalContext;
 import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
+import com.mockhub.order.dto.OrderPricing;
 import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.repository.ListingRepository;
 
@@ -94,8 +95,11 @@ public class CartTools {
                 Listing listing = listingOpt.get();
                 String categorySlug = listing.getEvent().getCategory() != null
                         ? listing.getEvent().getCategory().getSlug() : null;
+                // Authorize against what the buyer will be charged, service fee included.
                 EvalContext evalContext = EvalContext.forAgentAction(agentId.strip(), effectiveEmail,
-                        listing.getEvent(), listing, listing.getComputedPrice(), categorySlug, mandateId.strip());
+                        listing.getEvent(), listing,
+                        OrderPricing.totalForSubtotal(listing.getComputedPrice()),
+                        categorySlug, mandateId.strip());
                 EvalSummary evalSummary = evalRunner.evaluate(evalContext);
                 if (evalSummary.hasCriticalFailure()) {
                     agentRiskService.recordEvalFailures(effectiveEmail, agentId.strip(), mandateId.strip(),

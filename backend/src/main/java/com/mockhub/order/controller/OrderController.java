@@ -51,8 +51,9 @@ public class OrderController {
     @PostMapping("/checkout")
     @Operation(summary = "Checkout", description = "Convert the current cart into an order. " +
             "Supply an Idempotency-Key header to prevent duplicate orders on retry.")
-    @ApiResponse(responseCode = "201", description = "Order created")
-    @ApiResponse(responseCode = "200", description = "Existing order returned (idempotent retry)")
+    @ApiResponse(responseCode = "201",
+            description = "Order created, or the existing order returned unchanged on an "
+                    + "idempotent retry (retries also answer 201, not 200)")
     @ApiResponse(responseCode = "400", description = "Cart is empty or invalid")
     public ResponseEntity<OrderDto> checkout(
             @AuthenticationPrincipal SecurityUser securityUser,

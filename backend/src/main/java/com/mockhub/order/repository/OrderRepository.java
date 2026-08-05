@@ -1,11 +1,13 @@
 package com.mockhub.order.repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Lock;
@@ -39,4 +41,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :start")
     long countByCreatedAtAfter(@Param("start") Instant start);
+
+    /**
+     * Orders left pending past the abandonment cutoff. Their tickets are still held, so an
+     * agent that creates a checkout and walks away keeps seats out of circulation until
+     * these orders are failed and their inventory released.
+     */
+    @Query("SELECT o FROM Order o WHERE o.status = com.mockhub.order.entity.OrderStatus.PENDING "
+            + "AND o.createdAt < :cutoff ORDER BY o.createdAt ASC")
+    List<Order> findAbandonedPendingOrders(@Param("cutoff") Instant cutoff, Pageable pageable);
 }

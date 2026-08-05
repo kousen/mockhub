@@ -305,8 +305,10 @@ class AcpCheckoutServiceTest {
         when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
         when(cartService.addToCart(testUser, 10L)).thenReturn(createCartWithFloorTicket());
         when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
+        // The cart subtotal is 55.00; the buyer is charged 60.50 once the service fee is
+        // applied, and that is the amount the mandate must authorize.
         when(mandateService.validateAction(AGENT_ID, "buyer@test.com", "PURCHASE",
-                new BigDecimal("55.00"), null, "test-concert", MANDATE_ID, "Floor"))
+                new BigDecimal("60.50"), null, "test-concert", MANDATE_ID, "Floor"))
                 .thenReturn(true);
         when(orderService.checkout(eq(testUser), any(CheckoutRequest.class), eq("idem-123"), eq(AGENT_ID), eq(MANDATE_ID)))
                 .thenReturn(testOrderDto);
@@ -315,7 +317,7 @@ class AcpCheckoutServiceTest {
 
         assertEquals("CREATED", response.status());
         verify(mandateService).validateAction(AGENT_ID, "buyer@test.com", "PURCHASE",
-                new BigDecimal("55.00"), null, "test-concert", MANDATE_ID, "Floor");
+                new BigDecimal("60.50"), null, "test-concert", MANDATE_ID, "Floor");
     }
 
     @Test
@@ -332,7 +334,7 @@ class AcpCheckoutServiceTest {
         when(cartService.addToCart(testUser, 10L)).thenReturn(createCartWithFloorTicket());
         when(cartService.getCartDto(testUser)).thenReturn(createCartWithFloorTicket());
         when(mandateService.validateAction(AGENT_ID, "buyer@test.com", "PURCHASE",
-                new BigDecimal("55.00"), null, "test-concert", MANDATE_ID, "Floor"))
+                new BigDecimal("60.50"), null, "test-concert", MANDATE_ID, "Floor"))
                 .thenReturn(false);
 
         ConflictException exception = assertThrows(ConflictException.class, () ->
@@ -873,6 +875,61 @@ class AcpCheckoutServiceTest {
                 acpCheckoutService.updateCheckout("MH-20260323-0001", updateRequest, "buyer@test.com"));
 
         verify(orderService, never()).failOrder(any());
+    }
+
+    @Test
+    @DisplayName("completeCheckout - order already confirmed - returns the existing order without re-charging")
+    void completeCheckout_alreadyConfirmed_isIdempotent() {
+        // A retry after a lost response must not re-run the mandate checks: confirmOrder has
+        // already recorded this order's spend, so re-authorizing would count it twice and
+        // reject the retry — while logging a mandate mismatch against the agent.
+        OrderDto confirmed = new OrderDto(
+                1L, "MH-20260323-0001", "CONFIRMED",
+                new BigDecimal("50.00"), new BigDecimal("5.00"), new BigDecimal("55.00"),
+                "mock", Instant.now(), Instant.now(), testOrderDto.items(), AGENT_ID, MANDATE_ID);
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(confirmed);
+        when(orderService.getOrderEntity("MH-20260323-0001"))
+                .thenReturn(createAgentOrder("MH-20260323-0001", "mock"));
+
+        AcpCheckoutResponse response = acpCheckoutService.completeCheckout(
+                "MH-20260323-0001", "buyer@test.com",
+                new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, null, null, null));
+
+        assertEquals("COMPLETED", response.status());
+        verify(evalRunner, never()).evaluate(any());
+        verify(paymentService, never()).createPaymentIntent(any(Order.class));
+        verify(paymentService, never()).confirmPayment(any());
+    }
+
+    @Test
+    @DisplayName("completeCheckout - mandate no longer authorizes the order - refuses before charging")
+    void completeCheckout_mandateNoLongerAuthorizes_refusesBeforeCharging() {
+        // Completion is the step that moves money, so it must re-authorize against the order
+        // total. Previously only updateCheckout did, and a mandate could be revoked or
+        // outgrown between creating the checkout and completing it.
+        Order order = createAgentOrder("MH-20260323-0001", "mock");
+        Listing listing = createListing(10L);
+        com.mockhub.order.entity.OrderItem orderItem = new com.mockhub.order.entity.OrderItem();
+        orderItem.setListing(listing);
+        order.setItems(List.of(orderItem));
+
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.getOrder(testUser, "MH-20260323-0001")).thenReturn(testOrderDto);
+        when(orderService.getOrderEntity("MH-20260323-0001")).thenReturn(order);
+        when(evalRunner.evaluate(any())).thenReturn(new EvalSummary(List.of(
+                EvalResult.fail("mandate-authorization",
+                        com.mockhub.eval.dto.EvalSeverity.CRITICAL,
+                        "Mandate does not authorize this action"))));
+
+        ConflictException exception = assertThrows(ConflictException.class, () ->
+                acpCheckoutService.completeCheckout("MH-20260323-0001", "buyer@test.com",
+                        new com.mockhub.acp.dto.AcpCompleteRequest(AGENT_ID, MANDATE_ID, null, null, null)));
+
+        assertEquals("ACP confirmation validation failed: mandate-authorization: "
+                + "Mandate does not authorize this action", exception.getMessage());
+        verify(paymentService, never()).createPaymentIntent(any(Order.class));
     }
 
     @Test

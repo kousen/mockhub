@@ -36,9 +36,11 @@ import com.mockhub.eval.dto.EvalSummary;
 import com.mockhub.eval.service.EvalRunner;
 import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderItem;
+import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.dto.OrderItemDto;
+import com.mockhub.order.dto.OrderPricing;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.order.service.PaymentMethodSupport;
 import com.mockhub.payment.dto.PaymentIntentDto;
@@ -189,12 +191,27 @@ public class AcpCheckoutService {
     public AcpCheckoutResponse completeCheckout(String checkoutId, String buyerEmail, AcpCompleteRequest request) {
         User user = resolveUser(buyerEmail);
         // Verify the user owns this order
-        orderService.getOrder(user, checkoutId);
+        OrderDto existing = orderService.getOrder(user, checkoutId);
         Order order = orderService.getOrderEntity(checkoutId);
         validateStoredAgentContext(order, request.agentId(), request.mandateId());
+
+        // Completing an already-confirmed checkout is a retry, not a second purchase: return
+        // the same result. Re-running the checks below would double-count this order's total
+        // against the mandate (confirmOrder already recorded the spend), rejecting a retry
+        // that follows a lost response and logging a mandate mismatch against the agent.
+        if (OrderStatus.CONFIRMED.name().equals(existing.status())) {
+            log.info("Checkout {} is already confirmed; returning the existing order", checkoutId);
+            return toAcpCheckoutResponse(existing, buyerEmail);
+        }
+
         validateApprovalMode(user.getEmail(), request.agentId(), request.mandateId(), request.approvalId());
         approvalService.validateApprovedForCompletion(
                 request.approvalId(), user.getEmail(), request.agentId(), request.mandateId(), order);
+        // Last line of defence before money moves: re-authorize against the order total.
+        // updateCheckout already did this; completion — the step that actually charges the
+        // buyer — did not, so a mandate could be revoked or outgrown between the two calls.
+        ensureOrderStillAuthorizedForConfirmation(
+                order, user.getEmail(), request.agentId(), request.mandateId());
 
         String paymentIntentId = request.paymentIntentId();
 
@@ -311,9 +328,12 @@ public class AcpCheckoutService {
         String categorySlug = listing.getEvent().getCategory() != null
                 ? listing.getEvent().getCategory().getSlug()
                 : null;
+        // Authorize against what the buyer will be charged, service fee included — not the
+        // ticket price alone, or a mandate ceiling silently permits a larger purchase.
+        BigDecimal amountToAuthorize = OrderPricing.totalForSubtotal(listing.getComputedPrice());
         EvalSummary evalSummary = evalRunner.evaluate(EvalContext.forAgentAction(
                 agentId, userEmail, listing.getEvent(), listing,
-                listing.getComputedPrice(), categorySlug, mandateId));
+                amountToAuthorize, categorySlug, mandateId));
 
         if (evalSummary.hasCriticalFailure()) {
             agentRiskService.recordEvalFailures(userEmail, agentId, mandateId,
@@ -342,10 +362,12 @@ public class AcpCheckoutService {
         }
 
         for (CartItemDto item : cartDto.items()) {
-            BigDecimal amount = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
-            if (amount == null) {
-                amount = item.priceAtAdd();
+            BigDecimal subtotal = cartDto.subtotal() != null ? cartDto.subtotal() : item.currentPrice();
+            if (subtotal == null) {
+                subtotal = item.priceAtAdd();
             }
+            // The buyer pays subtotal + service fee, so that is what the mandate must cover.
+            BigDecimal amount = OrderPricing.totalForSubtotal(subtotal);
             boolean authorized = mandateService.validateAction(
                     agentId, user.getEmail(), "PURCHASE", amount, null,
                     item.eventSlug(), mandateId, item.sectionName());

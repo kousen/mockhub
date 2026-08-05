@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -68,6 +69,19 @@ public class GlobalExceptionHandler {
         );
         problem.setProperty("fieldErrors", fieldErrors);
 
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ProblemDetail> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        log.debug("Unreadable request body: {}", ex.getMessage());
+
+        // A missing or malformed JSON body is the caller's mistake, not ours. Without this
+        // it fell through to the catch-all and reported 500, which sent people hunting for
+        // a server fault when they had simply omitted the body.
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "Request body is missing or malformed JSON");
+        problem.setTitle("Bad Request");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
     }
 

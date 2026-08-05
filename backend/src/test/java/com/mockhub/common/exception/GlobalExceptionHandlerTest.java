@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -146,6 +147,24 @@ class GlobalExceptionHandlerTest {
         assertEquals(400, body.getStatus());
         assertEquals("Bad Request", body.getTitle());
         assertEquals("Unknown category slug(s): [jazz]", body.getDetail());
+    }
+
+    @Test
+    @DisplayName("handleUnreadableBody - returns 400 rather than falling through to 500")
+    void handleUnreadableBody_returns400ProblemDetail() {
+        // A caller who omits the request body used to get "An unexpected error occurred"
+        // with a 500, which reads as a server fault instead of a missing body.
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException(
+                "Required request body is missing", mock(org.springframework.http.HttpInputMessage.class));
+
+        ResponseEntity<ProblemDetail> response = handler.handleUnreadableBody(ex);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ProblemDetail body = response.getBody();
+        assertNotNull(body);
+        assertEquals(400, body.getStatus());
+        assertEquals("Bad Request", body.getTitle());
+        assertEquals("Request body is missing or malformed JSON", body.getDetail());
     }
 
     @Test
