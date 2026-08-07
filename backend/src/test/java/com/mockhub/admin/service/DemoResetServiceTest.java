@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -150,6 +151,32 @@ class DemoResetServiceTest {
         demoResetService.resetUser("buyer@mockhub.com");
 
         verify(mandateService).revokeMandate("mandate-001");
+    }
+
+    @Test
+    @DisplayName("resetUser - demo-seed orders survive the reset")
+    void resetUser_demoSeedOrders_surviveReset() {
+        when(userRepository.findByEmail("bob@mockhub.com")).thenReturn(Optional.of(testUser));
+
+        Order seededOrder = mock(Order.class);
+        when(seededOrder.getIdempotencyKey()).thenReturn("demo-seed-bob-1");
+
+        Order rehearsalOrder = mock(Order.class);
+        when(rehearsalOrder.getIdempotencyKey()).thenReturn(null);
+        when(rehearsalOrder.getStatus()).thenReturn(OrderStatus.CONFIRMED);
+        when(rehearsalOrder.getOrderNumber()).thenReturn("MH-20260807-0002");
+
+        when(orderRepository.findByUserIdOrderByCreatedAtDesc(eq(1L), any()))
+                .thenReturn(new PageImpl<>(List.of(seededOrder, rehearsalOrder)));
+        when(mandateRepository.findByUserEmail("bob@mockhub.com"))
+                .thenReturn(Collections.emptyList());
+
+        DemoResetResultDto result = demoResetService.resetUser("bob@mockhub.com");
+
+        verify(orderService).cancelOrder("MH-20260807-0002");
+        verifyNoMoreInteractions(orderService);
+        assertEquals(List.of("MH-20260807-0002"), result.cancelledOrders(),
+                "Only the rehearsal order should be cancelled; seeded history survives");
     }
 
     @Test
