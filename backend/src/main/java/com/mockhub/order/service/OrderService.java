@@ -86,13 +86,9 @@ public class OrderService {
     public OrderDto checkout(User user, CheckoutRequest request, String idempotencyKey,
                              String agentId, String mandateId) {
         // Idempotency check: if a key was provided and an order already exists, return it
-        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-            Optional<Order> existingOrder = orderRepository.findByIdempotencyKey(idempotencyKey);
-            if (existingOrder.isPresent()) {
-                log.info("Idempotent retry detected for key {}, returning existing order {}",
-                        idempotencyKey, existingOrder.get().getOrderNumber());
-                return toOrderDto(existingOrder.get());
-            }
+        Optional<OrderDto> existingOrder = lookupOrderForIdempotentRetry(user, idempotencyKey);
+        if (existingOrder.isPresent()) {
+            return existingOrder.get();
         }
 
         String normalizedPaymentMethod = PaymentMethodSupport.normalize(request.paymentMethod());
@@ -107,6 +103,34 @@ public class OrderService {
         cartService.clearCart(user);
 
         return toOrderDto(savedOrder);
+    }
+
+    /**
+     * Looks up the order a previous checkout created with this idempotency key.
+     *
+     * <p>Callers that catch the unique-index violation from a concurrent duplicate
+     * (two same-key checkouts both missing the in-transaction lookup) use this from a
+     * fresh transaction to return the winner's order instead of surfacing a 500.</p>
+     */
+    @Transactional(readOnly = true)
+    public Optional<OrderDto> findOrderForIdempotentRetry(User user, String idempotencyKey) {
+        return lookupOrderForIdempotentRetry(user, idempotencyKey);
+    }
+
+    private Optional<OrderDto> lookupOrderForIdempotentRetry(User user, String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            return Optional.empty();
+        }
+        return orderRepository.findByIdempotencyKey(idempotencyKey).map(order -> {
+            // The unique index is global, so a key can collide across users; never
+            // hand one user's order to another
+            if (!order.getUser().getId().equals(user.getId())) {
+                throw new ConflictException("Idempotency key is already in use");
+            }
+            log.info("Idempotent retry detected for key {}, returning existing order {}",
+                    idempotencyKey, order.getOrderNumber());
+            return toOrderDto(order);
+        });
     }
 
     @Transactional

@@ -3,12 +3,14 @@ package com.mockhub.acp.controller;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -101,6 +103,56 @@ class AcpControllerTest {
                 .andExpect(jsonPath("$.checkoutId").value("MH-20260323-0001"))
                 .andExpect(jsonPath("$.status").value("CREATED"))
                 .andExpect(jsonPath("$.buyerEmail").value("buyer@test.com"));
+    }
+
+    @Test
+    @DisplayName("POST /acp/v1/checkout - concurrent duplicate key - returns winner's order with 201")
+    void createCheckout_concurrentDuplicateKey_returnsWinnersOrderWith201() throws Exception {
+        // The loser of a same-idempotency-key race dies on the unique index; the
+        // controller must answer with the winner's order, not a 500
+        when(acpCheckoutService.createCheckout(any()))
+                .thenThrow(new DataIntegrityViolationException("orders_idempotency_key_idx"));
+        when(acpCheckoutService.findCheckoutForIdempotentRetry(any()))
+                .thenReturn(Optional.of(createTestResponse("CREATED")));
+
+        mockMvc.perform(post("/acp/v1/checkout")
+                        .header("X-API-Key", "test-api-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "buyerEmail": "buyer@test.com",
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123",
+                                    "lineItems": [{"listingId": 1, "quantity": 1}],
+                                    "paymentMethod": "mock",
+                                    "idempotencyKey": "retry-key-1"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.checkoutId").value("MH-20260323-0001"));
+    }
+
+    @Test
+    @DisplayName("POST /acp/v1/checkout - constraint violation with no matching order - propagates as 500")
+    void createCheckout_constraintViolationNoMatchingOrder_propagatesAs500() throws Exception {
+        when(acpCheckoutService.createCheckout(any()))
+                .thenThrow(new DataIntegrityViolationException("some other constraint"));
+        when(acpCheckoutService.findCheckoutForIdempotentRetry(any()))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/acp/v1/checkout")
+                        .header("X-API-Key", "test-api-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "buyerEmail": "buyer@test.com",
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123",
+                                    "lineItems": [{"listingId": 1, "quantity": 1}],
+                                    "paymentMethod": "mock"
+                                }
+                                """))
+                .andExpect(status().isInternalServerError());
     }
 
     @Test

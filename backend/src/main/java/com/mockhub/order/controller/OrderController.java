@@ -2,6 +2,7 @@ package com.mockhub.order.controller;
 
 import jakarta.validation.Valid;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -60,8 +61,17 @@ public class OrderController {
             @Valid @RequestBody CheckoutRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         User user = resolveUser(securityUser);
-        OrderDto orderDto = orderService.checkout(user, request, idempotencyKey);
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderDto);
+        try {
+            OrderDto orderDto = orderService.checkout(user, request, idempotencyKey);
+            return ResponseEntity.status(HttpStatus.CREATED).body(orderDto);
+        } catch (DataIntegrityViolationException ex) {
+            // Concurrent duplicate: two same-key checkouts both missed the lookup and
+            // the loser's insert hit the unique index. Its transaction has rolled back,
+            // so re-read here and answer with the winner's order, as a retry would get.
+            OrderDto existing = orderService.findOrderForIdempotentRetry(user, idempotencyKey)
+                    .orElseThrow(() -> ex);
+            return ResponseEntity.status(HttpStatus.CREATED).body(existing);
+        }
     }
 
     @GetMapping

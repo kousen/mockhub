@@ -46,6 +46,7 @@ import com.mockhub.ticket.entity.Listing;
 import com.mockhub.ticket.repository.ListingRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -757,6 +758,34 @@ class AcpCheckoutServiceTest {
 
         assertNotNull(response);
         verify(cartService).addToCart(testUser, 10L);
+    }
+
+    @Test
+    @DisplayName("findCheckoutForIdempotentRetry - given existing order for key - returns response")
+    void findCheckoutForIdempotentRetry_givenExistingOrderForKey_returnsResponse() {
+        when(userRepository.findByEmail("buyer@test.com")).thenReturn(Optional.of(testUser));
+        when(orderService.findOrderForIdempotentRetry(testUser, "idem-1"))
+                .thenReturn(Optional.of(testOrderDto));
+
+        AcpCheckoutRequest request = createCheckoutRequest(
+                "buyer@test.com", List.of(new AcpLineItem(10L, 1)), "mock", "idem-1");
+
+        Optional<AcpCheckoutResponse> result = acpCheckoutService.findCheckoutForIdempotentRetry(request);
+
+        assertTrue(result.isPresent(), "Winner's order should be mapped to a checkout response");
+        assertEquals("MH-20260323-0001", result.get().checkoutId());
+    }
+
+    @Test
+    @DisplayName("findCheckoutForIdempotentRetry - given no idempotency key - returns empty")
+    void findCheckoutForIdempotentRetry_givenNoIdempotencyKey_returnsEmpty() {
+        AcpCheckoutRequest request = createCheckoutRequest(
+                "buyer@test.com", List.of(new AcpLineItem(10L, 1)), "mock", null);
+
+        Optional<AcpCheckoutResponse> result = acpCheckoutService.findCheckoutForIdempotentRetry(request);
+
+        assertTrue(result.isEmpty(), "Without a key there is nothing to recover");
+        verify(orderService, never()).findOrderForIdempotentRetry(any(), any());
     }
 
     @Test

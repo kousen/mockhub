@@ -3,6 +3,7 @@ package com.mockhub.acp.controller;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,8 +45,16 @@ public class AcpController {
     @PostMapping("/checkout")
     public ResponseEntity<AcpCheckoutResponse> createCheckout(
             @Valid @RequestBody AcpCheckoutRequest request) {
-        AcpCheckoutResponse response = acpCheckoutService.createCheckout(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        try {
+            AcpCheckoutResponse response = acpCheckoutService.createCheckout(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (DataIntegrityViolationException ex) {
+            // Concurrent duplicate: the loser of a same-idempotency-key race hit the
+            // unique index. Its transaction rolled back; answer with the winner's order.
+            AcpCheckoutResponse existing = acpCheckoutService.findCheckoutForIdempotentRetry(request)
+                    .orElseThrow(() -> ex);
+            return ResponseEntity.status(HttpStatus.CREATED).body(existing);
+        }
     }
 
     @GetMapping("/checkout/{checkoutId}")
