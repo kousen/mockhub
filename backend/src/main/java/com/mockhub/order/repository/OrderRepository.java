@@ -26,6 +26,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findByIdempotencyKey(String idempotencyKey);
 
+    @Query("SELECT o FROM Order o JOIN FETCH o.items i JOIN FETCH i.listing l JOIN FETCH l.event e WHERE o.idempotencyKey = :idempotencyKey")
+    Optional<Order> findByIdempotencyKeyWithItems(@Param("idempotencyKey") String idempotencyKey);
+
     Optional<Order> findByPaymentIntentId(String paymentIntentId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

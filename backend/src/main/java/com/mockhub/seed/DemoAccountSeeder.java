@@ -3,13 +3,15 @@ package com.mockhub.seed;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.annotation.Order;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.Ordered;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -21,6 +23,7 @@ import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.cart.service.CartService;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
+import com.mockhub.order.entity.Order;
 import com.mockhub.order.repository.OrderRepository;
 import com.mockhub.order.service.OrderService;
 import com.mockhub.ticket.entity.Listing;
@@ -39,10 +42,16 @@ import com.mockhub.ticket.repository.ListingRepository;
  * {@code DemoResetService} recognizes and preserves — a demo reset returns the
  * account to this baseline instead of erasing it. Seeding is idempotent: existing
  * users and already-seeded orders are left alone on subsequent startups.</p>
+ *
+ * <p>The credentials are deliberately public teaching credentials on a mock
+ * marketplace (the course repo publishes them, and the demos self-registered
+ * these accounts before seeding existed). Kill switch: set
+ * {@code DEMO_SEED_ACCOUNTS=false} to disable seeding — including the
+ * password-drift revert — without a code change.</p>
  */
 @Component
-@Order(20) // after DataSeeder(10) so dev-profile listings exist before Bob buys
-public class DemoAccountSeeder implements ApplicationRunner {
+@ConditionalOnProperty(name = "mockhub.demo.seed-accounts", havingValue = "true", matchIfMissing = true)
+public class DemoAccountSeeder implements ApplicationRunner, Ordered {
 
     public static final String DEMO_SEED_KEY_PREFIX = "demo-seed-";
 
@@ -72,6 +81,11 @@ public class DemoAccountSeeder implements ApplicationRunner {
         this.orderRepository = orderRepository;
         this.cartService = cartService;
         this.orderService = orderService;
+    }
+
+    @Override
+    public int getOrder() {
+        return 20; // after DataSeeder(10) so dev-profile listings exist before Bob buys
     }
 
     @Override
@@ -128,7 +142,9 @@ public class DemoAccountSeeder implements ApplicationRunner {
 
         for (int i = 1; i <= BOB_ORDER_COUNT; i++) {
             String idempotencyKey = DEMO_SEED_KEY_PREFIX + "bob-" + i;
-            var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+            // Fetch-joined: run() has no transaction, so lazy items would throw on
+            // the restart after the first seed
+            Optional<Order> existing = orderRepository.findByIdempotencyKeyWithItems(idempotencyKey);
             if (existing.isPresent()) {
                 existing.get().getItems().forEach(item ->
                         usedEventIds.add(item.getListing().getEvent().getId()));

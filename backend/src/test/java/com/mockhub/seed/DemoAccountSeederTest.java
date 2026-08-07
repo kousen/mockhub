@@ -120,7 +120,7 @@ class DemoAccountSeederTest {
         when(roleRepository.findByName("ROLE_USER")).thenReturn(Optional.of(new Role("ROLE_USER")));
         when(listingRepository.findCheapestActiveListingsForFutureEvents(any(), any()))
                 .thenReturn(List.of());
-        when(orderRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(orderRepository.findByIdempotencyKeyWithItems(anyString())).thenReturn(Optional.empty());
 
         seeder.run(null);
 
@@ -145,7 +145,7 @@ class DemoAccountSeederTest {
                 .thenReturn(List.of());
         Order seeded = mock(Order.class);
         when(seeded.getItems()).thenReturn(List.of());
-        when(orderRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.of(seeded));
+        when(orderRepository.findByIdempotencyKeyWithItems(anyString())).thenReturn(Optional.of(seeded));
 
         seeder.run(null);
 
@@ -167,7 +167,7 @@ class DemoAccountSeederTest {
         when(userRepository.save(alice)).thenReturn(alice);
         when(listingRepository.findCheapestActiveListingsForFutureEvents(any(), any()))
                 .thenReturn(List.of());
-        when(orderRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(orderRepository.findByIdempotencyKeyWithItems(anyString())).thenReturn(Optional.empty());
 
         seeder.run(null);
 
@@ -181,7 +181,7 @@ class DemoAccountSeederTest {
     @DisplayName("run - given available listings - seeds three confirmed orders for bob from distinct events")
     void run_givenAvailableListings_seedsThreeConfirmedOrdersForBob() {
         stubHealthyUsers();
-        when(orderRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(orderRepository.findByIdempotencyKeyWithItems(anyString())).thenReturn(Optional.empty());
         // Two listings share event 10 — the second must be skipped in favor of event 30
         List<Listing> candidates = List.of(
                 listingForEvent(101L, 10L, "Event Ten"),
@@ -212,7 +212,7 @@ class DemoAccountSeederTest {
     @DisplayName("run - given one checkout failure - still seeds the remaining orders")
     void run_givenOneCheckoutFailure_stillSeedsRemainingOrders() {
         stubHealthyUsers();
-        when(orderRepository.findByIdempotencyKey(anyString())).thenReturn(Optional.empty());
+        when(orderRepository.findByIdempotencyKeyWithItems(anyString())).thenReturn(Optional.empty());
         List<Listing> candidates = List.of(
                 listingForEvent(101L, 10L, "Event Ten"),
                 listingForEvent(103L, 20L, "Event Twenty"),

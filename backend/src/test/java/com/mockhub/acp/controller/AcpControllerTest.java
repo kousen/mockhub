@@ -30,6 +30,7 @@ import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
 import com.mockhub.common.dto.PagedResponse;
+import com.mockhub.common.exception.ConflictException;
 import com.mockhub.config.SecurityConfig;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -130,6 +131,54 @@ class AcpControllerTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.checkoutId").value("MH-20260323-0001"));
+    }
+
+    @Test
+    @DisplayName("POST /acp/v1/checkout - loser's reservation conflict with existing key - returns winner's order")
+    void createCheckout_reservationConflictWithExistingKey_returnsWinnersOrder() throws Exception {
+        when(acpCheckoutService.createCheckout(any()))
+                .thenThrow(new ConflictException("Ticket was just purchased by another buyer"));
+        when(acpCheckoutService.findCheckoutForIdempotentRetry(any()))
+                .thenReturn(Optional.of(createTestResponse("CREATED")));
+
+        mockMvc.perform(post("/acp/v1/checkout")
+                        .header("X-API-Key", "test-api-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "buyerEmail": "buyer@test.com",
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123",
+                                    "lineItems": [{"listingId": 1, "quantity": 1}],
+                                    "paymentMethod": "mock",
+                                    "idempotencyKey": "retry-key-2"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.checkoutId").value("MH-20260323-0001"));
+    }
+
+    @Test
+    @DisplayName("POST /acp/v1/checkout - ordinary conflict with no existing key - stays a 409")
+    void createCheckout_ordinaryConflictWithNoExistingKey_staysA409() throws Exception {
+        when(acpCheckoutService.createCheckout(any()))
+                .thenThrow(new ConflictException("Cannot checkout: listing-active: listing is SOLD"));
+        when(acpCheckoutService.findCheckoutForIdempotentRetry(any()))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/acp/v1/checkout")
+                        .header("X-API-Key", "test-api-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "buyerEmail": "buyer@test.com",
+                                    "agentId": "shopping-agent",
+                                    "mandateId": "mandate-123",
+                                    "lineItems": [{"listingId": 1, "quantity": 1}],
+                                    "paymentMethod": "mock"
+                                }
+                                """))
+                .andExpect(status().isConflict());
     }
 
     @Test

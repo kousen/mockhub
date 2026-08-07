@@ -3,6 +3,8 @@ package com.mockhub;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -167,6 +169,63 @@ class IdempotencyConcurrencyIntegrationTest extends AbstractIntegrationTest {
             order.setIdempotencyKey(null);
             orderRepository.save(order);
         });
+    }
+
+    @Test
+    @DisplayName("concurrent checkout - same cart and key - loser's conflict recovers the winner's order")
+    void concurrentCheckout_sameCartAndKey_losersConflictRecoversWinnersOrder() throws Exception {
+        // The realistic same-user race: both requests share one cart, so the loser
+        // fails on the winner's ticket reservation (ConflictException), never reaching
+        // the unique index. The controller-level recovery must still find the
+        // winner's order by key.
+        cartService.addToCart(buyer, listing.getId());
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch go = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            List<Future<Object>> outcomes = new ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                outcomes.add(executor.submit(() -> {
+                    ready.countDown();
+                    go.await();
+                    try {
+                        return orderService.checkout(buyer, new CheckoutRequest("mock"), IDEMPOTENCY_KEY);
+                    } catch (RuntimeException ex) {
+                        return ex;
+                    }
+                }));
+            }
+            assertTrue(ready.await(15, TimeUnit.SECONDS));
+            go.countDown();
+
+            OrderDto winnerOrder = null;
+            RuntimeException loserFailure = null;
+            for (Future<Object> outcome : outcomes) {
+                Object result = outcome.get(30, TimeUnit.SECONDS);
+                if (result instanceof OrderDto dto) {
+                    winnerOrder = dto;
+                } else if (result instanceof RuntimeException ex) {
+                    loserFailure = ex;
+                }
+            }
+
+            assertNotNull(winnerOrder, "Exactly one checkout should succeed");
+            if (loserFailure != null) {
+                // Both requests may serialize cleanly (second one sees the winner's
+                // committed order at lookup); when they genuinely race, the loser's
+                // failure must be recoverable by key — the controller's catch
+                Optional<OrderDto> recovered =
+                        orderService.findOrderForIdempotentRetry(buyer, IDEMPOTENCY_KEY);
+                assertTrue(recovered.isPresent(),
+                        "Loser failed with " + loserFailure.getClass().getSimpleName()
+                                + " but the winner's order must be recoverable by key");
+                assertEquals(winnerOrder.orderNumber(), recovered.get().orderNumber());
+            }
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test

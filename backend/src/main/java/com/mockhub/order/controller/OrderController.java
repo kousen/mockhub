@@ -21,6 +21,7 @@ import com.mockhub.auth.entity.User;
 import com.mockhub.auth.repository.UserRepository;
 import com.mockhub.auth.security.SecurityUser;
 import com.mockhub.common.dto.PagedResponse;
+import com.mockhub.common.exception.ConflictException;
 import com.mockhub.common.exception.ResourceNotFoundException;
 import com.mockhub.order.dto.CheckoutRequest;
 import com.mockhub.order.dto.OrderDto;
@@ -64,10 +65,13 @@ public class OrderController {
         try {
             OrderDto orderDto = orderService.checkout(user, request, idempotencyKey);
             return ResponseEntity.status(HttpStatus.CREATED).body(orderDto);
-        } catch (DataIntegrityViolationException ex) {
-            // Concurrent duplicate: two same-key checkouts both missed the lookup and
-            // the loser's insert hit the unique index. Its transaction has rolled back,
-            // so re-read here and answer with the winner's order, as a retry would get.
+        } catch (DataIntegrityViolationException | ConflictException ex) {
+            // Concurrent duplicate: two same-key checkouts both missed the lookup. The
+            // loser fails either on the unique index (different tickets) or on the
+            // winner's ticket reservation (same cart, surfaced as ConflictException).
+            // Either way its transaction rolled back; the key existing NOW means a
+            // same-key winner just committed, so answer with that order — what a
+            // retry would get. Any other failure finds no order and is rethrown.
             OrderDto existing = orderService.findOrderForIdempotentRetry(user, idempotencyKey)
                     .orElseThrow(() -> ex);
             return ResponseEntity.status(HttpStatus.CREATED).body(existing);

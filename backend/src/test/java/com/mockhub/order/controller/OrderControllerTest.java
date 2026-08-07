@@ -23,6 +23,7 @@ import com.mockhub.auth.security.JwtAuthenticationFilter;
 import com.mockhub.auth.security.JwtTokenProvider;
 import com.mockhub.auth.security.SecurityUser;
 import com.mockhub.auth.security.UserDetailsServiceImpl;
+import com.mockhub.common.exception.ConflictException;
 import com.mockhub.config.SecurityConfig;
 import com.mockhub.order.dto.OrderDto;
 import com.mockhub.order.service.CalendarService;
@@ -110,6 +111,54 @@ class OrderControllerTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.orderNumber").value("MH-20260807-0001"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/orders/checkout - loser's reservation conflict with existing key - returns winner's order")
+    void checkout_reservationConflictWithExistingKey_returnsWinnersOrder() throws Exception {
+        User testUser = createTestUser();
+        when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(testUser));
+
+        OrderDto winnersOrder = new OrderDto(99L, "MH-20260807-0001", "PENDING",
+                new BigDecimal("75.00"), new BigDecimal("7.50"), new BigDecimal("82.50"),
+                "mock", null, Instant.now(), List.of(), null, null);
+
+        // Same-cart race: the loser fails on the winner's ticket reservation as a
+        // ConflictException, never reaching the unique index — still recoverable
+        when(orderService.checkout(any(User.class), any(), eq("retry-key-2")))
+                .thenThrow(new ConflictException("Ticket was just purchased by another buyer"));
+        when(orderService.findOrderForIdempotentRetry(any(User.class), eq("retry-key-2")))
+                .thenReturn(Optional.of(winnersOrder));
+
+        mockMvc.perform(post("/api/v1/orders/checkout")
+                        .with(user(new SecurityUser(testUser)))
+                        .header("Idempotency-Key", "retry-key-2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"paymentMethod": "mock"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orderNumber").value("MH-20260807-0001"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/orders/checkout - ordinary conflict with no existing key - stays a 409")
+    void checkout_ordinaryConflictWithNoExistingKey_staysA409() throws Exception {
+        User testUser = createTestUser();
+        when(userRepository.findByEmail("buyer@example.com")).thenReturn(Optional.of(testUser));
+
+        when(orderService.checkout(any(User.class), any(), any()))
+                .thenThrow(new ConflictException("Cart is empty"));
+        when(orderService.findOrderForIdempotentRetry(any(User.class), any()))
+                .thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/v1/orders/checkout")
+                        .with(user(new SecurityUser(testUser)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"paymentMethod": "mock"}
+                                """))
+                .andExpect(status().isConflict());
     }
 
     @Test

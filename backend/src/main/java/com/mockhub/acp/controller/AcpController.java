@@ -26,6 +26,7 @@ import com.mockhub.acp.dto.AcpUpdateRequest;
 import com.mockhub.acp.service.AcpCatalogService;
 import com.mockhub.acp.service.AcpCheckoutService;
 import com.mockhub.common.dto.PagedResponse;
+import com.mockhub.common.exception.ConflictException;
 
 import jakarta.validation.Valid;
 
@@ -48,9 +49,11 @@ public class AcpController {
         try {
             AcpCheckoutResponse response = acpCheckoutService.createCheckout(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (DataIntegrityViolationException ex) {
-            // Concurrent duplicate: the loser of a same-idempotency-key race hit the
-            // unique index. Its transaction rolled back; answer with the winner's order.
+        } catch (DataIntegrityViolationException | ConflictException ex) {
+            // Concurrent duplicate: the loser of a same-idempotency-key race fails on
+            // the unique index or on the winner's ticket reservation (a 409). If an
+            // order with this key exists now, a same-key winner just committed —
+            // answer with that order. Any other conflict finds none and is rethrown.
             AcpCheckoutResponse existing = acpCheckoutService.findCheckoutForIdempotentRetry(request)
                     .orElseThrow(() -> ex);
             return ResponseEntity.status(HttpStatus.CREATED).body(existing);
