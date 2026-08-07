@@ -173,6 +173,7 @@ The codebase uses Java DOP patterns where they add value:
 ### Seed Data and Image Restoration
 
 - **`DataSeeder`** — `@Profile("dev")` only. Seeds sample users, venues, events, and tickets. Does NOT run in production.
+- **`DemoAccountSeeder`** — no profile restriction, runs on every startup in all environments. Seeds the course demo accounts `alice@mockhub.com` / `bob@mockhub.com` (known teaching credentials, drift reverted on startup) plus up to three confirmed orders of history for Bob, tagged with `demo-seed-*` idempotency keys. `DemoResetService` skips those orders, so `POST /api/v1/admin/demo/reset` returns a demo account to the seeded baseline instead of zero. Runs after `DataSeeder` (`@Order(10)` vs `@Order(20)`) so dev-profile listings exist first.
 - **`SeedImageRestorer`** — no profile restriction, runs on every startup in all environments. Restores event images from classpath to the filesystem. Required because Railway's ephemeral filesystem loses uploaded files on every redeploy. Extracted from `EventSeeder` to separate the production-critical image restoration from dev-only sample data seeding.
 
 ### Lifecycle Cleanup
@@ -248,7 +249,7 @@ The codebase uses Java DOP patterns where they add value:
 - **ACP-compatible endpoints** at `/acp/v1/` — RESTful checkout API compatible with the Stripe+OpenAI Agentic Commerce Protocol.
 - **Six endpoints:** `POST /checkout` (create), `GET /checkout/{id}` (status), `PUT /checkout/{id}` (update), `POST /checkout/{id}/complete`, `POST /checkout/{id}/cancel`, `GET /catalog` (product discovery).
 - **Pure adapter layer** — wraps existing CartService + OrderService. No business logic was modified.
-- **API key auth** via `AcpApiKeyFilter` — same `mockhub.mcp.api-key` property as MCP, independent filter.
+- **API key auth** via `AcpApiKeyFilter` — same `mockhub.mcp.api-key` property as MCP, independent filter. Also accepts comma-separated extra keys from `mockhub.acp.extra-api-keys` (env `ACP_EXTRA_API_KEYS`) so a course/event key can rotate without touching the primary key.
 - **SPA exclusion** — `/acp/**` added to `SpaForwardingConfig` exclusion list.
 
 ### Frontend

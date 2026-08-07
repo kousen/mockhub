@@ -101,7 +101,7 @@ public class McpOAuth2SecurityConfig {
      *
      * <p>Handles OAuth2 endpoints: {@code /oauth2/authorize}, {@code /oauth2/token},
      * {@code /oauth2/jwks}, {@code /.well-known/oauth-authorization-server},
-     * and DCR at {@code /oauth2/register}.</p>
+     * and DCR at {@code /connect/register}.</p>
      *
      * <p>Uses {@link McpAuthorizationServerConfigurer} which configures DCR with open
      * registration (any client can register), token generation with resource identifier
