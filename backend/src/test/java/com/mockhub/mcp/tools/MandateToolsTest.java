@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mockhub.ai.service.ChatContext;
+import com.mockhub.common.exception.UnauthorizedException;
 import com.mockhub.mandate.dto.CreateMandateRequest;
 import com.mockhub.mandate.dto.MandateDto;
 import com.mockhub.mandate.service.MandateService;
@@ -163,22 +164,48 @@ class MandateToolsTest {
     // --- revokeMandate ---
 
     @Test
-    @DisplayName("revokeMandate - given valid mandateId - returns success JSON")
-    void revokeMandate_givenValidMandateId_returnsSuccessJson() {
-        String result = mandateTools.revokeMandate("mandate-123");
+    @DisplayName("revokeMandate - given valid mandateId - revokes with ownership check")
+    void revokeMandate_givenValidMandateId_revokesWithOwnershipCheck() {
+        String result = mandateTools.revokeMandate("mandate-123", "user@test.com");
 
         assertTrue(result.contains("\"status\": \"success\""), "Result should contain success status");
         assertTrue(result.contains("mandate-123"), "Result should contain mandate ID");
-        verify(mandateService).revokeMandate("mandate-123");
+        verify(mandateService).revokeMandate("mandate-123", "user@test.com");
+    }
+
+    @Test
+    @DisplayName("revokeMandate - given authenticated email in context - ignores spoofed userEmail parameter")
+    void revokeMandate_givenAuthenticatedEmail_ignoresSpoofedParameter() {
+        // Simulates the OAuth2 MCP path: the ownership check must run against the
+        // pinned token subject, not whatever email the agent typed — otherwise any
+        // agent could revoke any mandate by naming its owner.
+        ChatContext.setAuthenticatedEmail(OWNER_EMAIL);
+
+        String result = mandateTools.revokeMandate("mandate-123", "victim@spoof.com");
+
+        assertTrue(result.contains("\"status\": \"success\""), "Result should contain success status");
+        verify(mandateService).revokeMandate("mandate-123", OWNER_EMAIL);
+    }
+
+    @Test
+    @DisplayName("revokeMandate - given non-owner - returns error JSON")
+    void revokeMandate_givenNonOwner_returnsErrorJson() {
+        doThrow(new UnauthorizedException("You do not own this mandate"))
+                .when(mandateService).revokeMandate("mandate-123", "other@test.com");
+
+        String result = mandateTools.revokeMandate("mandate-123", "other@test.com");
+
+        assertTrue(result.contains("\"error\""), "Result should contain error field");
+        assertTrue(result.contains("You do not own this mandate"), "Result should explain the ownership failure");
     }
 
     @Test
     @DisplayName("revokeMandate - given service throws exception - returns error JSON")
     void revokeMandate_givenServiceThrowsException_returnsErrorJson() {
         doThrow(new RuntimeException("Mandate not found"))
-                .when(mandateService).revokeMandate("nonexistent");
+                .when(mandateService).revokeMandate("nonexistent", "user@test.com");
 
-        String result = mandateTools.revokeMandate("nonexistent");
+        String result = mandateTools.revokeMandate("nonexistent", "user@test.com");
 
         assertTrue(result.contains("\"error\""), "Result should contain error field");
         assertTrue(result.contains("Failed to revoke mandate"), "Result should contain failure message");

@@ -140,7 +140,7 @@ Sessions are in-memory — after server redeploys, clients must re-initialize.
 - proposePurchase(userEmail, agentId, mandateId, proposedOrderSnapshot, agentRationale?, subtotal, serviceFee, total, commercePolicySnapshot?, expiresAt?) — create a durable purchase proposal audit record before user approval. Approval and denial are HUMAN-ONLY actions performed on the MockHub website (/my/approvals); there is deliberately no MCP tool for them, so an agent cannot approve its own proposal.
 - listPurchaseApprovals(userEmail) — list purchase proposals, approvals, denials, and outcomes
 - createMandate(agentId, userEmail, scope, maxSpendPerTransaction?, maxSpendTotal?, allowedCategories?, allowedEvents?, allowedSections?, approvalMode?, expiresAt?) — authorize agent actions
-- revokeMandate(mandateId) — revoke agent authorization
+- revokeMandate(mandateId, userEmail) — revoke agent authorization; only the mandate's owner can revoke it
 - listMandates(userEmail) — list active mandates
 - validateMandate(agentId, userEmail, scope, amount?, categorySlug?, eventSlug?, sectionName?) — check if action is authorized by scope, spending limits, and category/event/section restrictions
 - getBestMandate(agentId, userEmail, eventSlug, categorySlug?, amount?, sectionName?) — RECOMMENDED before addToCart: finds the best matching mandate for a purchase action in one call

@@ -67,11 +67,16 @@ public class MandateTools {
     }
 
     @Tool(description = "Revoke an existing MockHub mandate by its mandate ID. "
+            + "Only the user who granted the mandate can revoke it. "
             + "The mandate will be marked as REVOKED and can no longer be used.")
     public String revokeMandate(
-            @ToolParam(description = "The unique mandate ID (UUID) to revoke", required = true) String mandateId) {
+            @ToolParam(description = "The unique mandate ID (UUID) to revoke", required = true) String mandateId,
+            @ToolParam(description = "Email of the user who owns the mandate", required = true) String userEmail) {
         try {
-            mandateService.revokeMandate(mandateId);
+            // Ownership check matches the REST endpoint: without it, any MCP
+            // credential could revoke any mandate by ID
+            String effectiveEmail = ChatContext.resolveEmail(userEmail);
+            mandateService.revokeMandate(mandateId, effectiveEmail);
             return "{\"status\": \"success\", \"message\": \"Mandate " + mandateId + " revoked\"}";
         } catch (Exception e) {
             log.error("Error revoking mandate '{}': {}", mandateId, e.getMessage(), e);
