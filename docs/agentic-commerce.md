@@ -272,7 +272,7 @@ A **mandate** is a record of what an agent is authorized to do on behalf of a sp
    Each action is checked against the active mandate via MandateCondition
 
 3. User revokes mandate
-   revokeMandate(mandateId="abc-123")
+   revokeMandate(mandateId="abc-123", userEmail="user@example.com")
 ```
 
 ### How MandateCondition Works
@@ -344,7 +344,7 @@ The listing search endpoint is a MockHub offer-discovery extension around the pi
 
 **MCP endpoints** use OAuth 2.1 with Dynamic Client Registration (DCR) when the `mcp-oauth2` profile is active. The embedded Spring Authorization Server handles token issuance and client registration. MCP clients (Codex, Claude, Cursor, etc.) connect directly to `https://mockhub.kousenit.com/mcp` — the OAuth flow is automatic. Production uses this OAuth setup; do not configure `mcp-remote` or `X-API-Key` headers for MCP client access.
 
-**ACP endpoints** use API key authentication (`X-API-Key` header, configured via `mockhub.mcp.api-key`). The `AcpApiKeyFilter` handles this independently.
+**ACP endpoints** use API key authentication (`X-API-Key` header, configured via `mockhub.mcp.api-key`). The `AcpApiKeyFilter` handles this independently. It also accepts comma-separated extra keys from `mockhub.acp.extra-api-keys` (env `ACP_EXTRA_API_KEYS`), so a short-lived key — e.g. for a course delivery — can be issued and rotated without changing the primary key existing clients use.
 
 ### Who is the user? (identity binding)
 

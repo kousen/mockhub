@@ -22,6 +22,7 @@ import com.mockhub.order.entity.Order;
 import com.mockhub.order.entity.OrderStatus;
 import com.mockhub.order.repository.OrderRepository;
 import com.mockhub.order.service.OrderService;
+import com.mockhub.seed.DemoAccountSeeder;
 
 @Service
 public class DemoResetService {
@@ -63,6 +64,11 @@ public class DemoResetService {
         Page<Order> orders = orderRepository.findByUserIdOrderByCreatedAtDesc(
                 user.getId(), PageRequest.of(0, 1000));
         for (Order order : orders) {
+            if (isDemoSeedOrder(order)) {
+                // Seeded baseline history (DemoAccountSeeder) survives a reset:
+                // resetting returns the account to the seeded state, not to zero
+                continue;
+            }
             try {
                 if (order.getStatus() == OrderStatus.PENDING) {
                     orderService.failOrder(order.getOrderNumber());
@@ -95,5 +101,10 @@ public class DemoResetService {
                 cancelledOrders,
                 revokedMandates
         );
+    }
+
+    private boolean isDemoSeedOrder(Order order) {
+        return order.getIdempotencyKey() != null
+                && order.getIdempotencyKey().startsWith(DemoAccountSeeder.DEMO_SEED_KEY_PREFIX);
     }
 }

@@ -83,6 +83,14 @@ mockhub:
   mcp:
     enabled: false
     api-key: ${MCP_API_KEY:mockhub-dev-key}
+  acp:
+    # Comma-separated extra ACP keys accepted alongside the primary key above.
+    # Lets a course/event key rotate independently of the key existing clients use.
+    extra-api-keys: ${ACP_EXTRA_API_KEYS:}
+  demo:
+    # Seeds alice/bob course demo accounts (public teaching credentials) on startup.
+    # Set to false to disable seeding and the password-drift revert.
+    seed-accounts: ${DEMO_SEED_ACCOUNTS:true}
   eval:
     ai-judge:
       enabled: ${MOCKHUB_EVAL_AI_JUDGE_ENABLED:false}

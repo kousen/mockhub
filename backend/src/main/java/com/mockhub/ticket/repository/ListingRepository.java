@@ -44,6 +44,14 @@ public interface ListingRepository extends JpaRepository<Listing, Long>, JpaSpec
 
     @Query("""
             SELECT l FROM Listing l
+            JOIN FETCH l.event e
+            WHERE l.status = 'ACTIVE' AND e.status = 'ACTIVE' AND e.eventDate > :now
+            ORDER BY l.computedPrice ASC, l.id ASC
+            """)
+    List<Listing> findCheapestActiveListingsForFutureEvents(@Param("now") Instant now, Pageable pageable);
+
+    @Query("""
+            SELECT l FROM Listing l
             JOIN FETCH l.ticket t
             JOIN FETCH l.event e
             JOIN FETCH e.venue v

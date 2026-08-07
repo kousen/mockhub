@@ -143,7 +143,7 @@ Any authenticated user can both buy and sell tickets.
 
 ## Testing
 
-988 backend tests, 465 frontend tests, E2E across 3 browsers (Chrome, Safari, Mobile iOS) with CI sharding.
+1,301 backend tests, 473 frontend tests, E2E across 3 browsers (Chrome, Safari, Mobile iOS) with CI sharding.
 
 ```bash
 # Backend (requires Docker for Testcontainers)

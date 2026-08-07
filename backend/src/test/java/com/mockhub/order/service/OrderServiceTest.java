@@ -332,6 +332,68 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("checkout - given another user's idempotency key - throws ConflictException")
+    void checkout_givenAnotherUsersIdempotencyKey_throwsConflictException() {
+        User otherUser = new User();
+        otherUser.setId(77L);
+        otherUser.setEmail("other@test.com");
+
+        Order existingOrder = new Order();
+        existingOrder.setId(99L);
+        existingOrder.setUser(otherUser);
+        existingOrder.setOrderNumber("MH-20260319-0001");
+        existingOrder.setIdempotencyKey("idem-key-123");
+
+        when(orderRepository.findByIdempotencyKey("idem-key-123"))
+                .thenReturn(Optional.of(existingOrder));
+
+        CheckoutRequest request = new CheckoutRequest("mock");
+        ConflictException exception = assertThrows(ConflictException.class,
+                () -> orderService.checkout(testUser, request, "idem-key-123"),
+                "A key owned by another user must not return their order");
+
+        assertEquals("Idempotency key is already in use", exception.getMessage());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("findOrderForIdempotentRetry - given existing key for same user - returns order")
+    void findOrderForIdempotentRetry_givenExistingKeyForSameUser_returnsOrder() {
+        Order existingOrder = new Order();
+        existingOrder.setId(99L);
+        existingOrder.setUser(testUser);
+        existingOrder.setOrderNumber("MH-20260319-0001");
+        existingOrder.setStatus(OrderStatus.PENDING);
+        existingOrder.setSubtotal(new BigDecimal("75.00"));
+        existingOrder.setServiceFee(new BigDecimal("7.50"));
+        existingOrder.setTotal(new BigDecimal("82.50"));
+        existingOrder.setPaymentMethod("mock");
+        existingOrder.setIdempotencyKey("idem-key-123");
+        existingOrder.setItems(new ArrayList<>());
+        existingOrder.setCreatedAt(Instant.now());
+
+        when(orderRepository.findByIdempotencyKey("idem-key-123"))
+                .thenReturn(Optional.of(existingOrder));
+
+        Optional<OrderDto> result = orderService.findOrderForIdempotentRetry(testUser, "idem-key-123");
+
+        assertTrue(result.isPresent(), "Existing order should be found for retry");
+        assertEquals("MH-20260319-0001", result.get().orderNumber());
+    }
+
+    @Test
+    @DisplayName("findOrderForIdempotentRetry - given null or missing key - returns empty")
+    void findOrderForIdempotentRetry_givenNullOrMissingKey_returnsEmpty() {
+        assertTrue(orderService.findOrderForIdempotentRetry(testUser, null).isEmpty(),
+                "Null key should return empty without querying");
+        verify(orderRepository, never()).findByIdempotencyKey(any());
+
+        when(orderRepository.findByIdempotencyKey("unseen-key")).thenReturn(Optional.empty());
+        assertTrue(orderService.findOrderForIdempotentRetry(testUser, "unseen-key").isEmpty(),
+                "Unknown key should return empty");
+    }
+
+    @Test
     @DisplayName("checkout - given null idempotency key - creates new order normally")
     void checkout_givenNullIdempotencyKey_createsNewOrderNormally() {
         CheckoutRequest request = new CheckoutRequest("mock");

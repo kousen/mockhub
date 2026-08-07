@@ -35,6 +35,12 @@ spring:
   flyway:
     enabled: true
 
+mockhub:
+  demo:
+    # The shared Testcontainers DB accumulates listings across test contexts;
+    # letting the seeder buy them would make the suite order-dependent
+    seed-accounts: false
+
 logging:
   level:
     com.mockhub: DEBUG

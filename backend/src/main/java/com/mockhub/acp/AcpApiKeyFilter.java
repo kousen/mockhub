@@ -1,6 +1,8 @@
 package com.mockhub.acp;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,10 +27,25 @@ public class AcpApiKeyFilter extends OncePerRequestFilter {
     private static final String API_KEY_HEADER = "X-API-Key";
     private static final String ACP_PATH_PREFIX = "/acp/";
 
-    private final String apiKey;
+    private final Set<String> acceptedKeys;
 
-    public AcpApiKeyFilter(@Value("${mockhub.mcp.api-key:}") String apiKey) {
-        this.apiKey = apiKey;
+    /**
+     * Accepts the primary MCP/ACP key plus optional extra keys (comma-separated).
+     * Extra keys let a course or event hand out a rotatable key without touching
+     * the primary key that existing clients depend on.
+     */
+    public AcpApiKeyFilter(@Value("${mockhub.mcp.api-key:}") String apiKey,
+                           @Value("${mockhub.acp.extra-api-keys:}") String extraApiKeys) {
+        Set<String> keys = new HashSet<>();
+        if (!apiKey.isBlank()) {
+            keys.add(apiKey.strip());
+        }
+        for (String extra : extraApiKeys.split(",")) {
+            if (!extra.isBlank()) {
+                keys.add(extra.strip());
+            }
+        }
+        this.acceptedKeys = Set.copyOf(keys);
     }
 
     @Override
@@ -42,7 +59,7 @@ public class AcpApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (apiKey.isBlank()) {
+        if (acceptedKeys.isEmpty()) {
             log.warn("ACP API key is not configured, rejecting request to {}", requestPath);
             sendUnauthorized(response, "ACP API key is not configured");
             return;
@@ -56,7 +73,7 @@ public class AcpApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (!apiKey.equals(providedKey.strip())) {
+        if (!acceptedKeys.contains(providedKey.strip())) {
             log.warn("ACP request to {} with invalid API key", requestPath);
             sendUnauthorized(response, "Invalid API key");
             return;

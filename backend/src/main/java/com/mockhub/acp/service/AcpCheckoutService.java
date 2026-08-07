@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -122,6 +123,21 @@ public class AcpCheckoutService {
         log.info("ACP checkout created: {}", orderDto.orderNumber());
 
         return toAcpCheckoutResponse(orderDto, request.buyerEmail());
+    }
+
+    /**
+     * Recovery lookup for a concurrent duplicate: two same-key checkouts both missed
+     * the idempotency lookup and the loser died on the unique index. Called by the
+     * controller from a fresh transaction after the rollback.
+     */
+    @Transactional(readOnly = true)
+    public Optional<AcpCheckoutResponse> findCheckoutForIdempotentRetry(AcpCheckoutRequest request) {
+        if (request.idempotencyKey() == null || request.idempotencyKey().isBlank()) {
+            return Optional.empty();
+        }
+        User user = resolveUser(request.buyerEmail());
+        return orderService.findOrderForIdempotentRetry(user, request.idempotencyKey())
+                .map(orderDto -> toAcpCheckoutResponse(orderDto, request.buyerEmail()));
     }
 
     @Transactional(readOnly = true)

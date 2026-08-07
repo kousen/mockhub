@@ -19,6 +19,10 @@ spring:
         initialize-schema: false
 
 mockhub:
+  demo:
+    # The shared Testcontainers DB accumulates listings across test contexts;
+    # letting the seeder buy them would make the suite order-dependent
+    seed-accounts: false
   ticket:
     signing-secret: ZGV2LW9ubHktdGlja2V0LXNpZ25pbmctc2VjcmV0LW5vdC1mb3ItcHJvZHVjdGlvbg==
   sms:

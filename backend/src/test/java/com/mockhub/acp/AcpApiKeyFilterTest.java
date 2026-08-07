@@ -36,7 +36,7 @@ class AcpApiKeyFilterTest {
     @Test
     @DisplayName("doFilterInternal - given non-ACP path - passes through to filter chain")
     void doFilterInternal_givenNonAcpPath_passesThroughToFilterChain() throws ServletException, IOException {
-        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key");
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key", "");
         when(request.getRequestURI()).thenReturn("/api/v1/events");
 
         filter.doFilter(request, response, filterChain);
@@ -49,7 +49,7 @@ class AcpApiKeyFilterTest {
     @Test
     @DisplayName("doFilterInternal - given blank configured key - rejects ACP request with 401")
     void doFilterInternal_givenBlankConfiguredKey_rejectsAcpRequestWith401() throws ServletException, IOException {
-        AcpApiKeyFilter filter = new AcpApiKeyFilter("");
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("", "");
         when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
 
         StringWriter stringWriter = new StringWriter();
@@ -67,7 +67,7 @@ class AcpApiKeyFilterTest {
     @Test
     @DisplayName("doFilterInternal - given missing API key header - rejects with 401")
     void doFilterInternal_givenMissingApiKeyHeader_rejectsWith401() throws ServletException, IOException {
-        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key");
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key", "");
         when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
         when(request.getHeader("X-API-Key")).thenReturn(null);
 
@@ -86,7 +86,7 @@ class AcpApiKeyFilterTest {
     @Test
     @DisplayName("doFilterInternal - given blank API key header - rejects with 401")
     void doFilterInternal_givenBlankApiKeyHeader_rejectsWith401() throws ServletException, IOException {
-        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key");
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key", "");
         when(request.getRequestURI()).thenReturn("/acp/v1/catalog");
         when(request.getHeader("X-API-Key")).thenReturn("   ");
 
@@ -105,7 +105,7 @@ class AcpApiKeyFilterTest {
     @Test
     @DisplayName("doFilterInternal - given invalid API key - rejects with 401")
     void doFilterInternal_givenInvalidApiKey_rejectsWith401() throws ServletException, IOException {
-        AcpApiKeyFilter filter = new AcpApiKeyFilter("correct-key");
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("correct-key", "");
         when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
         when(request.getHeader("X-API-Key")).thenReturn("wrong-key");
 
@@ -124,7 +124,7 @@ class AcpApiKeyFilterTest {
     @Test
     @DisplayName("doFilterInternal - given valid API key - passes through to filter chain")
     void doFilterInternal_givenValidApiKey_passesThroughToFilterChain() throws ServletException, IOException {
-        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key");
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key", "");
         when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
         when(request.getHeader("X-API-Key")).thenReturn("test-key");
 
@@ -136,9 +136,76 @@ class AcpApiKeyFilterTest {
     @Test
     @DisplayName("doFilterInternal - given valid API key with whitespace - strips and passes through")
     void doFilterInternal_givenValidApiKeyWithWhitespace_stripsAndPassesThrough() throws ServletException, IOException {
-        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key");
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("test-key", "");
         when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
         when(request.getHeader("X-API-Key")).thenReturn("  test-key  ");
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    // --- extra API keys ---
+
+    @Test
+    @DisplayName("doFilterInternal - given extra API key - passes through to filter chain")
+    void doFilterInternal_givenExtraApiKey_passesThroughToFilterChain() throws ServletException, IOException {
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("primary-key", "course-key");
+        when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
+        when(request.getHeader("X-API-Key")).thenReturn("course-key");
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("doFilterInternal - given extra keys configured - primary key still works")
+    void doFilterInternal_givenExtraKeysConfigured_primaryKeyStillWorks() throws ServletException, IOException {
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("primary-key", "course-key,other-key");
+        when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
+        when(request.getHeader("X-API-Key")).thenReturn("primary-key");
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("doFilterInternal - given comma-separated extras with spaces - each key works")
+    void doFilterInternal_givenCommaSeparatedExtrasWithSpaces_eachKeyWorks() throws ServletException, IOException {
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("primary-key", " course-key , other-key ");
+        when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
+        when(request.getHeader("X-API-Key")).thenReturn("other-key");
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("doFilterInternal - given unknown key with extras configured - rejects with 401")
+    void doFilterInternal_givenUnknownKeyWithExtrasConfigured_rejectsWith401() throws ServletException, IOException {
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("primary-key", "course-key");
+        when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
+        when(request.getHeader("X-API-Key")).thenReturn("wrong-key");
+
+        StringWriter stringWriter = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(stringWriter);
+        when(response.getWriter()).thenReturn(printWriter);
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(response).setStatus(401);
+        verify(filterChain, never()).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("doFilterInternal - given blank primary and only extra keys - extra key works")
+    void doFilterInternal_givenBlankPrimaryAndOnlyExtraKeys_extraKeyWorks() throws ServletException, IOException {
+        AcpApiKeyFilter filter = new AcpApiKeyFilter("", "course-key");
+        when(request.getRequestURI()).thenReturn("/acp/v1/checkout");
+        when(request.getHeader("X-API-Key")).thenReturn("course-key");
 
         filter.doFilter(request, response, filterChain);
 
