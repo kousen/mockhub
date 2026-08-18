@@ -89,3 +89,4 @@ skills/
 skills-lock.json
 !.claude/skills/
 !.claude/skills/**
+http-client.private.env.json

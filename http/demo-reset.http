@@ -1,0 +1,34 @@
+### Log in as admin → captures accessToken
+POST https://mockhub.kousenit.com/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+> {%
+    client.global.set("accessToken", response.body.accessToken);
+    client.log("Token captured, expires in " + response.body.expiresIn);
+%}
+
+### Reset demo buyer (main demo account)
+POST https://mockhub.kousenit.com/api/v1/admin/demo/reset
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "userEmail": "buyer@mockhub.com" }
+
+### Reset alice (confused-deputy demo)
+POST https://mockhub.kousenit.com/api/v1/admin/demo/reset
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "userEmail": "alice@mockhub.com" }
+
+### Reset bob (receives the confused-deputy order)
+POST https://mockhub.kousenit.com/api/v1/admin/demo/reset
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "userEmail": "bob@mockhub.com" }
