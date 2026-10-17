@@ -1148,6 +1148,60 @@ This keeps the teaching distinction crisp:
 
 ---
 
-*Last updated: 2026-05-16*
-*Built with: Claude Opus 4.6 (1M context) via Claude Code; Codex GPT-5 for 2026-05-05 and 2026-05-06 workflow trials*
+## Sessions 2026-05-18 to 2026-05-26: Risk Signals, Buyer Preferences, and Audit Evidence
+
+Completed the remaining agentic commerce governance and observability capabilities:
+
+- **#217 / PR #244 — Agent Risk Signals (`V34__create_agent_risk_signals.sql`):**
+  - Added deterministic local risk recording in `com.mockhub.agentrisk` for cart holds, mandate mismatches, failed checkouts, high-spend attempts, and payment-credential failures.
+  - Added `AgentRiskCondition` (warns on recent risk signals; blocks repeated mandate mismatches) and the MCP `getAgentRiskSummary` tool.
+- **#219 / PR #245 — Buyer Preference Memory (`V35__create_buyer_preferences.sql`):**
+  - Added `com.mockhub.buyerpreference` (`GET/PUT /api/v1/preferences/me`) for explicit shopping preferences (budget, preferred sections, categories).
+  - Integrated preference context into MCP `findTickets`, `compareTickets`, and `RecommendationService`.
+- **#238 / PR #246 — Agent Purchase Evidence:**
+  - Added read-only audit assembly in `com.mockhub.agentpurchaseevidence`, stitching order, mandate, approval, payment-credential, and risk records into a single `AgentPurchaseEvidenceDto`.
+  - Exposed via `GET /api/v1/agent-evidence/{orderNumber}` and MCP `getAgentPurchaseEvidence`.
+- **Checkout & Builder Improvements (PRs #247, #248, #251):**
+  - Added explicit order review step before payment (#39), Ticketmaster attraction response builder (#167), and stricter agent checkout input validation (#250).
+
+---
+
+## Sessions 2026-06-10 to 2026-07-30: Spring AI 2.0 GA, OAuth2 Persistence, and Production Hardening
+
+Focused on long-lived MCP connector reliability, framework upgrades, and security boundary enforcement:
+
+- **MCP OAuth2 Identity Pinning & Persistence (`V36__create_oauth2_authorization_tables.sql`):**
+  - Pinned the authenticated OAuth2 token subject into `ChatContext` via `McpAuthenticatedEmailFilter` so MCP tools always execute as the logged-in connector user, ignoring spoofed `userEmail` parameters (#254).
+  - Made MCP OAuth2 access/refresh token TTLs configurable with a 60-day sliding refresh window (#256).
+  - Persisted OAuth2 registered clients (including DCR) and authorizations in PostgreSQL via `JdbcRegisteredClientRepository` and `PrincipalSanitizingOAuth2AuthorizationService` so Claude/Codex sessions survive Railway redeploys (#267).
+- **Framework Upgrades & Dependency Hygiene:**
+  - Upgraded to **Spring AI 2.0.0 GA** (#260) and **Spring Boot 4.1.0** (#270).
+  - Introduced `plainChatClient` alongside `chatClient` (with `@Lazy` injection in `PricePredictionService` and `AiEnabledContextIntegrationTest`) so one-shot AI services work without requiring a `MessageChatMemoryAdvisor` conversation ID (#291–#293).
+  - Consolidated agent instructions into `AGENTS.md` (with `@AGENTS.md` import in `CLAUDE.md`) and resolved 22 frontend Dependabot alerts (#269).
+- **Web-Only Purchase Approvals & Lifecycle Purge (`V37__add_fk_indexes_for_purge.sql`):**
+  - Removed `approvePurchase` and `denyPurchase` from MCP tools and built the human-facing `/my/approvals` (`ApprovalsPage`) UI so an agent acting as the pinned OAuth user cannot self-approve its own purchase proposal (#286, #287).
+  - Blocked purchases of cancelled events end-to-end (#277), hardened agent tool contracts (#275), bounded/diversified featured homepage events with cache eviction on Ticketmaster sync (#295, #297), and added FK indexes to purge dead-event data cleanly during lifecycle cleanup (#283).
+
+---
+
+## Sessions 2026-08-05 to 2026-08-18: `course-2026` Readiness Milestone
+
+Finalized classroom and production invariants for the 2026 course release (tagged `course-2026`):
+
+- **Fee-Inclusive Mandate Authorization:**
+  - Unified mandate ceiling checks around `OrderPricing.forSubtotal(...)` so `maxSpendPerTransaction` and cumulative limits authorize against the *charged total* (including service fees) rather than the ticket subtotal, and re-verify mandate validity on `completeCheckout`.
+- **Abandoned Checkout Recovery & Concurrency Idempotency:**
+  - Extended `LifecycleCleanupService` to fail abandoned `PENDING` checkouts and release held seats back to inventory.
+  - Hardened checkout idempotency so concurrent requests sharing an idempotency key return the original order cleanly.
+  - Enforced mandate ownership verification in the MCP `revokeMandate` tool.
+- **Classroom Demo Infrastructure (#314):**
+  - Added `DemoAccountSeeder` to seed baseline `alice@mockhub.com` and `bob@mockhub.com` accounts across all environments and preserve Bob's baseline orders across `POST /api/v1/admin/demo/reset`.
+  - Added `mockhub.acp.extra-api-keys` (`ACP_EXTRA_API_KEYS`) for rotatable classroom ACP keys without rotating the primary deployment key.
+  - Added `.http` demo-reset request files and stateless MCP handoff documentation (`2eec494`).
+
+---
+
+*Last updated: 2026-10-17*
+*Built with: Claude Opus 4.6 (1M context) via Claude Code; Codex GPT-5; Google Antigravity*
 *Live at: https://mockhub.kousenit.com*
+
