@@ -46,7 +46,84 @@ const MOCK_PRICE_PREDICTION = {
   predictedAt: new Date().toISOString(),
 };
 
+const MOCK_EVENT = {
+  id: 1,
+  name: 'Rock Festival 2026',
+  slug: 'rock-festival-2026',
+  description: 'An amazing rock festival',
+  artistName: 'The Rockers',
+  eventDate: '2026-06-15T19:00:00Z',
+  doorsOpenAt: '2026-06-15T18:00:00Z',
+  status: 'ON_SALE',
+  basePrice: 75.0,
+  minPrice: 50.0,
+  maxPrice: 250.0,
+  totalTickets: 1000,
+  availableTickets: 500,
+  isFeatured: true,
+  venue: { id: 1, name: 'Madison Square Garden', slug: 'msg', city: 'New York', state: 'NY' },
+  category: { id: 1, name: 'Concerts', slug: 'concerts' },
+  tags: [{ id: 1, name: 'Rock' }],
+  primaryImageUrl: null,
+  spotifyArtistId: null,
+};
+
+const MOCK_EVENTS_LIST = {
+  content: [
+    {
+      id: 1,
+      name: 'Rock Festival 2026',
+      slug: 'rock-festival-2026',
+      artistName: 'The Rockers',
+      venueName: 'Madison Square Garden',
+      city: 'New York',
+      eventDate: '2026-06-15T19:00:00Z',
+      minPrice: 50.0,
+      availableTickets: 500,
+      primaryImageUrl: null,
+      categoryName: 'Concerts',
+      isFeatured: true,
+    },
+  ],
+  page: 0,
+  size: 10,
+  totalElements: 1,
+  totalPages: 1,
+};
+
 async function mockAiEndpoints(page: Page) {
+  await page.route('**/api/v1/categories', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
+  await page.route('**/api/v1/tags', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
+  await page.route(/\/api\/v1\/favorites/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
+  await page.route(/\/api\/v1\/events\/rock-festival-2026$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MOCK_EVENT),
+    });
+  });
+
+  await page.route(/\/api\/v1\/events\/rock-festival-2026\/listings/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
+  await page.route(/\/api\/v1\/events\/rock-festival-2026\/sections/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
+  await page.route(/\/api\/v1\/events\/rock-festival-2026\/price-history/, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
   await page.route('**/api/v1/chat', async (route) => {
     await route.fulfill({
       status: 200,
@@ -68,6 +145,14 @@ async function mockAiEndpoints(page: Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(MOCK_PRICE_PREDICTION),
+    });
+  });
+
+  await page.route(/\/api\/v1\/events(\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(MOCK_EVENTS_LIST),
     });
   });
 }
