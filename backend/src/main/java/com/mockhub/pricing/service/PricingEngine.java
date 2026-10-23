@@ -41,7 +41,7 @@ public class PricingEngine {
         BigDecimal demandFactor = computeDemandFactor();
 
         BigDecimal rawMultiplier = supplyFactor.multiply(timeFactor).multiply(demandFactor);
-        return clamp(rawMultiplier, MIN_MULTIPLIER, MAX_MULTIPLIER)
+        return rawMultiplier.max(MIN_MULTIPLIER).min(MAX_MULTIPLIER)
                 .setScale(3, RoundingMode.HALF_UP);
     }
 
@@ -123,15 +123,5 @@ public class PricingEngine {
         } else {
             return BigDecimal.ONE;
         }
-    }
-
-    private BigDecimal clamp(BigDecimal value, BigDecimal min, BigDecimal max) {
-        if (value.compareTo(min) < 0) {
-            return min;
-        }
-        if (value.compareTo(max) > 0) {
-            return max;
-        }
-        return value;
     }
 }

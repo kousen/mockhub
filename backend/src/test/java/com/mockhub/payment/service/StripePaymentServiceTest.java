@@ -103,7 +103,18 @@ class StripePaymentServiceTest {
             assertEquals(new BigDecimal("165.00"), result.amount());
             assertEquals("USD", result.currency());
             assertEquals("pi_test_123", testOrder.getPaymentIntentId());
-            verify(transactionLogRepository).save(any(TransactionLog.class));
+            org.mockito.ArgumentCaptor<TransactionLog> logCaptor =
+                    org.mockito.ArgumentCaptor.forClass(TransactionLog.class);
+            verify(transactionLogRepository).save(logCaptor.capture());
+            TransactionLog savedLog = logCaptor.getValue();
+            assertEquals(testOrder, savedLog.getOrder());
+            assertEquals(testUser, savedLog.getUser());
+            assertEquals("PAYMENT_INITIATED", savedLog.getTransactionType());
+            assertEquals(new BigDecimal("165.00"), savedLog.getAmount());
+            assertEquals("USD", savedLog.getCurrency());
+            assertEquals("STRIPE", savedLog.getProvider());
+            assertEquals("pi_test_123", savedLog.getProviderReference());
+            assertEquals("INITIATED", savedLog.getStatus());
         }
     }
 
@@ -145,7 +156,18 @@ class StripePaymentServiceTest {
             assertEquals("SUCCEEDED", result.status());
             assertEquals("MH-20260319-0001", result.orderNumber());
             verify(orderService).confirmOrder("MH-20260319-0001");
-            verify(transactionLogRepository).save(any(TransactionLog.class));
+            org.mockito.ArgumentCaptor<TransactionLog> logCaptor =
+                    org.mockito.ArgumentCaptor.forClass(TransactionLog.class);
+            verify(transactionLogRepository).save(logCaptor.capture());
+            TransactionLog savedLog = logCaptor.getValue();
+            assertEquals(testOrder, savedLog.getOrder());
+            assertEquals(testUser, savedLog.getUser());
+            assertEquals("PAYMENT_SUCCEEDED", savedLog.getTransactionType());
+            assertEquals(new BigDecimal("165.00"), savedLog.getAmount());
+            assertEquals("USD", savedLog.getCurrency());
+            assertEquals("STRIPE", savedLog.getProvider());
+            assertEquals("pi_test_123", savedLog.getProviderReference());
+            assertEquals("SUCCEEDED", savedLog.getStatus());
         }
     }
 
@@ -205,6 +227,18 @@ class StripePaymentServiceTest {
 
             assertEquals("FAILED", result.status());
             verify(orderService).failOrder("MH-20260319-0001");
+            org.mockito.ArgumentCaptor<TransactionLog> logCaptor =
+                    org.mockito.ArgumentCaptor.forClass(TransactionLog.class);
+            verify(transactionLogRepository).save(logCaptor.capture());
+            TransactionLog savedLog = logCaptor.getValue();
+            assertEquals(testOrder, savedLog.getOrder());
+            assertEquals(testUser, savedLog.getUser());
+            assertEquals("PAYMENT_FAILED", savedLog.getTransactionType());
+            assertEquals(new BigDecimal("165.00"), savedLog.getAmount());
+            assertEquals("USD", savedLog.getCurrency());
+            assertEquals("STRIPE", savedLog.getProvider());
+            assertEquals("pi_test_123", savedLog.getProviderReference());
+            assertEquals("FAILED", savedLog.getStatus());
         }
     }
 

@@ -223,13 +223,17 @@ class EventServiceTest {
     @Test
     @DisplayName("createEvent - given valid request - returns created event DTO")
     void createEvent_givenValidRequest_returnsCreatedEventDto() {
+        Instant eventDate = Instant.now().plus(60, ChronoUnit.DAYS);
+        Instant doorsOpen = eventDate.minus(2, ChronoUnit.HOURS);
         EventCreateRequest request = new EventCreateRequest(
                 "New Concert", 1L, 1L,
-                Instant.now().plus(60, ChronoUnit.DAYS),
+                eventDate,
                 new BigDecimal("50.00"),
                 "A new concert", "New Artist",
-                null, null, false, null);
+                doorsOpen, null, true, "06HL4z0CvFAxyc27GXpf02");
 
+        testEvent.setTotalTickets(999);
+        testEvent.setAvailableTickets(500);
         when(venueRepository.findById(1L)).thenReturn(Optional.of(testVenue));
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(testCategory));
         when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> {
@@ -242,6 +246,19 @@ class EventServiceTest {
 
         assertNotNull(result, "Created event DTO should not be null");
         assertEquals("New Concert", result.name(), "Event name should match");
+        assertEquals("new-concert", result.slug(), "Slug should be generated from name");
+        assertEquals("A new concert", result.description());
+        assertEquals("New Artist", result.artistName());
+        assertEquals(eventDate, result.eventDate());
+        assertEquals(doorsOpen, result.doorsOpenAt());
+        assertEquals(new BigDecimal("50.00"), result.basePrice());
+        assertEquals(new BigDecimal("50.00"), result.minPrice());
+        assertEquals(new BigDecimal("50.00"), result.maxPrice());
+        assertEquals("ACTIVE", result.status());
+        assertEquals(0, result.totalTickets());
+        assertEquals(0, result.availableTickets());
+        assertTrue(result.isFeatured());
+        assertEquals("06HL4z0CvFAxyc27GXpf02", result.spotifyArtistId());
         verify(eventRepository).save(any(Event.class));
     }
 
@@ -264,17 +281,27 @@ class EventServiceTest {
     @Test
     @DisplayName("updateEvent - given existing event - updates and returns DTO")
     void updateEvent_givenExistingEvent_updatesAndReturnsDto() {
+        Instant newEventDate = Instant.now().plus(45, ChronoUnit.DAYS);
+        Instant newDoorsOpen = newEventDate.minus(1, ChronoUnit.HOURS);
         EventCreateRequest request = new EventCreateRequest(
-                "Updated Name", null, null, null,
-                null, "Updated description", null,
-                null, null, null, null);
+                "Updated Name", null, null, newEventDate,
+                new BigDecimal("95.00"), "Updated description", "Updated Artist",
+                newDoorsOpen, null, false, null);
 
         when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
-        when(eventRepository.save(any(Event.class))).thenReturn(testEvent);
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         EventDto result = eventService.updateEvent(1L, request);
 
         assertNotNull(result, "Updated event DTO should not be null");
+        assertEquals("Updated Name", result.name());
+        assertEquals("updated-name", result.slug());
+        assertEquals("Updated description", result.description());
+        assertEquals("Updated Artist", result.artistName());
+        assertEquals(newEventDate, result.eventDate());
+        assertEquals(newDoorsOpen, result.doorsOpenAt());
+        assertEquals(new BigDecimal("95.00"), result.basePrice());
+        assertEquals(false, result.isFeatured());
         verify(eventRepository).save(any(Event.class));
     }
 
@@ -287,10 +314,12 @@ class EventServiceTest {
                 null, null, null, "06HL4z0CvFAxyc27GXpf02");
 
         when(eventRepository.findById(1L)).thenReturn(Optional.of(testEvent));
-        when(eventRepository.save(any(Event.class))).thenReturn(testEvent);
+        when(eventRepository.save(any(Event.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        eventService.updateEvent(1L, request);
+        EventDto result = eventService.updateEvent(1L, request);
 
+        assertEquals("06HL4z0CvFAxyc27GXpf02", result.spotifyArtistId());
+        assertEquals("Rock Festival 2026", result.name(), "Unchanged fields should be preserved");
         verify(eventRepository).save(any(Event.class));
     }
 

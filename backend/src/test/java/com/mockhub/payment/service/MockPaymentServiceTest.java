@@ -106,9 +106,20 @@ class MockPaymentServiceTest {
         when(transactionLogRepository.save(any(TransactionLog.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        mockPaymentService.createPaymentIntent(testOrder);
+        PaymentIntentDto intent = mockPaymentService.createPaymentIntent(testOrder);
 
-        verify(transactionLogRepository).save(any(TransactionLog.class));
+        org.mockito.ArgumentCaptor<TransactionLog> logCaptor =
+                org.mockito.ArgumentCaptor.forClass(TransactionLog.class);
+        verify(transactionLogRepository).save(logCaptor.capture());
+        TransactionLog savedLog = logCaptor.getValue();
+        assertEquals(testOrder, savedLog.getOrder());
+        assertEquals(testUser, savedLog.getUser());
+        assertEquals("PAYMENT_INITIATED", savedLog.getTransactionType());
+        assertEquals(new BigDecimal("165.00"), savedLog.getAmount());
+        assertEquals("USD", savedLog.getCurrency());
+        assertEquals("MOCK", savedLog.getProvider());
+        assertEquals(intent.paymentIntentId(), savedLog.getProviderReference());
+        assertEquals("INITIATED", savedLog.getStatus());
     }
 
     @Test
@@ -133,6 +144,19 @@ class MockPaymentServiceTest {
         assertEquals("ORD-20260318-001", confirmation.orderNumber(),
                 "Confirmation should contain the order number");
         verify(orderService).confirmOrder("ORD-20260318-001");
+
+        org.mockito.ArgumentCaptor<TransactionLog> logCaptor =
+                org.mockito.ArgumentCaptor.forClass(TransactionLog.class);
+        verify(transactionLogRepository, org.mockito.Mockito.times(2)).save(logCaptor.capture());
+        TransactionLog confirmedLog = logCaptor.getAllValues().get(1);
+        assertEquals(testOrder, confirmedLog.getOrder());
+        assertEquals(testUser, confirmedLog.getUser());
+        assertEquals("PAYMENT_SUCCEEDED", confirmedLog.getTransactionType());
+        assertEquals(new BigDecimal("165.00"), confirmedLog.getAmount());
+        assertEquals("USD", confirmedLog.getCurrency());
+        assertEquals("MOCK", confirmedLog.getProvider());
+        assertEquals(paymentIntentId, confirmedLog.getProviderReference());
+        assertEquals("SUCCEEDED", confirmedLog.getStatus());
     }
 
     @Test

@@ -90,7 +90,7 @@ class AuthServiceTest {
     @DisplayName("register - given valid request - returns auth response with token")
     void register_givenValidRequest_returnsAuthResponse() {
         RegisterRequest request = new RegisterRequest(
-                "new@example.com", "password123", "Jane", "Smith", null);
+                "new@example.com", "password123", "Jane", "Smith", "555-0199");
 
         when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
         when(roleRepository.findByName("ROLE_BUYER")).thenReturn(Optional.of(buyerRole));
@@ -108,8 +108,16 @@ class AuthServiceTest {
 
         assertNotNull(response, "Auth response should not be null");
         assertEquals("jwt-token", response.accessToken(), "Access token should match");
+        assertEquals(3600L, response.expiresIn(), "Expiration should be converted to seconds");
+        assertEquals("new@example.com", response.user().email(), "Email should match");
         assertEquals("Jane", response.user().firstName(), "First name should match");
-        verify(userRepository).save(any(User.class));
+        assertEquals("Smith", response.user().lastName(), "Last name should match");
+        assertEquals("555-0199", response.user().phone(), "Phone should match");
+        assertEquals(Set.of("ROLE_BUYER"), response.user().roles(), "Roles should include ROLE_BUYER");
+        org.mockito.ArgumentCaptor<User> userCaptor = org.mockito.ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertEquals("encoded-password", userCaptor.getValue().getPasswordHash());
+        assertNotNull(userCaptor.getValue().getLastLoginAt());
     }
 
     @Test

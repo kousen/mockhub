@@ -162,9 +162,9 @@ class ListingServiceTest {
     @Test
     @DisplayName("createListing - given available ticket - creates listing and updates ticket status")
     void createListing_givenAvailableTicket_createsListing() {
+        Instant expiresAt = Instant.now().plus(7, ChronoUnit.DAYS);
         ListingCreateRequest request = new ListingCreateRequest(
-                1L, new BigDecimal("100.00"),
-                Instant.now().plus(7, ChronoUnit.DAYS));
+                1L, new BigDecimal("100.00"), expiresAt);
 
         when(ticketRepository.findById(1L)).thenReturn(Optional.of(testTicket));
         when(ticketRepository.save(any(Ticket.class))).thenReturn(testTicket);
@@ -177,7 +177,15 @@ class ListingServiceTest {
         ListingDto result = listingService.createListing(request);
 
         assertNotNull(result, "Created listing should not be null");
-        verify(ticketRepository).save(any(Ticket.class));
+        assertEquals(2L, result.id());
+        assertEquals(1L, result.ticketId());
+        assertEquals(new BigDecimal("100.00"), result.listedPrice());
+        assertEquals(new BigDecimal("100.00"), result.computedPrice());
+        assertEquals(BigDecimal.ONE, result.priceMultiplier());
+        assertEquals("ACTIVE", result.status());
+        assertNotNull(result.listedAt());
+        assertEquals("LISTED", testTicket.getStatus());
+        verify(ticketRepository).save(testTicket);
         verify(listingRepository).save(any(Listing.class));
     }
 
@@ -204,7 +212,9 @@ class ListingServiceTest {
 
         listingService.updateListingPrices(1L, multiplier);
 
-        verify(listingRepository).saveAll(any());
+        assertEquals(new BigDecimal("112.500"), testListing.getComputedPrice());
+        assertEquals(multiplier, testListing.getPriceMultiplier());
+        verify(listingRepository).saveAll(List.of(testListing));
     }
 
     @Test

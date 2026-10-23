@@ -108,7 +108,7 @@ class CartTotalIntegrityConditionTest {
         CartItemDto item2 = createCartItem(2L, new BigDecimal("33.33"));
         CartItemDto item3 = createCartItem(3L, new BigDecimal("33.33"));
         CartDto cart = new CartDto(1L, 1L, List.of(item1, item2, item3),
-                new BigDecimal("99.99"), 3,
+                new BigDecimal("100.00"), 3,
                 Instant.now().plus(30, ChronoUnit.MINUTES));
 
         EvalContext context = EvalContext.forCart(cart);
@@ -116,6 +116,24 @@ class CartTotalIntegrityConditionTest {
         EvalResult result = condition.evaluate(context);
 
         assertThat(result.passed()).isTrue();
+    }
+
+    @Test
+    @DisplayName("evaluate fails when difference exceeds 0.01 tolerance")
+    void evaluate_givenDifferenceJustAboveTolerance_failsCritical() {
+        CartItemDto item1 = createCartItem(1L, new BigDecimal("33.33"));
+        CartItemDto item2 = createCartItem(2L, new BigDecimal("33.33"));
+        CartItemDto item3 = createCartItem(3L, new BigDecimal("33.32"));
+        CartDto cart = new CartDto(1L, 1L, List.of(item1, item2, item3),
+                new BigDecimal("100.00"), 3,
+                Instant.now().plus(30, ChronoUnit.MINUTES));
+
+        EvalContext context = EvalContext.forCart(cart);
+
+        EvalResult result = condition.evaluate(context);
+
+        assertThat(result.passed()).isFalse();
+        assertThat(result.severity()).isEqualTo(EvalSeverity.CRITICAL);
     }
 
     private CartItemDto createCartItem(Long id, BigDecimal currentPrice) {

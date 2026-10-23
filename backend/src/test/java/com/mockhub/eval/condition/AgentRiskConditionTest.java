@@ -33,12 +33,30 @@ class AgentRiskConditionTest {
     }
 
     @Test
+    @DisplayName("name - always - returns agent-risk")
+    void name_always_returnsAgentRisk() {
+        assertThat(condition.name()).isEqualTo("agent-risk");
+    }
+
+    @Test
     @DisplayName("appliesTo - agent context - true")
     void appliesTo_givenAgentContext_returnsTrue() {
         EvalContext context = EvalContext.forAgentAction(
                 "agent-1", "buyer@example.com", null, null, null, null, "mandate-1");
 
         assertThat(condition.appliesTo(context)).isTrue();
+    }
+
+    @Test
+    @DisplayName("appliesTo - missing agentId or userEmail - false")
+    void appliesTo_givenMissingAgentIdOrUserEmail_returnsFalse() {
+        EvalContext noAgent = EvalContext.forAgentAction(
+                null, "buyer@example.com", null, null, null, null, "mandate-1");
+        EvalContext noEmail = EvalContext.forAgentAction(
+                "agent-1", null, null, null, null, null, "mandate-1");
+
+        assertThat(condition.appliesTo(noAgent)).isFalse();
+        assertThat(condition.appliesTo(noEmail)).isFalse();
     }
 
     @Test
@@ -54,6 +72,7 @@ class AgentRiskConditionTest {
         assertThat(result.passed()).isFalse();
         assertThat(result.severity()).isEqualTo(EvalSeverity.CRITICAL);
         assertThat(result.message()).contains("risk threshold");
+        assertThat(result.message()).contains("Repeated mandate mismatches: 3");
     }
 
     @Test
@@ -62,13 +81,14 @@ class AgentRiskConditionTest {
         EvalContext context = EvalContext.forAgentAction(
                 "agent-1", "buyer@example.com", null, null, null, null, "mandate-1");
         when(agentRiskService.summarizeRisk("buyer@example.com", "agent-1"))
-                .thenReturn(summary(false, List.of("High spend attempt signals: 1")));
+                .thenReturn(summary(false, List.of("High spend attempt signals: 1", "Failed checkouts: 2")));
 
         EvalResult result = condition.evaluate(context);
 
         assertThat(result.passed()).isFalse();
         assertThat(result.severity()).isEqualTo(EvalSeverity.WARNING);
         assertThat(result.message()).contains("Recent agent risk signals");
+        assertThat(result.message()).contains("High spend attempt signals: 1; Failed checkouts: 2");
     }
 
     @Test

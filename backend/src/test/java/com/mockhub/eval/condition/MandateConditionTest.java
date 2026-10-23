@@ -63,6 +63,63 @@ class MandateConditionTest {
     }
 
     @Test
+    @DisplayName("appliesTo returns true when agentId is null but mandateId is present")
+    void appliesTo_givenNullAgentIdAndMandateIdPresent_returnsTrue() {
+        EvalContext context = EvalContext.forAgentAction(null, "user@example.com",
+                null, null, null, null, "m1");
+
+        assertThat(condition.appliesTo(context)).isTrue();
+    }
+
+    @Test
+    @DisplayName("evaluate fails with CRITICAL when agentId is null or blank")
+    void evaluate_givenBlankAgentId_failsCritical() {
+        EvalContext nullAgentContext = EvalContext.forAgentAction(null, "user@example.com",
+                null, null, null, null, "m1");
+        EvalContext blankAgentContext = EvalContext.forAgentAction("   ", "user@example.com",
+                null, null, null, null, "m1");
+
+        EvalResult nullResult = condition.evaluate(nullAgentContext);
+        EvalResult blankResult = condition.evaluate(blankAgentContext);
+
+        assertThat(nullResult.passed()).isFalse();
+        assertThat(nullResult.severity()).isEqualTo(EvalSeverity.CRITICAL);
+        assertThat(nullResult.message()).contains("Agent ID is required");
+        assertThat(blankResult.passed()).isFalse();
+        assertThat(blankResult.message()).contains("Agent ID is required");
+    }
+
+    @Test
+    @DisplayName("evaluate fails when purchase action has blank mandateId")
+    void evaluate_givenPurchaseWithBlankMandateId_failsCritical() {
+        EvalContext context = EvalContext.forAgentAction("agent-1", "user@example.com",
+                null, null, new BigDecimal("99.00"), null, "   ");
+
+        EvalResult result = condition.evaluate(context);
+
+        assertThat(result.passed()).isFalse();
+        assertThat(result.severity()).isEqualTo(EvalSeverity.CRITICAL);
+        assertThat(result.message()).contains("Mandate ID is required");
+    }
+
+    @Test
+    @DisplayName("evaluate determines BROWSE scope when orderTotal is zero")
+    void evaluate_givenZeroOrderTotal_usesBrowseScope() {
+        EvalContext context = EvalContext.forAgentAction("agent-1", "user@example.com",
+                null, null, BigDecimal.ZERO, null, null);
+        Mandate mandate = new Mandate();
+        mandate.setMandateId("m1");
+        mandate.setScope("BROWSE");
+        when(mandateService.getActiveMandate("agent-1", "user@example.com", null)).thenReturn(mandate);
+        when(mandateService.validateAction(eq("agent-1"), eq("user@example.com"),
+                eq("BROWSE"), eq(BigDecimal.ZERO), any(), any(), eq(null), any())).thenReturn(true);
+
+        EvalResult result = condition.evaluate(context);
+
+        assertThat(result.passed()).isTrue();
+    }
+
+    @Test
     @DisplayName("evaluate fails with CRITICAL when userEmail is null")
     void evaluate_givenNullUserEmail_failsCritical() {
         EvalContext context = EvalContext.forAgentAction("agent-1", null,

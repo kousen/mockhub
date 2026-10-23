@@ -193,10 +193,20 @@ class OrderServiceTest {
             return order;
         });
 
-        OrderDto result = orderService.checkout(testUser, request, null);
+        OrderDto result = orderService.checkout(testUser, request, "idem-1", "agent-1", "mandate-1");
 
         assertNotNull(result, "Order DTO should not be null");
         assertEquals("PENDING", result.status(), "Order status should be PENDING");
+        assertTrue(result.orderNumber().startsWith("MH-"), "Order number should have MH- prefix");
+        assertTrue(result.orderNumber().endsWith("-0001"), "First order of day should end with -0001");
+        assertEquals(new BigDecimal("75.00"), result.subtotal());
+        assertEquals(new BigDecimal("7.50"), result.serviceFee());
+        assertEquals(new BigDecimal("82.50"), result.total());
+        assertEquals("mock", result.paymentMethod());
+        assertEquals("agent-1", result.agentId());
+        assertEquals("mandate-1", result.mandateId());
+        assertEquals(1, result.items().size());
+        assertEquals(new BigDecimal("75.00"), result.items().getFirst().pricePaid());
         verify(cartService).clearCart(testUser);
     }
 

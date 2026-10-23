@@ -163,9 +163,20 @@ class SellerListingServiceTest {
                 "seller@example.com", request);
 
         assertNotNull(result, "Created listing should not be null");
+        assertEquals(2L, result.id());
+        assertEquals(1L, result.ticketId());
         assertEquals("test-concert", result.eventSlug());
+        assertEquals("Test Concert", result.eventName());
         assertEquals("Floor", result.sectionName());
-        verify(ticketRepository).save(any(Ticket.class));
+        assertEquals("A", result.rowLabel());
+        assertEquals("1", result.seatNumber());
+        assertEquals(new BigDecimal("75.00"), result.listedPrice());
+        assertEquals(new BigDecimal("75.00"), result.computedPrice());
+        assertEquals(new BigDecimal("50.00"), result.faceValue());
+        assertEquals("ACTIVE", result.status());
+        assertNotNull(result.listedAt());
+        assertEquals("LISTED", testTicket.getStatus());
+        verify(ticketRepository).save(testTicket);
         verify(listingRepository).save(any(Listing.class));
     }
 
