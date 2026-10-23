@@ -14,7 +14,7 @@ MockHub is a secondary concert ticket marketplace (like StubHub) built as a teac
 - **Database:** PostgreSQL 17 (standard — pgvector removed, all search uses tsvector full-text)
 - **AI:** Spring AI 2.0.0
 - **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, TanStack React Query, Zustand
-- **Testing:** JUnit 5 + Mockito + Testcontainers (backend), Vitest + React Testing Library + MSW (frontend), Playwright (E2E, 3 browsers, sharded CI)
+- **Testing:** JUnit 5 + Mockito + Testcontainers + PITest (backend), Vitest + React Testing Library + MSW (frontend), Playwright (E2E, 3 browsers, sharded CI)
 - **Payments:** Stripe test mode + mock fallback via Spring profiles
 
 ## Architecture Rules
@@ -271,6 +271,7 @@ The codebase uses Java DOP patterns where they add value:
 - Backend unit tests: JUnit 5 + Mockito, naming convention `methodName_givenCondition_expectedResult`
 - Backend controller tests: MockMvc + @WebMvcTest
 - Backend integration tests: Testcontainers with real PostgreSQL
+- Backend mutation tests: PITest via `./gradlew pitest` (HTML/XML reports in `backend/build/reports/pitest/`). Can target specific packages with `-Ppitest.targetClasses=com.mockhub.eval.* -Ppitest.targetTests=com.mockhub.eval.*`
 - Frontend component tests: Vitest + React Testing Library, colocated as `*.test.tsx`
 - Frontend API mocking: MSW (Mock Service Worker)
 - **jsdom polyfills:** `ResizeObserver` stub is in `src/test/setup.ts` — required for any Radix UI component that uses poppers/tooltips. Add other browser API stubs here as needed.

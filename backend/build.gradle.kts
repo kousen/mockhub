@@ -126,7 +126,11 @@ tasks.jacocoTestReport {
 pitest {
     pitestVersion.set(libs.versions.pitest.asProvider())
     junit5PluginVersion.set(libs.versions.pitest.junit5.plugin)
-    targetClasses.set(listOf("com.mockhub.*"))
+    targetClasses.set(
+        providers.gradleProperty("pitest.targetClasses")
+            .map { it.split(",") }
+            .orElse(listOf("com.mockhub.*")),
+    )
     excludedClasses.set(
         listOf(
             "com.mockhub.MockHubApplication*",
@@ -138,7 +142,11 @@ pitest {
             "com.mockhub.seed.*",
         ),
     )
-    targetTests.set(listOf("com.mockhub.*"))
+    targetTests.set(
+        providers.gradleProperty("pitest.targetTests")
+            .map { it.split(",") }
+            .orElse(listOf("com.mockhub.*")),
+    )
     excludedTestClasses.set(
         listOf(
             "com.mockhub.*IntegrationTest*",
