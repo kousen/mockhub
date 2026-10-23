@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.spotless)
+    alias(libs.plugins.pitest)
     checkstyle
 }
 
@@ -120,4 +121,32 @@ tasks.jacocoTestReport {
     reports {
         xml.required.set(true)
     }
+}
+
+pitest {
+    pitestVersion.set(libs.versions.pitest.asProvider())
+    junit5PluginVersion.set(libs.versions.pitest.junit5.plugin)
+    targetClasses.set(listOf("com.mockhub.*"))
+    excludedClasses.set(
+        listOf(
+            "com.mockhub.MockHubApplication*",
+            "com.mockhub.*.entity.*",
+            "com.mockhub.*.dto.*",
+            "com.mockhub.*.seed.*",
+            "com.mockhub.*.config.*",
+            "com.mockhub.config.*",
+            "com.mockhub.seed.*",
+        ),
+    )
+    targetTests.set(listOf("com.mockhub.*"))
+    excludedTestClasses.set(
+        listOf(
+            "com.mockhub.*IntegrationTest*",
+            "com.mockhub.*.*IntegrationTest*",
+            "com.mockhub.*.Twilio*",
+        ),
+    )
+    threads.set(Runtime.getRuntime().availableProcessors())
+    outputFormats.set(listOf("HTML", "XML"))
+    timestampedReports.set(false)
 }
