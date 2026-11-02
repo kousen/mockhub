@@ -3,7 +3,7 @@ import { cleanup } from '@testing-library/react';
 import { server } from './mocks/server';
 
 // Radix UI components (Tooltip, Popover, etc.) use ResizeObserver which jsdom doesn't provide
-global.ResizeObserver = class {
+globalThis.ResizeObserver = class {
   observe() {
     /* stub for jsdom */
   }

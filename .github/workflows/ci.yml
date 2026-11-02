@@ -93,7 +93,7 @@ jobs:
 
   e2e-smoke:
     name: E2E Smoke (Playwright Chromium)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.58 has no chromium build for ubuntu-latest (26.04)
     timeout-minutes: 10
     needs: [backend-test, frontend-test]
     if: github.event_name == 'pull_request'
@@ -186,7 +186,7 @@ jobs:
 
   e2e-test:
     name: E2E Tests (Playwright Full) - Shard ${{ matrix.shard }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # see e2e-smoke
     timeout-minutes: 10
     needs: [backend-test, frontend-test]
     if: github.event_name != 'pull_request'
